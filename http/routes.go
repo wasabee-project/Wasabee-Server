@@ -32,7 +32,12 @@ func setupRoutes(r *mux.Router) {
 	PhDevBin.Log.Debugf("Including static files from: %s", config.FrontendPath)
 	addStaticDirectory(config.FrontendPath, "/", r)
 
-	r.HandleFunc("/me", meRoute).Methods("GET")
+	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (color/tags)
+	r.HandleFunc("/me", meSetColorRoute).Methods("GET").Queries("color", "{color}") // set my color /me?color=445566
+	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
+	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE") // remove me from tag
+
+    // Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
 
@@ -40,21 +45,28 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/{document}", updateRoute).Methods("PUT")
+	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
+	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
+
+    // tags
+    r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET") // return the location of every user if authorized
+    r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE") // remove the tag completely
+    r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET") // invite user to tag
+    r.HandleFunc("/tag/{tag}/{guid}", delUserFmTagRoute).Methods("DELETE") // remove user from tag
 
 	// 404 error page
 	r.PathPrefix("/").HandlerFunc(notFoundRoute)
 }
 
 func optionsRoute(res http.ResponseWriter, req *http.Request) {
+    // I think this is now taken care of in the middleware
     res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
 	res.WriteHeader(200)
     return 
 }
 
 func getRoute(res http.ResponseWriter, req *http.Request) {
-	// path := strings.Split(req.URL.Path, "/")
-	// id := path[len(path)-1]
-
 	vars := mux.Vars(req)
 	id := vars["document"]
 
@@ -68,9 +80,6 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func deleteRoute(res http.ResponseWriter, req *http.Request) {
-//	path := strings.Split(req.URL.Path, "/")
-//	id := path[len(path)-1]
-
 	vars := mux.Vars(req)
 	id := vars["document"]
 
@@ -79,7 +88,6 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
         PhDevBin.Log.Error(err)
 	}
 
-	//res.WriteHeader(200)
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprint(res, "OK: document removed.\n")
 }

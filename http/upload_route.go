@@ -132,8 +132,6 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
         return
 	}
 
-//    path := strings.Split(req.URL.Path, "/")
-//	id := path[len(path)-1]
     vars := mux.Vars(req)
 	id := vars["document"]
 
