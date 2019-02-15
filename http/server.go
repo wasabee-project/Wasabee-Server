@@ -2,6 +2,7 @@ package PhDevHTTP
 
 import (
 	"net/http"
+	"net/http/httputil"
 	"path/filepath"
 	"strings"
 	"os"
@@ -80,7 +81,7 @@ func initializeConfig(initialConfig Configuration) {
 	config.oauthStateString = PhDevBin.GenerateName()
     PhDevBin.Log.Noticef("StateString: " + config.oauthStateString)
     PhDevBin.Log.Noticef("Cookie Store: " + os.Getenv("SESSION_KEY"))
-    store = sessions.NewCookieStore(os.Getenv("SESSION_KEY"))
+    // store = sessions.NewCookieStore(os.Getenv("SESSION_KEY"))
 
     config.CertDir = os.Getenv("CERTDIR")
 	if config.CertDir == "" {
@@ -102,8 +103,6 @@ func StartHTTP(initialConfig Configuration) {
 	// Add important headers
 	r.Use(headersMW)
 	r.Use(debugMW)
-	// Redirect to root
-	n.UseHandler(r)
 
 	// Serve
 	PhDevBin.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)

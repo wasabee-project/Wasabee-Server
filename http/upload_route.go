@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
+//	"net/http/httputil"
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
@@ -135,7 +135,7 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 
 //    path := strings.Split(req.URL.Path, "/")
 //	id := path[len(path)-1]
-    vars := mux.Vars(r)
+    vars := mux.Vars(req)
 	id := vars["document"]
 
     doc, err := PhDevBin.Request(id)

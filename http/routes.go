@@ -4,8 +4,8 @@ import (
 //	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
-	"strings"
+//	"net/http/httputil"
+//	"strings"
 	"io/ioutil"
 
 	"golang.org/x/oauth2"
@@ -55,7 +55,7 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 	// path := strings.Split(req.URL.Path, "/")
 	// id := path[len(path)-1]
 
-	vars := mux.Vars(r)
+	vars := mux.Vars(req)
 	id := vars["document"]
 
 	doc, err := PhDevBin.Request(id)
@@ -71,7 +71,7 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 //	path := strings.Split(req.URL.Path, "/")
 //	id := path[len(path)-1]
 
-	vars := mux.Vars(r)
+	vars := mux.Vars(req)
 	id := vars["document"]
 
 	err := PhDevBin.Delete(id)
