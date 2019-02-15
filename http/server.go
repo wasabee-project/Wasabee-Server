@@ -12,7 +12,6 @@ import (
 
 	"github.com/gorilla/mux"
     "github.com/gorilla/sessions"
-/* update this to PhDevBin */
 	"github.com/cloudkucooland/PhDevBin"
 /* http://www.gorillatoolkit.org/pkg/sessions */
 )
@@ -43,7 +42,7 @@ type User struct {
 
 var config Configuration
 var googleOauthConfig *oauth2.Config
-var store sessions.NewCookieStore
+var store sessions.CookieStore
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
@@ -129,7 +128,7 @@ func headersMW(next http.Handler) http.Handler {
 
 func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		dump, err := httputil.DumpRequest(req, false)
+		dump, _ := httputil.DumpRequest(req, false)
 		PhDevBin.Log.Notice(string(dump))
 		next.ServeHTTP(res, req)
 	})

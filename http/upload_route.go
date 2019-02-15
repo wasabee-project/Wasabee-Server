@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-//	"net/http/httputil"
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
+    "github.com/gorilla/mux"
 )
 
 func uploadError(during string, err error, res http.ResponseWriter, req *http.Request) bool {
@@ -122,7 +122,6 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(res, config.Root+"/"+doc.ID+"\n")
 }
-
 
 func updateRoute(res http.ResponseWriter, req *http.Request) {
 	sizeExceeded := false
