@@ -32,6 +32,7 @@ func setupRoutes(r *mux.Router) {
 	PhDevBin.Log.Debugf("Including static files from: %s", config.FrontendPath)
 	addStaticDirectory(config.FrontendPath, "/", r)
 
+
 	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (color/tags)
 	r.HandleFunc("/me", meSetColorRoute).Methods("GET").Queries("color", "{color}") // set my color /me?color=445566
 	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
@@ -90,11 +91,6 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprint(res, "OK: document removed.\n")
-}
-
-func meRoute(res http.ResponseWriter, req *http.Request) {
-    res.Header().Add("Content-Type", "text/plain")
-	fmt.Fprint(res, "a screen full of data about me will be here.\n")
 }
 
 func internalErrorRoute(res http.ResponseWriter, req *http.Request) {

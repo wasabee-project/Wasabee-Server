@@ -21,6 +21,7 @@ func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
 
 func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
     return
+}
 
 func delUserFmTagRoute(res http.ResponseWriter, req *http.Request) {
     return

@@ -21,6 +21,7 @@ func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
 
 func meRemoveTagRoute(res http.ResponseWriter, req *http.Request) {
     return
+}
 
 func meSetColorRoute(res http.ResponseWriter, req *http.Request) {
     return
