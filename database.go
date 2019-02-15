@@ -49,6 +49,7 @@ func Connect(uri string) error {
 		}
 	}
 
+    table = ""
 	db.QueryRow("SHOW TABLES LIKE 'user'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `user` table...")
@@ -63,23 +64,25 @@ func Connect(uri string) error {
 		}
 	}
 
+    table = ""
 	db.QueryRow("SHOW TABLES LIKE 'locations'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `locations` table...")
 		err = db.QueryRow(`CREATE TABLE locations(
 			gid varchar(32) PRIMARY KEY,
-            when datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            where POINT NOT NULL
+            upTime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            loc POINT
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
 		if err != nil && err.Error() != "sql: no rows in result set" {
 			return err
 		}
 	}
 
+    table = ""
 	db.QueryRow("SHOW TABLES LIKE 'tags'").Scan(&table)
 	if table == "" {
-		Log.Noticef("Setting up `locations` table...")
-		err = db.QueryRow(`CREATE TABLE locations(
+		Log.Noticef("Setting up `tags` table...")
+		err = db.QueryRow(`CREATE TABLE tags(
 			tagID varchar(64) PRIMARY KEY,
 			owner varchar(32) NOT NULL,
 			name varchar(64) NULL DEFAULT NULL
@@ -89,10 +92,11 @@ func Connect(uri string) error {
 		}
 	}
 
+    table = ""
 	db.QueryRow("SHOW TABLES LIKE 'usertags'").Scan(&table)
 	if table == "" {
-		Log.Noticef("Setting up `locations` table...")
-		err = db.QueryRow(`CREATE TABLE locations(
+		Log.Noticef("Setting up `usertags` table...")
+		err = db.QueryRow(`CREATE TABLE usertags(
 			tagID varchar(64) PRIMARY KEY,
 			gid varchar(32) NOT NULL,
 			state ENUM('Off', 'On') NOT NULL DEFAULT 'Off' 
