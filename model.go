@@ -18,6 +18,7 @@ const MaxFilesize = 1024 * 1024 // 1MB
 type Document struct {
 	// ID is set on Store()
 	ID      string
+	Uploader string
 	Content string
 	// Upload is set on Store()
 	Upload     time.Time
@@ -68,6 +69,7 @@ func Store(document *Document) error {
 	databaseID := sha256.Sum256([]byte(document.ID))
 
 	// Write the document to the database
+	// XXX add Uploader
 	_, err = db.Exec(
 		"INSERT INTO documents (id, content, upload, expiration, views) VALUES (?, ?, ?, ?, ?)",
 		hex.EncodeToString(databaseID[:]),

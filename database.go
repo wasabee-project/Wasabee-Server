@@ -38,10 +38,64 @@ func Connect(uri string) error {
 		Log.Noticef("Setting up `documents` table...")
 		err = db.QueryRow(`CREATE TABLE documents (
             id varchar(64) PRIMARY KEY,
+			uploader varchar(32) NULL DEFAULT NULL,
             content longblob NOT NULL,
             upload datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             expiration datetime NULL DEFAULT NULL,
             views int UNSIGNED NOT NULL DEFAULT 0
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			return err
+		}
+	}
+
+	db.QueryRow("SHOW TABLES LIKE 'user'").Scan(&table)
+	if table == "" {
+		Log.Noticef("Setting up `user` table...")
+		err = db.QueryRow(`CREATE TABLE user(
+			gid varchar(32) PRIMARY KEY,
+            gname varchar(128) NOT NULL,
+            iname varchar(64) NULL DEFAULT NULL,
+            color varchar(32) NOT NULL DEFAULT "FF5500"
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			return err
+		}
+	}
+
+	db.QueryRow("SHOW TABLES LIKE 'locations'").Scan(&table)
+	if table == "" {
+		Log.Noticef("Setting up `locations` table...")
+		err = db.QueryRow(`CREATE TABLE locations(
+			gid varchar(32) PRIMARY KEY,
+            when datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            where POINT NOT NULL
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			return err
+		}
+	}
+
+	db.QueryRow("SHOW TABLES LIKE 'tags'").Scan(&table)
+	if table == "" {
+		Log.Noticef("Setting up `locations` table...")
+		err = db.QueryRow(`CREATE TABLE locations(
+			tagID varchar(64) PRIMARY KEY,
+			owner varchar(32) NOT NULL,
+			name varchar(64) NULL DEFAULT NULL
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			return err
+		}
+	}
+
+	db.QueryRow("SHOW TABLES LIKE 'usertags'").Scan(&table)
+	if table == "" {
+		Log.Noticef("Setting up `locations` table...")
+		err = db.QueryRow(`CREATE TABLE locations(
+			tagID varchar(64) PRIMARY KEY,
+			gid varchar(32) NOT NULL,
+			state ENUM('Off', 'On') NOT NULL DEFAULT 'Off' 
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
 		if err != nil && err.Error() != "sql: no rows in result set" {
 			return err
