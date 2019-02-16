@@ -11,7 +11,7 @@ var db *sql.DB
 var isConnected bool
 
 type UserData struct {
-    GoogleName string
+	GoogleName  string
 	IngressName string
 	LocationKey string
 }
@@ -157,7 +157,7 @@ func InsertOrUpdateUser(id string, name string) error {
 }
 
 func SetIngressName(id string, name string) error {
-    _, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, id)
+	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, id)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func SetIngressName(id string, name string) error {
 }
 
 func RemoveUserFromTag(id string, tag string) error {
-    _, err := db.Exec("DELETE FROM usertags WHERE gid = ? AND tagID = ?", tag, id)
+	_, err := db.Exec("DELETE FROM usertags WHERE gid = ? AND tagID = ?", tag, id)
 	if err != nil {
 		return err
 	}
@@ -173,10 +173,10 @@ func RemoveUserFromTag(id string, tag string) error {
 }
 
 func SetUserTagState(id string, tag string, state string) error {
-    if state != "On" {
-	    state = "Off"
+	if state != "On" {
+		state = "Off"
 	}
-    _, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, tag, id)
+	_, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, tag, id)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func SetUserTagState(id string, tag string, state string) error {
 }
 
 func GetUserData(id string, ud *UserData) error {
-    row := db.QueryRow("SELECT gname, iname, lockey FROM user WHERE gid = ?", id)
+	row := db.QueryRow("SELECT gname, iname, lockey FROM user WHERE gid = ?", id)
 	err := row.Scan(&ud.GoogleName, &ud.IngressName, &ud.LocationKey)
 	if err != nil {
 		return err
