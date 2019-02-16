@@ -1,19 +1,19 @@
 package PhDevHTTP
 
 import (
-//	"errors"
-    "encoding/json"
+	//	"errors"
+	"encoding/json"
 	"fmt"
 	"net/http"
-//	"net/http/httputil"
-//	"strings"
+	//	"net/http/httputil"
+	//	"strings"
 	"io/ioutil"
 
 	"golang.org/x/oauth2"
-//	"golang.org/x/oauth2/google"
+	//	"golang.org/x/oauth2/google"
 
-	"github.com/gorilla/mux"
 	"github.com/cloudkucooland/PhDevBin"
+	"github.com/gorilla/mux"
 )
 
 func setupRoutes(r *mux.Router) {
@@ -33,7 +33,7 @@ func setupRoutes(r *mux.Router) {
 	PhDevBin.Log.Notice("Including static files from: %s", config.FrontendPath)
 	addStaticDirectory(config.FrontendPath, "/", r)
 
-    // Oauth2 stuff
+	// Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
 
@@ -42,31 +42,31 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
-    // user info
-	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (agen name/tags)
-	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}") // set my display name /me?name=deviousness
+	// user info
+	r.HandleFunc("/me", meShowRoute).Methods("GET")                                        // show my stats (agen name/tags)
+	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")    // set my display name /me?name=deviousness
 	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
-	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE") // remove me from tag
-    // tags
-    r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET") // return the location of every user if authorized
-    r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE") // remove the tag completely
-    r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET") // invite user to tag
-    r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
-    r.HandleFunc("/tag/{tag}/{guid}", delUserFmTagRoute).Methods("DELETE") // remove user from tag
+	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE")                          // remove me from tag
+	// tags
+	r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET")                                          // return the location of every user if authorized
+	r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE")                                    // remove the tag completely
+	r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET")                             // invite user to tag
+	r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
+	r.HandleFunc("/tag/{tag}/{guid}", delUserFmTagRoute).Methods("DELETE")                          // remove user from tag
 
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/{document}", updateRoute).Methods("PUT")
-	
+
 	// 404 error page
 	r.PathPrefix("/").HandlerFunc(notFoundRoute)
 }
 
 func optionsRoute(res http.ResponseWriter, req *http.Request) {
-    // I think this is now taken care of in the middleware
-    res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
+	// I think this is now taken care of in the middleware
+	res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
 	res.WriteHeader(200)
-    return 
+	return
 }
 
 func getRoute(res http.ResponseWriter, req *http.Request) {
@@ -88,7 +88,7 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	err := PhDevBin.Delete(id)
 	if err != nil {
-        PhDevBin.Log.Error(err)
+		PhDevBin.Log.Error(err)
 	}
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -113,11 +113,11 @@ func googleRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func callbackRoute(w http.ResponseWriter, r *http.Request) {
-    type PhDevUser struct {
-        Id string `json:"id"`
-	    Name string `json:"name"`
-	    Email string `json:"email"`
-    }
+	type PhDevUser struct {
+		Id    string `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
 
 	content, err := getUserInfo(r.FormValue("state"), r.FormValue("code"))
 	if err != nil {
@@ -127,25 +127,25 @@ func callbackRoute(w http.ResponseWriter, r *http.Request) {
 
 	var m PhDevUser
 	err = json.Unmarshal(content, &m)
-    if err != nil {
-        PhDevBin.Log.Notice(err.Error())
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-    ses, err := store.Get(r, SessionName)
+	ses, err := store.Get(r, SessionName)
 	if err != nil {
-        PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-    ses.Values["id"] = m.Id
+	ses.Values["id"] = m.Id
 	ses.Values["name"] = m.Name
-	ses.Save(r,w)
+	ses.Save(r, w)
 
 	err = PhDevBin.InsertOrUpdateUser(m.Id, m.Name)
 	if err != nil {
-        PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	http.Redirect(w, r, "/me", http.StatusPermanentRedirect)
@@ -172,12 +172,12 @@ func getUserInfo(state string, code string) ([]byte, error) {
 }
 
 func GetUserID(req *http.Request) (string, error) {
-    ses, err := store.Get(req, SessionName)
+	ses, err := store.Get(req, SessionName)
 	if err != nil {
 		return "", err
 	}
 
-    //var userID string
+	//var userID string
 	userID := ses.Values["id"].(string)
-    return userID, nil
+	return userID, nil
 }

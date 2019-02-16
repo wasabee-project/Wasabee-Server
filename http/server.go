@@ -3,26 +3,26 @@ package PhDevHTTP
 import (
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"path/filepath"
 	"strings"
-	"os"
 
-    "golang.org/x/oauth2"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
-	"github.com/gorilla/mux"
-    "github.com/gorilla/sessions"
 	"github.com/cloudkucooland/PhDevBin"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 type Configuration struct {
-	ListenHTTPS   string
-	FrontendPath  string
-	Root          string
-	path          string
-	domain        string
+	ListenHTTPS      string
+	FrontendPath     string
+	Root             string
+	path             string
+	domain           string
 	oauthStateString string
-	CertDir		  string
+	CertDir          string
 }
 
 var config Configuration
@@ -61,19 +61,19 @@ func initializeConfig(initialConfig Configuration) {
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
-    PhDevBin.Log.Noticef("ClientID: " + googleOauthConfig.ClientID)
-    PhDevBin.Log.Noticef("ClientSecret: " + googleOauthConfig.ClientSecret)
+	PhDevBin.Log.Noticef("ClientID: " + googleOauthConfig.ClientID)
+	PhDevBin.Log.Noticef("ClientSecret: " + googleOauthConfig.ClientSecret)
 	config.oauthStateString = PhDevBin.GenerateName()
-    PhDevBin.Log.Noticef("StateString: " + config.oauthStateString)
+	PhDevBin.Log.Noticef("StateString: " + config.oauthStateString)
 	key := os.Getenv("SESSION_KEY")
-    PhDevBin.Log.Noticef("Cookie Store: " + key) 
-    store = sessions.NewCookieStore([]byte(key))
+	PhDevBin.Log.Noticef("Cookie Store: " + key)
+	store = sessions.NewCookieStore([]byte(key))
 
-    config.CertDir = os.Getenv("CERTDIR")
+	config.CertDir = os.Getenv("CERTDIR")
 	if config.CertDir == "" {
-        config.CertDir = "certs/"
+		config.CertDir = "certs/"
 	}
-    PhDevBin.Log.Noticef("Certificate Directory: " + config.CertDir)
+	PhDevBin.Log.Noticef("Certificate Directory: " + config.CertDir)
 }
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.
@@ -95,7 +95,7 @@ func StartHTTP(initialConfig Configuration) {
 
 	// Serve
 	PhDevBin.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
-	err := http.ListenAndServeTLS(config.ListenHTTPS, config.CertDir + "/PhDevBin.fullchain.pem", config.CertDir + "/PhDevBin.key", r)
+	err := http.ListenAndServeTLS(config.ListenHTTPS, config.CertDir+"/PhDevBin.fullchain.pem", config.CertDir+"/PhDevBin.key", r)
 	if err != nil {
 		PhDevBin.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
@@ -128,15 +128,14 @@ func authMW(next http.Handler) http.Handler {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-        if ses.Values["id"] == nil {
-		    PhDevBin.Log.Notice("No Id")
-            //http.Redirect(res, req, "/login", http.StatusTemporaryRedirect)
+		if ses.Values["id"] == nil {
+			PhDevBin.Log.Notice("No Id")
+			//http.Redirect(res, req, "/login", http.StatusTemporaryRedirect)
 			//return
 		} else {
-		    PhDevBin.Log.Notice(ses.Values["id"])
+			PhDevBin.Log.Notice(ses.Values["id"])
 		}
-         
+
 		next.ServeHTTP(res, req)
 	})
 }
-

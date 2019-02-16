@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/cloudkucooland/PhDevBin"
+	"github.com/gorilla/mux"
 )
 
 var staticFileExceptions = []string{

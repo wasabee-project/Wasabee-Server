@@ -49,7 +49,7 @@ func Connect(uri string) error {
 		}
 	}
 
-    table = ""
+	table = ""
 	db.QueryRow("SHOW TABLES LIKE 'user'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `user` table...")
@@ -64,7 +64,7 @@ func Connect(uri string) error {
 		}
 	}
 
-    table = ""
+	table = ""
 	db.QueryRow("SHOW TABLES LIKE 'locations'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `locations` table...")
@@ -78,7 +78,7 @@ func Connect(uri string) error {
 		}
 	}
 
-    table = ""
+	table = ""
 	db.QueryRow("SHOW TABLES LIKE 'tags'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `tags` table...")
@@ -92,7 +92,7 @@ func Connect(uri string) error {
 		}
 	}
 
-    table = ""
+	table = ""
 	db.QueryRow("SHOW TABLES LIKE 'usertags'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `usertags` table...")
@@ -142,10 +142,10 @@ func cleanup() {
 }
 
 func InsertOrUpdateUser(id string, name string) error {
-    lockey, err := GenerateSafeName() 
-    _, err = db.Exec("INSERT INTO user VALUES (?,?,NULL,?) ON DUPLICATE KEY UPDATE gname = ?", id, name, lockey, name)
+	lockey, err := GenerateSafeName()
+	_, err = db.Exec("INSERT INTO user VALUES (?,?,NULL,?) ON DUPLICATE KEY UPDATE gname = ?", id, name, lockey, name)
 	if err != nil {
 		return err
 	}
-    return nil
+	return nil
 }

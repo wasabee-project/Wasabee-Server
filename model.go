@@ -17,9 +17,9 @@ const MaxFilesize = 1024 * 1024 // 1MB
 // Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
 type Document struct {
 	// ID is set on Store()
-	ID      string
+	ID       string
 	Uploader string
-	Content string
+	Content  string
 	// Upload is set on Store()
 	Upload     time.Time
 	Expiration time.Time
@@ -47,7 +47,7 @@ func Store(document *Document) error {
 		return errors.New("file contains 0x00 bytes")
 	}
 
-    escaped := ""
+	escaped := ""
 	escaped = EscapeHTML(document.Content)
 
 	var expiration interface{}
@@ -64,7 +64,7 @@ func Store(document *Document) error {
 	if err != nil {
 		Log.Errorf("AES error: %s", err)
 		return err
-    }
+	}
 
 	databaseID := sha256.Sum256([]byte(document.ID))
 
@@ -76,7 +76,7 @@ func Store(document *Document) error {
 		string(data),
 		document.Upload.UTC().Format("2006-01-02 15:04:05"),
 		expiration,
-        document.Views)
+		document.Views)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func Update(document *Document) error {
 		return errors.New("file contains 0x00 bytes")
 	}
 
-    escaped := ""
+	escaped := ""
 	escaped = EscapeHTML(document.Content)
 
 	// Server-Side Encryption
@@ -108,7 +108,7 @@ func Update(document *Document) error {
 	if err != nil {
 		Log.Errorf("AES error: %s", err)
 		return err
-    }
+	}
 
 	databaseID := sha256.Sum256([]byte(document.ID))
 
@@ -117,7 +117,7 @@ func Update(document *Document) error {
 		"UPDATE documents SET content=?, upload=? WHERE id=?",
 		string(data),
 		document.Upload.UTC().Format("2006-01-02 15:04:05"),
-		hex.EncodeToString(databaseID[:]) )
+		hex.EncodeToString(databaseID[:]))
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func Update(document *Document) error {
 func Request(id string) (Document, error) {
 	doc := Document{ID: id}
 	var views int
-	var upload, expiration  sql.NullString
+	var upload, expiration sql.NullString
 	databaseID := sha256.Sum256([]byte(id))
 	err := db.QueryRow("SELECT content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
 		Scan(&doc.Content, &upload, &expiration, &views)
@@ -158,8 +158,8 @@ func Request(id string) (Document, error) {
 	}
 
 	if expiration.Valid {
-        doc.Expiration, err = time.Parse("2006-01-02 15:04:05", expiration.String)
-        if doc.Expiration.Before(time.Unix(0, 1)) {
+		doc.Expiration, err = time.Parse("2006-01-02 15:04:05", expiration.String)
+		if doc.Expiration.Before(time.Unix(0, 1)) {
 			if doc.Views > 0 {
 				// Volatile document
 				_, err = db.Exec("DELETE FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:]))
@@ -177,11 +177,11 @@ func Request(id string) (Document, error) {
 		}
 	}
 
- 	doc.Content = StripHTML(doc.Content)
+	doc.Content = StripHTML(doc.Content)
 	return doc, nil
 }
 
-func Delete(id string) (error) {
+func Delete(id string) error {
 	databaseID := sha256.Sum256([]byte(id))
 	_, err := db.Exec("DELETE FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:]))
 	if err != nil {

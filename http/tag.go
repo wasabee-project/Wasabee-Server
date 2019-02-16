@@ -2,28 +2,26 @@ package PhDevHTTP
 
 import (
 	"fmt"
-//	"io/ioutil"
+	//	"io/ioutil"
 	"net/http"
-//	"strings"
-
-//	"github.com/cloudkucooland/PhDevBin"
-//  "github.com/gorilla/mux"
+	//	"strings"
+	//	"github.com/cloudkucooland/PhDevBin"
+	//  "github.com/gorilla/mux"
 )
 
 func getTagRoute(res http.ResponseWriter, req *http.Request) {
-    res.Header().Add("Content-Type", "text/plain")
+	res.Header().Add("Content-Type", "text/plain")
 	fmt.Fprint(res, "tag data here.\n")
 }
 
 func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
-    return
+	return
 }
 
 func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
-    return
+	return
 }
 
 func delUserFmTagRoute(res http.ResponseWriter, req *http.Request) {
-    return
+	return
 }
-

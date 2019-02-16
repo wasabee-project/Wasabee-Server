@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
-    "github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 )
 
 func uploadError(during string, err error, res http.ResponseWriter, req *http.Request) bool {
@@ -129,16 +129,16 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "PUT" {
 		res.WriteHeader(400)
 		fmt.Fprintf(res, "Updates only work with PUT.\n")
-        return
+		return
 	}
 
-    vars := mux.Vars(req)
+	vars := mux.Vars(req)
 	id := vars["document"]
 
-    doc, err := PhDevBin.Request(id)
+	doc, err := PhDevBin.Request(id)
 	if err != nil {
 		res.WriteHeader(404)
-		fmt.Fprintf(res, "No Such Document: " + id + "\n")
+		fmt.Fprintf(res, "No Such Document: "+id+"\n")
 		return
 	}
 
@@ -163,7 +163,7 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, "The document can't be empty (after whitespace removal).\n")
 		return
 	}
-    err = PhDevBin.Update(&doc)
+	err = PhDevBin.Update(&doc)
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
 		res.WriteHeader(400)
 		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")
