@@ -2,4 +2,4 @@ change all os.Getenv to use the args processing package in main
 
 change all r,w vars to res,req for consistency
 
-
+sort out tabs and spaces -- my damn vi isn't setup on this box...
