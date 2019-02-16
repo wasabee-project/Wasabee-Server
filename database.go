@@ -57,7 +57,7 @@ func Connect(uri string) error {
 			gid varchar(32) PRIMARY KEY,
             gname varchar(128) NOT NULL,
             iname varchar(64) NULL DEFAULT NULL,
-            color varchar(32) NOT NULL DEFAULT "FF5500"
+            lockey varchar(64) NULL DEFAULT NULL
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
 		if err != nil && err.Error() != "sql: no rows in result set" {
 			return err
@@ -99,7 +99,8 @@ func Connect(uri string) error {
 		err = db.QueryRow(`CREATE TABLE usertags(
 			tagID varchar(64) PRIMARY KEY,
 			gid varchar(32) NOT NULL,
-			state ENUM('Off', 'On') NOT NULL DEFAULT 'Off' 
+			state ENUM('Off', 'On') NOT NULL DEFAULT 'Off', 
+            color varchar(32) NOT NULL DEFAULT "FF5500"
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`).Scan()
 		if err != nil && err.Error() != "sql: no rows in result set" {
 			return err
@@ -138,4 +139,13 @@ func cleanup() {
 
 		time.Sleep(10 * time.Minute)
 	}
+}
+
+func InsertOrUpdateUser(id string, name string) error {
+    lockey, err := GenerateSafeName() 
+    _, err = db.Exec("INSERT INTO user VALUES (?,?,NULL,?) ON DUPLICATE KEY UPDATE gname = ?", id, name, lockey, name)
+	if err != nil {
+		return err
+	}
+    return nil
 }

@@ -2,6 +2,7 @@ package PhDevHTTP
 
 import (
 //	"errors"
+    "encoding/json"
 	"fmt"
 	"net/http"
 //	"net/http/httputil"
@@ -17,8 +18,8 @@ import (
 
 func setupRoutes(r *mux.Router) {
 	// Upload function
-	r.HandleFunc("/", uploadRoute).Methods("POST")
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
+	r.HandleFunc("/", uploadRoute).Methods("POST")
 
 	// Static aliased HTML files
 	r.HandleFunc("/", advancedStaticRoute(config.FrontendPath, "/index.html", routeOptions{
@@ -29,33 +30,34 @@ func setupRoutes(r *mux.Router) {
 	})).Methods("GET")
 
 	// Static files
-	PhDevBin.Log.Debugf("Including static files from: %s", config.FrontendPath)
+	PhDevBin.Log.Notice("Including static files from: %s", config.FrontendPath)
 	addStaticDirectory(config.FrontendPath, "/", r)
-
-
-	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (color/tags)
-	r.HandleFunc("/me", meSetColorRoute).Methods("GET").Queries("color", "{color}") // set my color /me?color=445566
-	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
-	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE") // remove me from tag
 
     // Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
 
 	// Documents
-	r.HandleFunc("/{document}", getRoute).Methods("GET")
-	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
-	r.HandleFunc("/{document}", updateRoute).Methods("PUT")
+	r.HandleFunc("/draw", uploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
-
+    // user info
+	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (agen name/tags)
+	r.HandleFunc("/me", meSetColorRoute).Methods("GET").Queries("name", "{name}") // set my display name /me?name=deviousness
+	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
+	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE") // remove me from tag
     // tags
     r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET") // return the location of every user if authorized
     r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE") // remove the tag completely
     r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET") // invite user to tag
+    r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
     r.HandleFunc("/tag/{tag}/{guid}", delUserFmTagRoute).Methods("DELETE") // remove user from tag
 
+	r.HandleFunc("/{document}", getRoute).Methods("GET")
+	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
+	r.HandleFunc("/{document}", updateRoute).Methods("PUT")
+	
 	// 404 error page
 	r.PathPrefix("/").HandlerFunc(notFoundRoute)
 }
@@ -111,13 +113,42 @@ func googleRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func callbackRoute(w http.ResponseWriter, r *http.Request) {
+    type PhDevUser struct {
+        Id string `json:"id"`
+	    Name string `json:"name"`
+	    Email string `json:"email"`
+    }
+
 	content, err := getUserInfo(r.FormValue("state"), r.FormValue("code"))
 	if err != nil {
 		fmt.Println(err.Error())
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	fmt.Fprintf(w, "Content: %s\n", content)
+
+	var m PhDevUser
+	err = json.Unmarshal(content, &m)
+    if err != nil {
+        PhDevBin.Log.Notice(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+    ses, err := store.Get(r, SessionName)
+	if err != nil {
+        PhDevBin.Log.Notice(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+    ses.Values["id"] = m.Id
+	ses.Values["name"] = m.Name
+	ses.Save(r,w)
+
+	err = PhDevBin.InsertOrUpdateUser(m.Id, m.Name)
+	if err != nil {
+        PhDevBin.Log.Notice(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	http.Redirect(w, r, "/me", http.StatusPermanentRedirect)
 }
 
 func getUserInfo(state string, code string) ([]byte, error) {
@@ -140,3 +171,13 @@ func getUserInfo(state string, code string) ([]byte, error) {
 	return contents, nil
 }
 
+func GetUserID(req *http.Request) (string, error) {
+    ses, err := store.Get(req, SessionName)
+	if err != nil {
+		return "", err
+	}
+
+    //var userID string
+	userID := ses.Values["id"].(string)
+    return userID, nil
+}
