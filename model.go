@@ -24,7 +24,7 @@ type Document struct {
 	Upload     time.Time
 	Expiration time.Time
 	Views      int
-	UserID	string
+	UserID     string
 }
 
 // Store a document object in the database.

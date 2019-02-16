@@ -129,7 +129,7 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-        // once this is used for requiring all URLs be authenticated, do this
+		// once this is used for requiring all URLs be authenticated, do this
 		if ses.Values["id"] == nil {
 			PhDevBin.Log.Notice("No Id")
 			// http.Redirect(res, req, "/login", http.StatusPermanentRedirect)

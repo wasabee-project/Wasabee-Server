@@ -177,9 +177,9 @@ func GetUserID(req *http.Request) (string, error) {
 		return "", err
 	}
 
-    if ses.Values["id"] == nil {
+	if ses.Values["id"] == nil {
 		PhDevBin.Log.Notice("GetUserID called for unauthenticated user")
-        return "", nil
+		return "", nil
 	}
 
 	userID := ses.Values["id"].(string)
