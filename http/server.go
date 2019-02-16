@@ -128,12 +128,12 @@ func authMW(next http.Handler) http.Handler {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+        // once this is used for requiring all URLs be authenticated, do this
 		if ses.Values["id"] == nil {
 			PhDevBin.Log.Notice("No Id")
-			//http.Redirect(res, req, "/login", http.StatusTemporaryRedirect)
+			// http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 			//return
-		} else {
-			PhDevBin.Log.Notice(ses.Values["id"])
 		}
 
 		next.ServeHTTP(res, req)

@@ -111,6 +111,15 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+    userID, err := GetUserID(req)
+	if err != nil {
+	    PhDevBin.Log.Notice(err.Error())
+		return
+	}
+	if userID != "" {
+        doc.UserID = userID
+	}
+
 	err = PhDevBin.Store(&doc)
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
 		res.WriteHeader(400)
@@ -163,6 +172,17 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, "The document can't be empty (after whitespace removal).\n")
 		return
 	}
+
+    userID, err := GetUserID(req)
+	if err != nil {
+	    PhDevBin.Log.Notice(err.Error())
+		return
+	}
+	if userID != "" {
+	    PhDevBin.Log.Notice("attempting to update a document w/o being logged in")
+		return
+	}
+    doc.UserID = userID
 	err = PhDevBin.Update(&doc)
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
 		res.WriteHeader(400)

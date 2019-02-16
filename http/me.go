@@ -15,7 +15,6 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		PhDevBin.Log.Notice(err.Error())
 		return
 	}
-
 	if id == "" {
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 		return
@@ -46,7 +45,6 @@ func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	if id == "" {
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 	}
@@ -73,7 +71,6 @@ func meRemoveTagRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	if id == "" {
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 	}
@@ -99,7 +96,6 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	if id == "" {
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 	}

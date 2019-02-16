@@ -24,6 +24,7 @@ type Document struct {
 	Upload     time.Time
 	Expiration time.Time
 	Views      int
+	UserID	string
 }
 
 // Store a document object in the database.
@@ -71,8 +72,9 @@ func Store(document *Document) error {
 	// Write the document to the database
 	// XXX add Uploader
 	_, err = db.Exec(
-		"INSERT INTO documents (id, content, upload, expiration, views) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO documents (id, uploader, content, upload, expiration, views) VALUES (?, ?, ?, ?, ?, ?)",
 		hex.EncodeToString(databaseID[:]),
+		document.UserID,
 		string(data),
 		document.Upload.UTC().Format("2006-01-02 15:04:05"),
 		expiration,
@@ -114,10 +116,11 @@ func Update(document *Document) error {
 
 	// Write the document to the database
 	_, err = db.Exec(
-		"UPDATE documents SET content=?, upload=? WHERE id=?",
+		"UPDATE documents SET content=?, upload=? WHERE id=? AND uploader=?",
 		string(data),
 		document.Upload.UTC().Format("2006-01-02 15:04:05"),
-		hex.EncodeToString(databaseID[:]))
+		hex.EncodeToString(databaseID[:]),
+		document.UserID)
 	if err != nil {
 		return err
 	}
