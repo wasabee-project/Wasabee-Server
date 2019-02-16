@@ -3,7 +3,6 @@ package PhDevHTTP
 import (
 	"fmt"
 	"net/http"
-	//	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
@@ -47,6 +46,7 @@ func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if id == "" {
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
 	}
 
 	vars := mux.Vars(req)
@@ -73,6 +73,7 @@ func meRemoveTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if id == "" {
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
 	}
 
 	vars := mux.Vars(req)
@@ -98,6 +99,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if id == "" {
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
 	}
 
 	vars := mux.Vars(req)
