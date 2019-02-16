@@ -43,8 +43,8 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
 	// user info
-	r.HandleFunc("/me", meShowRoute).Methods("GET")                                        // show my stats (agen name/tags)
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")    // set my display name /me?name=deviousness
+	r.HandleFunc("/me", meShowRoute).Methods("GET")                                        // show my stats (agen name/tags)
 	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
 	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE")                          // remove me from tag
 	// tags
@@ -177,7 +177,6 @@ func GetUserID(req *http.Request) (string, error) {
 		return "", err
 	}
 
-	//var userID string
 	userID := ses.Values["id"].(string)
 	return userID, nil
 }

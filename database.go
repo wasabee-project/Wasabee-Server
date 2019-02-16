@@ -10,6 +10,12 @@ import (
 var db *sql.DB
 var isConnected bool
 
+type UserData struct {
+    GoogleName string
+	IngressName string
+	LocationKey string
+}
+
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don't exist yet.
 func Connect(uri string) error {
 	Log.Noticef("Connecting to database at %s", uri)
@@ -144,6 +150,42 @@ func cleanup() {
 func InsertOrUpdateUser(id string, name string) error {
 	lockey, err := GenerateSafeName()
 	_, err = db.Exec("INSERT INTO user VALUES (?,?,NULL,?) ON DUPLICATE KEY UPDATE gname = ?", id, name, lockey, name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SetIngressName(id string, name string) error {
+    _, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RemoveUserFromTag(id string, tag string) error {
+    _, err := db.Exec("DELETE FROM usertags WHERE gid = ? AND tagID = ?", tag, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SetUserTagState(id string, tag string, state string) error {
+    if state != "On" {
+	    state = "Off"
+	}
+    _, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, tag, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetUserData(id string, ud *UserData) error {
+    row := db.QueryRow("SELECT gname, iname, lockey FROM user WHERE gid = ?", id)
+	err := row.Scan(&ud.GoogleName, &ud.IngressName, &ud.LocationKey)
 	if err != nil {
 		return err
 	}
