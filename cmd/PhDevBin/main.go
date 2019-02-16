@@ -26,15 +26,6 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":8000",
 		Usage: "HTTPS listen address."},
-	cli.BoolFlag{
-		Name: "hsts", EnvVar: "HSTS",
-		Usage: "Send HSTS header with max-age=31536000 (1 year)."},
-	cli.BoolFlag{
-		Name: "hsts-preload", EnvVar: "HSTS_PRELOAD",
-		Usage: "Send preload directive with the HSTS header. Requires --hsts."},
-	cli.BoolFlag{
-		Name: "hsts-subdomains", EnvVar: "HSTS_SUBDOMAINS",
-		Usage: "Send includeSubDomains directive with the HSTS header. Requires --hsts."},
 	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
 		Usage: "Location of the frontend files."},
@@ -106,7 +97,6 @@ func run(c *cli.Context) error {
 			ListenHTTPS:   c.String("https"),
 			FrontendPath:  c.String("frontend-path"),
 			Root:          c.String("root"),
-			Hsts:          hsts,
 		})
 	}
 
