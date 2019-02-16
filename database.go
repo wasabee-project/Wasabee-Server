@@ -184,10 +184,20 @@ func SetUserTagState(id string, tag string, state string) error {
 }
 
 func GetUserData(id string, ud *UserData) error {
+	var gn, in, lc sql.NullString
 	row := db.QueryRow("SELECT gname, iname, lockey FROM user WHERE gid = ?", id)
-	err := row.Scan(&ud.GoogleName, &ud.IngressName, &ud.LocationKey)
+	err := row.Scan(&gn, &in, &lc)
 	if err != nil {
 		return err
+	}
+	if gn.Valid {
+		ud.GoogleName = gn.String
+	}
+	if in.Valid {
+		ud.IngressName = in.String
+	}
+	if lc.Valid {
+		ud.LocationKey = lc.String
 	}
 	return nil
 }
