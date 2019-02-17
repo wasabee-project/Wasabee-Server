@@ -27,7 +27,6 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	PhDevBin.Log.Notice("/me: " + id)
 	res.Header().Add("Content-Type", "text/plain")
 	fmt.Fprint(res, "a screen full of data about me will be here.\n")
 	fmt.Fprint(res, "user ID: "+id+"\n")
@@ -106,7 +105,6 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	name := vars["name"]
 
 	// do the work
-	PhDevBin.Log.Notice("set ingress name: " + id + " " + name)
 	err = PhDevBin.SetIngressName(id, name)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

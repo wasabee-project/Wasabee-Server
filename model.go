@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -193,5 +194,156 @@ func Delete(id string) error {
 		}
 		return err
 	}
+	return nil
+}
+
+// user stuff
+type UserData struct {
+	GoogleName  string
+	IngressName string
+	LocationKey string
+}
+
+func InsertOrUpdateUser(id string, name string) error {
+	lockey, err := GenerateSafeName()
+	_, err = db.Exec("INSERT INTO user VALUES (?,?,NULL,?) ON DUPLICATE KEY UPDATE gname = ?", id, name, lockey, name)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),NULL) ON DUPLICATE KEY UPDATE upTime = NOW()", id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SetIngressName(id string, name string) error {
+	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RemoveUserFromTag(id string, tag string) error {
+	_, err := db.Exec("DELETE FROM usertags WHERE gid = ? AND tagID = ?", tag, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SetUserTagState(id string, tag string, state string) error {
+	if state != "On" {
+		state = "Off"
+	}
+	_, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, tag, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetUserData(id string, ud *UserData) error {
+	var gn, in, lc sql.NullString
+
+	row := db.QueryRow("SELECT gname, iname, lockey FROM user WHERE gid = ?", id)
+	err := row.Scan(&gn, &in, &lc)
+	if err != nil {
+		return err
+	}
+
+	// convert from sql.NullString to string in the struct
+	if gn.Valid {
+		ud.GoogleName = gn.String
+	}
+	if in.Valid {
+		ud.IngressName = in.String
+	}
+	if lc.Valid {
+		ud.LocationKey = lc.String
+	}
+	return nil
+}
+
+// tag stuff
+type TagData struct {
+	Agent string
+	Name  string
+	Color string
+	Lat   string
+	Lon   string
+	Date  string
+}
+
+func UserInTag(id string, tag string) (bool, error) {
+	var count string
+
+	err := db.QueryRow("SELECT COUNT(*) FROM usertags WHERE tagID = ? AND gid = ?", tag, id).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	i, err := strconv.Atoi(count)
+	if i < 1 {
+		return false, nil
+	}
+	return true, nil
+}
+
+func FetchTag(tag string, tagList *[]TagData) error {
+	var tagID, gid, iname, color, loc, uptime sql.NullString
+	var tmp TagData
+
+	rows, err := db.Query("SELECT t.tagID, u.gid, u.iname, x.color, l.loc, l.upTime FROM tags=t, usertags=x, user=u, locations=l WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid", tag)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tagID, &gid, &iname, &color, &loc, &uptime)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if gid.Valid {
+			tmp.Agent = gid.String
+		} else {
+			tmp.Agent = ""
+		}
+		if iname.Valid {
+			tmp.Name = iname.String
+		} else {
+			tmp.Name = ""
+		}
+		if color.Valid {
+			tmp.Color = color.String
+		} else {
+			tmp.Color = ""
+		}
+		if loc.Valid { // this will need love
+			tmp.Lat = loc.String
+		} else {
+			tmp.Lat = ""
+		}
+		if loc.Valid { // this will need love
+			tmp.Lon = loc.String
+		} else {
+			tmp.Lon = ""
+		}
+		if uptime.Valid { // this will need love
+			tmp.Date = uptime.String
+		} else {
+			tmp.Date = ""
+		}
+		*tagList = append(*tagList, tmp)
+	}
+	err = rows.Err()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
 	return nil
 }
