@@ -55,7 +55,6 @@ func Connect(uri string) error {
 		Log.Noticef("Setting up `user` table...")
 		_, err := db.Exec(`CREATE TABLE user(
 			gid varchar(32) PRIMARY KEY,
-            gname varchar(128) NOT NULL,
             iname varchar(64) NULL DEFAULT NULL,
             lockey varchar(64) NULL DEFAULT NULL
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)

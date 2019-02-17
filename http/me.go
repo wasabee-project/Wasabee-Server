@@ -29,8 +29,6 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Add("Content-Type", "text/plain")
 	fmt.Fprint(res, "a screen full of data about me will be here.\n")
-	fmt.Fprint(res, "user ID: "+id+"\n")
-	fmt.Fprint(res, "google name: "+ud.GoogleName+" \n")
 	fmt.Fprint(res, "ingress handle:  "+ud.IngressName+"\n")
 	fmt.Fprint(res, "location share key:  "+ud.LocationKey+"\n")
 	fmt.Fprint(res, "a list of all the tags I am in ... with options to remove/activate/deactivate\n")

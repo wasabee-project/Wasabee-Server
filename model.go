@@ -199,18 +199,18 @@ func Delete(id string) error {
 
 // user stuff
 type UserData struct {
-	GoogleName  string
 	IngressName string
 	LocationKey string
 }
 
 func InsertOrUpdateUser(id string, name string) error {
+    var tmpName = "Agent_" + id[:5]
 	lockey, err := GenerateSafeName()
-	_, err = db.Exec("INSERT INTO user VALUES (?,?,NULL,?) ON DUPLICATE KEY UPDATE gname = ?", id, name, lockey, name)
+	_, err = db.Exec("INSERT INTO user VALUES (?,?,?) ON DUPLICATE KEY UPDATE gid = ?", id, tmpName, lockey, id)
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),NULL) ON DUPLICATE KEY UPDATE upTime = NOW()", id)
+	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),POINT(0,0)) ON DUPLICATE KEY UPDATE upTime = NOW()", id)
 	if err != nil {
 		return err
 	}
@@ -245,18 +245,15 @@ func SetUserTagState(id string, tag string, state string) error {
 }
 
 func GetUserData(id string, ud *UserData) error {
-	var gn, in, lc sql.NullString
+	var in, lc sql.NullString
 
-	row := db.QueryRow("SELECT gname, iname, lockey FROM user WHERE gid = ?", id)
-	err := row.Scan(&gn, &in, &lc)
+	row := db.QueryRow("SELECT iname, lockey FROM user WHERE gid = ?", id)
+	err := row.Scan(&in, &lc)
 	if err != nil {
 		return err
 	}
 
 	// convert from sql.NullString to string in the struct
-	if gn.Valid {
-		ud.GoogleName = gn.String
-	}
 	if in.Valid {
 		ud.IngressName = in.String
 	}
@@ -268,7 +265,6 @@ func GetUserData(id string, ud *UserData) error {
 
 // tag stuff
 type TagData struct {
-	Agent string
 	Name  string
 	Color string
 	Lat   string
@@ -291,10 +287,10 @@ func UserInTag(id string, tag string) (bool, error) {
 }
 
 func FetchTag(tag string, tagList *[]TagData) error {
-	var tagID, gid, iname, color, loc, uptime sql.NullString
+	var tagID, iname, color, loc, uptime sql.NullString
 	var tmp TagData
 
-	rows, err := db.Query("SELECT t.tagID, u.gid, u.iname, x.color, l.loc, l.upTime "+
+	rows, err := db.Query("SELECT t.tagID, u.iname, x.color, AsText(l.loc), l.upTime "+
 		"FROM tags=t, usertags=x, user=u, locations=l "+
 		"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", tag)
 	if err != nil {
@@ -304,15 +300,10 @@ func FetchTag(tag string, tagList *[]TagData) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tagID, &gid, &iname, &color, &loc, &uptime)
+		err := rows.Scan(&tagID, &iname, &color, &loc, &uptime)
 		if err != nil {
 			Log.Error(err)
 			return err
-		}
-		if gid.Valid {
-			tmp.Agent = gid.String
-		} else {
-			tmp.Agent = ""
 		}
 		if iname.Valid {
 			tmp.Name = iname.String

@@ -73,7 +73,7 @@ func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	tag := vars["tag"]
-	key := vars["key"]
+	//key := vars["key"]
 
 	safe, err := PhDevBin.UserOwnsTag(id, tag)
 	if safe != true {
