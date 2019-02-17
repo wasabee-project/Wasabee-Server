@@ -294,7 +294,9 @@ func FetchTag(tag string, tagList *[]TagData) error {
 	var tagID, gid, iname, color, loc, uptime sql.NullString
 	var tmp TagData
 
-	rows, err := db.Query("SELECT t.tagID, u.gid, u.iname, x.color, l.loc, l.upTime FROM tags=t, usertags=x, user=u, locations=l WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid", tag)
+	rows, err := db.Query("SELECT t.tagID, u.gid, u.iname, x.color, l.loc, l.upTime "+
+		"FROM tags=t, usertags=x, user=u, locations=l "+
+		"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", tag)
 	if err != nil {
 		Log.Error(err)
 		return err
