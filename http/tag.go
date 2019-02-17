@@ -1,19 +1,15 @@
 package PhDevHTTP
 
 import (
-	"fmt"
-	//	"io/ioutil"
-	"net/http"
-	//	"strings"
 	"encoding/json"
+	"fmt"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
+	"net/http"
 )
 
 func getTagRoute(res http.ResponseWriter, req *http.Request) {
-	var tmp PhDevBin.TagData
 	var tagList []PhDevBin.TagData
-	tagList = append(tagList, tmp)
 
 	id, err := GetUserID(req)
 	if err != nil {
@@ -22,8 +18,7 @@ func getTagRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if id == "" {
-		// unauthorized would be better
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -50,18 +45,18 @@ func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if id == "" {
-		// unauthorized would be better
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	vars := mux.Vars(req)
 	tag := vars["tag"]
-	safe, err := PhDevBin.UserInTag(id, tag)
+	safe, err := PhDevBin.UserOwnsTag(id, tag)
 	if safe != true {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	return
+	// PhDevBin.DeleteTag(tag)
 }
 
 func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
@@ -72,18 +67,20 @@ func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if id == "" {
-		// unauthorized would be better
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	vars := mux.Vars(req)
 	tag := vars["tag"]
-	safe, err := PhDevBin.UserInTag(id, tag)
+	key := vars["key"]
+
+	safe, err := PhDevBin.UserOwnsTag(id, tag)
 	if safe != true {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	return
+	// PhDevBin.AddUserToTag(tag, key)
 }
 
 func delUserFmTagRoute(res http.ResponseWriter, req *http.Request) {
@@ -94,16 +91,16 @@ func delUserFmTagRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if id == "" {
-		// unauthorized would be better
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	vars := mux.Vars(req)
 	tag := vars["tag"]
-	safe, err := PhDevBin.UserInTag(id, tag)
+	safe, err := PhDevBin.UserOwnsTag(id, tag)
 	if safe != true {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	return
+	// PhDevBin.DelUserFromTag(tag, key)
 }

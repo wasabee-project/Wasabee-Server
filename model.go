@@ -349,3 +349,14 @@ func FetchTag(tag string, tagList *[]TagData) error {
 
 	return nil
 }
+
+func UserOwnsTag(id string, tag string) (bool, error) {
+	var owner string
+
+	err := db.QueryRow("SELECT owner FROM tags WHERE tagID = ?", tag).Scan(&owner)
+	// returning err w/o checking is lazy, but same result
+	if id == owner {
+		return true, err
+	}
+	return false, err
+}
