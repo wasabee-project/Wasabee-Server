@@ -49,11 +49,14 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE")                          // remove me from tag
 	// tags
 	r.HandleFunc("/tag/new", newTagRoute).Methods("POST", "GET").Queries("name", "{name}")         // return the location of every user if authorized
+	r.HandleFunc("/tag/{tag}", addUserToTagRoute).Methods("GET").Queries("key", "{key}")           // invite user to tag
 	r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET")                                         // return the location of every user if authorized
 	r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE")                                   // remove the tag completely
 	r.HandleFunc("/tag/{tag}/delete", deleteTagRoute).Methods("GET")                               // remove the tag completely
+	r.HandleFunc("/tag/{tag}/edit", editTagRoute).Methods("GET")                                   // GUI to do basic edit
 	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET")                             // invite user to tag
 	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
+	r.HandleFunc("/tag/{tag}/{key}/delete", delUserFmTagRoute).Methods("GET")                      // remove user from tag
 	r.HandleFunc("/tag/{tag}/{key}", delUserFmTagRoute).Methods("DELETE")                          // remove user from tag
 
 	r.HandleFunc("/{document}", getRoute).Methods("GET")

@@ -272,7 +272,6 @@ func GetUserData(id string, ud *UserData) error {
 		ud.LocationKey = lc.String
 	}
 
-	//func FetchTag(tag string, tagList *[]TagData) error {
 	var tagID, name, state sql.NullString
 	var tmp struct {
 		Id    string
@@ -347,17 +346,25 @@ func GetUserData(id string, ud *UserData) error {
 
 // tag stuff
 type TagData struct {
-	Name  string
-	Color string
-	Lat   string
-	Lon   string
-	Date  string
+	Id     string
+	Name   string
+	Color  string
+	State  string // enum On Off
+	LocKey string
+	Lat    string
+	Lon    string
+	Date   string
 }
 
-func UserInTag(id string, tag string) (bool, error) {
+func UserInTag(id string, tag string, allowOff bool) (bool, error) {
 	var count string
 
-	err := db.QueryRow("SELECT COUNT(*) FROM usertags WHERE tagID = ? AND gid = ?", tag, id).Scan(&count)
+	var err error
+	if allowOff {
+		err = db.QueryRow("SELECT COUNT(*) FROM usertags WHERE tagID = ? AND gid = ?", tag, id).Scan(&count)
+	} else {
+		err = db.QueryRow("SELECT COUNT(*) FROM usertags WHERE tagID = ? AND gid = ? AND state = 'On'", tag, id).Scan(&count)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -368,13 +375,21 @@ func UserInTag(id string, tag string) (bool, error) {
 	return true, nil
 }
 
-func FetchTag(tag string, tagList *[]TagData) error {
-	var tagID, iname, color, loc, uptime sql.NullString
+func FetchTag(tag string, tagList *[]TagData, fetchAll bool) error {
+	var tagID, iname, color, state, lockey, loc, uptime sql.NullString
 	var tmp TagData
 
-	rows, err := db.Query("SELECT t.tagID, u.iname, x.color, AsText(l.loc), l.upTime "+
-		"FROM tags=t, usertags=x, user=u, locations=l "+
-		"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", tag)
+	var err error
+	var rows *sql.Rows
+	if fetchAll != true {
+		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, AsText(l.loc), l.upTime "+
+			"FROM tags=t, usertags=x, user=u, locations=l "+
+			"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", tag)
+	} else {
+		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, AsText(l.loc), l.upTime "+
+			"FROM tags=t, usertags=x, user=u, locations=l "+
+			"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid", tag)
+	}
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -382,20 +397,35 @@ func FetchTag(tag string, tagList *[]TagData) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tagID, &iname, &color, &loc, &uptime)
+		err := rows.Scan(&tagID, &iname, &lockey, &color, &state, &loc, &uptime)
 		if err != nil {
 			Log.Error(err)
 			return err
+		}
+		if tagID.Valid {
+			tmp.Id = tagID.String
+		} else {
+			tmp.Id = ""
 		}
 		if iname.Valid {
 			tmp.Name = iname.String
 		} else {
 			tmp.Name = ""
 		}
+		if lockey.Valid {
+			tmp.LocKey = lockey.String
+		} else {
+			tmp.LocKey = ""
+		}
 		if color.Valid {
 			tmp.Color = color.String
 		} else {
 			tmp.Color = ""
+		}
+		if state.Valid {
+			tmp.State = state.String
+		} else {
+			tmp.State = "Off"
 		}
 		if loc.Valid { // this will need love
 			tmp.Lat = loc.String
@@ -473,6 +503,22 @@ func AddUserToTag(tagID string, id string) error {
 	}
 
 	_, err = db.Exec("INSERT INTO usertags values (?, ?, 'Off', '')", tagID, gid)
+	if err != nil {
+		Log.Notice(err.Error)
+	}
+	return err
+}
+
+func DelUserFromTag(tagID string, id string) error {
+	var gid sql.NullString
+	err := db.QueryRow("SELECT gid FROM user WHERE lockey = ?", id).Scan(&gid)
+	if err != nil {
+		Log.Notice(id)
+		Log.Notice(err)
+		return err
+	}
+
+	_, err = db.Exec("DELETE FROM usertags WHERE tagID = ? AND gid = ?", tagID, gid)
 	if err != nil {
 		Log.Notice(err.Error)
 	}

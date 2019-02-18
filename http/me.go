@@ -55,7 +55,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 <li>Owned Tags:
   <ul>`
 	for _, val := range ud.OwnedTags {
-		tmp := "<li><a href=\"/tag/" + val.Tag + "\">" + val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a></li>\n"
+		tmp := "<li><a href=\"/tag/" + val.Tag + "\">" + val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a> <a href=\"/tag/" + val.Tag + "/edit\">edit</a></li>\n"
 		out = out + tmp
 	}
 	out = out +
