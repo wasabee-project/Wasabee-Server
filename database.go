@@ -32,13 +32,6 @@ func Connect(uri string) error {
 	}
 	Log.Noticef("Database version: %s", version)
 
-	// super-frequent query, have it always ready
-	locQuery, err = db.Prepare("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?")
-	if err != nil {
-		Log.Errorf("Couldn't initialize location statement: %s", err)
-		return err
-	}
-
 	// Create tables
 	var table string
 	db.QueryRow("SHOW TABLES LIKE 'documents'").Scan(&table)
@@ -84,6 +77,7 @@ func Connect(uri string) error {
 			return err
 		}
 	}
+	// adding a SPATIAL index on loc would require Aria format instead of Innodb, but we don't query on it (yet) so don't worry (yet)
 
 	table = ""
 	db.QueryRow("SHOW TABLES LIKE 'tags'").Scan(&table)
@@ -113,6 +107,13 @@ func Connect(uri string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// super-frequent query, have it always ready
+	locQuery, err = db.Prepare("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?")
+	if err != nil {
+		Log.Errorf("Couldn't initialize location statement: %s", err)
+		return err
 	}
 
 	safeName, errSafeName = db.Prepare("SELECT COUNT(id) FROM documents WHERE id = ?")
