@@ -11,10 +11,12 @@ import (
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
+		res.Header().Add("Cache-Control", "no-cache")
 		PhDevBin.Log.Notice(err.Error())
 		return
 	}
 	if id == "" {
+		res.Header().Add("Cache-Control", "no-cache")
 		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 		return
 	}
@@ -22,6 +24,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	var ud PhDevBin.UserData
 	err = PhDevBin.GetUserData(id, &ud)
 	if err != nil {
+		res.Header().Add("Cache-Control", "no-cache")
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -42,7 +45,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 <li>Member Tags:
   <ul>`
 	for _, val := range ud.Tags {
-		tmp := "<li><a href=\"/tag/" + val.Id + "\">" +  val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
+		tmp := "<li><a href=\"/tag/" + val.Id + "\">" + val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
 		out = out + tmp
 	}
 	out = out +
@@ -52,11 +55,11 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 <li>Owned Tags:
   <ul>`
 	for _, val := range ud.OwnedTags {
-		tmp := "<li><a href=\"/tag/" + val.Tag + "\">" +  val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a></li>\n"
+		tmp := "<li><a href=\"/tag/" + val.Tag + "\">" + val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a></li>\n"
 		out = out + tmp
 	}
 	out = out +
-`
+		`
   </ul>
 </li>
 </ul>

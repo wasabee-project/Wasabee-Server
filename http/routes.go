@@ -48,13 +48,13 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
 	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE")                          // remove me from tag
 	// tags
-	r.HandleFunc("/tag/new", newTagRoute).Methods("POST", "GET").Queries("name", "{name}")              // return the location of every user if authorized
-	r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET")                                          // return the location of every user if authorized
-	r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE")                                    // remove the tag completely
-	r.HandleFunc("/tag/{tag}/delete", deleteTagRoute).Methods("GET")                                    // remove the tag completely
-	r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET")                             // invite user to tag
-	r.HandleFunc("/tag/{tag}/{guid}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
-	r.HandleFunc("/tag/{tag}/{guid}", delUserFmTagRoute).Methods("DELETE")                          // remove user from tag
+	r.HandleFunc("/tag/new", newTagRoute).Methods("POST", "GET").Queries("name", "{name}")         // return the location of every user if authorized
+	r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET")                                         // return the location of every user if authorized
+	r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE")                                   // remove the tag completely
+	r.HandleFunc("/tag/{tag}/delete", deleteTagRoute).Methods("GET")                               // remove the tag completely
+	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET")                             // invite user to tag
+	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
+	r.HandleFunc("/tag/{tag}/{key}", delUserFmTagRoute).Methods("DELETE")                          // remove user from tag
 
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
@@ -104,6 +104,7 @@ func internalErrorRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Cache-Control", "no-cache")
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(404)
 	fmt.Fprint(res, "404: Maybe the document is expired or has been removed.\n")
@@ -111,6 +112,7 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 
 func googleRoute(w http.ResponseWriter, r *http.Request) {
 	url := googleOauthConfig.AuthCodeURL(config.oauthStateString)
+	w.Header().Add("Cache-Control", "no-cache")
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
@@ -150,7 +152,7 @@ func callbackRoute(w http.ResponseWriter, r *http.Request) {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	http.Redirect(w, r, "/me", http.StatusPermanentRedirect)
+	http.Redirect(w, r, "/me?postauth=1", http.StatusPermanentRedirect)
 }
 
 func getUserInfo(state string, code string) ([]byte, error) {

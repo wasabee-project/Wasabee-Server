@@ -315,7 +315,7 @@ func GetUserData(id string, ud *UserData) error {
 
 	var tmpO struct {
 		Name string
-		Tag string
+		Tag  string
 	}
 	rowsO, err := db.Query("SELECT tagID, name FROM tags WHERE owner = ?", id)
 	if err != nil {
@@ -452,14 +452,29 @@ func NewTag(name string, id string) (string, error) {
 }
 
 func DeleteTag(tagID string) error {
-    _, err := db.Exec("DELETE FROM tags WHERE tagID = ?", tagID)
+	_, err := db.Exec("DELETE FROM tags WHERE tagID = ?", tagID)
 	if err != nil {
 		Log.Notice(err.Error)
 	}
-    _, err = db.Exec("DELETE FROM usertags WHERE tagID = ?", tagID)
+	_, err = db.Exec("DELETE FROM usertags WHERE tagID = ?", tagID)
 	if err != nil {
 		Log.Notice(err.Error)
 	}
-    return err
+	return err
 }
 
+func AddUserToTag(tagID string, id string) error {
+	var gid sql.NullString
+	err := db.QueryRow("SELECT gid FROM user WHERE lockey = ?", id).Scan(&gid)
+	if err != nil {
+		Log.Notice(id)
+		Log.Notice(err)
+		return err
+	}
+
+	_, err = db.Exec("INSERT INTO usertags values (?, ?, 'Off', '')", tagID, gid)
+	if err != nil {
+		Log.Notice(err.Error)
+	}
+	return err
+}

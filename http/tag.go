@@ -50,7 +50,7 @@ func newTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	name:= vars["name"]
+	name := vars["name"]
 	_, err = PhDevBin.NewTag(name, id)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -102,14 +102,20 @@ func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	tag := vars["tag"]
-	//key := vars["key"]
+	key := vars["key"]
 
 	safe, err := PhDevBin.UserOwnsTag(id, tag)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	// PhDevBin.AddUserToTag(tag, key)
+	err = PhDevBin.AddUserToTag(tag, key)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, "/tag/"+tag, http.StatusPermanentRedirect)
 }
 
 func delUserFmTagRoute(res http.ResponseWriter, req *http.Request) {
