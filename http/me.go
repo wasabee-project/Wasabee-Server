@@ -71,6 +71,11 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 <input type="text" name="name" />
 <input type="submit" name="update" value="new tag" />
 </form>
+<form action="/me" method="get">
+Lat: <input type="text" name="lat" />
+Lon: <input type="text" name="lon" />
+<input type="submit" name="location" value="set location" />
+</form>
 </body>
 </html>
 `
@@ -152,3 +157,29 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
+
+func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
+	id, err := GetUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == "" {
+		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
+	}
+
+	vars := mux.Vars(req)
+	lat := vars["lat"]
+	lon := vars["lon"]
+
+	// do the work
+	err = PhDevBin.UserLocation(id, lat, lon)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+}
+

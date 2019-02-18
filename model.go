@@ -217,12 +217,12 @@ func InsertOrUpdateUser(id string, name string) error {
 	lockey, err := GenerateSafeName()
 	_, err = db.Exec("INSERT INTO user VALUES (?,?,?) ON DUPLICATE KEY UPDATE gid = ?", id, tmpName, lockey, id)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 		return err
 	}
 	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),POINT(0,0)) ON DUPLICATE KEY UPDATE upTime = NOW()", id)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return err
 }
@@ -230,7 +230,7 @@ func InsertOrUpdateUser(id string, name string) error {
 func SetIngressName(id string, name string) error {
 	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, id)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return err
 }
@@ -238,7 +238,7 @@ func SetIngressName(id string, name string) error {
 func RemoveUserFromTag(id string, tag string) error {
 	_, err := db.Exec("DELETE FROM usertags WHERE gid = ? AND tagID = ?", tag, id)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return err
 }
@@ -249,7 +249,7 @@ func SetUserTagState(id string, tag string, state string) error {
 	}
 	_, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, id, tag)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return err
 }
@@ -260,7 +260,7 @@ func GetUserData(id string, ud *UserData) error {
 	row := db.QueryRow("SELECT iname, lockey FROM user WHERE gid = ?", id)
 	err := row.Scan(&in, &lc)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 		return err
 	}
 
@@ -283,7 +283,7 @@ func GetUserData(id string, ud *UserData) error {
 		"FROM tags=t, usertags=x "+
 		"WHERE x.gid = ? AND x.tagID = t.tagID", id)
 	if err != nil {
-		Log.Error(err.Error)
+		Log.Error(err)
 		return err
 	}
 
@@ -291,7 +291,7 @@ func GetUserData(id string, ud *UserData) error {
 	for rows.Next() {
 		err := rows.Scan(&tagID, &name, &state)
 		if err != nil {
-			Log.Error(err.Error)
+			Log.Error(err)
 			return err
 		}
 		if tagID.Valid {
@@ -318,14 +318,14 @@ func GetUserData(id string, ud *UserData) error {
 	}
 	rowsO, err := db.Query("SELECT tagID, name FROM tags WHERE owner = ?", id)
 	if err != nil {
-		Log.Error(err.Error)
+		Log.Error(err)
 		return err
 	}
 	defer rowsO.Close()
 	for rowsO.Next() {
 		err := rowsO.Scan(&tagID, &name)
 		if err != nil {
-			Log.Error(err.Error)
+			Log.Error(err)
 			return err
 		}
 		if tagID.Valid {
@@ -376,17 +376,17 @@ func UserInTag(id string, tag string, allowOff bool) (bool, error) {
 }
 
 func FetchTag(tag string, tagList *[]TagData, fetchAll bool) error {
-	var tagID, iname, color, state, lockey, loc, uptime sql.NullString
+	var tagID, iname, color, state, lockey, lat, lon, uptime sql.NullString
 	var tmp TagData
 
 	var err error
 	var rows *sql.Rows
 	if fetchAll != true {
-		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, AsText(l.loc), l.upTime "+
+		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
 			"FROM tags=t, usertags=x, user=u, locations=l "+
 			"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", tag)
 	} else {
-		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, AsText(l.loc), l.upTime "+
+		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
 			"FROM tags=t, usertags=x, user=u, locations=l "+
 			"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid", tag)
 	}
@@ -397,7 +397,7 @@ func FetchTag(tag string, tagList *[]TagData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tagID, &iname, &lockey, &color, &state, &loc, &uptime)
+		err := rows.Scan(&tagID, &iname, &lockey, &color, &state, &lat, &lon, &uptime)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -427,15 +427,15 @@ func FetchTag(tag string, tagList *[]TagData, fetchAll bool) error {
 		} else {
 			tmp.State = "Off"
 		}
-		if loc.Valid { // this will need love
-			tmp.Lat = loc.String
+		if lat.Valid { // this will need love
+			tmp.Lat = lat.String
 		} else {
-			tmp.Lat = ""
+			tmp.Lat = "0"
 		}
-		if loc.Valid { // this will need love
-			tmp.Lon = loc.String
+		if lon.Valid { // this will need love
+			tmp.Lon = lon.String
 		} else {
-			tmp.Lon = ""
+			tmp.Lon = "0"
 		}
 		if uptime.Valid { // this will need love
 			tmp.Date = uptime.String
@@ -467,16 +467,16 @@ func UserOwnsTag(id string, tag string) (bool, error) {
 func NewTag(name string, id string) (string, error) {
 	tag, err := GenerateSafeName()
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 		return "", err
 	}
 	_, err = db.Exec("INSERT INTO tags VALUES (?,?,?)", tag, id, name)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	_, err = db.Exec("INSERT INTO usertags VALUES (?,?,'On','FF0000')", tag, id)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return name, err
 }
@@ -484,11 +484,11 @@ func NewTag(name string, id string) (string, error) {
 func DeleteTag(tagID string) error {
 	_, err := db.Exec("DELETE FROM tags WHERE tagID = ?", tagID)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	_, err = db.Exec("DELETE FROM usertags WHERE tagID = ?", tagID)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return err
 }
@@ -504,7 +504,7 @@ func AddUserToTag(tagID string, id string) error {
 
 	_, err = db.Exec("INSERT INTO usertags values (?, ?, 'Off', '')", tagID, gid)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return err
 }
@@ -520,7 +520,18 @@ func DelUserFromTag(tagID string, id string) error {
 
 	_, err = db.Exec("DELETE FROM usertags WHERE tagID = ? AND gid = ?", tagID, gid)
 	if err != nil {
-		Log.Notice(err.Error)
+		Log.Notice(err)
 	}
 	return err
+}
+
+func UserLocation(id string, lat string, lon string) error {
+    var point string
+	// sanity checing on bounds?
+    point = "POINT(" + lat + " " + lon + ")"
+    _, err := locQuery.Exec(point, id)
+	if err != nil {
+		Log.Notice(err)
+	}
+    return err
 }

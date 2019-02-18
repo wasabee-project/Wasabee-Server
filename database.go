@@ -8,6 +8,7 @@ import (
 )
 
 var db *sql.DB
+var locQuery *sql.Stmt
 var isConnected bool
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don't exist yet.
@@ -30,6 +31,13 @@ func Connect(uri string) error {
 		return err
 	}
 	Log.Noticef("Database version: %s", version)
+
+	// super-frequent query, have it always ready
+	locQuery, err = db.Prepare("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?")
+	if err != nil {
+		Log.Errorf("Couldn't initialize location statement: %s", err)
+		return err
+	}
 
 	// Create tables
 	var table string
