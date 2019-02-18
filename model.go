@@ -201,47 +201,57 @@ func Delete(id string) error {
 type UserData struct {
 	IngressName string
 	LocationKey string
+	Tags        []struct {
+		Id    string
+		Name  string
+		State string
+	}
+	OwnedTags []struct {
+		Name string
+		Tag  string
+	}
 }
 
 func InsertOrUpdateUser(id string, name string) error {
-    var tmpName = "Agent_" + id[:5]
+	var tmpName = "Agent_" + id[:5]
 	lockey, err := GenerateSafeName()
 	_, err = db.Exec("INSERT INTO user VALUES (?,?,?) ON DUPLICATE KEY UPDATE gid = ?", id, tmpName, lockey, id)
 	if err != nil {
+		Log.Notice(err.Error)
 		return err
 	}
 	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),POINT(0,0)) ON DUPLICATE KEY UPDATE upTime = NOW()", id)
 	if err != nil {
-		return err
+		Log.Notice(err.Error)
 	}
-	return nil
+	return err
 }
 
 func SetIngressName(id string, name string) error {
 	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, id)
 	if err != nil {
-		return err
+		Log.Notice(err.Error)
 	}
-	return nil
+	return err
 }
 
 func RemoveUserFromTag(id string, tag string) error {
 	_, err := db.Exec("DELETE FROM usertags WHERE gid = ? AND tagID = ?", tag, id)
 	if err != nil {
-		return err
+		Log.Notice(err.Error)
 	}
-	return nil
+	return err
 }
 
 func SetUserTagState(id string, tag string, state string) error {
 	if state != "On" {
 		state = "Off"
 	}
-	_, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, tag, id)
+	_, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, id, tag)
 	if err != nil {
-		return err
+		Log.Notice(err.Error)
 	}
-	return nil
+	return err
 }
 
 func GetUserData(id string, ud *UserData) error {
@@ -250,6 +260,7 @@ func GetUserData(id string, ud *UserData) error {
 	row := db.QueryRow("SELECT iname, lockey FROM user WHERE gid = ?", id)
 	err := row.Scan(&in, &lc)
 	if err != nil {
+		Log.Notice(err.Error)
 		return err
 	}
 
@@ -260,6 +271,77 @@ func GetUserData(id string, ud *UserData) error {
 	if lc.Valid {
 		ud.LocationKey = lc.String
 	}
+
+	//func FetchTag(tag string, tagList *[]TagData) error {
+	var tagID, name, state sql.NullString
+	var tmp struct {
+		Id    string
+		Name  string
+		State string
+	}
+
+	rows, err := db.Query("SELECT t.tagID, t.name, x.state "+
+		"FROM tags=t, usertags=x "+
+		"WHERE x.gid = ? AND x.tagID = t.tagID", id)
+	if err != nil {
+		Log.Error(err.Error)
+		return err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tagID, &name, &state)
+		if err != nil {
+			Log.Error(err.Error)
+			return err
+		}
+		if tagID.Valid {
+			tmp.Id = tagID.String
+		} else {
+			tmp.Id = ""
+		}
+		if name.Valid {
+			tmp.Name = name.String
+		} else {
+			tmp.Name = ""
+		}
+		if state.Valid {
+			tmp.State = state.String
+		} else {
+			tmp.State = ""
+		}
+		ud.Tags = append(ud.Tags, tmp)
+	}
+
+	var tmpO struct {
+		Name string
+		Tag string
+	}
+	rowsO, err := db.Query("SELECT tagID, name FROM tags WHERE owner = ?", id)
+	if err != nil {
+		Log.Error(err.Error)
+		return err
+	}
+	defer rowsO.Close()
+	for rowsO.Next() {
+		err := rowsO.Scan(&tagID, &name)
+		if err != nil {
+			Log.Error(err.Error)
+			return err
+		}
+		if tagID.Valid {
+			tmpO.Tag = tagID.String
+		} else {
+			tmpO.Tag = ""
+		}
+		if name.Valid {
+			tmpO.Name = name.String
+		} else {
+			tmpO.Name = ""
+		}
+		ud.OwnedTags = append(ud.OwnedTags, tmpO)
+	}
+
 	return nil
 }
 
@@ -351,3 +433,33 @@ func UserOwnsTag(id string, tag string) (bool, error) {
 	}
 	return false, err
 }
+
+func NewTag(name string, id string) (string, error) {
+	tag, err := GenerateSafeName()
+	if err != nil {
+		Log.Notice(err.Error)
+		return "", err
+	}
+	_, err = db.Exec("INSERT INTO tags VALUES (?,?,?)", tag, id, name)
+	if err != nil {
+		Log.Notice(err.Error)
+	}
+	_, err = db.Exec("INSERT INTO usertags VALUES (?,?,'On','FF0000')", tag, id)
+	if err != nil {
+		Log.Notice(err.Error)
+	}
+	return name, err
+}
+
+func DeleteTag(tagID string) error {
+    _, err := db.Exec("DELETE FROM tags WHERE tagID = ?", tagID)
+	if err != nil {
+		Log.Notice(err.Error)
+	}
+    _, err = db.Exec("DELETE FROM usertags WHERE tagID = ?", tagID)
+	if err != nil {
+		Log.Notice(err.Error)
+	}
+    return err
+}
+

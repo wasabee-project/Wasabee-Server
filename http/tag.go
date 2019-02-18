@@ -37,6 +37,29 @@ func getTagRoute(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Unauthorized", http.StatusUnauthorized)
 }
 
+func newTagRoute(res http.ResponseWriter, req *http.Request) {
+	id, err := GetUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == "" {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(req)
+	name:= vars["name"]
+	_, err = PhDevBin.NewTag(name, id)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+}
+
 func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
@@ -56,7 +79,13 @@ func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	// PhDevBin.DeleteTag(tag)
+	err = PhDevBin.DeleteTag(tag)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
 func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {

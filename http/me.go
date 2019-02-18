@@ -27,11 +27,51 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res.Header().Add("Content-Type", "text/plain")
-	fmt.Fprint(res, "a screen full of data about me will be here.\n")
-	fmt.Fprint(res, "ingress handle:  "+ud.IngressName+"\n")
-	fmt.Fprint(res, "location share key:  "+ud.LocationKey+"\n")
-	fmt.Fprint(res, "a list of all the tags I am in ... with options to remove/activate/deactivate\n")
+	res.Header().Add("Content-Type", "text/html")
+	out :=
+		`<html>
+<head>
+<title>PhtivDraw user data</title>
+</head>
+<body>
+<ul>
+<li>Display Name: ` + ud.IngressName +
+			`</li>
+<li>Location Share Key: ` + ud.LocationKey +
+			`</li>
+<li>Member Tags:
+  <ul>`
+	for _, val := range ud.Tags {
+		tmp := "<li><a href=\"/tag/" + val.Id + "\">" +  val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
+		out = out + tmp
+	}
+	out = out +
+		`
+  </ul>
+</li>
+<li>Owned Tags:
+  <ul>`
+	for _, val := range ud.OwnedTags {
+		tmp := "<li><a href=\"/tag/" + val.Tag + "\">" +  val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a></li>\n"
+		out = out + tmp
+	}
+	out = out +
+`
+  </ul>
+</li>
+</ul>
+<form action="/me" method="get">
+<input type="text" name="name" />
+<input type="submit" name="update" value="update name" />
+</form>
+<form action="/tag/new" method="get">
+<input type="text" name="name" />
+<input type="submit" name="update" value="new tag" />
+</form>
+</body>
+</html>
+`
+	fmt.Fprint(res, out)
 }
 
 func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
@@ -50,8 +90,6 @@ func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
 	tag := vars["tag"]
 	state := vars["state"]
 
-	// do the work
-	PhDevBin.Log.Notice("toggle tag: " + id + " " + tag + " " + state)
 	err = PhDevBin.SetUserTagState(id, tag, state)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
