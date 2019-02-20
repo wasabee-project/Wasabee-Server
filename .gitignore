@@ -1,2 +1,4 @@
 env
 eff_large_wordlist.txt
+.stignore
+.DS_Store
