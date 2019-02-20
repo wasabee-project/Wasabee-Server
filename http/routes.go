@@ -56,7 +56,7 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/tag/{tag}/delete", deleteTagRoute).Methods("GET")                               // remove the tag completely
 	r.HandleFunc("/tag/{tag}/edit", editTagRoute).Methods("GET")                                   // GUI to do basic edit
 	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET")                             // invite user to tag
-	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
+	// r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
 	r.HandleFunc("/tag/{tag}/{key}/delete", delUserFmTagRoute).Methods("GET")                      // remove user from tag
 	r.HandleFunc("/tag/{tag}/{key}", delUserFmTagRoute).Methods("DELETE")                          // remove user from tag
 
@@ -186,7 +186,7 @@ func GetUserID(req *http.Request) (string, error) {
 	}
 
 	if ses.Values["id"] == nil {
-		PhDevBin.Log.Notice("GetUserID called for unauthenticated user")
+		// PhDevBin.Log.Notice("GetUserID called for unauthenticated user")
 		return "", nil
 	}
 

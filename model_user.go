@@ -17,6 +17,13 @@ type UserData struct {
 		Name string
 		Tag  string
 	}
+	OwnedDraws []struct {
+		Hash       string
+		AuthTag    string
+		UploadTime string
+		Expiration string
+		Views      string
+	}
 }
 
 func InsertOrUpdateUser(id string, name string) error {
@@ -146,6 +153,54 @@ func GetUserData(id string, ud *UserData) error {
 			tmpO.Name = ""
 		}
 		ud.OwnedTags = append(ud.OwnedTags, tmpO)
+	}
+
+	var tmpDoc struct {
+		Hash string
+		AuthTag string
+		UploadTime string
+		Expiration string
+		Views      string
+	}
+	rows1, err := db.Query("SELECT id, authtag, upload, expiration, views FROM documents WHERE uploader = ?", id)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	var docID, authtag, upload, expiration, views sql.NullString
+	defer rows1.Close()
+	for rows1.Next() {
+		err := rows1.Scan(&docID, &authtag, &upload, &expiration, &views)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if docID.Valid {
+			tmpDoc.Hash = docID.String
+		} else {
+			tmpDoc.Hash = ""
+		}
+		if authtag.Valid {
+			tmpDoc.AuthTag = authtag.String
+		} else {
+			tmpDoc.AuthTag= ""
+		}
+		if upload.Valid {
+			tmpDoc.UploadTime = upload.String
+		} else {
+			tmpDoc.UploadTime = ""
+		}
+		if expiration.Valid {
+			tmpDoc.Expiration = expiration.String
+		} else {
+			tmpDoc.Expiration = ""
+		}
+		if views.Valid {
+			tmpDoc.Views = views.String
+		} else {
+			tmpDoc.Views = ""
+		}
+		ud.OwnedDraws = append(ud.OwnedDraws, tmpDoc)
 	}
 
 	return nil

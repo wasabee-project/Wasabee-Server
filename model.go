@@ -18,6 +18,8 @@ const MaxFilesize = 1024 * 1024 // 1MB
 type Document struct {
 	// ID is set on Store()
 	ID       string
+	// currently unset/unchecked
+	AuthTag  string
 	Uploader string
 	Content  string
 	// Upload is set on Store()
@@ -72,7 +74,7 @@ func Store(document *Document) error {
 	// Write the document to the database
 	// XXX add Uploader
 	_, err = db.Exec(
-		"INSERT INTO documents (id, uploader, content, upload, expiration, views) VALUES (?, ?, ?, ?, ?, ?)",
+		"INSERT INTO documents (id, authtag, uploader, content, upload, expiration, views) VALUES (?, NULL, ?, ?, ?, ?, ?)",
 		hex.EncodeToString(databaseID[:]),
 		document.UserID,
 		string(data),
@@ -133,14 +135,16 @@ func Request(id string) (Document, error) {
 	var views int
 	var upload, expiration sql.NullString
 	databaseID := sha256.Sum256([]byte(id))
-	err := db.QueryRow("SELECT content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
-		Scan(&doc.Content, &upload, &expiration, &views)
+	err := db.QueryRow("SELECT authtag, content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
+		Scan(&doc.AuthTag, &doc.Content, &upload, &expiration, &views)
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
 			Log.Warningf("Error retrieving document: %s", err)
 		}
 		return Document{}, err
 	}
+
+	// XXX check authtag and make sure the user is in the tag if it exists
 
 	go db.Exec("UPDATE documents SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
 	doc.Views = views
