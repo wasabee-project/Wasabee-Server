@@ -43,22 +43,22 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
 	// user info
-	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")    // set my display name /me?name=deviousness
-	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")    // set my display name /me?name=deviousness
-	r.HandleFunc("/me", meShowRoute).Methods("GET")                                        // show my stats (agen name/tags)
-	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}") // /me/wonky-tag-1234?state={Off|On}
-	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE")                          // remove me from tag
+	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
+	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // set my display name /me?name=deviousness
+	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/tags)
+	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}")             // /me/wonky-tag-1234?state={Off|On}
+	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE")                                      // remove me from tag
 	// tags
-	r.HandleFunc("/tag/new", newTagRoute).Methods("POST", "GET").Queries("name", "{name}")         // return the location of every user if authorized
-	r.HandleFunc("/tag/{tag}", addUserToTagRoute).Methods("GET").Queries("key", "{key}")           // invite user to tag
-	r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET")                                         // return the location of every user if authorized
-	r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE")                                   // remove the tag completely
-	r.HandleFunc("/tag/{tag}/delete", deleteTagRoute).Methods("GET")                               // remove the tag completely
-	r.HandleFunc("/tag/{tag}/edit", editTagRoute).Methods("GET")                                   // GUI to do basic edit
-	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET")                             // invite user to tag
+	r.HandleFunc("/tag/new", newTagRoute).Methods("POST", "GET").Queries("name", "{name}") // return the location of every user if authorized
+	r.HandleFunc("/tag/{tag}", addUserToTagRoute).Methods("GET").Queries("key", "{key}")   // invite user to tag
+	r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET")                                 // return the location of every user if authorized
+	r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE")                           // remove the tag completely
+	r.HandleFunc("/tag/{tag}/delete", deleteTagRoute).Methods("GET")                       // remove the tag completely
+	r.HandleFunc("/tag/{tag}/edit", editTagRoute).Methods("GET")                           // GUI to do basic edit
+	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET")                     // invite user to tag
 	// r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
-	r.HandleFunc("/tag/{tag}/{key}/delete", delUserFmTagRoute).Methods("GET")                      // remove user from tag
-	r.HandleFunc("/tag/{tag}/{key}", delUserFmTagRoute).Methods("DELETE")                          // remove user from tag
+	r.HandleFunc("/tag/{tag}/{key}/delete", delUserFmTagRoute).Methods("GET") // remove user from tag
+	r.HandleFunc("/tag/{tag}/{key}", delUserFmTagRoute).Methods("DELETE")     // remove user from tag
 
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")

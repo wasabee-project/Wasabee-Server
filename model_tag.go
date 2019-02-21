@@ -7,24 +7,25 @@ import (
 
 // tag stuff
 type TagData struct {
-	Id     string
-	Name   string
-	Color  string
-	State  string // enum On Off
-	LocKey string
-	Lat    string
-	Lon    string
-	Date   string
-	// move all the above to type User []struct and refactor code to match
-	/* type Target []struct {
-	    Name string
-	    PortalID string
-	    Lat string
-	    Lon string
-	    Range integer // in meters
-	    Kind string // enum ?
-	    AssignedTo string
-	} */
+	User []struct {
+		Id     string
+		Name   string
+		Color  string
+		State  string // enum On Off
+		LocKey string
+		Lat    string
+		Lon    string
+		Date   string
+	}
+	Target []struct {
+		Name       string
+		PortalID   string
+		Lat        string
+		Lon        string
+		Range      int    // in meters
+		Kind       string // enum ?
+		AssignedTo string
+	}
 }
 
 func UserInTag(id string, tag string, allowOff bool) (bool, error) {
@@ -46,9 +47,18 @@ func UserInTag(id string, tag string, allowOff bool) (bool, error) {
 	return true, nil
 }
 
-func FetchTag(tag string, tagList *[]TagData, fetchAll bool) error {
+func FetchTag(tag string, tagList *TagData, fetchAll bool) error {
 	var tagID, iname, color, state, lockey, lat, lon, uptime sql.NullString
-	var tmp TagData
+	var tmp struct {
+		Id     string
+		Name   string
+		Color  string
+		State  string
+		LocKey string
+		Lat    string
+		Lon    string
+		Date   string
+	}
 
 	var err error
 	var rows *sql.Rows
@@ -113,7 +123,7 @@ func FetchTag(tag string, tagList *[]TagData, fetchAll bool) error {
 		} else {
 			tmp.Date = ""
 		}
-		*tagList = append(*tagList, tmp)
+		tagList.User = append(tagList.User, tmp)
 	}
 	err = rows.Err()
 	if err != nil {

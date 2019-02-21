@@ -9,7 +9,7 @@ import (
 )
 
 func getTagRoute(res http.ResponseWriter, req *http.Request) {
-	var tagList []PhDevBin.TagData
+	var tagList PhDevBin.TagData
 
 	id, err := GetUserID(req)
 	if err != nil {
@@ -107,7 +107,7 @@ func editTagRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var tagList []PhDevBin.TagData
+	var tagList PhDevBin.TagData
 	err = PhDevBin.FetchTag(tag, &tagList, true)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -122,7 +122,7 @@ func editTagRoute(res http.ResponseWriter, req *http.Request) {
 </head>
 <body>
 <ul>`
-	for _, val := range tagList {
+	for _, val := range tagList.User {
 		tmp := "<li>" + val.LocKey + ": " + val.Name + " (" + val.State + ") <a href=\"/tag/" + tag + "/" + val.LocKey + "/delete\">remove</a></li>\n"
 		out = out + tmp
 	}

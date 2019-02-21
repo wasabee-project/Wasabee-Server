@@ -17,7 +17,7 @@ const MaxFilesize = 1024 * 1024 // 1MB
 // Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
 type Document struct {
 	// ID is set on Store()
-	ID       string
+	ID string
 	// currently unset/unchecked
 	AuthTag  string
 	Uploader string

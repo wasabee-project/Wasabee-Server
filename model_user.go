@@ -156,8 +156,8 @@ func GetUserData(id string, ud *UserData) error {
 	}
 
 	var tmpDoc struct {
-		Hash string
-		AuthTag string
+		Hash       string
+		AuthTag    string
 		UploadTime string
 		Expiration string
 		Views      string
@@ -183,7 +183,7 @@ func GetUserData(id string, ud *UserData) error {
 		if authtag.Valid {
 			tmpDoc.AuthTag = authtag.String
 		} else {
-			tmpDoc.AuthTag= ""
+			tmpDoc.AuthTag = ""
 		}
 		if upload.Valid {
 			tmpDoc.UploadTime = upload.String

@@ -1,189 +1,191 @@
 package PhDevHTTP
 
 import (
-    "fmt"
-    "net/http"
+	"fmt"
+	"net/http"
 
-    "github.com/cloudkucooland/PhDevBin"
-    "github.com/gorilla/mux"
+	"github.com/cloudkucooland/PhDevBin"
+	"github.com/gorilla/mux"
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
-    id, err := GetUserID(req)
-    if err != nil {
-        res.Header().Add("Cache-Control", "no-cache")
-        PhDevBin.Log.Notice(err.Error())
-        return
-    }
-    if id == "" {
-        res.Header().Add("Cache-Control", "no-cache")
-        http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-        return
-    }
+	id, err := GetUserID(req)
+	if err != nil {
+		res.Header().Add("Cache-Control", "no-cache")
+		PhDevBin.Log.Notice(err.Error())
+		return
+	}
+	if id == "" {
+		res.Header().Add("Cache-Control", "no-cache")
+		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
+	}
 
-    var ud PhDevBin.UserData
-    err = PhDevBin.GetUserData(id, &ud)
-    if err != nil {
-        res.Header().Add("Cache-Control", "no-cache")
-        PhDevBin.Log.Notice(err.Error())
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	var ud PhDevBin.UserData
+	err = PhDevBin.GetUserData(id, &ud)
+	if err != nil {
+		res.Header().Add("Cache-Control", "no-cache")
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    res.Header().Add("Content-Type", "text/html")
-    fmt.Fprint(res, meHeader)
+	res.Header().Add("Content-Type", "text/html")
+	fmt.Fprint(res, meHeader)
 
-    out := `
+	out := `
 <ul>
-<li>Display Name: ` + ud.IngressName +
-            `</li>
-<li>Location Share Key: ` + ud.LocationKey +
-            `</li>
-<li>Member Tags:
-  <ul>`
-    for _, val := range ud.Tags {
-        tmp := "<li><a href=\"/tag/" + val.Id + "\">" + val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
-        out = out + tmp
-    }
-    out = out +
-        `
-  </ul>
-</li>
-<li>Owned Tags:
-  <ul>`
-    for _, val := range ud.OwnedTags {
-        tmp := "<li><a href=\"/tag/" + val.Tag + "\">" + val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a> <a href=\"/tag/" + val.Tag + "/edit\">edit</a></li>\n"
-        out = out + tmp
-    }
-    out = out +
-        `
-  </ul>
-</li>
-<li>Owned Draws:
-    <ul>`
-    
-    out = out + `
-    </ul>
-</li>
-</ul>
+<li>Display Name: ` + ud.IngressName + `
 <form action="/me" method="get">
 <input type="text" name="name" />
 <input type="submit" name="update" value="update name" />
 </form>
+</li>
+<li>Location Share Key: ` + ud.LocationKey + `</li>
+<li>Tags I am a meber of:
+  <ul>`
+	for _, val := range ud.Tags {
+		tmp := "<li><a href=\"/tag/" + val.Id + "\">" + val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
+		out = out + tmp
+	}
+	out = out + `
+  </ul>
+</li>
+<li>Tags I Own:
+  <ul>`
+	for _, val := range ud.OwnedTags {
+		tmp := "<li><a href=\"/tag/" + val.Tag + "\">" + val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a> <a href=\"/tag/" + val.Tag + "/edit\">edit</a></li>\n"
+		out = out + tmp
+	}
+	out = out + `</ul>
 <form action="/tag/new" method="get">
 <input type="text" name="name" />
 <input type="submit" name="update" value="new tag" />
 </form>
+</li>
+<li>Draws I own:
+    <ul>`
+	for _, val := range ud.OwnedDraws {
+		tmp := "<li>Internal ID: " + val.Hash + "<br />"
+		if val.AuthTag != "" {
+			tmp = tmp + "<a href=\"/tag/" + val.AuthTag + "/\">Authorized Tag</a><br />"
+		}
+		tmp = tmp + "Uploaded: " + val.UploadTime + "<br/>Expiration: " + val.Expiration + "<br />Views: " + val.Views + "</li>\n"
+		out = out + tmp
+	}
+
+	out = out + `</ul>
+</li>
+</ul>
 <form action="/me" method="get">
 Lat: <input type="text" name="lat" value="0" id="lat" />
 Lon: <input type="text" name="lon" value="0" id="lon" />
 <input type="submit" name="location" value="set location" />
 </form>`
 
-
-    fmt.Fprint(res, out)
-    fmt.Fprint(res, meFooter)
+	fmt.Fprint(res, out)
+	fmt.Fprint(res, meFooter)
 }
 
 func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
-    id, err := GetUserID(req)
-    if err != nil {
-        PhDevBin.Log.Notice(err.Error())
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    if id == "" {
-        http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-        return
-    }
+	id, err := GetUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == "" {
+		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
+	}
 
-    vars := mux.Vars(req)
-    tag := vars["tag"]
-    state := vars["state"]
+	vars := mux.Vars(req)
+	tag := vars["tag"]
+	state := vars["state"]
 
-    err = PhDevBin.SetUserTagState(id, tag, state)
-    if err != nil {
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	err = PhDevBin.SetUserTagState(id, tag, state)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
 func meRemoveTagRoute(res http.ResponseWriter, req *http.Request) {
-    id, err := GetUserID(req)
-    if err != nil {
-        PhDevBin.Log.Notice(err.Error())
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    if id == "" {
-        http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-        return
-    }
+	id, err := GetUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == "" {
+		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
+	}
 
-    vars := mux.Vars(req)
-    tag := vars["tag"]
+	vars := mux.Vars(req)
+	tag := vars["tag"]
 
-    // do the work
-    PhDevBin.Log.Notice("remove me from tag: " + id + " " + tag)
-    err = PhDevBin.RemoveUserFromTag(id, tag)
-    if err != nil {
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// do the work
+	PhDevBin.Log.Notice("remove me from tag: " + id + " " + tag)
+	err = PhDevBin.RemoveUserFromTag(id, tag)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
-    id, err := GetUserID(req)
-    if err != nil {
-        PhDevBin.Log.Notice(err.Error())
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    if id == "" {
-        http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-        return
-    }
+	id, err := GetUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == "" {
+		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
+	}
 
-    vars := mux.Vars(req)
-    name := vars["name"]
+	vars := mux.Vars(req)
+	name := vars["name"]
 
-    // do the work
-    err = PhDevBin.SetIngressName(id, name)
-    if err != nil {
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// do the work
+	err = PhDevBin.SetIngressName(id, name)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
 func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
-    id, err := GetUserID(req)
-    if err != nil {
-        PhDevBin.Log.Notice(err.Error())
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    if id == "" {
-        http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-        return
-    }
+	id, err := GetUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == "" {
+		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
+	}
 
-    vars := mux.Vars(req)
-    lat := vars["lat"]
-    lon := vars["lon"]
+	vars := mux.Vars(req)
+	lat := vars["lat"]
+	lon := vars["lon"]
 
-    // do the work
-    err = PhDevBin.UserLocation(id, lat, lon)
-    if err != nil {
-        http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	// do the work
+	err = PhDevBin.UserLocation(id, lat, lon)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
 const meHeader string = `<html lang="en">
@@ -227,7 +229,7 @@ const meHeader string = `<html lang="en">
                 <div class="col-lg-12">
                     <div class="content-section-a">
                         <ul class="list-inline">`
-                        
+
 const meFooter string = `
                         </ul>
                     </div>
@@ -273,6 +275,7 @@ function geoFindMe() {
 
 }
 document.querySelector('#lat').addEventListener('click', geoFindMe);
+document.querySelector('#lon').addEventListener('click', geoFindMe);
     </script>
 
     <!-- jQuery -->
