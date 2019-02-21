@@ -115,27 +115,19 @@ func editTagRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	res.Header().Add("Content-Type", "text/html")
-	out :=
-		`<html>
-<head>
-<title>PhtivDraw edit tag: ` + tag + `</title>
-</head>
-<body>
-<ul>`
+	fmt.Fprint(res, meHeader)
+	out := `<ul>`
 	for _, val := range tagList.User {
 		tmp := "<li>" + val.LocKey + ": " + val.Name + " (" + val.State + ") <a href=\"/tag/" + tag + "/" + val.LocKey + "/delete\">remove</a></li>\n"
 		out = out + tmp
 	}
-	out = out +
-		`
-</ul>
-</body>
+	out = out + `</ul>
 <form action="/tag/` + tag + `" method="get">
 Location Key: <input type="text" name="key" />
 <input type="submit" name="add" value="add user to tag" />
-</form>
-</html>`
+</form>`
 	fmt.Fprint(res, out)
+	fmt.Fprint(res, meFooter)
 }
 
 func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
