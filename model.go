@@ -185,7 +185,7 @@ func Request(id string) (Document, error) {
 	}
 
 	if authtag.Valid {
-        doc.AuthTag = authtag.String
+		doc.AuthTag = authtag.String
 	}
 
 	doc.Content = StripHTML(doc.Content)
@@ -204,7 +204,7 @@ func Delete(id string) error {
 }
 
 func SetAuthTag(id string, authtag string, userID string) error {
-    // id is internal ID, not the external key
+	// id is internal ID, not the external key
 
 	// authentication doesn't happen in http module, this is cheap but simply don't update if the userID doesn't match
 	_, err := db.Exec("UPDATE documents SET authtag = ? WHERE id = ? AND Uploader = ?", authtag, id, userID)
@@ -215,4 +215,3 @@ func SetAuthTag(id string, authtag string, userID string) error {
 	}
 	return err
 }
-

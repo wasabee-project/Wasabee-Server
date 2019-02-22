@@ -85,12 +85,15 @@ func StartHTTP(initialConfig Configuration) {
 	r := mux.NewRouter()
 	setupRoutes(r)
 
+	// final state index and login callbacks will not use auth, everything else will
+	// for now posting/fetching draws from / do not require auth
+
 	// s := r.Subrouter()
 	// setupAuthRoutes(s)
 
 	// Add important headers
 	r.Use(headersMW)
-	r.Use(debugMW)
+	// r.Use(debugMW)
 	r.Use(authMW)
 
 	// Serve
@@ -109,6 +112,7 @@ func headersMW(next http.Handler) http.Handler {
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
+		// untested
 		// res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me")
 		next.ServeHTTP(res, req)
 	})

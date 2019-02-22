@@ -1,9 +1,9 @@
 package PhDevHTTP
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-    "encoding/json"
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
@@ -33,10 +33,10 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
-        data, _ := json.Marshal(ud)
-        res.Header().Add("Content-Type", "text/json")
-		fmt.Fprint(res,string(data))
-        return
+		data, _ := json.Marshal(ud)
+		res.Header().Add("Content-Type", "text/json")
+		fmt.Fprint(res, string(data))
+		return
 	}
 
 	res.Header().Add("Content-Type", "text/html")
@@ -81,7 +81,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		}
 		tmp = tmp + "Uploaded: " + val.UploadTime + "<br/>Expiration: " + val.Expiration + "<br />Views: " + val.Views + "</li>\n"
 		tmp = tmp + "<form action=\"/draw/" + val.Hash + "\" method=\"GET\"><input name=\"authtag\" value=\"" + val.AuthTag + "\"><input type=\"submit\" name=\"update\" value=\"Set AuthTag\"></form>\n"
-		
+
 		out = out + tmp
 	}
 

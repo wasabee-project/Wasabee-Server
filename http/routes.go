@@ -94,11 +94,11 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
-    me, err := GetUserID(req)
+	me, err := GetUserID(req)
 	if me == "" {
-        PhDevBin.Log.Error("Not logged in, cannot delete document")
-        http.Error(res, "Unauthorized", http.StatusUnauthorized)
-        return
+		PhDevBin.Log.Error("Not logged in, cannot delete document")
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
 	doc, err := PhDevBin.Request(id)
@@ -106,9 +106,9 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 		PhDevBin.Log.Error(err)
 	}
 	if me != doc.Uploader {
-        PhDevBin.Log.Error("Attempt to delete document owned by someone else")
-        http.Error(res, "Unauthorized", http.StatusUnauthorized)
-        return
+		PhDevBin.Log.Error("Attempt to delete document owned by someone else")
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
 	err = PhDevBin.Delete(id)
@@ -124,19 +124,19 @@ func setAuthTagRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 	authtag := vars["authtag"]
-    me, err := GetUserID(req)
+	me, err := GetUserID(req)
 	if me == "" {
-        PhDevBin.Log.Error("Not logged in, cannot set authtag")
-        http.Error(res, "Unauthorized", http.StatusUnauthorized)
-        return
+		PhDevBin.Log.Error("Not logged in, cannot set authtag")
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
-    // I don't like pushing authentication/authorization out to the main module, but...
+	// I don't like pushing authentication/authorization out to the main module, but...
 	err = PhDevBin.SetAuthTag(id, authtag, me)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
-        return
+		return
 	}
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -156,20 +156,20 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, "404: Maybe the document is expired or has been removed.\n")
 }
 
-func googleRoute(w http.ResponseWriter, r *http.Request) {
+func googleRoute(res http.ResponseWriter, req *http.Request) {
 	url := googleOauthConfig.AuthCodeURL(config.oauthStateString)
 	w.Header().Add("Cache-Control", "no-cache")
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
 }
 
-func callbackRoute(w http.ResponseWriter, r *http.Request) {
+func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type PhDevUser struct {
 		Id    string `json:"id"`
 		Name  string `json:"name"`
 		Email string `json:"email"`
 	}
 
-	content, err := getUserInfo(r.FormValue("state"), r.FormValue("code"))
+	content, err := getUserInfo(r.FormValue("state"), res.FormValue("code"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -179,14 +179,14 @@ func callbackRoute(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(content, &m)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	ses, err := store.Get(r, SessionName)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 
 	ses.Values["id"] = m.Id
@@ -196,9 +196,9 @@ func callbackRoute(w http.ResponseWriter, r *http.Request) {
 	err = PhDevBin.InsertOrUpdateUser(m.Id, m.Name)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	http.Redirect(w, r, "/me?postauth=1", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/me?postauth=1", http.StatusPermanentRedirect)
 }
 
 func getUserInfo(state string, code string) ([]byte, error) {
