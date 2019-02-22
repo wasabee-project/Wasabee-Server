@@ -1,6 +1,4 @@
 change all os.Getenv to use the args processing package in main
 
-change all r,w vars to res,req for consistency
-
 add CONSTRAINT `x` FOREIGN KEY (gid) REFERENCES table (gid) ON DELETE CASCADE
 and related foreign keys
