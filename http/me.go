@@ -51,7 +51,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 </form>
 </li>
 <li>Location Share Key: ` + ud.LocationKey + `</li>
-<li>Tags I am a meber of:
+<li>Tags onto which I've been invited:
   <ul>`
 	for _, val := range ud.Tags {
 		tmp := "<li><a href=\"/tag/" + val.Id + "\">" + val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
