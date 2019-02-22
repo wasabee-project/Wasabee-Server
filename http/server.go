@@ -90,7 +90,7 @@ func StartHTTP(initialConfig Configuration) {
 
 	// Add important headers
 	r.Use(headersMW)
-	// r.Use(debugMW)
+	r.Use(debugMW)
 	r.Use(authMW)
 
 	// Serve

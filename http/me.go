@@ -3,6 +3,8 @@ package PhDevHTTP
 import (
 	"fmt"
 	"net/http"
+    "encoding/json"
+	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
@@ -28,6 +30,13 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if strings.Contains(req.Referer(), "intel.ingress.com") {
+        data, _ := json.Marshal(ud)
+        res.Header().Add("Content-Type", "text/json")
+		fmt.Fprint(res,string(data))
+        return
 	}
 
 	res.Header().Add("Content-Type", "text/html")
@@ -68,9 +77,11 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	for _, val := range ud.OwnedDraws {
 		tmp := "<li>Internal ID: " + val.Hash + "<br />"
 		if val.AuthTag != "" {
-			tmp = tmp + "<a href=\"/tag/" + val.AuthTag + "/\">Authorized Tag</a><br />"
+			tmp = tmp + "<a href=\"/tag/" + val.AuthTag + "\">Authorized Tag</a><br />"
 		}
 		tmp = tmp + "Uploaded: " + val.UploadTime + "<br/>Expiration: " + val.Expiration + "<br />Views: " + val.Views + "</li>\n"
+		tmp = tmp + "<form action=\"/draw/" + val.Hash + "\" method=\"GET\"><input name=\"authtag\" value=\"" + val.AuthTag + "\"><input type=\"submit\" name=\"update\" value=\"Set AuthTag\"></form>\n"
+		
 		out = out + tmp
 	}
 

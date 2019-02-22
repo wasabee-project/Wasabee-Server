@@ -32,6 +32,7 @@ func setupRoutes(r *mux.Router) {
 	// Static files
 	PhDevBin.Log.Notice("Including static files from: %s", config.FrontendPath)
 	addStaticDirectory(config.FrontendPath, "/", r)
+	addStaticDirectory(config.FrontendPath, "/static", r)
 
 	// Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
@@ -39,6 +40,8 @@ func setupRoutes(r *mux.Router) {
 
 	// Documents
 	r.HandleFunc("/draw", uploadRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}", setAuthTagRoute).Methods("POST").Queries("authtag", "{authtag}")
+	r.HandleFunc("/draw/{document}", setAuthTagRoute).Methods("GET").Queries("authtag", "{authtag}")
 	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
@@ -91,14 +94,53 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
+    me, err := GetUserID(req)
+	if me == "" {
+        PhDevBin.Log.Error("Not logged in, cannot delete document")
+        http.Error(res, "Unauthorized", http.StatusUnauthorized)
+        return
+	}
 
-	err := PhDevBin.Delete(id)
+	doc, err := PhDevBin.Request(id)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+	}
+	if me != doc.Uploader {
+        PhDevBin.Log.Error("Attempt to delete document owned by someone else")
+        http.Error(res, "Unauthorized", http.StatusUnauthorized)
+        return
+	}
+
+	err = PhDevBin.Delete(id)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprint(res, "OK: document removed.\n")
+}
+
+func setAuthTagRoute(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["document"]
+	authtag := vars["authtag"]
+    me, err := GetUserID(req)
+	if me == "" {
+        PhDevBin.Log.Error("Not logged in, cannot set authtag")
+        http.Error(res, "Unauthorized", http.StatusUnauthorized)
+        return
+	}
+
+    // I don't like pushing authentication/authorization out to the main module, but...
+	err = PhDevBin.SetAuthTag(id, authtag, me)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+        return
+	}
+
+	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	fmt.Fprint(res, "OK: document authtag set.\n")
 }
 
 func internalErrorRoute(res http.ResponseWriter, req *http.Request) {
