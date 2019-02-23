@@ -157,8 +157,8 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func googleRoute(res http.ResponseWriter, req *http.Request) {
-	url := googleOauthConfig.AuthCodeURL(config.oauthStateString)
-	w.Header().Add("Cache-Control", "no-cache")
+	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
+	res.Header().Add("Cache-Control", "no-cache")
 	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
 }
 
@@ -169,7 +169,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Email string `json:"email"`
 	}
 
-	content, err := getUserInfo(r.FormValue("state"), res.FormValue("code"))
+	content, err := getUserInfo(req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -183,7 +183,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ses, err := store.Get(r, SessionName)
+	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -191,7 +191,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	ses.Values["id"] = m.Id
 	ses.Values["name"] = m.Name
-	ses.Save(r, w)
+	ses.Save(req, res)
 
 	err = PhDevBin.InsertOrUpdateUser(m.Id, m.Name)
 	if err != nil {
@@ -205,7 +205,7 @@ func getUserInfo(state string, code string) ([]byte, error) {
 	if state != config.oauthStateString {
 		return nil, fmt.Errorf("invalid oauth state")
 	}
-	token, err := googleOauthConfig.Exchange(oauth2.NoContext, code)
+	token, err := config.googleOauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {
 		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
@@ -222,7 +222,7 @@ func getUserInfo(state string, code string) ([]byte, error) {
 }
 
 func GetUserID(req *http.Request) (string, error) {
-	ses, err := store.Get(req, SessionName)
+	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
 	}

@@ -13,7 +13,7 @@ var isConnected bool
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don't exist yet.
 func Connect(uri string) error {
-	Log.Noticef("Connecting to database at %s", uri)
+	Log.Debugf("Connecting to database at %s", uri)
 	result, err := try(func() (interface{}, error) {
 		return sql.Open("mysql", uri)
 	}, 10, time.Second) // Wait up to 10 seconds for the database
@@ -38,14 +38,14 @@ func Connect(uri string) error {
 	if table == "" {
 		Log.Noticef("Setting up `documents` table...")
 		_, err := db.Exec(`CREATE TABLE documents (
-            id varchar(64) PRIMARY KEY,
-            id authtag(64) NULL DEFAULT NULL,
-            uploader varchar(32) NULL DEFAULT NULL,
-            content longblob NOT NULL,
-            upload datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            expiration datetime NULL DEFAULT NULL,
-            views int UNSIGNED NOT NULL DEFAULT 0
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+			id varchar(64) PRIMARY KEY,
+			id authtag(64) NULL DEFAULT NULL,
+			uploader varchar(32) NULL DEFAULT NULL,
+			content longblob NOT NULL,
+			upload datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expiration datetime NULL DEFAULT NULL,
+			views int UNSIGNED NOT NULL DEFAULT 0
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
 		}
@@ -56,10 +56,10 @@ func Connect(uri string) error {
 	if table == "" {
 		Log.Noticef("Setting up `user` table...")
 		_, err := db.Exec(`CREATE TABLE user(
-            gid varchar(32) PRIMARY KEY,
-            iname varchar(64) NULL DEFAULT NULL,
-            lockey varchar(64) NULL DEFAULT NULL
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+			gid varchar(32) PRIMARY KEY,
+			iname varchar(64) NULL DEFAULT NULL,
+			lockey varchar(64) NULL DEFAULT NULL
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
 		}
@@ -70,10 +70,10 @@ func Connect(uri string) error {
 	if table == "" {
 		Log.Noticef("Setting up `locations` table...")
 		_, err := db.Exec(`CREATE TABLE locations(
-            gid varchar(32) PRIMARY KEY,
-            upTime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            loc POINT
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+			gid varchar(32) PRIMARY KEY,
+			upTime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			loc POINT
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
 		}
@@ -85,10 +85,10 @@ func Connect(uri string) error {
 	if table == "" {
 		Log.Noticef("Setting up `tags` table...")
 		_, err := db.Exec(`CREATE TABLE tags(
-            tagID varchar(64) PRIMARY KEY,
-            owner varchar(32) NOT NULL,
-            name varchar(64) NULL DEFAULT NULL
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+			tagID varchar(64) PRIMARY KEY,
+			owner varchar(32) NOT NULL,
+			name varchar(64) NULL DEFAULT NULL
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
 		}
@@ -99,12 +99,12 @@ func Connect(uri string) error {
 	if table == "" {
 		Log.Noticef("Setting up `usertags` table...")
 		_, err := db.Exec(`CREATE TABLE usertags(
-            tagID varchar(64) NOT NULL,
-            gid varchar(32) NOT NULL,
-            state ENUM('Off', 'On') NOT NULL DEFAULT 'Off', 
-            color varchar(32) NOT NULL DEFAULT "FF5500",
-            PRIMARY KEY (tagID, gid)
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+			tagID varchar(64) NOT NULL,
+			gid varchar(32) NOT NULL,
+			state ENUM('Off', 'On') NOT NULL DEFAULT 'Off', 
+			color varchar(32) NOT NULL DEFAULT "FF5500",
+			PRIMARY KEY (tagID, gid)
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
 		}

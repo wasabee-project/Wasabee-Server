@@ -3,7 +3,6 @@ package PhDevHTTP
 import (
 	"net/http"
 	"net/http/httputil"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -16,19 +15,22 @@ import (
 )
 
 type Configuration struct {
-	ListenHTTPS      string
-	FrontendPath     string
-	Root             string
-	path             string
-	domain           string
-	oauthStateString string
-	CertDir          string
+	ListenHTTPS       string
+	FrontendPath      string
+	Root              string
+	path              string
+	domain            string
+	oauthStateString  string
+	CertDir           string
+	GoogleClientID    string
+	GoogleSecret      string
+	googleOauthConfig *oauth2.Config
+	store             *sessions.CookieStore
+	sessionName       string
+	CookieSessionKey  string
 }
 
 var config Configuration
-var googleOauthConfig *oauth2.Config
-var store *sessions.CookieStore
-var SessionName string = "PhDevBin"
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
@@ -54,26 +56,40 @@ func initializeConfig(initialConfig Configuration) {
 	rootParts = strings.SplitN(strings.ToLower(config.Root), "://", 2)
 	config.domain = strings.Split(rootParts[len(rootParts)-1], "/")[0]
 
-	googleOauthConfig = &oauth2.Config{
+	if config.GoogleClientID == "" {
+		PhDevBin.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
+	}
+	if config.GoogleSecret == "" {
+		PhDevBin.Log.Error("GOOGLE_SECRET unset: logins will fail")
+	}
+
+	config.googleOauthConfig = &oauth2.Config{
 		RedirectURL:  config.Root + "/callback",
-		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		ClientID:     config.GoogleClientID,
+		ClientSecret: config.GoogleSecret,
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
-	PhDevBin.Log.Noticef("ClientID: " + googleOauthConfig.ClientID)
-	PhDevBin.Log.Noticef("ClientSecret: " + googleOauthConfig.ClientSecret)
+	PhDevBin.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
+	PhDevBin.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
 	config.oauthStateString = PhDevBin.GenerateName()
-	PhDevBin.Log.Noticef("StateString: " + config.oauthStateString)
-	key := os.Getenv("SESSION_KEY")
-	PhDevBin.Log.Noticef("Cookie Store: " + key)
-	store = sessions.NewCookieStore([]byte(key))
+	PhDevBin.Log.Debugf("oauthStateString: " + config.oauthStateString)
 
-	config.CertDir = os.Getenv("CERTDIR")
-	if config.CertDir == "" {
-		config.CertDir = "certs/"
+	if config.CookieSessionKey == "" {
+		PhDevBin.Log.Error("SESSION_KEY unset: logins will fail")
+	} else {
+		key := config.CookieSessionKey
+		PhDevBin.Log.Debugf("Session Key: " + key)
+		config.store = sessions.NewCookieStore([]byte(key))
+		config.sessionName = "PhDevBin"
 	}
-	PhDevBin.Log.Noticef("Certificate Directory: " + config.CertDir)
+
+	if config.CertDir == "" {
+		PhDevBin.Log.Error("CERDIR unset: defaulting to 'certs/'")
+		config.CertDir = "certs/"
+	} else {
+		PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
+	}
 }
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.
@@ -93,7 +109,7 @@ func StartHTTP(initialConfig Configuration) {
 
 	// Add important headers
 	r.Use(headersMW)
-	// r.Use(debugMW)
+	r.Use(debugMW)
 	r.Use(authMW)
 
 	// Serve
@@ -121,14 +137,14 @@ func headersMW(next http.Handler) http.Handler {
 func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		dump, _ := httputil.DumpRequest(req, false)
-		PhDevBin.Log.Notice(string(dump))
+		PhDevBin.Log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
 }
 
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		ses, err := store.Get(req, SessionName)
+		ses, err := config.store.Get(req, config.sessionName)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
