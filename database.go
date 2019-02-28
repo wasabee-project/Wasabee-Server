@@ -39,7 +39,7 @@ func Connect(uri string) error {
 		Log.Noticef("Setting up `documents` table...")
 		_, err := db.Exec(`CREATE TABLE documents (
 			id varchar(64) PRIMARY KEY,
-			id authtag(64) NULL DEFAULT NULL,
+			id authteam(64) NULL DEFAULT NULL,
 			uploader varchar(32) NULL DEFAULT NULL,
 			content longblob NOT NULL,
 			upload datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -81,11 +81,11 @@ func Connect(uri string) error {
 	// adding a SPATIAL index on loc would require Aria format instead of Innodb, but we don't query on it (yet) so don't worry (yet)
 
 	table = ""
-	db.QueryRow("SHOW TABLES LIKE 'tags'").Scan(&table)
+	db.QueryRow("SHOW TABLES LIKE 'teams'").Scan(&table)
 	if table == "" {
-		Log.Noticef("Setting up `tags` table...")
-		_, err := db.Exec(`CREATE TABLE tags(
-			tagID varchar(64) PRIMARY KEY,
+		Log.Noticef("Setting up `teams` table...")
+		_, err := db.Exec(`CREATE TABLE teams(
+			teamID varchar(64) PRIMARY KEY,
 			owner varchar(32) NOT NULL,
 			name varchar(64) NULL DEFAULT NULL
 		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
@@ -95,15 +95,15 @@ func Connect(uri string) error {
 	}
 
 	table = ""
-	db.QueryRow("SHOW TABLES LIKE 'usertags'").Scan(&table)
+	db.QueryRow("SHOW TABLES LIKE 'userteams'").Scan(&table)
 	if table == "" {
-		Log.Noticef("Setting up `usertags` table...")
-		_, err := db.Exec(`CREATE TABLE usertags(
-			tagID varchar(64) NOT NULL,
+		Log.Noticef("Setting up `userteams` table...")
+		_, err := db.Exec(`CREATE TABLE userteams(
+			teamID varchar(64) NOT NULL,
 			gid varchar(32) NOT NULL,
 			state ENUM('Off', 'On') NOT NULL DEFAULT 'Off', 
 			color varchar(32) NOT NULL DEFAULT "FF5500",
-			PRIMARY KEY (tagID, gid)
+			PRIMARY KEY (teamID, gid)
 		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err

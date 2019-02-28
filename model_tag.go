@@ -5,8 +5,8 @@ import (
 	"strconv"
 )
 
-// tag stuff
-type TagData struct {
+// team stuff
+type TeamData struct {
 	User []struct {
 		Id     string
 		Name   string
@@ -28,14 +28,14 @@ type TagData struct {
 	}
 }
 
-func UserInTag(id string, tag string, allowOff bool) (bool, error) {
+func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 	var count string
 
 	var err error
 	if allowOff {
-		err = db.QueryRow("SELECT COUNT(*) FROM usertags WHERE tagID = ? AND gid = ?", tag, id).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM userteams WHERE teamID = ? AND gid = ?", team, id).Scan(&count)
 	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM usertags WHERE tagID = ? AND gid = ? AND state = 'On'", tag, id).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM userteams WHERE teamID = ? AND gid = ? AND state = 'On'", team, id).Scan(&count)
 	}
 	if err != nil {
 		return false, err
@@ -47,8 +47,8 @@ func UserInTag(id string, tag string, allowOff bool) (bool, error) {
 	return true, nil
 }
 
-func FetchTag(tag string, tagList *TagData, fetchAll bool) error {
-	var tagID, iname, color, state, lockey, lat, lon, uptime sql.NullString
+func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
+	var teamID, iname, color, state, lockey, lat, lon, uptime sql.NullString
 	var tmp struct {
 		Id     string
 		Name   string
@@ -63,13 +63,13 @@ func FetchTag(tag string, tagList *TagData, fetchAll bool) error {
 	var err error
 	var rows *sql.Rows
 	if fetchAll != true {
-		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
-			"FROM tags=t, usertags=x, user=u, locations=l "+
-			"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", tag)
+		rows, err = db.Query("SELECT t.teamID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
+			"FROM teams=t, userteams=x, user=u, locations=l "+
+			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", team)
 	} else {
-		rows, err = db.Query("SELECT t.tagID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
-			"FROM tags=t, usertags=x, user=u, locations=l "+
-			"WHERE t.tagID = ? AND t.tagID = x.tagID AND x.gid = u.gid AND x.gid = l.gid", tag)
+		rows, err = db.Query("SELECT t.teamID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
+			"FROM teams=t, userteams=x, user=u, locations=l "+
+			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid", team)
 	}
 	if err != nil {
 		Log.Error(err)
@@ -78,13 +78,13 @@ func FetchTag(tag string, tagList *TagData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tagID, &iname, &lockey, &color, &state, &lat, &lon, &uptime)
+		err := rows.Scan(&teamID, &iname, &lockey, &color, &state, &lat, &lon, &uptime)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		if tagID.Valid {
-			tmp.Id = tagID.String
+		if teamID.Valid {
+			tmp.Id = teamID.String
 		} else {
 			tmp.Id = ""
 		}
@@ -123,7 +123,7 @@ func FetchTag(tag string, tagList *TagData, fetchAll bool) error {
 		} else {
 			tmp.Date = ""
 		}
-		tagList.User = append(tagList.User, tmp)
+		teamList.User = append(teamList.User, tmp)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -134,10 +134,10 @@ func FetchTag(tag string, tagList *TagData, fetchAll bool) error {
 	return nil
 }
 
-func UserOwnsTag(id string, tag string) (bool, error) {
+func UserOwnsTeam(id string, team string) (bool, error) {
 	var owner string
 
-	err := db.QueryRow("SELECT owner FROM tags WHERE tagID = ?", tag).Scan(&owner)
+	err := db.QueryRow("SELECT owner FROM teams WHERE teamID = ?", team).Scan(&owner)
 	// returning err w/o checking is lazy, but same result
 	if id == owner {
 		return true, err
@@ -145,36 +145,36 @@ func UserOwnsTag(id string, tag string) (bool, error) {
 	return false, err
 }
 
-func NewTag(name string, id string) (string, error) {
-	tag, err := GenerateSafeName()
+func NewTeam(name string, id string) (string, error) {
+	team, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO tags VALUES (?,?,?)", tag, id, name)
+	_, err = db.Exec("INSERT INTO teams VALUES (?,?,?)", team, id, name)
 	if err != nil {
 		Log.Notice(err)
 	}
-	_, err = db.Exec("INSERT INTO usertags VALUES (?,?,'On','FF0000')", tag, id)
+	_, err = db.Exec("INSERT INTO userteams VALUES (?,?,'On','FF0000')", team, id)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return name, err
 }
 
-func DeleteTag(tagID string) error {
-	_, err := db.Exec("DELETE FROM tags WHERE tagID = ?", tagID)
+func DeleteTeam(teamID string) error {
+	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
-	_, err = db.Exec("DELETE FROM usertags WHERE tagID = ?", tagID)
+	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return err
 }
 
-func AddUserToTag(tagID string, id string) error {
+func AddUserToTeam(teamID string, id string) error {
 	var gid sql.NullString
 	err := db.QueryRow("SELECT gid FROM user WHERE lockey = ?", id).Scan(&gid)
 	if err != nil {
@@ -183,14 +183,14 @@ func AddUserToTag(tagID string, id string) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT INTO usertags values (?, ?, 'Off', '')", tagID, gid)
+	_, err = db.Exec("INSERT INTO userteams values (?, ?, 'Off', '')", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return err
 }
 
-func DelUserFromTag(tagID string, id string) error {
+func DelUserFromTeam(teamID string, id string) error {
 	var gid sql.NullString
 	err := db.QueryRow("SELECT gid FROM user WHERE lockey = ?", id).Scan(&gid)
 	if err != nil {
@@ -199,7 +199,7 @@ func DelUserFromTag(tagID string, id string) error {
 		return err
 	}
 
-	_, err = db.Exec("DELETE FROM usertags WHERE tagID = ? AND gid = ?", tagID, gid)
+	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 	}

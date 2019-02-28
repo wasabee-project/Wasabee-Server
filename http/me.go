@@ -51,36 +51,36 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 </form>
 </li>
 <li>Location Share Key: ` + ud.LocationKey + `</li>
-<li>Tags onto which I've been invited:
+<li>Teams onto which I've been invited:
   <ul>`
-	for _, val := range ud.Tags {
-		tmp := "<li><a href=\"/tag/" + val.Id + "\">" + val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
+	for _, val := range ud.Teams {
+		tmp := "<li><a href=\"/team/" + val.Id + "\">" + val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
 		out = out + tmp
 	}
 	out = out + `
   </ul>
 </li>
-<li>Tags I Own:
+<li>Teams I Own:
   <ul>`
-	for _, val := range ud.OwnedTags {
-		tmp := "<li><a href=\"/tag/" + val.Tag + "\">" + val.Name + "</a> <a href=\"/tag/" + val.Tag + "/delete\">delete</a> <a href=\"/tag/" + val.Tag + "/edit\">edit</a></li>\n"
+	for _, val := range ud.OwnedTeams {
+		tmp := "<li><a href=\"/team/" + val.Team + "\">" + val.Name + "</a> <a href=\"/team/" + val.Team + "/delete\">delete</a> <a href=\"/team/" + val.Team + "/edit\">edit</a></li>\n"
 		out = out + tmp
 	}
 	out = out + `</ul>
-<form action="/tag/new" method="get">
+<form action="/team/new" method="get">
 <input type="text" name="name" />
-<input type="submit" name="update" value="new tag" />
+<input type="submit" name="update" value="new team" />
 </form>
 </li>
 <li>Draws I own:
 	<ul>`
 	for _, val := range ud.OwnedDraws {
 		tmp := "<li>Internal ID: " + val.Hash + "<br />"
-		if val.AuthTag != "" {
-			tmp = tmp + "<a href=\"/tag/" + val.AuthTag + "\">Authorized Tag</a><br />"
+		if val.AuthTeam != "" {
+			tmp = tmp + "<a href=\"/team/" + val.AuthTeam + "\">Authorized Team</a><br />"
 		}
 		tmp = tmp + "Uploaded: " + val.UploadTime + "<br/>Expiration: " + val.Expiration + "<br />Views: " + val.Views + "</li>\n"
-		tmp = tmp + "<form action=\"/draw/" + val.Hash + "\" method=\"GET\"><input name=\"authtag\" value=\"" + val.AuthTag + "\"><input type=\"submit\" name=\"update\" value=\"Set AuthTag\"></form>\n"
+		tmp = tmp + "<form action=\"/draw/" + val.Hash + "\" method=\"GET\"><input name=\"authteam\" value=\"" + val.AuthTeam + "\"><input type=\"submit\" name=\"update\" value=\"Set AuthTeam\"></form>\n"
 
 		out = out + tmp
 	}
@@ -98,7 +98,7 @@ Lon: <input type="text" name="lon" value="0" id="lon" />
 	fmt.Fprint(res, meFooter)
 }
 
-func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
+func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -111,10 +111,10 @@ func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	tag := vars["tag"]
+	team := vars["team"]
 	state := vars["state"]
 
-	err = PhDevBin.SetUserTagState(id, tag, state)
+	err = PhDevBin.SetUserTeamState(id, team, state)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -123,7 +123,7 @@ func meToggleTagRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
-func meRemoveTagRoute(res http.ResponseWriter, req *http.Request) {
+func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -136,11 +136,11 @@ func meRemoveTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	tag := vars["tag"]
+	team := vars["team"]
 
 	// do the work
-	PhDevBin.Log.Notice("remove me from tag: " + id + " " + tag)
-	err = PhDevBin.RemoveUserFromTag(id, tag)
+	PhDevBin.Log.Notice("remove me from team: " + id + " " + team)
+	err = PhDevBin.RemoveUserFromTeam(id, team)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

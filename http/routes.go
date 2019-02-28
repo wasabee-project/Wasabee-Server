@@ -40,28 +40,28 @@ func setupRoutes(r *mux.Router) {
 
 	// Documents
 	r.HandleFunc("/draw", uploadRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}", setAuthTagRoute).Methods("POST").Queries("authtag", "{authtag}")
-	r.HandleFunc("/draw/{document}", setAuthTagRoute).Methods("GET").Queries("authtag", "{authtag}")
+	r.HandleFunc("/draw/{document}", setAuthTeamRoute).Methods("POST").Queries("authteam", "{authteam}")
+	r.HandleFunc("/draw/{document}", setAuthTeamRoute).Methods("GET").Queries("authteam", "{authteam}")
 	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
 	// user info
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
 	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // set my display name /me?name=deviousness
-	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/tags)
-	r.HandleFunc("/me/{tag}", meToggleTagRoute).Methods("GET").Queries("state", "{state}")             // /me/wonky-tag-1234?state={Off|On}
-	r.HandleFunc("/me/{tag}", meRemoveTagRoute).Methods("DELETE")                                      // remove me from tag
-	// tags
-	r.HandleFunc("/tag/new", newTagRoute).Methods("POST", "GET").Queries("name", "{name}") // return the location of every user if authorized
-	r.HandleFunc("/tag/{tag}", addUserToTagRoute).Methods("GET").Queries("key", "{key}")   // invite user to tag
-	r.HandleFunc("/tag/{tag}", getTagRoute).Methods("GET")                                 // return the location of every user if authorized
-	r.HandleFunc("/tag/{tag}", deleteTagRoute).Methods("DELETE")                           // remove the tag completely
-	r.HandleFunc("/tag/{tag}/delete", deleteTagRoute).Methods("GET")                       // remove the tag completely
-	r.HandleFunc("/tag/{tag}/edit", editTagRoute).Methods("GET")                           // GUI to do basic edit
-	r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET")                     // invite user to tag
-	// r.HandleFunc("/tag/{tag}/{key}", addUserToTagRoute).Methods("GET").Queries("color", "{color}") // set agent color on this tag
-	r.HandleFunc("/tag/{tag}/{key}/delete", delUserFmTagRoute).Methods("GET") // remove user from tag
-	r.HandleFunc("/tag/{tag}/{key}", delUserFmTagRoute).Methods("DELETE")     // remove user from tag
+	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/teams)
+	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /me/wonky-team-1234?state={Off|On}
+	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
+	// teams
+	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // return the location of every user if authorized
+	r.HandleFunc("/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")  // invite user to team
+	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every user if authorized
+	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely
+	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely
+	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit
+	r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team
+	// r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team
+	r.HandleFunc("/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team
+	r.HandleFunc("/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team
 
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
@@ -120,19 +120,19 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, "OK: document removed.\n")
 }
 
-func setAuthTagRoute(res http.ResponseWriter, req *http.Request) {
+func setAuthTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
-	authtag := vars["authtag"]
+	authteam := vars["authteam"]
 	me, err := GetUserID(req)
 	if me == "" {
-		PhDevBin.Log.Error("Not logged in, cannot set authtag")
+		PhDevBin.Log.Error("Not logged in, cannot set authteam")
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	// I don't like pushing authentication/authorization out to the main module, but...
-	err = PhDevBin.SetAuthTag(id, authtag, me)
+	err = PhDevBin.SetAuthTeam(id, authteam, me)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -140,7 +140,7 @@ func setAuthTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(res, "OK: document authtag set.\n")
+	fmt.Fprint(res, "OK: document authteam set.\n")
 }
 
 func internalErrorRoute(res http.ResponseWriter, req *http.Request) {

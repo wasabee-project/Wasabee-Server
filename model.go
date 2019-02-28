@@ -19,7 +19,7 @@ type Document struct {
 	// ID is set on Store()
 	ID string
 	// currently unset/unchecked
-	AuthTag  string
+	AuthTeam string
 	Uploader string
 	Content  string
 	// Upload is set on Store()
@@ -74,7 +74,7 @@ func Store(document *Document) error {
 	// Write the document to the database
 	// XXX add Uploader
 	_, err = db.Exec(
-		"INSERT INTO documents (id, authtag, uploader, content, upload, expiration, views) VALUES (?, NULL, ?, ?, ?, ?, ?)",
+		"INSERT INTO documents (id, authteam, uploader, content, upload, expiration, views) VALUES (?, NULL, ?, ?, ?, ?, ?)",
 		hex.EncodeToString(databaseID[:]),
 		document.UserID,
 		string(data),
@@ -133,10 +133,10 @@ func Update(document *Document) error {
 func Request(id string) (Document, error) {
 	doc := Document{ID: id}
 	var views int
-	var upload, expiration, authtag sql.NullString
+	var upload, expiration, authteam sql.NullString
 	databaseID := sha256.Sum256([]byte(id))
-	err := db.QueryRow("SELECT authtag, content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
-		Scan(&authtag, &doc.Content, &upload, &expiration, &views)
+	err := db.QueryRow("SELECT authteam, content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
+		Scan(&authteam, &doc.Content, &upload, &expiration, &views)
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
 			Log.Warningf("Error retrieving document: %s", err)
@@ -144,7 +144,7 @@ func Request(id string) (Document, error) {
 		return Document{}, err
 	}
 
-	// XXX check authtag and make sure the user is in the tag if it exists
+	// XXX check authteam and make sure the user is in the team if it exists
 
 	go db.Exec("UPDATE documents SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
 	doc.Views = views
@@ -184,8 +184,8 @@ func Request(id string) (Document, error) {
 		}
 	}
 
-	if authtag.Valid {
-		doc.AuthTag = authtag.String
+	if authteam.Valid {
+		doc.AuthTeam = authteam.String
 	}
 
 	doc.Content = StripHTML(doc.Content)
@@ -203,14 +203,14 @@ func Delete(id string) error {
 	return err
 }
 
-func SetAuthTag(id string, authtag string, userID string) error {
+func SetAuthTeam(id string, authteam string, userID string) error {
 	// id is internal ID, not the external key
 
 	// authentication doesn't happen in http module, this is cheap but simply don't update if the userID doesn't match
-	_, err := db.Exec("UPDATE documents SET authtag = ? WHERE id = ? AND Uploader = ?", authtag, id, userID)
+	_, err := db.Exec("UPDATE documents SET authteam = ? WHERE id = ? AND Uploader = ?", authteam, id, userID)
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
-			Log.Warningf("Error setting authtag for document: %s", err)
+			Log.Warningf("Error setting authteam for document: %s", err)
 		}
 	}
 	return err

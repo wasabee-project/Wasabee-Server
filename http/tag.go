@@ -8,8 +8,8 @@ import (
 	"net/http"
 )
 
-func getTagRoute(res http.ResponseWriter, req *http.Request) {
-	var tagList PhDevBin.TagData
+func getTeamRoute(res http.ResponseWriter, req *http.Request) {
+	var teamList PhDevBin.TeamData
 
 	id, err := GetUserID(req)
 	if err != nil {
@@ -23,12 +23,12 @@ func getTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	tag := vars["tag"]
+	team := vars["team"]
 
-	safe, err := PhDevBin.UserInTag(id, tag, false)
+	safe, err := PhDevBin.UserInTeam(id, team, false)
 	if safe {
-		PhDevBin.FetchTag(tag, &tagList, false)
-		data, _ := json.Marshal(tagList)
+		PhDevBin.FetchTeam(team, &teamList, false)
+		data, _ := json.Marshal(teamList)
 		s := string(data)
 		res.Header().Add("Content-Type", "text/json")
 		fmt.Fprintf(res, s)
@@ -37,7 +37,7 @@ func getTagRoute(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Unauthorized", http.StatusUnauthorized)
 }
 
-func newTagRoute(res http.ResponseWriter, req *http.Request) {
+func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -51,7 +51,7 @@ func newTagRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	name := vars["name"]
-	_, err = PhDevBin.NewTag(name, id)
+	_, err = PhDevBin.NewTeam(name, id)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -60,7 +60,7 @@ func newTagRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
-func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
+func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -73,13 +73,13 @@ func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	tag := vars["tag"]
-	safe, err := PhDevBin.UserOwnsTag(id, tag)
+	team := vars["team"]
+	safe, err := PhDevBin.UserOwnsTeam(id, team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = PhDevBin.DeleteTag(tag)
+	err = PhDevBin.DeleteTeam(team)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -88,7 +88,7 @@ func deleteTagRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
-func editTagRoute(res http.ResponseWriter, req *http.Request) {
+func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -101,14 +101,14 @@ func editTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	tag := vars["tag"]
-	safe, err := PhDevBin.UserOwnsTag(id, tag)
+	team := vars["team"]
+	safe, err := PhDevBin.UserOwnsTeam(id, team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var tagList PhDevBin.TagData
-	err = PhDevBin.FetchTag(tag, &tagList, true)
+	var teamList PhDevBin.TeamData
+	err = PhDevBin.FetchTeam(team, &teamList, true)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -117,20 +117,20 @@ func editTagRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", "text/html")
 	fmt.Fprint(res, meHeader)
 	out := `<ul>`
-	for _, val := range tagList.User {
-		tmp := "<li>" + val.LocKey + ": " + val.Name + " (" + val.State + ") <a href=\"/tag/" + tag + "/" + val.LocKey + "/delete\">remove</a></li>\n"
+	for _, val := range teamList.User {
+		tmp := "<li>" + val.LocKey + ": " + val.Name + " (" + val.State + ") <a href=\"/team/" + team + "/" + val.LocKey + "/delete\">remove</a></li>\n"
 		out = out + tmp
 	}
 	out = out + `</ul>
-<form action="/tag/` + tag + `" method="get">
+<form action="/team/` + team + `" method="get">
 Location Key: <input type="text" name="key" />
-<input type="submit" name="add" value="add user to tag" />
+<input type="submit" name="add" value="add user to team" />
 </form>`
 	fmt.Fprint(res, out)
 	fmt.Fprint(res, meFooter)
 }
 
-func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
+func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -143,24 +143,24 @@ func addUserToTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	tag := vars["tag"]
+	team := vars["team"]
 	key := vars["key"]
 
-	safe, err := PhDevBin.UserOwnsTag(id, tag)
+	safe, err := PhDevBin.UserOwnsTeam(id, team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = PhDevBin.AddUserToTag(tag, key)
+	err = PhDevBin.AddUserToTeam(team, key)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/tag/"+tag+"/edit", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/team/"+team+"/edit", http.StatusPermanentRedirect)
 }
 
-func delUserFmTagRoute(res http.ResponseWriter, req *http.Request) {
+func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -173,18 +173,18 @@ func delUserFmTagRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	tag := vars["tag"]
+	team := vars["team"]
 	key := vars["key"]
-	safe, err := PhDevBin.UserOwnsTag(id, tag)
+	safe, err := PhDevBin.UserOwnsTeam(id, team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = PhDevBin.DelUserFromTag(tag, key)
+	err = PhDevBin.DelUserFromTeam(team, key)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/tag/"+tag+"/edit", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/team/"+team+"/edit", http.StatusPermanentRedirect)
 }

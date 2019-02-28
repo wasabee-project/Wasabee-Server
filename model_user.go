@@ -8,18 +8,18 @@ import (
 type UserData struct {
 	IngressName string
 	LocationKey string
-	Tags        []struct {
+	Teams       []struct {
 		Id    string
 		Name  string
 		State string
 	}
-	OwnedTags []struct {
+	OwnedTeams []struct {
 		Name string
-		Tag  string
+		Team string
 	}
 	OwnedDraws []struct {
 		Hash       string
-		AuthTag    string
+		AuthTeam   string
 		UploadTime string
 		Expiration string
 		Views      string
@@ -49,19 +49,19 @@ func SetIngressName(id string, name string) error {
 	return err
 }
 
-func RemoveUserFromTag(id string, tag string) error {
-	_, err := db.Exec("DELETE FROM usertags WHERE gid = ? AND tagID = ?", tag, id)
+func RemoveUserFromTeam(id string, team string) error {
+	_, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, id)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return err
 }
 
-func SetUserTagState(id string, tag string, state string) error {
+func SetUserTeamState(id string, team string, state string) error {
 	if state != "On" {
 		state = "Off"
 	}
-	_, err := db.Exec("UPDATE usertags SET state = ? WHERE gid = ? AND tagID = ?", state, id, tag)
+	_, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, id, team)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -86,16 +86,16 @@ func GetUserData(id string, ud *UserData) error {
 		ud.LocationKey = lc.String
 	}
 
-	var tagID, name, state sql.NullString
+	var teamID, name, state sql.NullString
 	var tmp struct {
 		Id    string
 		Name  string
 		State string
 	}
 
-	rows, err := db.Query("SELECT t.tagID, t.name, x.state "+
-		"FROM tags=t, usertags=x "+
-		"WHERE x.gid = ? AND x.tagID = t.tagID", id)
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state "+
+		"FROM teams=t, userteams=x "+
+		"WHERE x.gid = ? AND x.teamID = t.teamID", id)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -103,13 +103,13 @@ func GetUserData(id string, ud *UserData) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tagID, &name, &state)
+		err := rows.Scan(&teamID, &name, &state)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		if tagID.Valid {
-			tmp.Id = tagID.String
+		if teamID.Valid {
+			tmp.Id = teamID.String
 		} else {
 			tmp.Id = ""
 		}
@@ -123,54 +123,54 @@ func GetUserData(id string, ud *UserData) error {
 		} else {
 			tmp.State = ""
 		}
-		ud.Tags = append(ud.Tags, tmp)
+		ud.Teams = append(ud.Teams, tmp)
 	}
 
 	var tmpO struct {
 		Name string
-		Tag  string
+		Team string
 	}
-	rowsO, err := db.Query("SELECT tagID, name FROM tags WHERE owner = ?", id)
+	rowsO, err := db.Query("SELECT teamID, name FROM teams WHERE owner = ?", id)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rowsO.Close()
 	for rowsO.Next() {
-		err := rowsO.Scan(&tagID, &name)
+		err := rowsO.Scan(&teamID, &name)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		if tagID.Valid {
-			tmpO.Tag = tagID.String
+		if teamID.Valid {
+			tmpO.Team = teamID.String
 		} else {
-			tmpO.Tag = ""
+			tmpO.Team = ""
 		}
 		if name.Valid {
 			tmpO.Name = name.String
 		} else {
 			tmpO.Name = ""
 		}
-		ud.OwnedTags = append(ud.OwnedTags, tmpO)
+		ud.OwnedTeams = append(ud.OwnedTeams, tmpO)
 	}
 
 	var tmpDoc struct {
 		Hash       string
-		AuthTag    string
+		AuthTeam   string
 		UploadTime string
 		Expiration string
 		Views      string
 	}
-	rows1, err := db.Query("SELECT id, authtag, upload, expiration, views FROM documents WHERE uploader = ?", id)
+	rows1, err := db.Query("SELECT id, authteam, upload, expiration, views FROM documents WHERE uploader = ?", id)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	var docID, authtag, upload, expiration, views sql.NullString
+	var docID, authteam, upload, expiration, views sql.NullString
 	defer rows1.Close()
 	for rows1.Next() {
-		err := rows1.Scan(&docID, &authtag, &upload, &expiration, &views)
+		err := rows1.Scan(&docID, &authteam, &upload, &expiration, &views)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -180,10 +180,10 @@ func GetUserData(id string, ud *UserData) error {
 		} else {
 			tmpDoc.Hash = ""
 		}
-		if authtag.Valid {
-			tmpDoc.AuthTag = authtag.String
+		if authteam.Valid {
+			tmpDoc.AuthTeam = authteam.String
 		} else {
-			tmpDoc.AuthTag = ""
+			tmpDoc.AuthTeam = ""
 		}
 		if upload.Valid {
 			tmpDoc.UploadTime = upload.String
