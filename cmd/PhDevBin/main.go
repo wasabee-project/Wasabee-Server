@@ -4,9 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/op/go-logging"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/cloudkucooland/PhDevBin/http"
+	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
 
@@ -14,6 +14,9 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "database, d", EnvVar: "DATABASE", Value: "qbin:@tcp(localhost)/qbin",
 		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
+	cli.StringFlag{
+		Name: "certs", EnvVar: "CERTDIR", Value: "./certs/",
+		Usage: "Directory where HTTPS certificates are stored."},
 	cli.StringFlag{
 		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://qbin.phtiv.com:8000",
 		Usage: "The path under which the application will be reachable from the internet."},
@@ -29,8 +32,17 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
 		Usage: "Location of the frontend files."},
+	cli.StringFlag{
+		Name: "googleclient", EnvVar: "GOOGLE_CLIENT_ID", Value: "UNSET",
+		Usage: "Google ClientID."},
+	cli.StringFlag{
+		Name: "googlesecret", EnvVar: "GOOGLE_CLIENT_SECRET", Value: "UNSET",
+		Usage: "Google Client Secret."},
+	cli.StringFlag{
+		Name: "sessionkey", EnvVar: "SESSION_KEY", Value: "",
+		Usage: "Session Key (32 char, random)"},
 	cli.BoolFlag{
-		Name: "debug", EnvVar: "DEBUG", 
+		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
 	cli.BoolFlag{
 		Name:  "help, h",
@@ -78,25 +90,14 @@ func run(c *cli.Context) error {
 
 	// Serve HTTP
 	if c.String("http") != "none" || c.String("https") != "none" {
-		hsts := ""
-		if c.String("https") == "none" && c.Bool("hsts") {
-			PhDevBin.Log.Warning("You are using --hsts without --https. Ignoring and keeping HSTS off.")
-		} else if c.Bool("hsts") {
-			hsts = "max-age=31536000"
-			if c.Bool("hsts-subdomains") {
-				hsts += "; includeSubDomains"
-			}
-			if c.Bool("hsts-preload") {
-				hsts += "; preload"
-			}
-		} else if c.Bool("hsts-subdomains") || c.Bool("hsts-preload") {
-			PhDevBin.Log.Warning("You are using --hsts-subdomains or --hsts-preload without --hsts. Ignoring and keeping HSTS off.")
-		}
-
 		go PhDevHTTP.StartHTTP(PhDevHTTP.Configuration{
-			ListenHTTPS:   c.String("https"),
-			FrontendPath:  c.String("frontend-path"),
-			Root:          c.String("root"),
+			ListenHTTPS:      c.String("https"),
+			FrontendPath:     c.String("frontend-path"),
+			Root:             c.String("root"),
+			CertDir:          c.String("certs"),
+			GoogleClientID:   c.String("googleclient"),
+			GoogleSecret:     c.String("googlesecret"),
+			CookieSessionKey: c.String("sessionkey"),
 		})
 	}
 
