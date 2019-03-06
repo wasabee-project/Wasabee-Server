@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	// "html/template"
 
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
@@ -39,63 +40,13 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res.Header().Add("Content-Type", "text/html")
-	fmt.Fprint(res, meHeader)
-
-	out := `
-<ul>
-<li>Display Name: ` + ud.IngressName + `
-<form action="/me" method="get">
-<input type="text" name="name" />
-<input type="submit" name="update" value="update name" />
-</form>
-</li>
-<li>Location Share Key: ` + ud.LocationKey + `</li>
-<li>Teams onto which I've been invited:
-  <ul>`
-	for _, val := range ud.Teams {
-		tmp := "<li><a href=\"/team/" + val.Id + "\">" + val.Name + "</a> " + val.State + " <a href=\"/me/" + val.Id + "?state=On\">On</a> <a href=\"/me/" + val.Id + "?state=Off\">Off</a></li>\n"
-		out = out + tmp
+	// move this to load at startup...
+	// tmpl := template.Must(template.ParseFiles(config.FrontendPath + "/me.html"))
+	err = config.meTemplate.Execute(res, ud)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	out = out + `
-  </ul>
-</li>
-<li>Teams I Own:
-  <ul>`
-	for _, val := range ud.OwnedTeams {
-		tmp := "<li><a href=\"/team/" + val.Team + "\">" + val.Name + "</a> <a href=\"/team/" + val.Team + "/delete\">delete</a> <a href=\"/team/" + val.Team + "/edit\">edit</a></li>\n"
-		out = out + tmp
-	}
-	out = out + `</ul>
-<form action="/team/new" method="get">
-<input type="text" name="name" />
-<input type="submit" name="update" value="new team" />
-</form>
-</li>
-<li>Draws I own:
-	<ul>`
-	for _, val := range ud.OwnedDraws {
-		tmp := "<li>Internal ID: " + val.Hash + "<br />"
-		if val.AuthTeam != "" {
-			tmp = tmp + "<a href=\"/team/" + val.AuthTeam + "\">Authorized Team</a><br />"
-		}
-		tmp = tmp + "Uploaded: " + val.UploadTime + "<br/>Expiration: " + val.Expiration + "<br />Views: " + val.Views + "</li>\n"
-		tmp = tmp + "<form action=\"/draw/" + val.Hash + "\" method=\"GET\"><input name=\"authteam\" value=\"" + val.AuthTeam + "\"><input type=\"submit\" name=\"update\" value=\"Set AuthTeam\"></form>\n"
-
-		out = out + tmp
-	}
-
-	out = out + `</ul>
-</li>
-</ul>
-<form action="/me" method="get">
-Lat: <input type="text" name="lat" value="0" id="lat" />
-Lon: <input type="text" name="lon" value="0" id="lon" />
-<input type="submit" name="location" value="set location" />
-</form>`
-
-	fmt.Fprint(res, out)
-	fmt.Fprint(res, meFooter)
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {

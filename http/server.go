@@ -5,6 +5,7 @@ import (
 	"net/http/httputil"
 	"path/filepath"
 	"strings"
+	"html/template"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -28,6 +29,8 @@ type Configuration struct {
 	store             *sessions.CookieStore
 	sessionName       string
 	CookieSessionKey  string
+	meTemplate        *template.Template
+	editTemplate      *template.Template
 }
 
 var config Configuration
@@ -89,6 +92,15 @@ func initializeConfig(initialConfig Configuration) {
 		config.CertDir = "certs/"
 	} else {
 		PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
+	}
+
+	config.meTemplate, err = template.ParseFiles(config.FrontendPath + "/me.html")
+	if err != nil {
+		PhDevBin.Log.Error(err)
+	}
+	config.editTemplate, err = template.ParseFiles(config.FrontendPath + "/edit.html")
+	if err != nil {
+		PhDevBin.Log.Error(err)
 	}
 }
 
