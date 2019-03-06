@@ -40,8 +40,9 @@
 						<ul class="list-inline">
 <!-- content starts here -->
                           <ul>
+	{{ $x := .Id }}
 	{{range .User}}
-        <li>{{.LocKey}}: {{.Name}} ( {{.State}} ) <a href="/team/{{.Id}}/{{.LocKey}}/delete">remove</a></li>
+        <li>{{.LocKey}}: {{.Name}} ( {{.State}} ) <a href="/team/{{printf "%s" $x}}/{{.LocKey}}/delete">remove</a></li>
 	{{end}}
 						</ul>
 <form action="/team/{{.Id}}" method="get">

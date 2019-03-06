@@ -11,7 +11,6 @@ type TeamData struct {
     Owner      string
 	Id		   string
 	User []struct {
-		Id     string
 		Name   string
 		Color  string
 		State  string // enum On Off
@@ -51,9 +50,8 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 }
 
 func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
-	var teamID, iname, color, state, lockey, lat, lon, uptime sql.NullString
+	var iname, color, state, lockey, lat, lon, uptime sql.NullString
 	var tmp struct {
-		Id     string
 		Name   string
 		Color  string
 		State  string
@@ -66,11 +64,11 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 	var err error
 	var rows *sql.Rows
 	if fetchAll != true {
-		rows, err = db.Query("SELECT t.teamID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
 			"FROM teams=t, userteams=x, user=u, locations=l "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", team)
 	} else {
-		rows, err = db.Query("SELECT t.teamID, u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
 			"FROM teams=t, userteams=x, user=u, locations=l "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid", team)
 	}
@@ -81,15 +79,10 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&teamID, &iname, &lockey, &color, &state, &lat, &lon, &uptime)
+		err := rows.Scan(&iname, &lockey, &color, &state, &lat, &lon, &uptime)
 		if err != nil {
 			Log.Error(err)
 			return err
-		}
-		if teamID.Valid {
-			tmp.Id = teamID.String
-		} else {
-			tmp.Id = ""
 		}
 		if iname.Valid {
 			tmp.Name = iname.String
@@ -134,6 +127,7 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		return err
 	}
 
+    // owner should probably not be exposed like this, show the display name instead
 	err = db.QueryRow("SELECT name, owner FROM teams WHERE teamID = ?", team).Scan(&teamList.Name, &teamList.Owner)
 	if err != nil {
 		Log.Error(err)

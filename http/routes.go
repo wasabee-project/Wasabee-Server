@@ -21,18 +21,8 @@ func setupRoutes(r *mux.Router) {
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	r.HandleFunc("/", uploadRoute).Methods("POST")
 
-	// Static aliased HTML files
-	r.HandleFunc("/", advancedStaticRoute(config.FrontendPath, "/index.html", routeOptions{
-		ignoreExceptions: true,
-		modifySource: func(body *string) {
-			replaceBlockVariable(body, "if_fork", false)
-		},
-	})).Methods("GET")
-
 	// Static files
-	PhDevBin.Log.Notice("Including static files from: %s", config.FrontendPath)
-	addStaticDirectory(config.FrontendPath, "/", r)
-	addStaticDirectory(config.FrontendPath, "/static", r)
+	PhDevBin.Log.Notice("Including frontend files from: ", config.FrontendPath)
 
 	// Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
@@ -67,6 +57,8 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/{document}", updateRoute).Methods("PUT")
 
+	// index
+	r.HandleFunc("/", frontRoute).Methods("GET")
 	// 404 error page
 	r.PathPrefix("/").HandlerFunc(notFoundRoute)
 }
@@ -75,6 +67,15 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 	// I think this is now taken care of in the middleware
 	res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
 	res.WriteHeader(200)
+	return
+}
+
+func frontRoute(res http.ResponseWriter, req *http.Request) {
+	err := config.frontTemplate.Execute(res, nil)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
 	return
 }
 

@@ -29,6 +29,7 @@ type Configuration struct {
 	store             *sessions.CookieStore
 	sessionName       string
 	CookieSessionKey  string
+	frontTemplate     *template.Template
 	meTemplate        *template.Template
 	editTemplate      *template.Template
 }
@@ -99,6 +100,10 @@ func initializeConfig(initialConfig Configuration) {
 		PhDevBin.Log.Error(err)
 	}
 	config.editTemplate, err = template.ParseFiles(config.FrontendPath + "/edit.html")
+	if err != nil {
+		PhDevBin.Log.Error(err)
+	}
+	config.frontTemplate, err = template.ParseFiles(config.FrontendPath + "/index.html")
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
