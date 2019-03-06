@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	// "html/template"
 
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
@@ -40,8 +39,6 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// move this to load at startup...
-	// tmpl := template.Must(template.ParseFiles(config.FrontendPath + "/me.html"))
 	err = config.meTemplate.Execute(res, ud)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -150,101 +147,3 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
-const meHeader string = `<html lang="en">
-<head>
-<title>PhtivDraw user data</title>
-	<link href="https://phtiv.com/phtivdrawtools/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
-	<link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
-	<link href="https://phtiv.com/phtivdrawtools/css/bootstrap.min.css" rel="stylesheet">
-	<link href="https://phtiv.com/phtivdrawtools/css/landing-page.css" rel="stylesheet">
-</head>
-<body>
-	<!-- Navigation -->
-	<nav class="navbar navbar-default navbar-fixed-top topnav" role="navigation">
-		<div class="container topnav">
-			<!-- Brand and toggle get grouped for better mobile display -->
-			<div class="navbar-header">
-				<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-					<span class="sr-only">Toggle navigation</span>
-					<span class="icon-bar"></span>
-					<span class="icon-bar"></span>
-					<span class="icon-bar"></span>
-				</button>
-				<a class="navbar-brand topnav" href="https://phtiv.com/phtivdrawtools">PhtivDraw</a>
-			</div>
-			<!-- Collect the nav links, forms, and other content for toggling -->
-			<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-				<ul class="nav navbar-nav navbar-right">
-					<li>
-						<a href="https://phtiv.com/phtivdrawtools/#contact">Contact</a>
-					</li>
-				</ul>
-			</div>
-			<!-- /.navbar-collapse -->
-		</div>
-		<!-- /.container -->
-	</nav>
-		<div class="content-sction-a">
-		<div class="container">
-
-			<div class="row">
-				<div class="col-lg-12">
-					<div class="content-section-a">
-						<ul class="list-inline">`
-
-const meFooter string = `
-						</ul>
-					</div>
-				</div>
-			</div>
-
-		</div>
-		<!-- /.container -->
-
-	</div>
-	<!-- /.intro-header -->
-
-	<footer>
-		<div class="container">
-			<div class="row">
-				<div class="col-lg-12">
-					<ul class="list-inline">
-					</ul>
-					<p class="copyright text-muted small">Copyright &copy; Foxcutt Industries 2019. All Rights Reserved</p>
-				</div>
-			</div>
-		</div>
-	</footer>
-
-	<script>
-function geoFindMe() {
-  const lat = document.querySelector('#lat');
-  const lon = document.querySelector('#lon');
-
-  function success(position) {
-	lat.value = position.coords.latitude;
-	lon.value = position.coords.longitude;
-  }
-
-  function error() {
-	lat.value = '-0';
-	lon.value = '-0';
-  }
-
-  if (navigator.geolocation) {
-	navigator.geolocation.getCurrentPosition(success, error);
-  }
-
-}
-document.querySelector('#lat').addEventListener('click', geoFindMe);
-document.querySelector('#lon').addEventListener('click', geoFindMe);
-	</script>
-
-	<!-- jQuery -->
-	<script src="https://phtiv.com/phtivdrawtools/js/jquery.js"></script>
-
-	<!-- Bootstrap Core JavaScript -->
-	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
-</body>
-</html>
-`

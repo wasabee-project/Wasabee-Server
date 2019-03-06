@@ -1,11 +1,11 @@
 package PhDevHTTP
 
 import (
+	"html/template"
 	"net/http"
 	"net/http/httputil"
 	"path/filepath"
 	"strings"
-	"html/template"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"

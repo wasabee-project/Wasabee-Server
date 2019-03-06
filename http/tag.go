@@ -114,20 +114,12 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res.Header().Add("Content-Type", "text/html")
-	fmt.Fprint(res, meHeader)
-	out := `<ul>`
-	for _, val := range teamList.User {
-		tmp := "<li>" + val.LocKey + ": " + val.Name + " (" + val.State + ") <a href=\"/team/" + team + "/" + val.LocKey + "/delete\">remove</a></li>\n"
-		out = out + tmp
+
+	err = config.editTemplate.Execute(res, teamList)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	out = out + `</ul>
-<form action="/team/` + team + `" method="get">
-Location Key: <input type="text" name="key" />
-<input type="submit" name="add" value="add user to team" />
-</form>`
-	fmt.Fprint(res, out)
-	fmt.Fprint(res, meFooter)
 }
 
 func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {

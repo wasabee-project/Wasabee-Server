@@ -1,6 +1,6 @@
 <html lang="en">
 <head>
-<title>Edit {{.Name}}</title>
+<title>Edit Team: {{.Name}}</title>
 	<link href="https://phtiv.com/phtivdrawtools/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
 	<link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
 	<link href="https://phtiv.com/phtivdrawtools/css/bootstrap.min.css" rel="stylesheet">
@@ -39,59 +39,16 @@
 					<div class="content-section-a">
 						<ul class="list-inline">
 <!-- content starts here -->
-<ul>
-<li>Display Name: {{.IngressName}}
-<form action="/me" method="get">
-<input type="text" name="name" />
-<input type="submit" name="update" value="update name" />
-</form>
-</li>
-<li>Location Share Key: {{.LocationKey}}</li>
-<li>Teams onto which I've been invited:
-  <ul>
-	{{range .Teams}}
-		<li><a href="/team/{{.Id}}">{{.Name}}</a> ({{.State}})<br />
-			Set state: <a href="/me/{{.Id}}?state=On">On</a> <a href="/me/{{.Id}}?state=Off">Off</a>
-		</li>
+                          <ul>
+	{{range .User}}
+        <li>{{.LocKey}}: {{.Name}} ( {{.State}} ) <a href="/team/{{.Id}}/{{.LocKey}}/delete">remove</a></li>
 	{{end}}
-  </ul>
-</li>
-<li>Teams I Own:
-  <ul>
-	{{range .OwnedTeams}}
-		<li><a href="/team/{{.Team}}">{{.Name}}</a><br/>
-		  <a href="/team/{{.Team}}/edit">Edit {{.Name}}</a><br/>
-		  <a href="/team/{{.Team}}/delete">Delete {{.Name}}</a>
-		</li>
-	{{end}}
-</ul>
-<form action="/team/new" method="get">
-<input type="text" name="name" />
-<input type="submit" name="update" value="new team" />
-</form>
-</li>
-<li>Draws I own:
-	<ul>
-	{{range .OwnedDraws}}
-		<li>Internal ID: {{.Hash}}<br />
-		{{if .AuthTeam}}
-			<a href="/team/{{.AuthTeam}}">Authorized Team</a><br />
-		{{end}}
-		Uploaded: {{.UploadTime}}<br/>
-		Expiration: {{.Expiration}}<br />
-		Views: {{.Views}}<br />
-		<form action="/draw/{{.Hash}}" method="GET"><input name="authteam" value="{{.AuthTeam}}"><input type="submit" name="update" value="Set AuthTeam"></form>
-		</li>
-	{{end}}
-	</ul>
-</li>
-</ul>
-<form action="/me" method="get">
-Lat: <input type="text" name="lat" value="0" id="lat" />
-Lon: <input type="text" name="lon" value="0" id="lon" />
-<input type="submit" name="location" value="set location" />
-</form>
-		<!-- content ends here -->				
+						</ul>
+<form action="/team/{{.Id}}" method="get">
+Location Key: <input type="text" name="key" />
+<input type="submit" name="add" value="add user to team" />
+</form>`
+<!-- content ends here -->				
 						
 						</ul>
 					</div>

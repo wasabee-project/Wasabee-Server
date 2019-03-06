@@ -7,6 +7,9 @@ import (
 
 // team stuff
 type TeamData struct {
+    Name       string
+    Owner      string
+	Id		   string
 	User []struct {
 		Id     string
 		Name   string
@@ -130,6 +133,13 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		Log.Error(err)
 		return err
 	}
+
+	err = db.QueryRow("SELECT name, owner FROM teams WHERE teamID = ?", team).Scan(&teamList.Name, &teamList.Owner)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	teamList.Id = team
 
 	return nil
 }
