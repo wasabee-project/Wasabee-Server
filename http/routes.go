@@ -71,7 +71,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	err := config.frontTemplate.Execute(res, nil)
+	err := config.frontTemplate.ExecuteTemplate(res, "index", nil)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)

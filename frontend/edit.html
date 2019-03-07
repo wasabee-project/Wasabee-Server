@@ -1,3 +1,4 @@
+{{define "edit"}}
 <html lang="en">
 <head>
 <title>Edit Team: {{.Name}}</title>
@@ -39,18 +40,17 @@
 					<div class="content-section-a">
 						<ul class="list-inline">
 <!-- content starts here -->
-                          <ul>
+<ul>
 	{{ $x := .Id }}
 	{{range .User}}
-        <li>{{.LocKey}}: {{.Name}} ( {{.State}} ) <a href="/team/{{printf "%s" $x}}/{{.LocKey}}/delete">remove</a></li>
+        <li>{{.Name}} ({{.LocKey}}): ( {{.State}} )<br /><a href="/team/{{printf "%s" $x}}/{{.LocKey}}/delete">remove</a></li>
 	{{end}}
-						</ul>
+</ul>
 <form action="/team/{{.Id}}" method="get">
 Location Key: <input type="text" name="key" />
 <input type="submit" name="add" value="add user to team" />
-</form>`
+</form>
 <!-- content ends here -->				
-						
 						</ul>
 					</div>
 				</div>
@@ -81,3 +81,4 @@ Location Key: <input type="text" name="key" />
 	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
 </body>
 </html>
+{{end}}

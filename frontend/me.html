@@ -1,3 +1,4 @@
+{{define "me"}}
 <html lang="en">
 <head>
 <title>{{.IngressName}} user data</title>
@@ -50,8 +51,12 @@
 <li>Teams onto which I've been invited:
   <ul>
 	{{range .Teams}}
-		<li><a href="/team/{{.Id}}">{{.Name}}</a> ({{.State}})<br />
-			Set state: <a href="/me/{{.Id}}?state=On">On</a> <a href="/me/{{.Id}}?state=Off">Off</a>
+		<li><a href="/team/{{.Id}}">{{.Name}}</a> ({{.State}})  
+{{if eq .State "Off"}}
+			<a href="/me/{{.Id}}?state=On">On</a>
+{{else}}
+			<a href="/me/{{.Id}}?state=Off">Off</a>
+{{end}}
 		</li>
 	{{end}}
   </ul>
@@ -59,7 +64,7 @@
 <li>Teams I Own:
   <ul>
 	{{range .OwnedTeams}}
-		<li><a href="/team/{{.Team}}">{{.Name}}</a><br/>
+		<li><a href="/team/{{.Team}}">{{.Name}}</a> ({{.Team}})<br/>
 		  <a href="/team/{{.Team}}/edit">Edit {{.Name}}</a><br/>
 		  <a href="/team/{{.Team}}/delete">Delete {{.Name}}</a>
 		</li>
@@ -147,3 +152,4 @@ document.querySelector('#lon').addEventListener('click', geoFindMe);
 	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
 </body>
 </html>
+{{end}}
