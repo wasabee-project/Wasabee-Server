@@ -1,11 +1,11 @@
 package PhDevHTTP
 
 import (
-	"html/template"
 	"net/http"
 	"net/http/httputil"
 	"path/filepath"
 	"strings"
+	"html/template"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -29,9 +29,7 @@ type Configuration struct {
 	store             *sessions.CookieStore
 	sessionName       string
 	CookieSessionKey  string
-	frontTemplate     *template.Template
-	meTemplate        *template.Template
-	editTemplate      *template.Template
+	templateSet       *template.Template
 }
 
 var config Configuration
@@ -95,15 +93,7 @@ func initializeConfig(initialConfig Configuration) {
 		PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
 	}
 
-	config.meTemplate, err = template.ParseFiles(config.FrontendPath + "/me.html")
-	if err != nil {
-		PhDevBin.Log.Error(err)
-	}
-	config.editTemplate, err = template.ParseFiles(config.FrontendPath + "/edit.html")
-	if err != nil {
-		PhDevBin.Log.Error(err)
-	}
-	config.frontTemplate, err = template.ParseFiles(config.FrontendPath + "/index.html")
+	config.templateSet, err = template.ParseGlob(config.FrontendPath + "/*.html")
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}

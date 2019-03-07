@@ -115,7 +115,7 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = config.editTemplate.ExecuteTemplate(res, "edit", teamList)
+	err = config.templateSet.ExecuteTemplate(res, "edit", teamList)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
