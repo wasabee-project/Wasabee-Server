@@ -12,35 +12,32 @@ import (
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "database, d", EnvVar: "DATABASE", Value: "qbin:@tcp(localhost)/qbin",
+		Name: "database, d", EnvVar: "DATABASE", Value: "phdev:@tcp(localhost)/phdev",
 		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
 	cli.StringFlag{
 		Name: "certs", EnvVar: "CERTDIR", Value: "./certs/",
 		Usage: "Directory where HTTPS certificates are stored."},
 	cli.StringFlag{
-		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://qbin.phtiv.com:8000",
+		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://qbin.phtiv.com:8443",
 		Usage: "The path under which the application will be reachable from the internet."},
-	cli.BoolFlag{
-		Name: "force-root", EnvVar: "FORCE_ROOT",
-		Usage: "If this is set, requests that are not on the root URI will be redirected."},
 	cli.StringFlag{
 		Name: "wordlist", EnvVar: "WORD_LIST", Value: "eff_large_wordlist.txt",
 		Usage: "Word list used for random slug generation."},
 	cli.StringFlag{
-		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":8000",
+		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":8443",
 		Usage: "HTTPS listen address."},
 	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
 		Usage: "Location of the frontend files."},
 	cli.StringFlag{
 		Name: "googleclient", EnvVar: "GOOGLE_CLIENT_ID", Value: "UNSET",
-		Usage: "Google ClientID."},
+		Usage: "Google ClientID. It is recommended to pass this parameter as an environment variable"},
 	cli.StringFlag{
 		Name: "googlesecret", EnvVar: "GOOGLE_CLIENT_SECRET", Value: "UNSET",
-		Usage: "Google Client Secret."},
+		Usage: "Google Client Secret. It is recommended to pass this parameter as an environment variable"},
 	cli.StringFlag{
 		Name: "sessionkey", EnvVar: "SESSION_KEY", Value: "",
-		Usage: "Session Key (32 char, random)"},
+		Usage: "Session Key (32 char, random). It is recommended to pass this parameter as an environment variable"},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -53,8 +50,8 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "PhDevBin"
-	app.Version = "0.0.1"
-	app.Usage = "qbin-based service - for Phtiv-Draw-Tools"
+	app.Version = "0.5.0"
+	app.Usage = "Phtiv-Draw-Tools Server"
 	app.Flags = flags
 
 	app.HideHelp = true
