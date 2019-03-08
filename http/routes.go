@@ -53,6 +53,8 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team
 	r.HandleFunc("/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team
 
+	r.HandleFunc("/status", statusRoute).Methods("GET")
+
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/{document}", updateRoute).Methods("PUT")
@@ -72,6 +74,16 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	err := config.templateSet.ExecuteTemplate(res, "index", nil)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
+	return
+}
+
+func statusRoute(res http.ResponseWriter, req *http.Request) {
+    // maybe show some interesting numbers, active agents, etc...
+	err := config.templateSet.ExecuteTemplate(res, "status", nil)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)

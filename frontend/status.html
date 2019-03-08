@@ -1,9 +1,18 @@
-{{define "devstatus"}}
+{{define "status"}}
 <html lang="en">
 <head>
 <title>PhDevBin development status</title>
+{{template "styles"}}
 </head>
 <body>
+{{template "nav"}}
+	<div class="content-sction-a">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="content-section-a">
+						<ul class="list-inline">
+<!-- content starts here -->
 
 <table>
 <th>
@@ -38,7 +47,19 @@
 </tr>
 
 </table>
+		<!-- content ends here -->				
+						
+						</ul>
+					</div>
+				</div>
+			</div>
 
+		</div>
+		<!-- /.container -->
+
+	</div>
+	<!-- /.intro-header -->
+{{template "footer"}}
 </body>
 </html>
 {{end}}
