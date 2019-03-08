@@ -1,0 +1,7 @@
+setenv GOPATH ~/go
+setenv DATABASE "phdev:@tcp(localhost)/phdev"
+setenv ROOT_URL "https://qbin.phtiv.com:8443"
+setenv HTTPS_LISTEN ":8443"
+setenv GOOGLE_CLIENT_ID "--SOMETHING--SOMETHING--SOMETHING--.apps.googleusercontent.com"
+setenv GOOGLE_CLIENT_SECRET "--SOMETHING--SOMETHING--"
+setenv SESSION_KEY "!-rand0m-32-_char-sTring-blah-xy"
