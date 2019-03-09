@@ -5,10 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
-
 	// "github.com/cloudkucooland/PhDevBin"
 )
-
 
 // blockVariableExpressionCache contains regular expressions for all block variables to improve rendering speed
 var blockVariableExpressionCache = map[string]*regexp.Regexp{}

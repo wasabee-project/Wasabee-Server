@@ -32,7 +32,8 @@ var testWaypoint string
 func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	testWaypoint = `{ "_type": "cmd", "action": "setWaypoints", "waypoints": { "waypoints": [ { "desc": "Some place", "rad": 8867, "lon": 10.428771973, "lat": 46.935260881, "tst": 1437552714, "_type": "waypoint" } ], "_type": "waypoints" } }`
 
-	if ownTracksAuthentication(req) == false {
+	user, auth := ownTracksAuthentication(req)
+	if auth == false {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -51,9 +52,9 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if string(jBlob) == "" {
-	    PhDevBin.Log.Notice("unset JSON")
+		PhDevBin.Log.Notice("unset JSON")
 		fmt.Fprintf(res, "{ }")
-        return
+		return
 	}
 
 	PhDevBin.Log.Notice(string(jBlob))
@@ -63,19 +64,18 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	s, _ := json.Marshal(t)
-	PhDevBin.Log.Notice(string(s))
+	// s, _ := json.Marshal(t)
+	// PhDevBin.Log.Notice(string(s))
 
 	switch t.Type {
 	case "location":
+		PhDevBin.OwnTracksUpdate(user, string(jBlob), t.Lat, t.Lon) 
 		fmt.Fprintf(res, testWaypoint)
 	case "waypoints":
 		fmt.Fprintf(res, "{ }")
 	default:
 		PhDevBin.Log.Notice("unprocessed type: " + t.Type)
 		fmt.Fprintf(res, "{ }")
-		// http.Error(res, "Invalid request (only _type location supported currently)", http.StatusNotAcceptable)
-		// return
 	}
 }
 
@@ -83,9 +83,9 @@ func ownTrackWaypointPub(t loc) error {
 	return nil
 }
 
-func ownTracksAuthentication(req *http.Request) bool {
-	// user, pass, _ := req.BasicAuth()
+func ownTracksAuthentication(req *http.Request) (string, bool) {
+	user, _, _ := req.BasicAuth()
 	var res bool
 	res = true
-	return res
+	return user, res
 }

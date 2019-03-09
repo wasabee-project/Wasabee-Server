@@ -3,14 +3,14 @@ package PhDevBin
 import (
 	"database/sql"
 	"strconv"
+	"encoding/json"
 )
 
 // team stuff
 type TeamData struct {
-    Name       string
-    Owner      string
-	Id		   string
-	User []struct {
+	Name  string
+	Id    string
+	User  []struct {
 		Name   string
 		Color  string
 		State  string // enum On Off
@@ -18,6 +18,7 @@ type TeamData struct {
 		Lat    string
 		Lon    string
 		Date   string
+		OwnTracks json.RawMessage 
 	}
 	Target []struct {
 		Name       string
@@ -50,7 +51,7 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 }
 
 func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
-	var iname, color, state, lockey, lat, lon, uptime sql.NullString
+	var iname, color, state, lockey, lat, lon, uptime, otdata sql.NullString
 	var tmp struct {
 		Name   string
 		Color  string
@@ -59,18 +60,20 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		Lat    string
 		Lon    string
 		Date   string
+		OwnTracks json.RawMessage
 	}
 
 	var err error
 	var rows *sql.Rows
 	if fetchAll != true {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
-			"FROM teams=t, userteams=x, user=u, locations=l "+
-			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND x.state = 'On'", team)
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata "+
+			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
+			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
+			"AND x.state = 'On'", team)
 	} else {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime "+
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata "+
 			"FROM teams=t, userteams=x, user=u, locations=l "+
-			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid", team)
+			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", team)
 	}
 	if err != nil {
 		Log.Error(err)
@@ -79,7 +82,7 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&iname, &lockey, &color, &state, &lat, &lon, &uptime)
+		err := rows.Scan(&iname, &lockey, &color, &state, &lat, &lon, &uptime, &otdata)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -119,6 +122,11 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		} else {
 			tmp.Date = ""
 		}
+		if otdata.Valid { // this will need love
+			tmp.OwnTracks = json.RawMessage(otdata.String)
+		} else {
+			tmp.OwnTracks = json.RawMessage("{ }")
+		}
 		teamList.User = append(teamList.User, tmp)
 	}
 	err = rows.Err()
@@ -127,8 +135,8 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		return err
 	}
 
-    // owner should probably not be exposed like this, show the display name instead
-	err = db.QueryRow("SELECT name, owner FROM teams WHERE teamID = ?", team).Scan(&teamList.Name, &teamList.Owner)
+	// owner should probably not be exposed like this, show the display name instead
+	err = db.QueryRow("SELECT name FROM teams WHERE teamID = ?", team).Scan(&teamList.Name)
 	if err != nil {
 		Log.Error(err)
 		return err

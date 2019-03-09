@@ -9,6 +9,7 @@ import (
 
 var db *sql.DB
 var locQuery *sql.Stmt
+var lockeyToGid *sql.Stmt
 var isConnected bool
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don't exist yet.
@@ -58,7 +59,8 @@ func Connect(uri string) error {
 		_, err := db.Exec(`CREATE TABLE user(
 			gid varchar(32) PRIMARY KEY,
 			iname varchar(64) NULL DEFAULT NULL,
-			lockey varchar(64) NULL DEFAULT NULL
+			lockey varchar(64) NULL DEFAULT NULL,
+			OTpassword varchar(64) NULL DEFAULT NULL
 		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
@@ -110,6 +112,19 @@ func Connect(uri string) error {
 		}
 	}
 
+	table = ""
+	db.QueryRow("SHOW TABLES LIKE 'otdata'").Scan(&table)
+	if table == "" {
+		Log.Noticef("Setting up `otdata` table...")
+		_, err := db.Exec(`CREATE TABLE otdata(
+			gid varchar(32) NOT NULL PRIMARY KEY,
+			otdata TEXT
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+		if err != nil {
+			return err
+		}
+	}
+
 	// super-frequent query, have it always ready
 	locQuery, err = db.Prepare("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?")
 	if err != nil {
@@ -117,7 +132,17 @@ func Connect(uri string) error {
 		return err
 	}
 
-	safeName, errSafeName = db.Prepare("SELECT COUNT(id) FROM documents WHERE id = ?")
+	safeName, err = db.Prepare("SELECT COUNT(id) FROM documents WHERE id = ?")
+	if err != nil {
+		Log.Errorf("Couldn't initialize safeName: %s", err)
+		return err
+	}
+
+	lockeyToGid, err = db.Prepare("SELECT gid FROM user WHERE lockey = ?")
+	if err != nil {
+		Log.Errorf("Couldn't initialize lockeyToGid: %s", err)
+		return err
+	}
 
 	isConnected = true
 	go cleanup()

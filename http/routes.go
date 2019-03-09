@@ -55,7 +55,7 @@ func setupRoutes(r *mux.Router) {
 
 	r.HandleFunc("/status", statusRoute).Methods("GET")
 
-    // experiemental use of OwnTracks to handle location
+	// experiemental use of OwnTracks to handle location
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
 
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
@@ -85,7 +85,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func statusRoute(res http.ResponseWriter, req *http.Request) {
-    // maybe show some interesting numbers, active agents, etc...
+	// maybe show some interesting numbers, active agents, etc...
 	err := config.templateSet.ExecuteTemplate(res, "status", nil)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())

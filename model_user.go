@@ -2,13 +2,16 @@ package PhDevBin
 
 import (
 	"database/sql"
+//	"encoding/json"
 )
 
 // user stuff
 type UserData struct {
-	IngressName string
-	LocationKey string
-	Teams       []struct {
+	IngressName   string
+	LocationKey   string
+	OwnTracksPW   string
+	OwnTracksJSON string
+	Teams         []struct {
 		Id    string
 		Name  string
 		State string
@@ -29,12 +32,18 @@ type UserData struct {
 func InsertOrUpdateUser(id string, name string) error {
 	var tmpName = "Agent_" + id[:5]
 	lockey, err := GenerateSafeName()
-	_, err = db.Exec("INSERT INTO user VALUES (?,?,?) ON DUPLICATE KEY UPDATE gid = ?", id, tmpName, lockey, id)
+	otpw, err := GenerateSafeName()
+	_, err = db.Exec("INSERT INTO user VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE gid = ?", id, tmpName, lockey, otpw, id)
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
 	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),POINT(0,0)) ON DUPLICATE KEY UPDATE upTime = NOW()", id)
+	if err != nil {
+		Log.Notice(err)
+	}
+
+	_, err = db.Exec("INSERT INTO otdata VALUES (?,'{ }') ON DUPLICATE KEY UPDATE otdata = '{ }'", id)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -68,11 +77,27 @@ func SetUserTeamState(id string, team string, state string) error {
 	return err
 }
 
-func GetUserData(id string, ud *UserData) error {
-	var in, lc sql.NullString
+func LockeyToGid(lockey string) (string, error) {
+    var gid sql.NullString
 
-	row := db.QueryRow("SELECT iname, lockey FROM user WHERE gid = ?", id)
-	err := row.Scan(&in, &lc)
+    r := lockeyToGid.QueryRow(lockey)
+	err := r.Scan(&gid)
+	if err != nil {
+		Log.Notice(err)
+		return "", err
+	}
+	if gid.Valid == false {
+		return "", nil
+	}
+
+    return gid.String, nil
+}
+
+func GetUserData(id string, ud *UserData) error {
+	var in, lc, ot sql.NullString
+
+	row := db.QueryRow("SELECT iname, lockey, otpassword FROM user WHERE gid = ?", id)
+	err := row.Scan(&in, &lc, &ot)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -84,6 +109,9 @@ func GetUserData(id string, ud *UserData) error {
 	}
 	if lc.Valid {
 		ud.LocationKey = lc.String
+	}
+	if ot.Valid {
+		ud.OwnTracksPW = ot.String
 	}
 
 	var teamID, name, state sql.NullString
@@ -203,5 +231,21 @@ func GetUserData(id string, ud *UserData) error {
 		ud.OwnedDraws = append(ud.OwnedDraws, tmpDoc)
 	}
 
+	var otJSON sql.NullString
+	rows2 := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", id)
+	err = rows2.Scan(&otJSON)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		ud.OwnTracksJSON = "{ }"
+		return nil 
+	}
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if otJSON.Valid {
+		ud.OwnTracksJSON = otJSON.String
+	} else {
+		ud.OwnTracksJSON = "{ }"
+	}
 	return nil
 }
