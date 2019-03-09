@@ -33,7 +33,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		data, _ := json.Marshal(ud)
+		data, _ := json.MarshalIndent(ud, "", "\t")
 		res.Header().Add("Content-Type", "text/json")
 		fmt.Fprint(res, string(data))
 		return

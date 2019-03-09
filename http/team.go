@@ -28,7 +28,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := PhDevBin.UserInTeam(id, team, false)
 	if safe {
 		PhDevBin.FetchTeam(team, &teamList, false)
-		data, _ := json.Marshal(teamList)
+		data, _ := json.MarshalIndent(teamList, "", "\t")
 		s := string(data)
 		res.Header().Add("Content-Type", "text/json")
 		fmt.Fprintf(res, s)

@@ -27,12 +27,8 @@ type loc struct {
 	Vel      float64 `json:"vel"`
 }
 
-var testWaypoint string
-
 func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
-	testWaypoint = `{ "_type": "cmd", "action": "setWaypoints", "waypoints": { "waypoints": [ { "desc": "Some place", "rad": 8867, "lon": 10.428771973, "lat": 46.935260881, "tst": 1437552714, "_type": "waypoint" } ], "_type": "waypoints" } }`
-
-	user, auth := ownTracksAuthentication(req)
+	gid, auth := ownTracksAuthentication(req)
 	if auth == false {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -69,8 +65,9 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	switch t.Type {
 	case "location":
-		PhDevBin.OwnTracksUpdate(user, string(jBlob), t.Lat, t.Lon) 
-		fmt.Fprintf(res, testWaypoint)
+		PhDevBin.OwnTracksUpdate(gid, string(jBlob), t.Lat, t.Lon) 
+		s, _ := PhDevBin.OwnTracksTeams(gid)
+		fmt.Fprintf(res, string(s))
 	case "waypoints":
 		fmt.Fprintf(res, "{ }")
 	default:
@@ -85,7 +82,8 @@ func ownTrackWaypointPub(t loc) error {
 
 func ownTracksAuthentication(req *http.Request) (string, bool) {
 	user, _, _ := req.BasicAuth()
+	gid, _ := PhDevBin.LockeyToGid(user)
 	var res bool
 	res = true
-	return user, res
+	return gid, res
 }
