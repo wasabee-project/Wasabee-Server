@@ -131,8 +131,8 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func updateRoute(res http.ResponseWriter, req *http.Request) {
-    sizeExceeded := false
- 
+	sizeExceeded := false
+
 	if req.Method != "PUT" {
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "Updates only work with PUT.\n")

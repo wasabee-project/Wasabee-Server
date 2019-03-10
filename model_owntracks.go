@@ -7,7 +7,7 @@ import (
 )
 
 // every query in here should be prepared since these are called VERY frequently
-// data is vague on prepared statement performance inprovement -- do real testing 
+// data is vague on prepared statement performance inprovement -- do real testing
 func OwnTracksUpdate(gid, jsonblob string, lat, lon float64) error {
 	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", jsonblob, gid)
 	if err != nil {

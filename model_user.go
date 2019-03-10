@@ -76,7 +76,7 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 		return "", err
 	}
 	if (err != nil && err == sql.ErrNoRows) || gid.Valid == false {
-		return "", nil 
+		return "", nil
 	}
 
 	return gid.String, nil

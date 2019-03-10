@@ -83,20 +83,20 @@ func ownTrackWaypointPub(t loc) error {
 
 func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (string, bool) {
 	lockey, otpw, ok := req.BasicAuth()
-    if ok == false {
-        PhDevBin.Log.Notice("Unable to decode basic authentication")
+	if ok == false {
+		PhDevBin.Log.Notice("Unable to decode basic authentication")
 		return "", false
 	}
 
 	gid, err := PhDevBin.VerifyOwnTracksPW(lockey, otpw)
-    if err != nil {
-        PhDevBin.Log.Notice(err)
+	if err != nil {
+		PhDevBin.Log.Notice(err)
 		return "", false
 	}
-    if gid == "" {
-        PhDevBin.Log.Noticef("OwnTracks authenticaion failed for: %s", lockey)
+	if gid == "" {
+		PhDevBin.Log.Noticef("OwnTracks authenticaion failed for: %s", lockey)
 		return "", false
 	}
 
-	return gid, true 
+	return gid, true
 }

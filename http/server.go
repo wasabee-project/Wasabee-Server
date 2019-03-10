@@ -1,12 +1,12 @@
 package PhDevHTTP
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httputil"
 	"path/filepath"
 	"strings"
-	"fmt"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -99,7 +99,7 @@ func initializeConfig(initialConfig Configuration) {
 		PhDevBin.Log.Error(err)
 	}
 
-    s := fmt.Sprintf("{{define \"root\"}}%s{{end}}", config.Root)
+	s := fmt.Sprintf("{{define \"root\"}}%s{{end}}", config.Root)
 	config.templateSet.New("root").Parse(s)
 }
 

@@ -16,10 +16,10 @@ const MaxFilesize = 1024 * 1024 // 1MB
 
 // Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
 type Document struct {
-	ID string
-	AuthTeam string
-	Uploader string
-	Content  string
+	ID         string
+	AuthTeam   string
+	Uploader   string
+	Content    string
 	Upload     time.Time
 	Expiration time.Time
 	Views      int
