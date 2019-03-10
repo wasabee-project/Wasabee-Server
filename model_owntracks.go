@@ -36,6 +36,6 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
         }
 	}
     s, _ := json.Marshal(locs)
-	Log.Notice(string(s))
+	// Log.Notice(string(s))
     return s, nil
 }

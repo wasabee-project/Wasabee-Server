@@ -43,7 +43,7 @@ func InsertOrUpdateUser(id string, name string) error {
 		Log.Notice(err)
 	}
 
-	_, err = db.Exec("INSERT INTO otdata VALUES (?,'{ }') ON DUPLICATE KEY UPDATE otdata = '{ }'", id)
+	_, err = db.Exec("INSERT INTO otdata VALUES (?,'{ }') ON DUPLICATE KEY UPDATE gid = ?", id, id)
 	if err != nil {
 		Log.Notice(err)
 	}

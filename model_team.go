@@ -72,7 +72,7 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 			"AND x.state = 'On'", team)
 	} else {
 		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata "+
-			"FROM teams=t, userteams=x, user=u, locations=l "+
+			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", team)
 	}
 	if err != nil {

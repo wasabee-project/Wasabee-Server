@@ -53,7 +53,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	PhDevBin.Log.Notice(string(jBlob))
+	// PhDevBin.Log.Notice(string(jBlob))
 	var t loc
 	if err = json.Unmarshal(jBlob, &t); err != nil {
 		PhDevBin.Log.Notice(err)
