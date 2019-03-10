@@ -10,6 +10,7 @@ import (
 var db *sql.DB
 var locQuery *sql.Stmt
 var lockeyToGid *sql.Stmt
+var safeName *sql.Stmt
 var isConnected bool
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don't exist yet.

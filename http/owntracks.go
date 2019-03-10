@@ -28,9 +28,10 @@ type loc struct {
 }
 
 func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
-	gid, auth := ownTracksAuthentication(req)
+	gid, auth := ownTracksAuthentication(res, req)
 	if auth == false {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		http.Error(res, "Error verifing authentication", http.StatusUnauthorized)
+		// PhDevBin.Log.Debug("owntrack authentication failed")
 		return
 	}
 
@@ -65,7 +66,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	switch t.Type {
 	case "location":
-		PhDevBin.OwnTracksUpdate(gid, string(jBlob), t.Lat, t.Lon) 
+		PhDevBin.OwnTracksUpdate(gid, string(jBlob), t.Lat, t.Lon)
 		s, _ := PhDevBin.OwnTracksTeams(gid)
 		fmt.Fprintf(res, string(s))
 	case "waypoints":
@@ -80,10 +81,22 @@ func ownTrackWaypointPub(t loc) error {
 	return nil
 }
 
-func ownTracksAuthentication(req *http.Request) (string, bool) {
-	user, _, _ := req.BasicAuth()
-	gid, _ := PhDevBin.LockeyToGid(user)
-	var res bool
-	res = true
-	return gid, res
+func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (string, bool) {
+	lockey, otpw, ok := req.BasicAuth()
+    if ok == false {
+        PhDevBin.Log.Notice("Unable to decode basic authentication")
+		return "", false
+	}
+
+	gid, err := PhDevBin.VerifyOwnTracksPW(lockey, otpw)
+    if err != nil {
+        PhDevBin.Log.Notice(err)
+		return "", false
+	}
+    if gid == "" {
+        PhDevBin.Log.Noticef("OwnTracks authenticaion failed for: %s", lockey)
+		return "", false
+	}
+
+	return gid, true 
 }

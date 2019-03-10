@@ -37,6 +37,7 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
 	// user info
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
+	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my display name /me?name=deviousness
 	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // basic location post
 	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/teams)
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /me/wonky-team-1234?state={Off|On}
@@ -157,12 +158,6 @@ func setAuthTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprint(res, "OK: document authteam set.\n")
-}
-
-func internalErrorRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	res.WriteHeader(500)
-	fmt.Fprint(res, "Oh no, the server is broken! ಠ_ಠ\nYou should try again in a few minutes, there's probably a desperate admin running around somewhere already trying to fix it.\n")
 }
 
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {

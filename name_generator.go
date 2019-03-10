@@ -3,7 +3,7 @@ package PhDevBin
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
+	// "database/sql"
 	"encoding/hex"
 	"errors"
 	"io/ioutil"
@@ -69,14 +69,14 @@ func GenerateName() string {
 	return strings.TrimPrefix(text, "-")
 }
 
-var safeName *sql.Stmt
-var errSafeName = errors.New("not initialized")
+// var safeName *sql.Stmt
+// var errSafeName = errors.New("not initialized")
 
 // GenerateSafeName generates a slug (like GenerateName()) that doesn't exist in the database yet.
 func GenerateSafeName() (string, error) {
-	if errSafeName != nil {
-		return "", errSafeName
-	}
+	// if errSafeName != nil {
+	//	return "", errSafeName
+	// }
 
 	name := ""
 	rows := 1

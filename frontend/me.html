@@ -22,7 +22,13 @@
 </li>
 <li>Location Share Key: {{.LocationKey}}</li>
 <li>OwnTracks Username: {{.LocationKey}}</li>
-<li>OwnTracks Password: {{.OwnTracksPW}}</li>
+<li>OwnTracks Password (hashed): {{.OwnTracksPW}}</li>
+<form action="/me" method="get">
+<input type="text" name="otpw" />
+<input type="submit" name="update" value="update OT Password" />
+</form>
+<li>OwnTracks URL: {{template "root"}}/OwnTracks</li>
+<li>OwnTracks Mode: HTTP</li>
 <li>OwnTracks Data: {{.OwnTracksJSON}}</li>
 <li>Teams onto which I've been invited:
   <ul>

@@ -6,6 +6,7 @@ import (
 	"net/http/httputil"
 	"path/filepath"
 	"strings"
+	"fmt"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -97,6 +98,9 @@ func initializeConfig(initialConfig Configuration) {
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
+
+    s := fmt.Sprintf("{{define \"root\"}}%s{{end}}", config.Root)
+	config.templateSet.New("root").Parse(s)
 }
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.

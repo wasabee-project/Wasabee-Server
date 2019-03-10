@@ -122,6 +122,31 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
+func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
+	id, err := GetUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == "" {
+		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		return
+	}
+
+	vars := mux.Vars(req)
+	otpw := vars["otpw"]
+
+	// do the work
+	err = PhDevBin.SetOwnTracksPW(id, otpw)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+}
+
 func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {

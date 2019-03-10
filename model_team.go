@@ -2,23 +2,23 @@ package PhDevBin
 
 import (
 	"database/sql"
-	"strconv"
 	"encoding/json"
+	"strconv"
 )
 
 // team stuff
 type TeamData struct {
-	Name  string
-	Id    string
-	User  []struct {
-		Name   string
-		Color  string
-		State  string // enum On Off
-		LocKey string
-		Lat    string
-		Lon    string
-		Date   string
-		OwnTracks json.RawMessage 
+	Name string
+	Id   string
+	User []struct {
+		Name      string
+		Color     string
+		State     string // enum On Off
+		LocKey    string
+		Lat       string
+		Lon       string
+		Date      string
+		OwnTracks json.RawMessage
 	}
 	Target []struct {
 		Name       string
@@ -53,13 +53,13 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 	var iname, color, state, lockey, lat, lon, uptime, otdata sql.NullString
 	var tmp struct {
-		Name   string
-		Color  string
-		State  string
-		LocKey string
-		Lat    string
-		Lon    string
-		Date   string
+		Name      string
+		Color     string
+		State     string
+		LocKey    string
+		Lat       string
+		Lon       string
+		Date      string
 		OwnTracks json.RawMessage
 	}
 

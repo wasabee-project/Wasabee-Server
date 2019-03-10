@@ -8,22 +8,13 @@ import (
 
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
+	// "encoding/json"
 )
-
-func uploadError(during string, err error, res http.ResponseWriter, req *http.Request) bool {
-	if err == nil {
-		return false
-	}
-	PhDevBin.Log.Errorf("Upload error during %s: %s", during, err)
-	internalErrorRoute(res, req)
-	return true
-}
 
 func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	var err error
 	doc := PhDevBin.Document{}
 	exp := "14d"
-	sizeExceeded := false
 
 	// Parse form and get content
 	req.Body = http.MaxBytesReader(res, req.Body, PhDevBin.MaxFilesize+1024) // MaxFilesize + 1KB metadata
@@ -33,52 +24,56 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	if req.Method == "POST" && contentType == "application/x-www-form-urlencoded" {
 		// Parse form
 		err = req.ParseForm()
-		if err != nil && err.Error() == "http: request body too large" {
-			sizeExceeded = true
-		} else if uploadError("req.ParseForm()", err, res, req) {
+		if err != nil {
+			PhDevBin.Log.Error("1: " + err.Error())
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, err.Error())
 			return
-		} else {
-
-			// Get document
-			doc.Content = req.PostFormValue("Q")
-
 		}
+		doc.Content = req.PostFormValue("Q")
 	} else if req.Method == "POST" && contentType == "multipart/form-data" {
 		// Parse form
 		err = req.ParseMultipartForm(PhDevBin.MaxFilesize + 1024)
-		if err != nil && err.Error() == "http: request body too large" {
-			sizeExceeded = true
-		} else if uploadError("req.ParseMultipartForm()", err, res, req) {
+		if err != nil {
+			PhDevBin.Log.Error("2: " + err.Error())
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, err.Error())
 			return
-		} else {
-			// Get document
-			doc.Content = req.PostFormValue("Q")
-			if doc.Content == "" { // Oh no, it's a file!
-				// Get file
-				file, _, err := req.FormFile("Q")
-				if err != nil && err.Error() == "http: no such file" {
-					res.WriteHeader(400)
-					fmt.Fprintf(res, "The document can't be empty.\n")
-					return
-				} else if uploadError("req.FormFile()", err, res, req) {
-					return
-				}
-
-				// Read document
-				content, err := ioutil.ReadAll(file)
-				if uploadError("ioutil.ReadAll()", err, res, req) {
-					return
-				}
-				doc.Content = string(content)
+		}
+		// Get document
+		doc.Content = req.PostFormValue("Q")
+		if doc.Content == "" { // Oh no, it's a file!
+			// Get file
+			file, _, err := req.FormFile("Q")
+			if err != nil && err.Error() == "http: no such file" {
+				res.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(res, "The document can't be empty.\n")
+				return
+			}
+			if err != nil {
+				PhDevBin.Log.Error("3: " + err.Error())
+				res.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(res, err.Error())
+				return
 			}
 
+			// Read document
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				PhDevBin.Log.Error("4: " + err.Error())
+				res.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(res, err.Error())
+				return
+			}
+			doc.Content = string(content)
 		}
 	} else { // PUT or POST with non-form
 		// Read document
 		content, err := ioutil.ReadAll(req.Body)
-		if err != nil && err.Error() == "http: request body too large" {
-			sizeExceeded = true
-		} else if uploadError("ioutil.ReadAll()", err, res, req) {
+		if err != nil {
+			PhDevBin.Log.Error("5: " + err.Error())
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, err.Error())
 			return
 		} else {
 			doc.Content = string(content)
@@ -86,13 +81,14 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check exact filesize
-	if sizeExceeded || len(doc.Content) > PhDevBin.MaxFilesize {
-		res.WriteHeader(413)
+	if len(doc.Content) > PhDevBin.MaxFilesize {
+		res.WriteHeader(http.StatusRequestEntityTooLarge)
 		fmt.Fprintf(res, "Maximum document size exceeded.\n")
 		return
 	}
+
 	if len(strings.TrimSpace(doc.Content)) < 1 {
-		res.WriteHeader(400)
+		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "The document can't be empty (after whitespace removal).\n")
 		return
 	}
@@ -103,17 +99,16 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	} else if req.FormValue("E") != "" {
 		exp = req.FormValue("E")
 	}
-
 	doc.Expiration, err = PhDevBin.ParseExpiration(exp)
 	if err != nil {
-		res.WriteHeader(400)
+		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "Invalid expiration.\n")
 		return
 	}
 
 	userID, err := GetUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice("6: " + err.Error())
 		return
 	}
 	if userID != "" {
@@ -122,10 +117,13 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = PhDevBin.Store(&doc)
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
-		res.WriteHeader(400)
+		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")
 		return
-	} else if uploadError("PhDevBin.Store()", err, res, req) {
+	} else if err != nil {
+		PhDevBin.Log.Error("7: " + err.Error())
+		res.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(res, err.Error())
 		return
 	}
 
@@ -133,10 +131,10 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func updateRoute(res http.ResponseWriter, req *http.Request) {
-	sizeExceeded := false
-
+    sizeExceeded := false
+ 
 	if req.Method != "PUT" {
-		res.WriteHeader(400)
+		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "Updates only work with PUT.\n")
 		return
 	}
@@ -146,7 +144,7 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 
 	doc, err := PhDevBin.Request(id)
 	if err != nil {
-		res.WriteHeader(404)
+		res.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(res, "No Such Document: "+id+"\n")
 		return
 	}
@@ -155,7 +153,10 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 	content, err := ioutil.ReadAll(req.Body)
 	if err != nil && err.Error() == "http: request body too large" {
 		sizeExceeded = true
-	} else if uploadError("ioutil.ReadAll()", err, res, req) {
+	} else if err != nil {
+		PhDevBin.Log.Error(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(res, err.Error())
 		return
 	} else {
 		doc.Content = string(content)
@@ -163,12 +164,12 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 
 	// Check exact filesize
 	if sizeExceeded || len(doc.Content) > PhDevBin.MaxFilesize {
-		res.WriteHeader(413)
+		res.WriteHeader(http.StatusRequestEntityTooLarge)
 		fmt.Fprintf(res, "Maximum document size exceeded.\n")
 		return
 	}
 	if len(strings.TrimSpace(doc.Content)) < 1 {
-		res.WriteHeader(400)
+		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "The document can't be empty (after whitespace removal).\n")
 		return
 	}
@@ -185,10 +186,13 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 	doc.UserID = userID
 	err = PhDevBin.Update(&doc)
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
-		res.WriteHeader(400)
+		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")
 		return
-	} else if uploadError("PhDevBin.Update()", err, res, req) {
+	} else if err != nil {
+		PhDevBin.Log.Error(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(res, err.Error())
 		return
 	}
 	fmt.Fprintf(res, config.Root+"/"+doc.ID+"\n")

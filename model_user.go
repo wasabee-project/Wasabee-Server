@@ -2,7 +2,7 @@ package PhDevBin
 
 import (
 	"database/sql"
-//	"encoding/json"
+	//	"encoding/json"
 )
 
 // user stuff
@@ -58,6 +58,30 @@ func SetIngressName(id string, name string) error {
 	return err
 }
 
+func SetOwnTracksPW(gid string, otpw string) error {
+	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
+	if err != nil {
+		Log.Notice(err)
+	}
+	return err
+}
+
+func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
+	var gid sql.NullString
+
+	r := db.QueryRow("SELECT gid FROM user WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
+	err := r.Scan(&gid)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
+		return "", err
+	}
+	if (err != nil && err == sql.ErrNoRows) || gid.Valid == false {
+		return "", nil 
+	}
+
+	return gid.String, nil
+}
+
 func RemoveUserFromTeam(id string, team string) error {
 	_, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, id)
 	if err != nil {
@@ -77,10 +101,11 @@ func SetUserTeamState(id string, team string, state string) error {
 	return err
 }
 
+// use supersceded by VerfyOwnTracksPW
 func LockeyToGid(lockey string) (string, error) {
-    var gid sql.NullString
+	var gid sql.NullString
 
-    r := lockeyToGid.QueryRow(lockey)
+	r := lockeyToGid.QueryRow(lockey)
 	err := r.Scan(&gid)
 	if err != nil {
 		Log.Notice(err)
@@ -90,7 +115,7 @@ func LockeyToGid(lockey string) (string, error) {
 		return "", nil
 	}
 
-    return gid.String, nil
+	return gid.String, nil
 }
 
 func GetUserData(id string, ud *UserData) error {
@@ -236,7 +261,7 @@ func GetUserData(id string, ud *UserData) error {
 	err = rows2.Scan(&otJSON)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		ud.OwnTracksJSON = "{ }"
-		return nil 
+		return nil
 	}
 	if err != nil {
 		Log.Error(err)

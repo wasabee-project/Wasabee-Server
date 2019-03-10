@@ -16,13 +16,10 @@ const MaxFilesize = 1024 * 1024 // 1MB
 
 // Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
 type Document struct {
-	// ID is set on Store()
 	ID string
-	// currently unset/unchecked
 	AuthTeam string
 	Uploader string
 	Content  string
-	// Upload is set on Store()
 	Upload     time.Time
 	Expiration time.Time
 	Views      int
@@ -34,6 +31,7 @@ func Store(document *Document) error {
 	// Generate a name that doesn't exist yet
 	name, err := GenerateSafeName()
 	if err != nil {
+		Log.Errorf("GenerateSafeName: %s", err)
 		return err
 	}
 	document.ID = name
@@ -47,11 +45,11 @@ func Store(document *Document) error {
 
 	// Don't accept binary files
 	if strings.Contains(document.Content, "\x00") {
+		Log.Debug("file contails NULL bytes")
 		return errors.New("file contains 0x00 bytes")
 	}
 
-	escaped := ""
-	escaped = EscapeHTML(document.Content)
+	escaped := EscapeHTML(document.Content)
 
 	var expiration interface{}
 	if (document.Expiration != time.Time{}) {
@@ -72,16 +70,14 @@ func Store(document *Document) error {
 	databaseID := sha256.Sum256([]byte(document.ID))
 
 	// Write the document to the database
-	// XXX add Uploader
 	_, err = db.Exec(
-		"INSERT INTO documents (id, authteam, uploader, content, upload, expiration, views) VALUES (?, NULL, ?, ?, ?, ?, ?)",
+		"INSERT INTO documents (id, uploader, content, upload, expiration, views) VALUES (?, ?, ?, NOW(), ?, 0)",
 		hex.EncodeToString(databaseID[:]),
 		document.UserID,
 		string(data),
-		document.Upload.UTC().Format("2006-01-02 15:04:05"),
-		expiration,
-		document.Views)
+		expiration)
 	if err != nil {
+		Log.Error(err)
 		return err
 	}
 	return nil
