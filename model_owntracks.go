@@ -6,15 +6,20 @@ import (
 	"strconv"
 )
 
+// a command to set waypoints
 type WaypointCommand struct {
-	Type      string `json:"_type"`
-	Action    string `json:"action"`
-	Waypoints struct {
-		Waypoints []Waypoint `json:"waypoints"`
-		Type      string     `json:"_type"`
-	} `json:"waypoints"`
+	Type      string        `json:"_type"`
+	Action    string        `json:"action"`
+	Waypoints WaypointsList `json:"waypoints"`
 }
 
+// a list of waypoints
+type WaypointsList struct {
+	Waypoints []Waypoint `json:"waypoints"`
+	Type      string     `json:"_type"`
+}
+
+// individual waypoints
 type Waypoint struct {
 	Type   string  `json:"_type"`
 	Desc   string  `json:"desc"`
@@ -25,6 +30,23 @@ type Waypoint struct {
 	UUID   string  `json:"uuid,omitempty"`
 	Major  string  `json:"major,omitempty"`
 	Minor  string  `json:"minor,omitempty"`
+}
+
+// location
+type Location struct {
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
+	Type     string  `json:"_type"`
+	Topic    string  `json:"topic"`
+	Tid      string  `json:"tid"`
+	T        string  `json:"t"`
+	Conn     string  `json:"conn"`
+	Altitude float64 `json:"alt"`
+	Battery  float64 `json:"batt"`
+	Accuracy float64 `json:"acc"`
+	Vac      float64 `json:"vac"`
+	Tst      float64 `json:"tst"`
+	Vel      float64 `json:"vel"`
 }
 
 // every query in here should be prepared since these are called VERY frequently
@@ -103,8 +125,6 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpTarget)
 	}
 	wps, _ := json.Marshal(wp)
-	// wps, _ := json.MarshalIndent(wp, "", "\t")
-	// Log.Debug(string(wps))
 	locs = append(locs, wps)
 
 	s, _ = json.Marshal(locs)
@@ -112,7 +132,75 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	return s, nil
 }
 
+// pass as string or json.RawMessage ?
+func OwnTracksTransition(gid string, otdata json.RawMessage) (json.RawMessage, error) {
+	Log.Debug(string(otdata))
+
+	j := json.RawMessage("{ }")
+	return j, nil
+}
+
 func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
 	// if we need -- parse and clean the data, for now just returning it is fine
 	return json.RawMessage(otdata), nil
+}
+
+func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, error) {
+	Log.Debug(string(wp))
+	var w Waypoint
+	j := json.RawMessage("{ }")
+
+	team, err := ownTracksDefaultTeam(gid)
+
+	if err := json.Unmarshal(wp, &w); err != nil {
+		Log.Notice(err)
+		return j, err
+	}
+
+	if err = ownTracksWriteWaypoint(w, team); err != nil {
+		// Log.Notice(err)
+		return j, err
+	}
+
+	return j, nil
+}
+
+func ownTracksWriteWaypoint(w Waypoint, team string) error {
+	_, err := db.Exec("INSERT INTO target VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14)),NULL) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
+		w.ID, team, w.Lat, w.Lon, w.Radius, "target", w.Desc, w.ID,
+		w.ID, w.Lat, w.Lon, w.Radius, w.Desc)
+	if err != nil {
+		Log.Notice(err)
+	}
+	return err
+}
+
+func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, error) {
+	Log.Debug(string(wp))
+	var w WaypointsList
+	j := json.RawMessage("{ }")
+
+	team, err := ownTracksDefaultTeam(gid)
+	if err != nil {
+		return j, err
+	}
+
+	if err := json.Unmarshal(wp, &w); err != nil {
+		Log.Notice(err)
+		return j, err
+	}
+
+	for _, waypoint := range w.Waypoints {
+		if err := ownTracksWriteWaypoint(waypoint, team); err != nil {
+			Log.Notice(err)
+			return j, err
+		}
+	}
+
+	return j, nil
+}
+
+func ownTracksDefaultTeam(gid string) (string, error) {
+	// requires a schema change
+	return "hyperbolic-coldness-443f", nil
 }

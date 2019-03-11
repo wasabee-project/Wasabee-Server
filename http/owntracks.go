@@ -8,52 +8,20 @@ import (
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
-	// "github.com/gorilla/mux"
 )
 
-type loc struct {
-	Lat      float64 `json:"lat"`
-	Lon      float64 `json:"lon"`
-	Type     string  `json:"_type"`
-	Topic    string  `json:"topic"`
-	Tid      string  `json:"tid"`
-	T        string  `json:"t"`
-	Conn     string  `json:"conn"`
-	Altitude float64 `json:"alt"`
-	Battery  float64 `json:"batt"`
-	Accuracy float64 `json:"acc"`
-	Vac      float64 `json:"vac"`
-	Tst      float64 `json:"tst"`
-	Vel      float64 `json:"vel"`
+type loc struct { // or use the PhDevBin.Location struct
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
+	Type string  `json:"_type"`
 }
-
-/*
-type WaypointCommand struct {
-	Type      string `json:"_type"`
-	Action    string `json:"action"`
-	Waypoints struct {
-		Type      string     `json:"_type"`
-		Waypoints []Waypoint `json:"waypoints"`
-	} `json:"waypoints"`
-}
-
-type Waypoint struct {
-	Type   string  `json:"_type"`
-	Desc   string  `json:"desc"`
-	Lat    float64 `json:"lat"`
-	Lon    float64 `json:"lon"`
-	Radius float64 `json:"rad"`
-	ID     float64 `json:"tst"`
-	UUID   string  `json:"uuid"`
-	Major  string  `json:"major"`
-	Minor  string  `json:"minor"`
-} */
 
 func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json")
+
 	gid, auth := ownTracksAuthentication(res, req)
 	if auth == false {
 		http.Error(res, "Error verifing authentication", http.StatusUnauthorized)
-		// PhDevBin.Log.Debug("owntrack authentication failed")
 		return
 	}
 
@@ -69,12 +37,13 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	if string(jBlob) == "" {
 		PhDevBin.Log.Notice("empty JSON")
 		fmt.Fprintf(res, "{ }")
 		return
 	}
+
+	jRaw := json.RawMessage(jBlob)
 
 	// PhDevBin.Log.Notice(string(jBlob))
 	var t loc
@@ -91,19 +60,23 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		PhDevBin.OwnTracksUpdate(gid, string(jBlob), t.Lat, t.Lon)
 		s, _ := PhDevBin.OwnTracksTeams(gid)
 		fmt.Fprintf(res, string(s))
+	case "transition":
+		s, _ := PhDevBin.OwnTracksTransition(gid, jRaw)
+		PhDevBin.Log.Debug(string(jRaw))
+		fmt.Fprintf(res, string(s))
 	case "waypoints":
-		// since we don't know which team to add them to, we should probably just ignore them
-		// {"_type":"waypoints","topic":"owntracks\/timid-outburst-qflh\/E2373EE8-538A-482C-99D6-F42E3B1373F3\/waypoints","waypoints":[{"_type":"waypoint","tst":1552259058,"lat":33.173594193279001,"lon":-96.815699161802996,"rad":30,"desc":"Center-1552259058"}]}
-		fmt.Fprintf(res, "{ }")
+		s, _ := PhDevBin.OwnTracksSetWaypointList(gid, jRaw)
+		PhDevBin.Log.Debug(string(jRaw))
+		fmt.Fprintf(res, string(s))
+	case "waypoint":
+		s, _ := PhDevBin.OwnTracksSetWaypoint(gid, jRaw)
+		PhDevBin.Log.Debug(string(jRaw))
+		fmt.Fprintf(res, string(s))
 	default:
-		PhDevBin.Log.Notice("unprocessed type: " + t.Type)
-		PhDevBin.Log.Debug(string(jBlob))
+		PhDevBin.Log.Notice("unhandled type: " + t.Type)
+		PhDevBin.Log.Debug(string(jRaw))
 		fmt.Fprintf(res, "{ }")
 	}
-}
-
-func ownTrackWaypointPub(t loc) error {
-	return nil
 }
 
 func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (string, bool) {
