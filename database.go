@@ -126,6 +126,27 @@ func Connect(uri string) error {
 		}
 	}
 
+	table = ""
+	db.QueryRow("SHOW TABLES LIKE 'target'").Scan(&table)
+	if table == "" {
+		Log.Noticef("Setting up `target` table...")
+		_, err := db.Exec(`CREATE TABLE target(
+		CREATE TABLE target (
+			Id bigint NOT NULL,
+			teamID varchar(64) NOT NULL,
+			loc POINT NOT NULL,
+			radius int UNSIGNED NOT NULL DEFAULT 60,
+			type varchar(32) NOT NULL DEFAULT "target",
+			name varchar(128),
+			expiration datetime NOT NULL,
+			linkdst varchar(128),
+			KEY (teamID)
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+		if err != nil {
+			return err
+		}
+	}
+
 	// super-frequent query, have it always ready
 	locQuery, err = db.Prepare("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?")
 	if err != nil {
