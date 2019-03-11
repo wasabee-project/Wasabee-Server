@@ -10,8 +10,8 @@ type WaypointCommand struct {
 	Type      string `json:"_type"`
 	Action    string `json:"action"`
 	Waypoints struct {
-		Type      string     `json:"_type"`
 		Waypoints []Waypoint `json:"waypoints"`
+		Type      string     `json:"_type"`
 	} `json:"waypoints"`
 }
 
@@ -22,9 +22,9 @@ type Waypoint struct {
 	Lon    float64 `json:"lon"`
 	Radius float64 `json:"rad"`
 	ID     float64 `json:"tst"`
-	UUID   string  `json:"uuid"`
-	Major  string  `json:"major"`
-	Minor  string  `json:"minor"`
+	UUID   string  `json:"uuid,omitempty"`
+	Major  string  `json:"major,omitempty"`
+	Minor  string  `json:"minor,omitempty"`
 }
 
 // every query in here should be prepared since these are called VERY frequently
@@ -64,6 +64,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var wp WaypointCommand
 	wp.Type = "cmd"
 	wp.Action = "setWaypoints"
+	wp.Waypoints.Type = "waypoints"
 	var Id, teamID, lat, lon, radius, typeId, nameId sql.NullString
 	var tmpTarget Waypoint
 	tmpTarget.Type = "waypoint"
@@ -99,15 +100,15 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 			f, _ := strconv.ParseFloat(radius.String, 64)
 			tmpTarget.Radius = f
 		}
-		ttt, _ := json.Marshal(tmpTarget)
-		Log.Debug(string(ttt))
 		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpTarget)
 	}
 	wps, _ := json.Marshal(wp)
+	// wps, _ := json.MarshalIndent(wp, "", "\t")
+	// Log.Debug(string(wps))
 	locs = append(locs, wps)
 
 	s, _ = json.Marshal(locs)
-	Log.Notice(string(s))
+	// Log.Debug(string(s))
 	return s, nil
 }
 
