@@ -71,10 +71,11 @@ func Store(document *Document) error {
 
 	// Write the document to the database
 	_, err = db.Exec(
-		"INSERT INTO documents (id, uploader, content, upload, expiration, views) VALUES (?, ?, ?, NOW(), ?, 0)",
+		"INSERT INTO documents (id, uploader, content, upload, expiration, views) VALUES (?, ?, ?, ?, ?, 0)",
 		hex.EncodeToString(databaseID[:]),
 		document.UserID,
 		string(data),
+		document.Upload.UTC().Format("2006-01-02 15:04:05"), // don't use NOW() since this is used in the key...
 		expiration)
 	if err != nil {
 		Log.Error(err)
