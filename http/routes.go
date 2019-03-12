@@ -121,9 +121,11 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	doc, err := PhDevBin.Request(id)
 	if err != nil {
 		PhDevBin.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError) // should be 404?
+		return
 	}
 	if me != doc.UserID {
-		PhDevBin.Log.Error("Attempt to delete document owned by someone else")
+		PhDevBin.Log.Errorf("Attempt to delete document owned by someone else (%s, %s)", me, doc.UserID)
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -131,6 +133,8 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	err = PhDevBin.Delete(id)
 	if err != nil {
 		PhDevBin.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -148,7 +152,6 @@ func setAuthTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// I don't like pushing authentication/authorization out to the main module, but...
 	err = PhDevBin.SetAuthTeam(id, authteam, me)
 	if err != nil {
 		PhDevBin.Log.Error(err)
@@ -162,6 +165,7 @@ func setAuthTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Cache-Control", "no-cache")
+	// why not just: http.Error(res, "404: Maybe the document is expired or has been removed.", http.StatusFileNotFound)
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(404)
 	fmt.Fprint(res, "404: Maybe the document is expired or has been removed.\n")
