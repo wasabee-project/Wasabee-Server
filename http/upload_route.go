@@ -25,7 +25,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// Parse form
 		err = req.ParseForm()
 		if err != nil {
-			PhDevBin.Log.Error("1: " + err.Error())
+			PhDevBin.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, err.Error())
 			return
@@ -35,7 +35,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// Parse form
 		err = req.ParseMultipartForm(PhDevBin.MaxFilesize + 1024)
 		if err != nil {
-			PhDevBin.Log.Error("2: " + err.Error())
+			PhDevBin.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, err.Error())
 			return
@@ -51,7 +51,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 			if err != nil {
-				PhDevBin.Log.Error("3: " + err.Error())
+				PhDevBin.Log.Error(err)
 				res.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprintf(res, err.Error())
 				return
@@ -60,7 +60,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			// Read document
 			content, err := ioutil.ReadAll(file)
 			if err != nil {
-				PhDevBin.Log.Error("4: " + err.Error())
+				PhDevBin.Log.Error(err)
 				res.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprintf(res, err.Error())
 				return
@@ -71,7 +71,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// Read document
 		content, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			PhDevBin.Log.Error("5: " + err.Error())
+			PhDevBin.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, err.Error())
 			return
@@ -108,7 +108,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	userID, err := GetUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice("6: " + err.Error())
+		PhDevBin.Log.Notice(err)
 		return
 	}
 	if userID != "" {
@@ -121,7 +121,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")
 		return
 	} else if err != nil {
-		PhDevBin.Log.Error("7: " + err.Error())
+		PhDevBin.Log.Error(err)
 		res.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(res, err.Error())
 		return
@@ -131,8 +131,6 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func updateRoute(res http.ResponseWriter, req *http.Request) {
-	sizeExceeded := false
-
 	if req.Method != "PUT" {
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "Updates only work with PUT.\n")
@@ -151,19 +149,16 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 
 	// Read document
 	content, err := ioutil.ReadAll(req.Body)
-	if err != nil && err.Error() == "http: request body too large" {
-		sizeExceeded = true
-	} else if err != nil {
+	if err != nil {
 		PhDevBin.Log.Error(err)
 		res.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(res, err.Error())
 		return
-	} else {
-		doc.Content = string(content)
 	}
+	doc.Content = string(content)
 
 	// Check exact filesize
-	if sizeExceeded || len(doc.Content) > PhDevBin.MaxFilesize {
+	if len(doc.Content) > PhDevBin.MaxFilesize {
 		res.WriteHeader(http.StatusRequestEntityTooLarge)
 		fmt.Fprintf(res, "Maximum document size exceeded.\n")
 		return
@@ -183,9 +178,11 @@ func updateRoute(res http.ResponseWriter, req *http.Request) {
 		PhDevBin.Log.Notice("attempting to update a document w/o being logged in")
 		return
 	}
-	doc.UserID = userID
+
+	doc.UserID = userID // is this used?
+
 	err = PhDevBin.Update(&doc)
-	if err != nil && err.Error() == "file contains 0x00 bytes" {
+	if err != nil && err.Error() == "file contains 0x00 bytes" { // binary files not allowed because it messes with the encryption checks?
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")
 		return

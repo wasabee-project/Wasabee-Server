@@ -18,7 +18,6 @@ const MaxFilesize = 1024 * 1024 // 1MB
 type Document struct {
 	ID         string
 	AuthTeam   string
-	Uploader   string
 	Content    string
 	Upload     time.Time
 	Expiration time.Time

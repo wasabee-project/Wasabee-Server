@@ -122,7 +122,7 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
-	if me != doc.Uploader {
+	if me != doc.UserID {
 		PhDevBin.Log.Error("Attempt to delete document owned by someone else")
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
