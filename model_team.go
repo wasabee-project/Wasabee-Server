@@ -8,27 +8,33 @@ import (
 
 // team stuff
 type TeamData struct {
-	Name string
-	Id   string
-	User []struct {
-		Name      string
-		Color     string
-		State     string // enum On Off
-		LocKey    string
-		Lat       string
-		Lon       string
-		Date      string
-		OwnTracks json.RawMessage
-	}
-	Target []struct {
-		Name       string
-		PortalID   string
-		Lat        string
-		Lon        string
-		Range      int    // in meters
-		Kind       string // enum ?
-		AssignedTo string
-	}
+	Name   string
+	Id     string
+	User   []User
+	Target []Target
+}
+
+type User struct {
+	Name      string
+	Color     string
+	State     string // enum On Off
+	LocKey    string
+	Lat       string
+	Lon       string
+	Date      string
+	OwnTracks json.RawMessage
+}
+
+type Target struct {
+	Id              int
+	Name            string
+	Lat             string
+	Lon             string
+	Radius          int    // in meters
+	Type            string // enum ?
+	Expiration      string
+	LinkDestination string
+	// PortalID   string
 }
 
 func UserInTeam(id string, team string, allowOff bool) (bool, error) {
@@ -52,16 +58,8 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 
 func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 	var iname, color, state, lockey, lat, lon, uptime, otdata sql.NullString
-	var tmp struct {
-		Name      string
-		Color     string
-		State     string
-		LocKey    string
-		Lat       string
-		Lon       string
-		Date      string
-		OwnTracks json.RawMessage
-	}
+	var tmpU User
+	var tmpT Target
 
 	var err error
 	var rows *sql.Rows
@@ -88,46 +86,46 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 			return err
 		}
 		if iname.Valid {
-			tmp.Name = iname.String
+			tmpU.Name = iname.String
 		} else {
-			tmp.Name = ""
+			tmpU.Name = ""
 		}
 		if lockey.Valid {
-			tmp.LocKey = lockey.String
+			tmpU.LocKey = lockey.String
 		} else {
-			tmp.LocKey = ""
+			tmpU.LocKey = ""
 		}
 		if color.Valid {
-			tmp.Color = color.String
+			tmpU.Color = color.String
 		} else {
-			tmp.Color = ""
+			tmpU.Color = ""
 		}
 		if state.Valid {
-			tmp.State = state.String
+			tmpU.State = state.String
 		} else {
-			tmp.State = "Off"
+			tmpU.State = "Off"
 		}
-		if lat.Valid { // this will need love
-			tmp.Lat = lat.String
+		if lat.Valid {
+			tmpU.Lat = lat.String
 		} else {
-			tmp.Lat = "0"
+			tmpU.Lat = "0"
 		}
-		if lon.Valid { // this will need love
-			tmp.Lon = lon.String
+		if lon.Valid {
+			tmpU.Lon = lon.String
 		} else {
-			tmp.Lon = "0"
+			tmpU.Lon = "0"
 		}
-		if uptime.Valid { // this will need love
-			tmp.Date = uptime.String
+		if uptime.Valid {
+			tmpU.Date = uptime.String
 		} else {
-			tmp.Date = ""
+			tmpU.Date = ""
 		}
-		if otdata.Valid { // this will need love
-			tmp.OwnTracks = json.RawMessage(otdata.String)
+		if otdata.Valid {
+			tmpU.OwnTracks = json.RawMessage(otdata.String)
 		} else {
-			tmp.OwnTracks = json.RawMessage("{ }")
+			tmpU.OwnTracks = json.RawMessage("{ }")
 		}
-		teamList.User = append(teamList.User, tmp)
+		teamList.User = append(teamList.User, tmpU)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -135,13 +133,78 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		return err
 	}
 
-	// owner should probably not be exposed like this, show the display name instead
-	err = db.QueryRow("SELECT name FROM teams WHERE teamID = ?", team).Scan(&teamList.Name)
-	if err != nil {
+	if err := db.QueryRow("SELECT name FROM teams WHERE teamID = ?", team).Scan(&teamList.Name); err != nil {
 		Log.Error(err)
 		return err
 	}
 	teamList.Id = team
+
+	var targetid, radius, targettype, targetname, expiration, linkdst sql.NullString
+	var targetrows *sql.Rows
+	targetrows, err = db.Query("SELECT Id, X(loc), Y(loc), radius, type, name, expiration, linkdst FROM target WHERE teamID = ?", team)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer targetrows.Close()
+	for targetrows.Next() {
+		err := targetrows.Scan(&targetid, &lat, &lon, &radius, &targettype, &targetname, &expiration, &linkdst)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+
+		if targetid.Valid {
+			i, _ := strconv.Atoi(targetid.String)
+			tmpT.Id = i
+		} else {
+			tmpT.Id = 0
+		}
+		if lat.Valid {
+			tmpT.Lat = lat.String
+		} else {
+			tmpT.Lat = "0"
+		}
+		if lon.Valid {
+			tmpT.Lon = lon.String
+		} else {
+			tmpT.Lon = "0"
+		}
+		if radius.Valid {
+			i, _ := strconv.Atoi(radius.String)
+			tmpT.Radius = i
+		} else {
+			tmpT.Radius = 30
+		}
+		if targettype.Valid {
+			tmpT.Type = targettype.String
+		} else {
+			tmpT.Type = "target"
+		}
+		if targetname.Valid {
+			tmpT.Name = targetname.String
+		} else {
+			tmpT.Name = "Unnamed Target"
+		}
+		if expiration.Valid {
+			tmpT.Expiration = expiration.String
+		} else {
+			tmpT.Expiration = ""
+		}
+		if linkdst.Valid {
+			tmpT.LinkDestination = linkdst.String
+		} else {
+			tmpT.LinkDestination = ""
+		}
+
+		teamList.Target = append(teamList.Target, tmpT)
+	}
+	err = targetrows.Err()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 
 	return nil
 }

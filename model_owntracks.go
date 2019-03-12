@@ -30,6 +30,7 @@ type Waypoint struct {
 	UUID   string  `json:"uuid,omitempty"`
 	Major  string  `json:"major,omitempty"`
 	Minor  string  `json:"minor,omitempty"`
+	Share  bool    `json:"share"` // this was removed from the API, but I'm going to leave it for now
 }
 
 // location
@@ -47,6 +48,20 @@ type Location struct {
 	Vac      float64 `json:"vac"`
 	Tst      float64 `json:"tst"`
 	Vel      float64 `json:"vel"`
+}
+
+type Transition struct {
+	Type     string  `json:"_type"`
+	Event    string  `json:"event"`
+	ID       float64 `json:"wtst"`
+	Time     float64 `json:"tst"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
+	Topic    string  `json:"topic"`
+	Trigger  string  `json:"t"`
+	Accuracy float64 `json:"acc"`
+	Tid      string  `json:"tid"`
+	Desc     string  `json:"desc"`
 }
 
 // every query in here should be prepared since these are called VERY frequently
@@ -122,21 +137,29 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 			f, _ := strconv.ParseFloat(radius.String, 64)
 			tmpTarget.Radius = f
 		}
+		tmpTarget.Share = true
 		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpTarget)
 	}
 	wps, _ := json.Marshal(wp)
 	locs = append(locs, wps)
 
 	s, _ = json.Marshal(locs)
-	// Log.Debug(string(s))
+	Log.Debug(string(s))
 	return s, nil
 }
 
-// pass as string or json.RawMessage ?
-func OwnTracksTransition(gid string, otdata json.RawMessage) (json.RawMessage, error) {
-	Log.Debug(string(otdata))
-
+func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessage, error) {
+	var t Transition
 	j := json.RawMessage("{ }")
+
+	if err := json.Unmarshal(transition, &t); err != nil {
+		Log.Notice(err)
+		return j, err
+	}
+
+	// do something here
+	Log.Debugf("%s transition %s: %s (%n)", gid, t.Event, t.Desc, t.ID)
+
 	return j, nil
 }
 
@@ -153,7 +176,7 @@ func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, erro
 	team, err := ownTracksDefaultTeam(gid)
 
 	if err := json.Unmarshal(wp, &w); err != nil {
-		Log.Notice(err)
+		// Log.Notice(err)
 		return j, err
 	}
 
