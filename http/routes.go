@@ -37,31 +37,31 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
 	// user info
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
-	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my display name /me?name=deviousness
-	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // basic location post
+	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my OwnTracks Password (cleartext, yes, but SSL is required)
+	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
 	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/teams)
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /me/wonky-team-1234?state={Off|On}
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
 	// teams
-	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // return the location of every user if authorized
+	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
 	r.HandleFunc("/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")  // invite user to team
-	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every user if authorized
-	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely
-	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely
-	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit
-	r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team
-	// r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team
-	r.HandleFunc("/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team
-	r.HandleFunc("/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team
+	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every user/target on team (team member/owner)
+	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
+	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely (owner)
+	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit (owner)
+	r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team (owner)
+	// r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
+	r.HandleFunc("/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
+	r.HandleFunc("/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
 
 	r.HandleFunc("/status", statusRoute).Methods("GET")
 
 	// experiemental use of OwnTracks to handle location
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
 
-	r.HandleFunc("/{document}", getRoute).Methods("GET")
-	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE")
-	r.HandleFunc("/{document}", updateRoute).Methods("PUT")
+	r.HandleFunc("/{document}", getRoute).Methods("GET")       // these are going away
+	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE") // these are going away
+	r.HandleFunc("/{document}", updateRoute).Methods("PUT")    // these are going away
 
 	// index
 	r.HandleFunc("/", frontRoute).Methods("GET")
