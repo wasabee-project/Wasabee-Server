@@ -11,29 +11,67 @@
 			<div class="row">
 				<div class="col-lg-12">
 					<div class="content-section-a">
-						<ul class="list-inline">
 <!-- content starts here -->
-<ul>
-<li>Display Name: {{.IngressName}}
+<div class="card mb-2">
+<div class="card-header">Agent Info</div>
+<div class="card-body"></div>
+<ul class="list-group list-group-flush">
+<li class="list-group-item">Location Share Key: {{.LocationKey}}
+<br/>
+<small>This is the information you will need to give to your operator to be invited on to the op team. Once you are invited onto the team, you will need to enable the team (below). You can disable a team at any time.</small>
+</li>
+<li class="list-group-item">Display Name: {{.IngressName}}
+<br/>
+<small>This is how you are shown on the maps. This information is not verified with ingress, do not trust that agents are who they show up as here.</small>
+</li>
+<li class="list-group-item">
 <form action="/me" method="get">
 <input type="text" name="name" />
-<input type="submit" name="update" value="update name" />
+<input type="submit" name="update" value="update display name" />
 </form>
 </li>
-<li>Location Share Key: {{.LocationKey}}</li>
-<li>OwnTracks Username: {{.LocationKey}}</li>
-<li>OwnTracks Password (hashed): {{.OwnTracksPW}}</li>
+</div>
+
+<div class="card mb-2">
+<div class="card-header">OwnTracks Info</div>
+<div class="card-body"></div>
+  <ul class="list-group list-group-flush">
+<li class="list-group-item">OwnTracks Mode: Private HTTP
+<br/>
+<small>MQTT is not currently supported.</small>
+</li>
+<li class="list-group-item">OwnTracks Username: {{.LocationKey}}
+<br/>
+<small>Use this value in the OwnTracks app.</small>
+</li>
+<li class="list-group-item">OwnTracks Password:
+{{if eq .OwnTracksPW "" }}
+  <h4>Not yet configured</h4> : You will need to configure a password in order to use OwnTracks
+{{else}}
+  Configured
+{{end}}
+</li>
+<li class="list-group-item">
 <form action="/me" method="get">
 <input type="text" name="otpw" />
 <input type="submit" name="update" value="update OT Password" />
 </form>
-<li>OwnTracks URL: {{template "root"}}/OwnTracks</li>
-<li>OwnTracks Mode: HTTP</li>
-<li>OwnTracks Data: {{.OwnTracksJSON}}</li>
-<li>Teams onto which I've been invited:
-  <ul>
+</li>
+<li class="list-group-item">OwnTracks URL: {{template "root"}}/OwnTracks
+<br />
+<small>Use this URL in the OneTracks app. Device ID can be anything. Tracker ID can be any two-letter code. Ask you operator if she has any preference.</small>
+</li>
+</ul>
+</div>
+
+<div class="card mb-2">
+<div class="card-header">Teams</div>
+<div class="card-body">
+<small>Disable inactive teams. It is good opsec and reduces data transfer.</small>
+</div>
+  <ul class="list-group list-group-flush">
 	{{range .Teams}}
-		<li><a href="/team/{{.Id}}">{{.Name}}</a> ({{.State}})  
+		<li class="list-group-item"><a href="/team/{{.Id}}">{{.Name}}</a> ({{.State}})  
 {{if eq .State "Off"}}
 			<a href="/me/{{.Id}}?state=On">On</a>
 {{else}}
@@ -42,45 +80,61 @@
 		</li>
 	{{end}}
   </ul>
-</li>
-<li>Teams I Own:
-  <ul>
-	{{range .OwnedTeams}}
-		<li><a href="/team/{{.Team}}">{{.Name}}</a> ({{.Team}})<br/>
-		  <a href="/team/{{.Team}}/edit">Edit {{.Name}}</a><br/>
-		  <a href="/team/{{.Team}}/delete">Delete {{.Name}}</a>
-		</li>
-	{{end}}
-</ul>
-<form action="/team/new" method="get">
-<input type="text" name="name" />
-<input type="submit" name="update" value="new team" />
-</form>
-</li>
-<li>Draws I own:
-	<ul>
+</div>
+
+<div class="card mb-2">
+  <div class="card-header">My Teams</div>
+  <div class="card-body">
+  </div>
+  <ul class="list-group list-group-flush">
+{{range .OwnedTeams}}
+    <li class="list-group-item">
+	<h5 class="card-subheading"><a href="/team/{{.Team}}">{{.Name}}</a> ({{.Team}})</h5>
+	<a href="/team/{{.Team}}/edit" class="card-link">Edit</a>
+	<a href="/team/{{.Team}}/delete" class="card-link">Delete</a>
+	</li>
+{{end}}
+  <li class="list-group-item">
+    <form action="/team/new" method="get">
+    <input type="text" name="name" />
+    <input type="submit" name="update" value="new team" />
+    </form>
+  </li>
+  </ul>
+</div>
+
+<div class="card mb-2">
+  <div class="card-header">My Draws</div>
+  <div class="card-body">
+  </div>
+  <ul class="list-group list-group-flush">
 	{{range .OwnedDraws}}
-		<li>Internal ID: {{.Hash}}<br />
-		{{if .AuthTeam}}
-			<a href="/team/{{.AuthTeam}}">Authorized Team</a><br />
-		{{end}}
+		<li class="list-group-item">
 		Uploaded: {{.UploadTime}}<br/>
 		Expiration: {{.Expiration}}<br />
 		Views: {{.Views}}<br />
+		{{if .AuthTeam}}<a href="/team/{{.AuthTeam}}">Authorized Team</a><br />{{end}}
 		<form action="/draw/{{.Hash}}" method="GET"><input name="authteam" value="{{.AuthTeam}}"><input type="submit" name="update" value="Set AuthTeam"></form>
 		</li>
 	{{end}}
 	</ul>
-</li>
-</ul>
+</div>
+
+<div class="card mb-2">
+  <div class="card-header">Manual Location Set</div>
+  <div class="card-body">
+		<li class="list-group-item">
 <form action="/me" method="get">
 Lat: <input type="text" name="lat" value="0" id="lat" />
 Lon: <input type="text" name="lon" value="0" id="lon" />
 <input type="submit" name="location" value="set location" />
 </form>
+        </li>
+  </ul>
+</div>
+	
 		<!-- content ends here -->				
 						
-						</ul>
 					</div>
 				</div>
 			</div>
