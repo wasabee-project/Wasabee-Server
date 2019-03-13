@@ -66,8 +66,9 @@ type Transition struct {
 
 // every query in here should be prepared since these are called VERY frequently
 // data is vague on prepared statement performance inprovement -- do real testing
-func OwnTracksUpdate(gid, jsonblob string, lat, lon float64) error {
-	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", jsonblob, gid)
+func OwnTracksUpdate(gid string, otdata json.RawMessage, lat, lon float64) error {
+	// could call ownTracksTidy on the way in ...
+	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", string(otdata), gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -158,7 +159,7 @@ func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessag
 	}
 
 	// do something here
-	Log.Debugf("%s transition %s: %s (%n)", gid, t.Event, t.Desc, t.ID)
+	Log.Debugf("%s transition %s: %s (%f)", gid, t.Event, t.Desc, t.ID)
 
 	return j, nil
 }

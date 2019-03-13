@@ -2,7 +2,7 @@ package PhDevBin
 
 import (
 	"database/sql"
-	//	"encoding/json"
+	//	"errors"
 )
 
 // user stuff
@@ -273,4 +273,20 @@ func GetUserData(id string, ud *UserData) error {
 		ud.OwnTracksJSON = "{ }"
 	}
 	return nil
+}
+
+func TelegramToGid(tgid string) (string, error) {
+	var gid sql.NullString
+	row := db.QueryRow("SELECT gid FROM telegram WHERE telegramID = ?", tgid)
+	err := row.Scan(&gid)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if gid.Valid == false {
+		return "", nil
+	}
+	return gid.String, nil
 }

@@ -11,7 +11,6 @@ var db *sql.DB
 var locQuery *sql.Stmt
 var lockeyToGid *sql.Stmt
 var safeName *sql.Stmt
-var isConnected bool
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don't exist yet.
 func Connect(uri string) error {
@@ -147,6 +146,22 @@ func Connect(uri string) error {
 		}
 	}
 
+	table = ""
+	db.QueryRow("SHOW TABLES LIKE 'telegram'").Scan(&table)
+	if table == "" {
+		Log.Noticef("Setting up `telegram` table...")
+		_, err := db.Exec(`CREATE TABLE telegram(
+			telegramID varchar(32) NOT NULL PRIMARY KEY,
+			gid varchar(32) NOT NULL,
+			verified BOOLEAN NOT NULL DEFAULT 0, 
+			authtoken varchar(32),
+			KEY (gid)
+		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+		if err != nil {
+			return err
+		}
+	}
+
 	// super-frequent query, have it always ready
 	locQuery, err = db.Prepare("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?")
 	if err != nil {
@@ -166,14 +181,8 @@ func Connect(uri string) error {
 		return err
 	}
 
-	isConnected = true
 	go cleanup()
 	return nil
-}
-
-// IsConnected returns true if the database has already been initialized.
-func IsConnected() bool {
-	return isConnected
 }
 
 func cleanup() {

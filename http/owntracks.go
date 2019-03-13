@@ -57,7 +57,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	switch t.Type {
 	case "location":
-		PhDevBin.OwnTracksUpdate(gid, string(jBlob), t.Lat, t.Lon)
+		PhDevBin.OwnTracksUpdate(gid, jRaw, t.Lat, t.Lon)
 		s, _ := PhDevBin.OwnTracksTeams(gid)
 		fmt.Fprintf(res, string(s))
 	case "transition":

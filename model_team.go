@@ -17,10 +17,10 @@ type TeamData struct {
 type User struct {
 	Name      string
 	Color     string
-	State     string // enum On Off
+	State     bool
 	LocKey    string
-	Lat       string
-	Lon       string
+	Lat       float64
+	Lon       float64
 	Date      string
 	OwnTracks json.RawMessage
 }
@@ -28,8 +28,8 @@ type User struct {
 type Target struct {
 	Id              int
 	Name            string
-	Lat             string
-	Lon             string
+	Lat             float64
+	Lon             float64
 	Radius          int    // in meters
 	Type            string // enum ?
 	Expiration      string
@@ -101,19 +101,27 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 			tmpU.Color = ""
 		}
 		if state.Valid {
-			tmpU.State = state.String
+			if state.String == "On" {
+				tmpU.State = true
+			} else {
+				tmpU.State = false
+			}
 		} else {
-			tmpU.State = "Off"
+			tmpU.State = false
 		}
 		if lat.Valid {
-			tmpU.Lat = lat.String
+			tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
 		} else {
-			tmpU.Lat = "0"
+			var f float64
+			f = 0
+			tmpU.Lat = f
 		}
 		if lon.Valid {
-			tmpU.Lon = lon.String
+			tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
 		} else {
-			tmpU.Lon = "0"
+			var f float64
+			f = 0
+			tmpU.Lon = f
 		}
 		if uptime.Valid {
 			tmpU.Date = uptime.String
@@ -162,14 +170,18 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 			tmpT.Id = 0
 		}
 		if lat.Valid {
-			tmpT.Lat = lat.String
+			tmpT.Lat, _ = strconv.ParseFloat(lat.String, 64)
 		} else {
-			tmpT.Lat = "0"
+			var f float64
+			f = 0
+			tmpT.Lat = f
 		}
 		if lon.Valid {
-			tmpT.Lon = lon.String
+			tmpT.Lon, _ = strconv.ParseFloat(lon.String, 64)
 		} else {
-			tmpT.Lon = "0"
+			var f float64
+			f = 0
+			tmpT.Lon = f
 		}
 		if radius.Valid {
 			i, _ := strconv.Atoi(radius.String)
