@@ -18,7 +18,7 @@ type UserData struct {
 		State string
 	}
 	OwnedTeams []struct {
-		ID string
+		ID   string
 		Name string
 	}
 	OwnedDraws []struct {
@@ -81,7 +81,7 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 		Log.Notice(err)
 		return "", err
 	}
-	if (err != nil && err == sql.ErrNoRows) {
+	if err != nil && err == sql.ErrNoRows {
 		return "", nil
 	}
 
@@ -174,7 +174,7 @@ func GetUserData(gid string, ud *UserData) error {
 	}
 
 	var ownedTeam struct {
-		ID string
+		ID   string
 		Name string
 	}
 	ownedTeamRow, err := db.Query("SELECT teamID, name FROM teams WHERE owner = ?", gid)

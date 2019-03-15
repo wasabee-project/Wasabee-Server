@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
-	"github.com/cloudkucooland/PhDevBin/http"
 	"github.com/cloudkucooland/PhDevBin/Telegram"
+	"github.com/cloudkucooland/PhDevBin/http"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
@@ -54,7 +54,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "PhDevBin"
-	app.Version = "0.5.0"
+	app.Version = "0.6.0"
 	app.Usage = "Phtiv-Draw-Tools Server"
 	app.Flags = flags
 
@@ -89,7 +89,7 @@ func run(c *cli.Context) error {
 		panic(err)
 	}
 
-	// Serve HTTP
+	// Serve HTTPS
 	if c.String("https") != "none" {
 		go PhDevHTTP.StartHTTP(PhDevHTTP.Configuration{
 			ListenHTTPS:      c.String("https"),
@@ -104,8 +104,9 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "none" {
-        PhDevTelegram.PhDevBot(PhDevTelegram.Configuration{
-			APIKey:			c.String("tgkey"),
+		go PhDevTelegram.PhDevBot(PhDevTelegram.TGConfiguration{
+			APIKey:       c.String("tgkey"),
+			FrontendPath: c.String("frontend-path"),
 		})
 	}
 

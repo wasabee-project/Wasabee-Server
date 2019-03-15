@@ -19,16 +19,24 @@ import (
 func setupRoutes(r *mux.Router) {
 	// Upload function
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
-	r.HandleFunc("/", uploadRoute).Methods("POST")
 
-	// Static files
-	PhDevBin.Log.Notice("Including frontend files from: ", config.FrontendPath)
+	// XXX this is going away
+	r.HandleFunc("/", uploadRoute).Methods("POST")
 
 	// Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
 
-	// Documents
+	// Simple -- the old-style, encrypted, unauthenticated/authorized documents
+	r.HandleFunc("/simple", uploadRoute).Methods("POST")
+	r.HandleFunc("/simple/{document}", setAuthTeamRoute).Methods("POST").Queries("authteam", "{authteam}")
+	r.HandleFunc("/simple/{document}", setAuthTeamRoute).Methods("GET").Queries("authteam", "{authteam}")
+	r.HandleFunc("/simple/{document}", getRoute).Methods("GET")
+	r.HandleFunc("/simple/{document}", deleteRoute).Methods("DELETE")
+	r.HandleFunc("/simple/{document}", updateRoute).Methods("PUT")
+
+	// This block requires authentication
+	// Draw -- new-style, (XXX TO BE) parsed, not-encrypted, authenticated, authorized, more-functional
 	r.HandleFunc("/draw", uploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}", setAuthTeamRoute).Methods("POST").Queries("authteam", "{authteam}")
 	r.HandleFunc("/draw/{document}", setAuthTeamRoute).Methods("GET").Queries("authteam", "{authteam}")
@@ -42,6 +50,7 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/teams)
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /me/wonky-team-1234?state={Off|On|Primary}
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
+	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
 	// teams
 	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
 	r.HandleFunc("/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")  // invite user to team
@@ -50,18 +59,17 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely (owner)
 	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit (owner)
 	r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team (owner)
-	// r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
+	// r.HandleFunc("/team/{team}/{key}", setUserTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
 	r.HandleFunc("/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
 	r.HandleFunc("/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
 
 	r.HandleFunc("/status", statusRoute).Methods("GET")
 
-	// experiemental use of OwnTracks to handle location
+	// OwnTracks URL
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
 
-	r.HandleFunc("/{document}", getRoute).Methods("GET")       // these are going away
-	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE") // these are going away
-	r.HandleFunc("/{document}", updateRoute).Methods("PUT")    // these are going away
+	r.HandleFunc("/{document}", getRoute).Methods("GET")       // XXX these are going away
+	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE") // XXX these are going away
 
 	// index
 	r.HandleFunc("/", frontRoute).Methods("GET")

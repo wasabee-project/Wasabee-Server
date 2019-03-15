@@ -3,6 +3,7 @@ package PhDevBin
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"strconv"
 )
 
@@ -103,8 +104,8 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	wp.Type = "cmd"
 	wp.Action = "setWaypoints"
 	wp.Waypoints.Type = "waypoints"
-	// not all of these can be null, just write to the struct directly 
-	// yeah, but lots of ParseFloat conversions in here... maybe a sexier way, but this is readable 
+	// not all of these can be null, just write to the struct directly
+	// yeah, but lots of ParseFloat conversions in here... maybe a sexier way, but this is readable
 	var Id, teamID, lat, lon, radius, typeId, nameId sql.NullString
 	var tmpTarget Waypoint
 	tmpTarget.Type = "waypoint"
@@ -178,8 +179,9 @@ func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, erro
 
 	team, err := ownTracksDefaultTeam(gid) // cache this...
 	if err != nil || team == "" {
-		Log.Notice("Unable to determine primary team for SetWaypoint")
-        return j, err
+		e := errors.New("Unable to determine primary team for SetWaypoint")
+		Log.Notice(e)
+		return j, e
 	}
 
 	if err := json.Unmarshal(wp, &w); err != nil {
@@ -206,14 +208,15 @@ func ownTracksWriteWaypoint(w Waypoint, team string) error {
 }
 
 func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, error) {
-	Log.Debug(string(wp))
+	// Log.Debug(string(wp))
 	var w WaypointsList
 	j := json.RawMessage("{ }")
 
 	team, err := ownTracksDefaultTeam(gid)
 	if err != nil || team == "" {
-		Log.Notice("Unable to determine primary team for SetWaypoint")
-		return j, err
+		e := errors.New("Unable to determine primary team for SetWaypointList")
+		Log.Notice(e)
+		return j, e
 	}
 
 	if err := json.Unmarshal(wp, &w); err != nil {
@@ -232,10 +235,14 @@ func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, 
 }
 
 func ownTracksDefaultTeam(gid string) (string, error) {
-    var primary string
-	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'",  gid).Scan(&primary)
+	var primary string
+	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		Log.Debug("Primary Team Not Set")
+		return "", nil
+	}
 	if err != nil {
-        Log.Error(err)
+		Log.Error(err)
 		return "", err
 	}
 	return primary, nil

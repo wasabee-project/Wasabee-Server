@@ -94,6 +94,7 @@ func initializeConfig(initialConfig Configuration) {
 		PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
 	}
 
+	PhDevBin.Log.Debugf("Loading Template function map")
 	funcMap := template.FuncMap{
 		"TGGetBotName": PhDevBin.TGGetBotName,
 		"TGGetBotID":   PhDevBin.TGGetBotID,
@@ -103,15 +104,15 @@ func initializeConfig(initialConfig Configuration) {
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
+	PhDevBin.Log.Notice("Including frontend templates from: ", config.FrontendPath)
 	config.templateSet.ParseGlob(config.FrontendPath + "/*.html")
-
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
-	//config.templateSet.Funcs(funcMap)
-
+	PhDevBin.Log.Debugf("Configuring special templates")
 	s := fmt.Sprintf("{{define \"root\"}}%s{{end}}", config.Root)
 	config.templateSet.New("root").Parse(s)
+	PhDevBin.Log.Debug(config.templateSet.DefinedTemplates())
 }
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.
