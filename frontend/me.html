@@ -64,6 +64,31 @@
 </ul>
 </div>
 
+{{if (TGRunning)}}
+<div class="card mb-2">
+<div class="card-header">Telegram</div>
+<div class="card-body">
+</div>
+  <ul class="list-group list-group-flush">
+{{if (.Telegram.ID) }}
+		<li class="list-group-item">ID: {{.Telegram.UserName}} ({{.Telegram.ID}})</li>
+{{end}}
+{{if (.Telegram.Verified) }}
+		<li class="list-group-item">Status: Verified.</li>
+{{else}}
+		<li class="list-group-item">Status: Not Verified.</li>
+		<li class="list-group-item">Instructions:
+    {{if (.Telegram.Authtoken) }}
+        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="tg://msg?text=%2Fsetkey%20{{.Telegram.Authtoken}}&amp;to={{ TGGetBotID }}">/setkey {{.Telegram.Authtoken}}</a> to get verified.
+    {{else}}
+        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="tg://msg?text=%2Fid%20{{.LocationKey}}&amp;to={{ TGGetBotID }}">/id {{.LocationKey}}</a> to start the verification process .
+    {{end}}
+{{end}}
+		</li>
+  </ul>
+</div>
+{{end}}
+
 <div class="card mb-2">
 <div class="card-header">Teams</div>
 <div class="card-body">
@@ -71,7 +96,7 @@
 </div>
   <ul class="list-group list-group-flush">
 	{{range .Teams}}
-		<li class="list-group-item"><a href="/team/{{.Id}}">{{.Name}}</a> ({{.State}})  
+		<li class="list-group-item">{{.Name}} ({{.State}})  
 {{if eq .State "Off"}}
 			<a href="/me/{{.Id}}?state=On">On</a>
 {{else}}

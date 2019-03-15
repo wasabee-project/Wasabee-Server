@@ -3,6 +3,7 @@ package PhDevBin
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -261,27 +262,27 @@ func DeleteTeam(teamID string) error {
 	return err
 }
 
-func AddUserToTeam(teamID string, id string) error {
-	var gid sql.NullString
-	err := db.QueryRow("SELECT gid FROM user WHERE lockey = ?", id).Scan(&gid)
+func AddUserToTeam(teamID string, lockey string) error {
+	gid, err := LockeyToGid(lockey)
 	if err != nil {
-		Log.Notice(id)
 		Log.Notice(err)
 		return err
 	}
 
 	_, err = db.Exec("INSERT INTO userteams values (?, ?, 'Off', '')", teamID, gid)
 	if err != nil {
-		Log.Notice(err)
+		tmp := err.Error()
+		if tmp[:10] != "Error 1062" {
+			Log.Notice(err)
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
-func DelUserFromTeam(teamID string, id string) error {
-	var gid sql.NullString
-	err := db.QueryRow("SELECT gid FROM user WHERE lockey = ?", id).Scan(&gid)
+func DelUserFromTeam(teamID string, lockey string) error {
+	gid, err := LockeyToGid(lockey)
 	if err != nil {
-		Log.Notice(id)
 		Log.Notice(err)
 		return err
 	}
@@ -289,17 +290,19 @@ func DelUserFromTeam(teamID string, id string) error {
 	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
+		return (err)
 	}
-	return err
+	return nil
 }
 
 func UserLocation(id string, lat string, lon string) error {
 	var point string
+
 	// sanity checing on bounds?
-	point = "POINT(" + lat + " " + lon + ")"
-	_, err := locQuery.Exec(point, id)
-	if err != nil {
+	point = fmt.Sprintf("POINT(%s %s)", lat, lon)
+	if _, err := locQuery.Exec(point, id); err != nil {
 		Log.Notice(err)
+		return err
 	}
-	return err
+	return nil
 }

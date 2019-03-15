@@ -94,10 +94,21 @@ func initializeConfig(initialConfig Configuration) {
 		PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
 	}
 
-	config.templateSet, err = template.ParseGlob(config.FrontendPath + "/*.html")
+	funcMap := template.FuncMap{
+		"TGGetBotName": PhDevBin.TGGetBotName,
+		"TGGetBotID":   PhDevBin.TGGetBotID,
+		"TGRunning":    PhDevBin.TGRunning,
+	}
+	config.templateSet = template.New("").Funcs(funcMap)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
+	config.templateSet.ParseGlob(config.FrontendPath + "/*.html")
+
+	if err != nil {
+		PhDevBin.Log.Error(err)
+	}
+	//config.templateSet.Funcs(funcMap)
 
 	s := fmt.Sprintf("{{define \"root\"}}%s{{end}}", config.Root)
 	config.templateSet.New("root").Parse(s)
@@ -120,7 +131,7 @@ func StartHTTP(initialConfig Configuration) {
 
 	// Add important headers
 	r.Use(headersMW)
-	r.Use(debugMW)
+	// r.Use(debugMW)
 	r.Use(authMW)
 
 	// Serve

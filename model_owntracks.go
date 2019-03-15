@@ -145,7 +145,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	locs = append(locs, wps)
 
 	s, _ = json.Marshal(locs)
-	Log.Debug(string(s))
+	// Log.Debug(string(s))
 	return s, nil
 }
 

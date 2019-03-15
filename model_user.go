@@ -7,6 +7,7 @@ import (
 
 // user stuff
 type UserData struct {
+	GoogleID      string
 	IngressName   string
 	LocationKey   string
 	OwnTracksPW   string
@@ -27,31 +28,36 @@ type UserData struct {
 		Expiration string
 		Views      string
 	}
+	Telegram struct {
+		UserName  string
+		ID        int
+		Verified  bool
+		Authtoken string
+	}
 }
 
-func InsertOrUpdateUser(id string, name string) error {
-	var tmpName = "Agent_" + id[:5]
+func InsertOrUpdateUser(gid string, name string) error {
+	var tmpName = "Agent_" + gid[:5]
 	lockey, err := GenerateSafeName()
-	otpw, err := GenerateSafeName()
-	_, err = db.Exec("INSERT INTO user VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE gid = ?", id, tmpName, lockey, otpw, id)
+	_, err = db.Exec("INSERT INTO user VALUES (?,?,?,NULL) ON DUPLICATE KEY UPDATE gid = ?", gid, tmpName, lockey, gid)
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
-	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),POINT(0,0)) ON DUPLICATE KEY UPDATE upTime = NOW()", id)
+	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),POINT(0,0)) ON DUPLICATE KEY UPDATE upTime = NOW()", gid)
 	if err != nil {
 		Log.Notice(err)
 	}
 
-	_, err = db.Exec("INSERT INTO otdata VALUES (?,'{ }') ON DUPLICATE KEY UPDATE gid = ?", id, id)
+	_, err = db.Exec("INSERT INTO otdata VALUES (?,'{ }') ON DUPLICATE KEY UPDATE gid = ?", gid, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return err
 }
 
-func SetIngressName(id string, name string) error {
-	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, id)
+func SetIngressName(gid string, name string) error {
+	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -82,29 +88,29 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 	return gid.String, nil
 }
 
-func RemoveUserFromTeam(id string, team string) error {
-	_, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, id)
+func RemoveUserFromTeam(gid string, team string) error {
+	_, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return err
 }
 
-func SetUserTeamState(id string, team string, state string) error {
+func SetUserTeamState(gid string, team string, state string) error {
 	if state != "On" {
 		state = "Off"
 	}
-	_, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, id, team)
+	_, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, team)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return err
 }
 
-// use supersceded by VerfyOwnTracksPW
 func LockeyToGid(lockey string) (string, error) {
 	var gid sql.NullString
 
+	// does not need to be a prep'd query anymore
 	r := lockeyToGid.QueryRow(lockey)
 	err := r.Scan(&gid)
 	if err != nil {
@@ -118,10 +124,12 @@ func LockeyToGid(lockey string) (string, error) {
 	return gid.String, nil
 }
 
-func GetUserData(id string, ud *UserData) error {
+func GetUserData(gid string, ud *UserData) error {
 	var in, lc, ot sql.NullString
 
-	row := db.QueryRow("SELECT iname, lockey, otpassword FROM user WHERE gid = ?", id)
+	ud.GoogleID = gid
+
+	row := db.QueryRow("SELECT iname, lockey, otpassword FROM user WHERE gid = ?", gid)
 	err := row.Scan(&in, &lc, &ot)
 	if err != nil {
 		Log.Notice(err)
@@ -148,7 +156,7 @@ func GetUserData(id string, ud *UserData) error {
 
 	rows, err := db.Query("SELECT t.teamID, t.name, x.state "+
 		"FROM teams=t, userteams=x "+
-		"WHERE x.gid = ? AND x.teamID = t.teamID", id)
+		"WHERE x.gid = ? AND x.teamID = t.teamID", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -183,7 +191,7 @@ func GetUserData(id string, ud *UserData) error {
 		Name string
 		Team string
 	}
-	rowsO, err := db.Query("SELECT teamID, name FROM teams WHERE owner = ?", id)
+	rowsO, err := db.Query("SELECT teamID, name FROM teams WHERE owner = ?", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -215,7 +223,7 @@ func GetUserData(id string, ud *UserData) error {
 		Expiration string
 		Views      string
 	}
-	rows1, err := db.Query("SELECT id, authteam, upload, expiration, views FROM documents WHERE uploader = ?", id)
+	rows1, err := db.Query("SELECT id, authteam, upload, expiration, views FROM documents WHERE uploader = ?", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -257,7 +265,7 @@ func GetUserData(id string, ud *UserData) error {
 	}
 
 	var otJSON sql.NullString
-	rows2 := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", id)
+	rows2 := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid)
 	err = rows2.Scan(&otJSON)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		ud.OwnTracksJSON = "{ }"
@@ -272,21 +280,21 @@ func GetUserData(id string, ud *UserData) error {
 	} else {
 		ud.OwnTracksJSON = "{ }"
 	}
-	return nil
-}
+	// defer rows2.Close()
 
-func TelegramToGid(tgid string) (string, error) {
-	var gid sql.NullString
-	row := db.QueryRow("SELECT gid FROM telegram WHERE telegramID = ?", tgid)
-	err := row.Scan(&gid)
+	var authtoken sql.NullString
+	rows3 := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid)
+	err = rows3.Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
 	if err != nil && err.Error() == "sql: no rows in result set" {
-		return "", nil
+		ud.Telegram.ID = 0
+		ud.Telegram.Verified = false
+		ud.Telegram.Authtoken = ""
+	} else if err != nil {
+		Log.Error(err)
+		return err
 	}
-	if err != nil {
-		return "", err
-	}
-	if gid.Valid == false {
-		return "", nil
-	}
-	return gid.String, nil
+	ud.Telegram.Authtoken = authtoken.String
+	// defer rows3.Close()
+
+	return nil
 }

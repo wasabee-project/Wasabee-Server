@@ -151,7 +151,8 @@ func Connect(uri string) error {
 	if table == "" {
 		Log.Noticef("Setting up `telegram` table...")
 		_, err := db.Exec(`CREATE TABLE telegram(
-			telegramID varchar(32) NOT NULL PRIMARY KEY,
+			telegramID BIGINT NOT NULL PRIMARY KEY,
+			telegramName varchar(32) NOT NULL,
 			gid varchar(32) NOT NULL,
 			verified BOOLEAN NOT NULL DEFAULT 0, 
 			authtoken varchar(32),
