@@ -22,6 +22,9 @@ https://golang.org/doc/install
 3. Install git
 https://www.git-scm.com/book/en/v2/Getting-Started-Installing-Git
 
+3.1 (?) Install the Telegram API bindings
+go get -u github.com/go-telegram-bot-api/telegram-bot-api
+
 4. Use git to checkout the frontend and cmd directories
 mkdir PhDevBin ; cd PhDevBin
 go get github.com/cloudkucooland/PhDevBin
