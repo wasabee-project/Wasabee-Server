@@ -174,7 +174,11 @@ func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, erro
 	var w Waypoint
 	j := json.RawMessage("{ }")
 
-	team, err := ownTracksDefaultTeam(gid)
+	team, err := ownTracksDefaultTeam(gid) // cache this...
+	if err != nil || team == "" {
+		Log.Notice("Unable to determine primary team for SetWaypoint")
+        return j, err
+	}
 
 	if err := json.Unmarshal(wp, &w); err != nil {
 		// Log.Notice(err)
@@ -225,6 +229,11 @@ func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, 
 }
 
 func ownTracksDefaultTeam(gid string) (string, error) {
-	// requires a schema change
-	return "hyperbolic-coldness-443f", nil
+    var primary string
+	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary')",  gid).Scan(&primary)
+	if err != nil {
+        Log.Error(err)
+		return "", err
+	}
+	return primary, nil
 }
