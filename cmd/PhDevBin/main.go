@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/cloudkucooland/PhDevBin/http"
+	"github.com/cloudkucooland/PhDevBin/Telegram"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
@@ -38,6 +39,9 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "sessionkey", EnvVar: "SESSION_KEY", Value: "",
 		Usage: "Session Key (32 char, random). It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
+		Name: "tgkey", EnvVar: "TELEGRAM_API_KEY", Value: "",
+		Usage: "Telegram API Key. It is recommended to pass this parameter as an environment variable"},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -86,7 +90,7 @@ func run(c *cli.Context) error {
 	}
 
 	// Serve HTTP
-	if c.String("http") != "none" || c.String("https") != "none" {
+	if c.String("https") != "none" {
 		go PhDevHTTP.StartHTTP(PhDevHTTP.Configuration{
 			ListenHTTPS:      c.String("https"),
 			FrontendPath:     c.String("frontend-path"),
@@ -95,6 +99,13 @@ func run(c *cli.Context) error {
 			GoogleClientID:   c.String("googleclient"),
 			GoogleSecret:     c.String("googlesecret"),
 			CookieSessionKey: c.String("sessionkey"),
+		})
+	}
+
+	// Serve Telegram
+	if c.String("tgkey") != "none" {
+        PhDevTelegram.PhDevBot(PhDevTelegram.Configuration{
+			APIKey:			c.String("tgkey"),
 		})
 	}
 
