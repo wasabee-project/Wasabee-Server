@@ -119,9 +119,9 @@
   <ul class="list-group list-group-flush">
 {{range .OwnedTeams}}
     <li class="list-group-item">
-	<h5 class="card-subheading"><a href="/team/{{.Team}}">{{.Name}}</a> ({{.Team}})</h5>
-	<a href="/team/{{.Team}}/edit" class="card-link">Edit</a>
-	<a href="/team/{{.Team}}/delete" class="card-link">Delete</a>
+	<h5 class="card-subheading"><a href="/team/{{.ID}}">{{.Name}}</a> ({{.ID}})</h5>
+	<a href="/team/{{.ID}}/edit" class="card-link">Edit</a>
+	<a href="/team/{{.ID}}/delete" class="card-link">Delete</a>
 	</li>
 {{end}}
   <li class="list-group-item">
