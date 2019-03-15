@@ -100,7 +100,12 @@
 {{if eq .State "Off"}}
 			<a href="/me/{{.Id}}?state=On">On</a>
 {{else}}
+    {{if eq .State "Primary"}}
 			<a href="/me/{{.Id}}?state=Off">Off</a>
+    {{else}}
+			<a href="/me/{{.Id}}?state=Off">Off</a>
+			<a href="/me/{{.Id}}?state=Primary">Primary</a>
+    {{end}}
 {{end}}
 		</li>
 	{{end}}

@@ -89,22 +89,21 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 }
 
 func RemoveUserFromTeam(gid string, team string) error {
-	_, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid)
-	if err != nil {
+	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
 		Log.Notice(err)
 	}
-	return err
+	return nil
 }
 
 func SetUserTeamState(gid string, team string, state string) error {
-	if state != "On" {
-		state = "Off"
+	if state == "Primary" {
+		_ = ClearPrimaryTeam(gid)
 	}
-	_, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, team)
-	if err != nil {
+
+	if _, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, team); err != nil {
 		Log.Notice(err)
 	}
-	return err
+	return nil
 }
 
 func LockeyToGid(lockey string) (string, error) {

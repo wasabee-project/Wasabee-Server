@@ -103,7 +103,7 @@ func Connect(uri string) error {
 		_, err := db.Exec(`CREATE TABLE userteams(
 			teamID varchar(64) NOT NULL,
 			gid varchar(32) NOT NULL,
-			state ENUM('Off', 'On') NOT NULL DEFAULT 'Off', 
+			state ENUM('Off', 'On', 'Primary') NOT NULL DEFAULT 'Off', 
 			color varchar(32) NOT NULL DEFAULT "FF5500",
 			PRIMARY KEY (teamID, gid)
 		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)

@@ -45,7 +45,7 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 	if allowOff {
 		err = db.QueryRow("SELECT COUNT(*) FROM userteams WHERE teamID = ? AND gid = ?", team, id).Scan(&count)
 	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM userteams WHERE teamID = ? AND gid = ? AND state = 'On'", team, id).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM userteams WHERE teamID = ? AND gid = ? AND state != 'Off'", team, id).Scan(&count)
 	}
 	if err != nil {
 		return false, err
@@ -68,7 +68,7 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
-			"AND x.state = 'On'", team)
+			"AND x.state != 'Off'", team)
 	} else {
 		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
@@ -102,7 +102,7 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 			tmpU.Color = ""
 		}
 		if state.Valid {
-			if state.String == "On" {
+			if state.String != "Off" {
 				tmpU.State = true
 			} else {
 				tmpU.State = false
@@ -288,6 +288,15 @@ func DelUserFromTeam(teamID string, lockey string) error {
 	}
 
 	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
+	if err != nil {
+		Log.Notice(err)
+		return (err)
+	}
+	return nil
+}
+
+func ClearPrimaryTeam(gid string) error {
+	_, err := db.Exec("UPDATE userteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)
 	if err != nil {
 		Log.Notice(err)
 		return (err)

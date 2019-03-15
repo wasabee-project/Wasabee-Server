@@ -80,7 +80,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var locs []json.RawMessage
 	var tmp sql.NullString
 
-	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, userteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state = 'On') AND ut.state = 'On' AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
+	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, userteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') AND ut.state != 'Off' AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
 	if err != nil {
 		Log.Error(err)
 		return json.RawMessage(""), err
@@ -107,7 +107,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var tmpTarget Waypoint
 	tmpTarget.Type = "waypoint"
 
-	wr, err := db.Query("SELECT Id, t.teamID, X(loc) as lat, Y(loc) as lon, radius, type, name FROM target=t, userteams=ut WHERE ut.teamID = t.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state = 'On')", gid)
+	wr, err := db.Query("SELECT Id, t.teamID, X(loc) as lat, Y(loc) as lon, radius, type, name FROM target=t, userteams=ut WHERE ut.teamID = t.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
 	if err != nil {
 		Log.Error(err)
 		return s, nil // a lie, but getting people location and no targets is better than no data
