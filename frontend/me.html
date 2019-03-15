@@ -98,13 +98,13 @@
 	{{range .Teams}}
 		<li class="list-group-item">{{.Name}} ({{.State}})  
 {{if eq .State "Off"}}
-			<a href="/me/{{.Id}}?state=On">On</a>
+			<a href="/me/{{.ID}}?state=On">On</a>
 {{else}}
     {{if eq .State "Primary"}}
-			<a href="/me/{{.Id}}?state=Off">Off</a>
+			<a href="/me/{{.ID}}?state=Off">Off</a>
     {{else}}
-			<a href="/me/{{.Id}}?state=Off">Off</a>
-			<a href="/me/{{.Id}}?state=Primary">Primary</a>
+			<a href="/me/{{.ID}}?state=Off">Off</a>
+			<a href="/me/{{.ID}}?state=Primary">Primary</a>
     {{end}}
 {{end}}
 		</li>
