@@ -103,6 +103,8 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	wp.Type = "cmd"
 	wp.Action = "setWaypoints"
 	wp.Waypoints.Type = "waypoints"
+	// not all of these can be null, just write to the struct directly 
+	// yeah, but lots of ParseFloat conversions in here... maybe a sexier way, but this is readable 
 	var Id, teamID, lat, lon, radius, typeId, nameId sql.NullString
 	var tmpTarget Waypoint
 	tmpTarget.Type = "waypoint"
@@ -209,7 +211,8 @@ func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, 
 	j := json.RawMessage("{ }")
 
 	team, err := ownTracksDefaultTeam(gid)
-	if err != nil {
+	if err != nil || team == "" {
+		Log.Notice("Unable to determine primary team for SetWaypoint")
 		return j, err
 	}
 
@@ -230,7 +233,7 @@ func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, 
 
 func ownTracksDefaultTeam(gid string) (string, error) {
     var primary string
-	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary')",  gid).Scan(&primary)
+	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'",  gid).Scan(&primary)
 	if err != nil {
         Log.Error(err)
 		return "", err
