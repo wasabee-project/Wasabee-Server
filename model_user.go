@@ -13,13 +13,13 @@ type UserData struct {
 	OwnTracksPW   string
 	OwnTracksJSON string
 	Teams         []struct {
-		Id    string
+		ID    string
 		Name  string
 		State string
 	}
 	OwnedTeams []struct {
+		ID string
 		Name string
-		Team string
 	}
 	OwnedDraws []struct {
 		Hash       string
@@ -73,7 +73,7 @@ func SetOwnTracksPW(gid string, otpw string) error {
 }
 
 func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
-	var gid sql.NullString
+	var gid string
 
 	r := db.QueryRow("SELECT gid FROM user WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
 	err := r.Scan(&gid)
@@ -81,11 +81,11 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 		Log.Notice(err)
 		return "", err
 	}
-	if (err != nil && err == sql.ErrNoRows) || gid.Valid == false {
+	if (err != nil && err == sql.ErrNoRows) {
 		return "", nil
 	}
 
-	return gid.String, nil
+	return gid, nil
 }
 
 func RemoveUserFromTeam(gid string, team string) error {
@@ -107,20 +107,16 @@ func SetUserTeamState(gid string, team string, state string) error {
 }
 
 func LockeyToGid(lockey string) (string, error) {
-	var gid sql.NullString
+	var gid string
 
-	// does not need to be a prep'd query anymore
 	r := lockeyToGid.QueryRow(lockey)
 	err := r.Scan(&gid)
 	if err != nil {
 		Log.Notice(err)
 		return "", err
 	}
-	if gid.Valid == false {
-		return "", nil
-	}
 
-	return gid.String, nil
+	return gid, nil
 }
 
 func GetUserData(gid string, ud *UserData) error {
@@ -146,9 +142,9 @@ func GetUserData(gid string, ud *UserData) error {
 		ud.OwnTracksPW = ot.String
 	}
 
-	var teamID, name, state sql.NullString
+	var teamname sql.NullString
 	var tmp struct {
-		Id    string
+		ID    string
 		Name  string
 		State string
 	}
@@ -163,56 +159,43 @@ func GetUserData(gid string, ud *UserData) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&teamID, &name, &state)
+		err := rows.Scan(&tmp.ID, &teamname, &tmp.State)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		if teamID.Valid {
-			tmp.Id = teamID.String
-		} else {
-			tmp.Id = ""
-		}
-		if name.Valid {
-			tmp.Name = name.String
+		// teamname can be null
+		if teamname.Valid {
+			tmp.Name = teamname.String
 		} else {
 			tmp.Name = ""
-		}
-		if state.Valid {
-			tmp.State = state.String
-		} else {
-			tmp.State = ""
 		}
 		ud.Teams = append(ud.Teams, tmp)
 	}
 
-	var tmpO struct {
+	var ownedTeam struct {
+		ID string
 		Name string
-		Team string
 	}
-	rowsO, err := db.Query("SELECT teamID, name FROM teams WHERE owner = ?", gid)
+	ownedTeamRow, err := db.Query("SELECT teamID, name FROM teams WHERE owner = ?", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	defer rowsO.Close()
-	for rowsO.Next() {
-		err := rowsO.Scan(&teamID, &name)
+	defer ownedTeamRow.Close()
+	for ownedTeamRow.Next() {
+		err := ownedTeamRow.Scan(&ownedTeam.ID, &teamname)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		if teamID.Valid {
-			tmpO.Team = teamID.String
+		// can be null -- but this should be changed
+		if teamname.Valid {
+			ownedTeam.Name = teamname.String
 		} else {
-			tmpO.Team = ""
+			ownedTeam.Name = ""
 		}
-		if name.Valid {
-			tmpO.Name = name.String
-		} else {
-			tmpO.Name = ""
-		}
-		ud.OwnedTeams = append(ud.OwnedTeams, tmpO)
+		ud.OwnedTeams = append(ud.OwnedTeams, ownedTeam)
 	}
 
 	var tmpDoc struct {
@@ -227,6 +210,7 @@ func GetUserData(gid string, ud *UserData) error {
 		Log.Error(err)
 		return err
 	}
+
 	var docID, authteam, upload, expiration, views sql.NullString
 	defer rows1.Close()
 	for rows1.Next() {

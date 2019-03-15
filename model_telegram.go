@@ -1,7 +1,7 @@
 package PhDevBin
 
 import (
-	"database/sql"
+	// "database/sql"
 	"errors"
 	"fmt"
 	// "strconv"
@@ -35,7 +35,7 @@ func TGRunning() (bool, error) {
 }
 
 func TelegramToGid(tgid int) (string, bool, error) {
-	var gid sql.NullString
+	var gid string
 	var verified bool
 
 	row := db.QueryRow("SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid)
@@ -47,10 +47,7 @@ func TelegramToGid(tgid int) (string, bool, error) {
 		Log.Notice(err)
 		return "", false, err
 	}
-	if gid.Valid == false {
-		return "", false, nil
-	}
-	return gid.String, verified, nil
+	return gid, verified, nil
 }
 
 func TelegramInitUser(ID int, name string, lockey string) error {
