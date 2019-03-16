@@ -106,6 +106,18 @@ func SetUserTeamState(gid string, team string, state string) error {
 	return nil
 }
 
+func SetUserTeamStateName(gid string, teamname string, state string) error {
+	Log.Debug(teamname)
+	var id string
+	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
+	err := row.Scan(&id)
+	if err != nil {
+		Log.Notice(err)
+	}
+
+	return SetUserTeamState(gid, id, state)
+}
+
 func LockeyToGid(lockey string) (string, error) {
 	var gid string
 

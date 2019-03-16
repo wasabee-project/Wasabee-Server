@@ -1,7 +1,7 @@
 package PhDevHTTP
 
 import (
-	"fmt"
+	// "fmt"
 	"html/template"
 	"net/http"
 	"net/http/httputil"
@@ -41,7 +41,7 @@ func initializeConfig(initialConfig Configuration) {
 	// Transform frontendPath to an absolute path
 	frontendPath, err := filepath.Abs(config.FrontendPath)
 	if err != nil {
-		PhDevBin.Log.Critical("Frontend path couldn't be resolved.")
+		PhDevBin.Log.Critical("Frontend path could not be resolved.")
 		panic(err)
 	}
 	config.FrontendPath = frontendPath
@@ -58,6 +58,9 @@ func initializeConfig(initialConfig Configuration) {
 
 	rootParts = strings.SplitN(strings.ToLower(config.Root), "://", 2)
 	config.domain = strings.Split(rootParts[len(rootParts)-1], "/")[0]
+
+	// used for templates
+	PhDevBin.SetWebroot(config.Root)
 
 	if config.GoogleClientID == "" {
 		PhDevBin.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
@@ -87,18 +90,25 @@ func initializeConfig(initialConfig Configuration) {
 		config.sessionName = "PhDevBin"
 	}
 
+	// certificate directory cleanup
 	if config.CertDir == "" {
-		PhDevBin.Log.Error("CERDIR unset: defaulting to 'certs/'")
-		config.CertDir = "certs/"
-	} else {
-		PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
+		PhDevBin.Log.Error("CERDIR unset: defaulting to 'certs'")
+		config.CertDir = "certs"
 	}
+	certdir, err := filepath.Abs(config.CertDir)
+	config.CertDir = certdir
+	if err != nil {
+		PhDevBin.Log.Critical("Certificate path could not be resolved.")
+		panic(err)
+	}
+	PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
 
 	PhDevBin.Log.Debugf("Loading Template function map")
 	funcMap := template.FuncMap{
 		"TGGetBotName": PhDevBin.TGGetBotName,
 		"TGGetBotID":   PhDevBin.TGGetBotID,
 		"TGRunning":    PhDevBin.TGRunning,
+		"Webroot":      PhDevBin.GetWebroot,
 	}
 	config.templateSet = template.New("").Funcs(funcMap)
 	if err != nil {
@@ -109,9 +119,9 @@ func initializeConfig(initialConfig Configuration) {
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
-	PhDevBin.Log.Debugf("Configuring special templates")
+	/* PhDevBin.Log.Debugf("Configuring special templates")
 	s := fmt.Sprintf("{{define \"root\"}}%s{{end}}", config.Root)
-	config.templateSet.New("root").Parse(s)
+	config.templateSet.New("root").Parse(s) */
 	PhDevBin.Log.Debug(config.templateSet.DefinedTemplates())
 }
 

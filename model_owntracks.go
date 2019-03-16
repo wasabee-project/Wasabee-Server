@@ -73,7 +73,7 @@ func OwnTracksUpdate(gid string, otdata json.RawMessage, lat, lon float64) error
 	if err != nil {
 		Log.Notice(err)
 	}
-	err = UserLocation(gid, strconv.FormatFloat(lat, 'f', -1, 64), strconv.FormatFloat(lon, 'f', -1, 64))
+	err = UserLocation(gid, strconv.FormatFloat(lat, 'f', -1, 64), strconv.FormatFloat(lon, 'f', -1, 64), "OwnTracks")
 	return err
 }
 

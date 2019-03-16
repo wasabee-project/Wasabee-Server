@@ -164,7 +164,7 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	lon := vars["lon"]
 
 	// do the work
-	err = PhDevBin.UserLocation(id, lat, lon)
+	err = PhDevBin.UserLocation(id, lat, lon, "https")
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

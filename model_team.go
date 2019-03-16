@@ -304,7 +304,7 @@ func ClearPrimaryTeam(gid string) error {
 	return nil
 }
 
-func UserLocation(id string, lat string, lon string) error {
+func UserLocation(id, lat, lon, source string) error {
 	var point string
 
 	// sanity checing on bounds?

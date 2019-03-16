@@ -84,11 +84,11 @@ func try(what func() (interface{}, error), howOften int, sleepTime time.Duration
 	return result, nil
 }
 
-// getLanguages reads the existing languages from the prism-server for use with SyntaxExists.
+/* getLanguages reads the existing languages from the prism-server for use with SyntaxExists.
 func Slice2map(s []string) map[string]bool {
 	r := map[string]bool{}
 	for i := 0; i < len(s); i++ {
 		r[s[i]] = true
 	}
 	return r
-}
+} */

@@ -1,15 +1,21 @@
 {{define "default"}}
-Please use the /help command to see your options
+Please see {{ Webroot }}/me for details (default)
 {{end}}
 
 {{define "help"}}
-/help display help
-/teams show teams and status
+Please see {{ Webroot }}/me for details (help)
 {{end}}
 
-{{define "teams"}}
-Teams for {{.IngressName}}
-{{range .Teams}}
-{{.Name}}: {{.State}}
+{{define "InitOne"}}
+Please see {{ Webroot }}/me for details (init1)
 {{end}}
+
+{{define "InitTwo"}}
+Please see {{ Webroot }}/me for details (init2)
+{{end}}
+
+{{define "TeamStateChange"}}
+{{if eq .State "On"}}Enabling {{ .Team }}{{end}}
+{{if eq .State "Off"}}Disbling {{ .Team }}{{end}}
+{{if eq .State "Primary"}}Setting {{ .Team }} to primary{{end}}
 {{end}}
