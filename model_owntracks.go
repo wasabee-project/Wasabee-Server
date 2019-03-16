@@ -81,6 +81,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var locs []json.RawMessage
 	var tmp sql.NullString
 
+	// this does not take into account location changes made from other sources (e.g. Telegram/https)
 	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, userteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') AND ut.state != 'Off' AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
 	if err != nil {
 		Log.Error(err)

@@ -6,12 +6,26 @@ Please see {{ Webroot }}/me for details (default)
 Please see {{ Webroot }}/me for details (help)
 {{end}}
 
-{{define "InitOne"}}
-Please see {{ Webroot }}/me for details (init1)
+{{define "InitOneFail"}}
+*Please send your Location Share Key to begin verification*
+See {{ Webroot }}/me for details
 {{end}}
 
-{{define "InitTwo"}}
-Please see {{ Webroot }}/me for details (init2)
+{{define "InitOneSuccess"}}
+*You have sent your Location Share Key correctly*
+Now, you need to send your verification code from {{ Webroot }}/me
+See {{ Webroot }}/me for details
+{{end}}
+
+{{define "InitTwoFail"}}
+*Verification FAILED*
+Please send your verification code without any additional content
+See {{ Webroot }}/me for details
+{{end}}
+
+{{define "InitTwoSuccess"}}
+*Verification Successful*
+Your telegram account is now verified and can receive updates and submit location changes
 {{end}}
 
 {{define "TeamStateChange"}}

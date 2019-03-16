@@ -79,9 +79,9 @@
 		<li class="list-group-item">Status: Not Verified.</li>
 		<li class="list-group-item">Instructions:
     {{if (.Telegram.Authtoken) }}
-        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="tg://msg?text=%2Fsetkey%20{{.Telegram.Authtoken}}&amp;to={{ TGGetBotID }}">/setkey {{.Telegram.Authtoken}}</a> to get verified.
+        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="tg://msg?text={{.Telegram.Authtoken}}&amp;to={{ TGGetBotID }}">{{.Telegram.Authtoken}}</a> to get verified.
     {{else}}
-        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="tg://msg?text=%2Fid%20{{.LocationKey}}&amp;to={{ TGGetBotID }}">/id {{.LocationKey}}</a> to start the verification process .
+        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="tg://msg?text={{.LocationKey}}&amp;to={{ TGGetBotID }}">{{.LocationKey}}</a> to start the verification process.
     {{end}}
 {{end}}
 		</li>

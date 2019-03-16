@@ -42,6 +42,9 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "tgkey", EnvVar: "TELEGRAM_API_KEY", Value: "",
 		Usage: "Telegram API Key. It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
+		Name: "venlonekey", EnvVar: "VENLONE_API_KEY", Value: "",
+		Usage: "V.enl.one API Key. It is recommended to pass this parameter as an environment variable"},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -54,7 +57,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "PhDevBin"
-	app.Version = "0.6.0"
+	app.Version = "0.6.1"
 	app.Usage = "Phtiv-Draw-Tools Server"
 	app.Flags = flags
 
@@ -87,6 +90,11 @@ func run(c *cli.Context) error {
 	if err != nil {
 		PhDevBin.Log.Errorf("Error connecting to database: %s", err)
 		panic(err)
+	}
+
+	// setup V
+	if c.String("venlonekey") != "" {
+		PhDevBin.SetVEnlOne(c.String("venlonekey"))
 	}
 
 	// Serve HTTPS

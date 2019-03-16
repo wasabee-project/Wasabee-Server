@@ -3,7 +3,6 @@ package PhDevBin
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"strconv"
 )
 
@@ -250,6 +249,14 @@ func NewTeam(name string, id string) (string, error) {
 	return name, err
 }
 
+func RenameTeam(name string, id string) error {
+	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, id)
+	if err != nil {
+		Log.Notice(err)
+	}
+	return err
+}
+
 func DeleteTeam(teamID string) error {
 	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
@@ -300,18 +307,6 @@ func ClearPrimaryTeam(gid string) error {
 	if err != nil {
 		Log.Notice(err)
 		return (err)
-	}
-	return nil
-}
-
-func UserLocation(id, lat, lon, source string) error {
-	var point string
-
-	// sanity checing on bounds?
-	point = fmt.Sprintf("POINT(%s %s)", lat, lon)
-	if _, err := locQuery.Exec(point, id); err != nil {
-		Log.Notice(err)
-		return err
 	}
 	return nil
 }

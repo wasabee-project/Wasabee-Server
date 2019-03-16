@@ -68,6 +68,9 @@ func PhDevBot(init TGConfiguration) error {
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		msg.Text = defaultReply
+		msg.ParseMode = "MarkDown"
+		// s, _ := json.MarshalIndent(msg, "", "  ")
+		// PhDevBin.Log.Debug(string(s))
 
 		gid, verified, err := PhDevBin.TelegramToGid(update.Message.From.ID)
 		if err != nil {
@@ -75,16 +78,21 @@ func PhDevBot(init TGConfiguration) error {
 			continue
 		}
 
-		if gid == "" || verified == false {
+		if gid == "" {
 			PhDevBin.Log.Debugf("Unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
-			if err = phdevBotNewUser(&msg, &update); err != nil {
+			err = phdevBotNewUser_Init(&msg, &update)
+			if err != nil {
 				PhDevBin.Log.Error(err)
-				continue
 			}
-		} else {
+		} else if verified == false {
+			PhDevBin.Log.Debugf("Unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
+			err = phdevBotNewUser_Verify(&msg, &update)
+			if err != nil {
+				PhDevBin.Log.Error(err)
+			}
+		} else { // verified user, process message
 			if err = phdevBotMessage(&msg, &update, gid); err != nil {
 				PhDevBin.Log.Error(err)
-				continue
 			}
 		}
 		if msg.Text != "" {
@@ -97,47 +105,30 @@ func PhDevBot(init TGConfiguration) error {
 	return nil
 }
 
-// XXX move constants to templates
-func phdevBotNewUser(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	if inMsg.Message.IsCommand() {
-		switch inMsg.Message.Command() {
-		case "id":
-			tokens := strings.Split(inMsg.Message.Text, " ")
-			if len(tokens) != 2 || tokens[1] == "" {
-				msg.Text = "See instructions at https://qbin.phtiv.com:443/me to get started"
-				return errors.New("/id {location share key} missing or too many words")
-			}
-			lockey := tokens[1]
-			err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, lockey)
-			if err != nil {
-				PhDevBin.Log.Error(err)
-				msg.Text = err.Error()
-				return err
-			} else {
-				msg.Text = "Go to https://qbin.phtiv.com:8443/me and get your telegram authkey and send it to me with the /setkey {telegram-key} command"
-			}
-		case "setkey":
-			tokens := strings.Split(inMsg.Message.Text, " ")
-			if len(tokens) != 2 || tokens[1] == "" {
-				msg.Text = "Please send your verification key: /setkey {verification key}"
-				return errors.New("/setkey {verification key} missing or too many words")
-			}
-			key := tokens[1]
-			err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, key)
-			if err != nil {
-				PhDevBin.Log.Error(err)
-				msg.Text = err.Error()
-				return err
-			} else {
-				msg.Text = "Verified."
-			}
-		default:
-			msg.Text = "See instructions at https://qbin.phtiv.com:8443/me to get started"
-		}
+func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
+	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, inMsg.Message.Text)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		tmp, _ := phdevBotTemplateExecute("InitOneFail", nil)
+		msg.Text = tmp
 	} else {
-		msg.Text = "See instructions at https://qbin.phtiv.com:8443/me to get started"
+		tmp, _ := phdevBotTemplateExecute("InitOneSuccess", nil)
+		msg.Text = tmp
 	}
-	return nil
+	return err
+}
+
+func phdevBotNewUser_Verify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
+	err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, inMsg.Message.Text)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		tmp, _ := phdevBotTemplateExecute("InitOneFail", nil)
+		msg.Text = tmp
+	} else {
+		tmp, _ := phdevBotTemplateExecute("InitTwoSuccess", nil)
+		msg.Text = tmp
+	}
+	return err
 }
 
 func phdevBotTemplates(t *template.Template) error {
@@ -192,6 +183,7 @@ func phdevBotKeyboards(c *TGConfiguration) error {
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
 			tgbotapi.NewKeyboardButton("Teams"),
+			tgbotapi.NewKeyboardButton("Targets Near Me"),
 		),
 	)
 
@@ -205,8 +197,10 @@ func phdevBotTeamKeyboard(gid string) (tgbotapi.ReplyKeyboardMarkup, error) {
 	}
 
 	var rows [][]tgbotapi.KeyboardButton
+	var i int
 
 	for _, v := range ud.Teams {
+		i++
 		var on, off, primary tgbotapi.KeyboardButton
 		if v.State != "On" {
 			on = tgbotapi.NewKeyboardButton("On: " + v.Name)
@@ -219,12 +213,16 @@ func phdevBotTeamKeyboard(gid string) (tgbotapi.ReplyKeyboardMarkup, error) {
 		}
 		q := tgbotapi.NewKeyboardButtonRow(on, off, primary)
 		rows = append(rows, q)
+
+		if i > 5 { // too many rows and the screen fills up
+			break
+		}
 	}
 
 	home := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Home"))
 	rows = append(rows, home)
 
-	// api isn't dynamic friendly
+	// api isn't dynamic-list friendly, roll my own data
 	tmp := tgbotapi.ReplyKeyboardMarkup{
 		Keyboard:       rows,
 		ResizeKeyboard: true,
@@ -233,30 +231,22 @@ func phdevBotTeamKeyboard(gid string) (tgbotapi.ReplyKeyboardMarkup, error) {
 
 }
 
+// This is where command processing takes place
 func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid string) error {
 	if inMsg.Message.IsCommand() {
 		PhDevBin.Log.Debug("Found command", inMsg.Message.Command())
 		switch inMsg.Message.Command() {
+		case "start":
+			tmp, _ := phdevBotTemplateExecute("help", nil)
+			msg.Text = tmp
+			msg.ReplyMarkup = config.baseKbd
 		case "help":
 			tmp, _ := phdevBotTemplateExecute("help", nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
-		case "teams":
-			var ud PhDevBin.UserData
-			err := PhDevBin.GetUserData(gid, &ud)
-			if err != nil {
-				PhDevBin.Log.Notice(err)
-				return err
-			}
-			tmp, err := phdevBotTemplateExecute("teams", &ud)
-			if err != nil {
-				PhDevBin.Log.Notice(err)
-				return err
-			}
-			msg.Text = tmp
-			msg.ReplyMarkup, err = phdevBotTeamKeyboard(gid)
 		default:
-			msg.Text = "Unrecognized Command"
+			tmp, _ := phdevBotTemplateExecute("default", nil)
+			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		}
 	} else if inMsg.Message.Text != "" {
@@ -305,6 +295,9 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 			})
 			PhDevBin.SetUserTeamStateName(gid, name, "Primary")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
+		case "Targets":
+			msg.Text = "No Nearby Targets Found"
+			msg.ReplyMarkup = config.baseKbd
 		default:
 			msg.ReplyMarkup = config.baseKbd
 		}
@@ -318,7 +311,7 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 			"Telegram",
 		)
 		msg.ReplyMarkup = config.baseKbd
-		msg.Text = ""
+		msg.Text = "Location Processed"
 	}
 	return nil
 }

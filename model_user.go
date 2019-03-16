@@ -2,7 +2,8 @@ package PhDevBin
 
 import (
 	"database/sql"
-	//	"errors"
+	"encoding/json"
+	"fmt"
 )
 
 // user stuff
@@ -34,6 +35,7 @@ type UserData struct {
 		Verified  bool
 		Authtoken string
 	}
+	VData Vresult
 }
 
 func InsertOrUpdateUser(gid string, name string) error {
@@ -64,6 +66,7 @@ func SetIngressName(gid string, name string) error {
 	return err
 }
 
+// move to model_owntracks.go
 func SetOwnTracksPW(gid string, otpw string) error {
 	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
 	if err != nil {
@@ -72,6 +75,7 @@ func SetOwnTracksPW(gid string, otpw string) error {
 	return err
 }
 
+// move to model_owntracks.go
 func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 	var gid string
 
@@ -88,6 +92,7 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 	return gid, nil
 }
 
+// XXX move to model_team.go
 func RemoveUserFromTeam(gid string, team string) error {
 	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
 		Log.Notice(err)
@@ -95,6 +100,7 @@ func RemoveUserFromTeam(gid string, team string) error {
 	return nil
 }
 
+// XXX move to model_team.go
 func SetUserTeamState(gid string, team string, state string) error {
 	if state == "Primary" {
 		_ = ClearPrimaryTeam(gid)
@@ -106,6 +112,7 @@ func SetUserTeamState(gid string, team string, state string) error {
 	return nil
 }
 
+// XXX move to model_team.go
 func SetUserTeamStateName(gid string, teamname string, state string) error {
 	Log.Debug(teamname)
 	var id string
@@ -153,6 +160,10 @@ func GetUserData(gid string, ud *UserData) error {
 	if ot.Valid {
 		ud.OwnTracksPW = ot.String
 	}
+
+	err = VSearchUser(gid, &ud.VData)
+	s, _ := json.MarshalIndent(&ud.VData, "", "  ")
+	Log.Debug(string(s))
 
 	var teamname sql.NullString
 	var tmp struct {
@@ -290,6 +301,25 @@ func GetUserData(gid string, ud *UserData) error {
 	}
 	ud.Telegram.Authtoken = authtoken.String
 	// defer rows3.Close()
+
+	return nil
+}
+
+func UserLocation(id, lat, lon, source string) error {
+	var point string
+
+	// sanity checing on bounds?
+	point = fmt.Sprintf("POINT(%s %s)", lat, lon)
+	if _, err := locQuery.Exec(point, id); err != nil {
+		Log.Notice(err)
+		return err
+	}
+
+	// XXX if source is not "OwnTracks" -- parse and rebuild the user's OT data?
+
+	// XXX check for targets in range
+
+	// XXX send notifications
 
 	return nil
 }
