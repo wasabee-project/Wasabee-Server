@@ -12,6 +12,8 @@ type UserData struct {
 	IngressName   string
 	LocationKey   string
 	OwnTracksPW   string
+	VVerified     bool
+	Vblacklisted  bool
 	OwnTracksJSON string
 	Teams         []struct {
 		ID    string
@@ -24,7 +26,6 @@ type UserData struct {
 	}
 	OwnedDraws []struct {
 		Hash       string
-		AuthTeam   string
 		UploadTime string
 		Expiration string
 		Views      string
@@ -35,23 +36,38 @@ type UserData struct {
 		Verified  bool
 		Authtoken string
 	}
-	VData Vresult
 }
 
-func InsertOrUpdateUser(gid string, name string) error {
-	var tmpName = "Agent_" + gid[:5]
+// called from Oauth callback
+func InitUser(gid string) error {
+	var vdata Vresult
+
+	err := VSearchUser(gid, &vdata)
+	if err != nil {
+		Log.Notice(err)
+	}
+	s, _ := json.MarshalIndent(&vdata, "", "  ")
+	Log.Debug(string(s))
+
+	var tmpName string
+	if vdata.Data.Agent != "" {
+		tmpName = vdata.Data.Agent
+	} else {
+		tmpName = "Agent_" + gid[:5]
+	}
+
 	lockey, err := GenerateSafeName()
-	_, err = db.Exec("INSERT INTO user VALUES (?,?,?,NULL) ON DUPLICATE KEY UPDATE gid = ?", gid, tmpName, lockey, gid)
+	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, lockey, OTpassword, VVerified, Vblacklisted) VALUES (?,?,?,NULL,?,?)", gid, tmpName, lockey, vdata.Data.Verified, vdata.Data.Blacklisted)
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
-	_, err = db.Exec("INSERT INTO locations VALUES (?,NOW(),POINT(0,0)) ON DUPLICATE KEY UPDATE upTime = NOW()", gid)
+	_, err = db.Exec("INSERT IGNORE INTO locations VALUES (?,NOW(),POINT(0,0))", gid)
 	if err != nil {
 		Log.Notice(err)
 	}
 
-	_, err = db.Exec("INSERT INTO otdata VALUES (?,'{ }') ON DUPLICATE KEY UPDATE gid = ?", gid, gid)
+	_, err = db.Exec("INSERT IGNORE INTO otdata VALUES (?,'{ }')", gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -59,7 +75,8 @@ func InsertOrUpdateUser(gid string, name string) error {
 }
 
 func SetIngressName(gid string, name string) error {
-	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ?", name, gid)
+	// if VVerified, ignore name changes -- let the V functions take care of that
+	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ? AND VVerified = 0", name, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -139,31 +156,24 @@ func LockeyToGid(lockey string) (string, error) {
 }
 
 func GetUserData(gid string, ud *UserData) error {
-	var in, lc, ot sql.NullString
+	var ot sql.NullString
 
 	ud.GoogleID = gid
 
-	row := db.QueryRow("SELECT iname, lockey, otpassword FROM user WHERE gid = ?", gid)
-	err := row.Scan(&in, &lc, &ot)
+	row := db.QueryRow("SELECT iname, lockey, OTpassword, VVerified, Vblacklisted FROM user WHERE gid = ?", gid)
+	err := row.Scan(&ud.IngressName, &ud.LocationKey, &ot, &ud.VVerified, &ud.Vblacklisted)
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	// convert from sql.NullString to string in the struct
-	if in.Valid {
-		ud.IngressName = in.String
-	}
-	if lc.Valid {
-		ud.LocationKey = lc.String
-	}
 	if ot.Valid {
 		ud.OwnTracksPW = ot.String
 	}
 
-	err = VSearchUser(gid, &ud.VData)
-	s, _ := json.MarshalIndent(&ud.VData, "", "  ")
-	Log.Debug(string(s))
+	// err = VSearchUser(gid, &ud.VData)
+	// s, _ := json.MarshalIndent(&ud.VData, "", "  ")
+	// Log.Debug(string(s))
 
 	var teamname sql.NullString
 	var tmp struct {
@@ -223,21 +233,21 @@ func GetUserData(gid string, ud *UserData) error {
 
 	var tmpDoc struct {
 		Hash       string
-		AuthTeam   string
 		UploadTime string
 		Expiration string
 		Views      string
 	}
-	rows1, err := db.Query("SELECT id, authteam, upload, expiration, views FROM documents WHERE uploader = ?", gid)
+	rows1, err := db.Query("SELECT id, upload, expiration, views FROM documents WHERE uploader = ?", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	var docID, authteam, upload, expiration, views sql.NullString
+	// XXX IIRC none of these can be null, just go directly to tmpDoc
+	var docID, upload, expiration, views sql.NullString
 	defer rows1.Close()
 	for rows1.Next() {
-		err := rows1.Scan(&docID, &authteam, &upload, &expiration, &views)
+		err := rows1.Scan(&docID, &upload, &expiration, &views)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -246,11 +256,6 @@ func GetUserData(gid string, ud *UserData) error {
 			tmpDoc.Hash = docID.String
 		} else {
 			tmpDoc.Hash = ""
-		}
-		if authteam.Valid {
-			tmpDoc.AuthTeam = authteam.String
-		} else {
-			tmpDoc.AuthTeam = ""
 		}
 		if upload.Valid {
 			tmpDoc.UploadTime = upload.String
@@ -270,6 +275,7 @@ func GetUserData(gid string, ud *UserData) error {
 		ud.OwnedDraws = append(ud.OwnedDraws, tmpDoc)
 	}
 
+	// XXX cannot be null -- just JOIN in main query
 	var otJSON sql.NullString
 	rows2 := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid)
 	err = rows2.Scan(&otJSON)

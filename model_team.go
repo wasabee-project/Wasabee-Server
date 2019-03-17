@@ -15,14 +15,16 @@ type TeamData struct {
 }
 
 type User struct {
-	Name      string
-	Color     string
-	State     bool
-	LocKey    string
-	Lat       float64
-	Lon       float64
-	Date      string
-	OwnTracks json.RawMessage
+	Name        string
+	Verified    bool
+	Blacklisted bool
+	Color       string
+	State       bool
+	LocKey      string
+	Lat         float64
+	Lon         float64
+	Date        string
+	OwnTracks   json.RawMessage
 }
 
 type Target struct {
@@ -57,19 +59,19 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 }
 
 func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
-	var iname, color, state, lockey, lat, lon, uptime, otdata sql.NullString
+	var state, lat, lon, otdata sql.NullString
 	var tmpU User
 	var tmpT Target
 
 	var err error
 	var rows *sql.Rows
 	if fetchAll != true {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata "+
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata, u.VVerified, u.Vblacklisted "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
 			"AND x.state != 'Off'", team)
 	} else {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata "+
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata, u.VVerified, u.Vblacklisted "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", team)
 	}
@@ -80,25 +82,10 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&iname, &lockey, &color, &state, &lat, &lon, &uptime, &otdata)
+		err := rows.Scan(&tmpU.Name, &tmpU.LocKey, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted)
 		if err != nil {
 			Log.Error(err)
 			return err
-		}
-		if iname.Valid {
-			tmpU.Name = iname.String
-		} else {
-			tmpU.Name = ""
-		}
-		if lockey.Valid {
-			tmpU.LocKey = lockey.String
-		} else {
-			tmpU.LocKey = ""
-		}
-		if color.Valid {
-			tmpU.Color = color.String
-		} else {
-			tmpU.Color = ""
 		}
 		if state.Valid {
 			if state.String != "Off" {
@@ -123,13 +110,9 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 			f = 0
 			tmpU.Lon = f
 		}
-		if uptime.Valid {
-			tmpU.Date = uptime.String
-		} else {
-			tmpU.Date = ""
-		}
 		if otdata.Valid {
 			tmpU.OwnTracks = json.RawMessage(otdata.String)
+			// clean this up?
 		} else {
 			tmpU.OwnTracks = json.RawMessage("{ }")
 		}

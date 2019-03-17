@@ -14,6 +14,9 @@ See {{ Webroot }}/me for details
 {{define "InitOneSuccess"}}
 *You have sent your Location Share Key correctly*
 Now, you need to send your verification code from {{ Webroot }}/me
+
+*You might need to reload the page to see the verifcation code, it will be listed in the same place as before.*
+
 See {{ Webroot }}/me for details
 {{end}}
 

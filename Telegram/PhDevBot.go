@@ -106,7 +106,7 @@ func PhDevBot(init TGConfiguration) error {
 }
 
 func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, inMsg.Message.Text)
+	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, strings.TrimSpace(inMsg.Message.Text))
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		tmp, _ := phdevBotTemplateExecute("InitOneFail", nil)
@@ -119,7 +119,7 @@ func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) e
 }
 
 func phdevBotNewUser_Verify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, inMsg.Message.Text)
+	err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, strings.TrimSpace(inMsg.Message.Text))
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		tmp, _ := phdevBotTemplateExecute("InitOneFail", nil)

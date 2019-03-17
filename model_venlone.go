@@ -75,9 +75,25 @@ func VSearchUser(gid string, res *Vresult) error {
 	}
 	if res.Status != "ok" {
 		err = errors.New(res.Message)
-		Log.Error(err)
+		Log.Info(err)
 		return err
 	}
 	Log.Debug(res.Data.Agent)
+	return nil
+}
+
+func VUpdateUser(gid string, res *Vresult) error {
+	Log.Debug("Updating V data for ", gid)
+
+	if res.Data.Agent != "" {
+		_, err := db.Exec("UPDATE user SET iname = ?, VVerified = ?, Vblacklisted = ? WHERE gid = ?", res.Data.Agent, res.Data.Verified, res.Data.Blacklisted, gid)
+
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	} else {
+		Log.Debug("Not verified at V, nothing to update")
+	}
 	return nil
 }

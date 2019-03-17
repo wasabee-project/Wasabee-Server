@@ -29,8 +29,6 @@ func setupRoutes(r *mux.Router) {
 
 	// Simple -- the old-style, encrypted, unauthenticated/authorized documents
 	r.HandleFunc("/simple", uploadRoute).Methods("POST")
-	r.HandleFunc("/simple/{document}", setAuthTeamRoute).Methods("POST").Queries("authteam", "{authteam}")
-	r.HandleFunc("/simple/{document}", setAuthTeamRoute).Methods("GET").Queries("authteam", "{authteam}")
 	r.HandleFunc("/simple/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/simple/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/simple/{document}", updateRoute).Methods("PUT")
@@ -38,8 +36,6 @@ func setupRoutes(r *mux.Router) {
 	// This block requires authentication
 	// Draw -- new-style, (XXX TO BE) parsed, not-encrypted, authenticated, authorized, more-functional
 	r.HandleFunc("/draw", uploadRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}", setAuthTeamRoute).Methods("POST").Queries("authteam", "{authteam}")
-	r.HandleFunc("/draw/{document}", setAuthTeamRoute).Methods("GET").Queries("authteam", "{authteam}")
 	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
@@ -149,28 +145,6 @@ func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, "OK: document removed.\n")
 }
 
-func setAuthTeamRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id := vars["document"]
-	authteam := vars["authteam"]
-	me, err := GetUserID(req)
-	if me == "" {
-		PhDevBin.Log.Error("Not logged in, cannot set authteam")
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	err = PhDevBin.SetAuthTeam(id, authteam, me)
-	if err != nil {
-		PhDevBin.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(res, "OK: document authteam set.\n")
-}
-
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Cache-Control", "no-cache")
 	// why not just: http.Error(res, "404: Maybe the document is expired or has been removed.", http.StatusFileNotFound)
@@ -206,21 +180,48 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// session cookie
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	ses.Values["id"] = m.Id
-	ses.Values["name"] = m.Name
-	ses.Save(req, res)
-
-	err = PhDevBin.InsertOrUpdateUser(m.Id, m.Name)
+	// XXX need SOME smarts here; check to see if gid already exists...
+	err = PhDevBin.InitUser(m.Id)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	// check and update V data on each login
+	var v PhDevBin.Vresult
+	err = PhDevBin.VSearchUser(m.Id, &v)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		// Agent not found is not a 500 error
+	}
+	if v.Data.Agent != "" {
+		ses.Values["Agent"] = v.Data.Agent
+		err = PhDevBin.VUpdateUser(m.Id, &v)
+		if err != nil {
+			PhDevBin.Log.Notice(err.Error())
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if v.Data.Blacklisted == true {
+			http.Error(res, err.Error(), http.StatusUnauthorized)
+			return
+		}
+	}
+
+	ses.Values["id"] = m.Id
+	// hash this -- verify it on each request
+	nonce := fmt.Sprintf("%s:%s:%s", m.Id, "some secret", "time rounded to hour")
+	ses.Values["nonce"] = nonce
+	ses.Save(req, res)
 	http.Redirect(res, req, "/me?postauth=1", http.StatusPermanentRedirect)
 }
 

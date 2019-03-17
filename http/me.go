@@ -171,3 +171,4 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
+

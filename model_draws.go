@@ -17,7 +17,6 @@ const MaxFilesize = 1024 * 1024 // 1MB
 // Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
 type Document struct {
 	ID         string
-	AuthTeam   string
 	Content    string
 	Upload     time.Time
 	Expiration time.Time
@@ -129,18 +128,16 @@ func Update(document *Document) error {
 func Request(id string) (Document, error) {
 	doc := Document{ID: id}
 	var views int
-	var upload, expiration, authteam sql.NullString
+	var upload, expiration sql.NullString
 	databaseID := sha256.Sum256([]byte(id))
-	err := db.QueryRow("SELECT authteam, content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
-		Scan(&authteam, &doc.Content, &upload, &expiration, &views)
+	err := db.QueryRow("SELECT content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
+		Scan(&doc.Content, &upload, &expiration, &views)
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
 			Log.Warningf("Error retrieving document: %s", err)
 		}
 		return Document{}, err
 	}
-
-	// XXX check authteam and make sure the user is in the team if it exists
 
 	go db.Exec("UPDATE documents SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
 	doc.Views = views
@@ -180,10 +177,6 @@ func Request(id string) (Document, error) {
 		}
 	}
 
-	if authteam.Valid {
-		doc.AuthTeam = authteam.String
-	}
-
 	doc.Content = StripHTML(doc.Content)
 	return doc, nil
 }
@@ -194,19 +187,6 @@ func Delete(id string) error {
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
 			Log.Warningf("Error deleting document: %s", err)
-		}
-	}
-	return err
-}
-
-func SetAuthTeam(id string, authteam string, userID string) error {
-	// id is internal ID, not the external key
-
-	// authentication doesn't happen in http module, this is cheap but simply don't update if the userID doesn't match
-	_, err := db.Exec("UPDATE documents SET authteam = ? WHERE id = ? AND Uploader = ?", authteam, id, userID)
-	if err != nil {
-		if err.Error() != "sql: no rows in result set" {
-			Log.Warningf("Error setting authteam for document: %s", err)
 		}
 	}
 	return err

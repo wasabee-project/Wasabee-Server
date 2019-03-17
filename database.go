@@ -40,7 +40,6 @@ func Connect(uri string) error {
 		Log.Noticef("Setting up `documents` table...")
 		_, err := db.Exec(`CREATE TABLE documents (
 			id varchar(64) PRIMARY KEY,
-			id authteam(64) NULL DEFAULT NULL,
 			uploader varchar(32) NULL DEFAULT NULL,
 			content longblob NOT NULL,
 			upload datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -60,7 +59,9 @@ func Connect(uri string) error {
 			gid varchar(32) PRIMARY KEY,
 			iname varchar(64) NULL DEFAULT NULL,
 			lockey varchar(64) NULL DEFAULT NULL,
-			OTpassword varchar(64) NULL DEFAULT NULL
+			OTpassword varchar(64) NULL DEFAULT NULL,
+			VVerified BOOLEAN NOT NULL DEFAULT 0,
+			Vblacklisted BOOLEAN NOT NULL DEFAULT 0
 		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
