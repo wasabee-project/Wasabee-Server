@@ -13,13 +13,8 @@ import (
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	id, err := GetUserID(req)
 	if err != nil {
-		res.Header().Add("Cache-Control", "no-cache")
 		PhDevBin.Log.Notice(err.Error())
-		return
-	}
-	if id == "" {
-		res.Header().Add("Cache-Control", "no-cache")
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -53,10 +48,6 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if id == "" {
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-		return
-	}
 
 	vars := mux.Vars(req)
 	team := vars["team"]
@@ -76,10 +67,6 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if id == "" {
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 		return
 	}
 
@@ -104,10 +91,6 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if id == "" {
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-		return
-	}
 
 	vars := mux.Vars(req)
 	name := vars["name"]
@@ -127,10 +110,6 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if id == "" {
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 		return
 	}
 
@@ -154,10 +133,6 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if id == "" {
-		http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-		return
-	}
 
 	vars := mux.Vars(req)
 	lat := vars["lat"]
@@ -171,4 +146,3 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
-

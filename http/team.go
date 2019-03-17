@@ -17,10 +17,6 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if id == "" {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
 	vars := mux.Vars(req)
 	team := vars["team"]
@@ -44,10 +40,6 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if id == "" {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
 	vars := mux.Vars(req)
 	name := vars["name"]
@@ -65,10 +57,6 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if id == "" {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -93,10 +81,6 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if id == "" {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -129,10 +113,6 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if id == "" {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
 	vars := mux.Vars(req)
 	team := vars["team"]
@@ -157,10 +137,6 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if id == "" {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 

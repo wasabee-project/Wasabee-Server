@@ -132,18 +132,17 @@ func StartHTTP(initialConfig Configuration) {
 
 	// Route
 	r := mux.NewRouter()
+
+	s := r.PathPrefix("/").Subrouter()
+	setupAuthRoutes(s)
 	setupRoutes(r)
 
-	// final state index and login callbacks will not use auth, everything else will
-	// for now posting/fetching draws from / do not require auth
-
-	// s := r.Subrouter()
-	// setupAuthRoutes(s)
-
-	// Add important headers
 	r.Use(headersMW)
 	// r.Use(debugMW)
-	r.Use(authMW)
+
+	s.Use(headersMW)
+	s.Use(authMW)
+	// s.Use(debugMW)
 
 	// Serve
 	PhDevBin.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
@@ -183,13 +182,49 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		// once this is used for requiring all URLs be authenticated, do this
-		if ses.Values["id"] == nil {
-			PhDevBin.Log.Debug("No Id")
-			// http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
-			//return
+		id, ok := ses.Values["id"]
+		if ok == false || id == nil {
+			PhDevBin.Log.Debug("Not Logged In")
+			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+			return
+		}
+
+		var gid string
+		gid = id.(string)
+
+		nonce, pNonce, _ := calculateNonce(gid)
+		PhDevBin.Log.Debug("expected: ", nonce)
+		PhDevBin.Log.Debug("also accept: ", pNonce)
+
+		in, ok := ses.Values["nonce"]
+		if ok != true || in == nil {
+			PhDevBin.Log.Error("gid set, but nonce not")
+			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+			return
+		}
+		inNonce := in.(string)
+		PhDevBin.Log.Debug("client sent: ", inNonce)
+
+		if inNonce != nonce {
+			if inNonce != pNonce {
+				// session timed out
+				PhDevBin.Log.Debug("session timed out")
+				ses.Values["nonce"] = "unset"
+				ses.Save(req, res)
+			} else {
+				// half-way to timeout
+				PhDevBin.Log.Debug("updating to new nonce")
+				ses.Values["nonce"] = nonce
+				ses.Save(req, res)
+			}
+		}
+
+		if ses.Values["nonce"] == "unset" {
+			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+			return
 		}
 
 		next.ServeHTTP(res, req)
+
 	})
 }

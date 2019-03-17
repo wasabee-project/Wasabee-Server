@@ -1,27 +1,21 @@
 package PhDevHTTP
 
 import (
-	//	"errors"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	//	"net/http/httputil"
-	//	"strings"
 	"io/ioutil"
+	"net/http"
 
 	"golang.org/x/oauth2"
-	//	"golang.org/x/oauth2/google"
 
+	"errors"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
+	"time"
 )
 
 func setupRoutes(r *mux.Router) {
-	// Upload function
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
-
-	// XXX this is going away
-	r.HandleFunc("/", uploadRoute).Methods("POST")
 
 	// Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
@@ -33,12 +27,24 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/simple/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/simple/{document}", updateRoute).Methods("PUT")
 
+	// OwnTracks URL
+	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
+
+	// index
+	r.HandleFunc("/", frontRoute).Methods("GET")
+
+	// 404 error page
+	// r.PathPrefix("/").HandlerFunc(notFoundRoute)
+}
+
+func setupAuthRoutes(r *mux.Router) {
 	// This block requires authentication
 	// Draw -- new-style, (XXX TO BE) parsed, not-encrypted, authenticated, authorized, more-functional
 	r.HandleFunc("/draw", uploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
+
 	// user info
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
 	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my OwnTracks Password (cleartext, yes, but SSL is required)
@@ -47,6 +53,7 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /me/wonky-team-1234?state={Off|On|Primary}
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
+
 	// teams
 	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
 	r.HandleFunc("/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")  // invite user to team
@@ -59,18 +66,8 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
 	r.HandleFunc("/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
 
+	// doesn't need to be authenticated, but why not?
 	r.HandleFunc("/status", statusRoute).Methods("GET")
-
-	// OwnTracks URL
-	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
-
-	r.HandleFunc("/{document}", getRoute).Methods("GET")       // XXX these are going away
-	r.HandleFunc("/{document}", deleteRoute).Methods("DELETE") // XXX these are going away
-
-	// index
-	r.HandleFunc("/", frontRoute).Methods("GET")
-	// 404 error page
-	r.PathPrefix("/").HandlerFunc(notFoundRoute)
 }
 
 func optionsRoute(res http.ResponseWriter, req *http.Request) {
@@ -115,8 +112,10 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 func deleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
+
+	// this should go away
 	me, err := GetUserID(req)
-	if me == "" {
+	if err != nil || me == "" {
 		PhDevBin.Log.Error("Not logged in, cannot delete document")
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -218,11 +217,22 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	ses.Values["id"] = m.Id
-	// hash this -- verify it on each request
-	nonce := fmt.Sprintf("%s:%s:%s", m.Id, "some secret", "time rounded to hour")
+	nonce, _, _ := calculateNonce(m.Id)
 	ses.Values["nonce"] = nonce
 	ses.Save(req, res)
 	http.Redirect(res, req, "/me?postauth=1", http.StatusPermanentRedirect)
+}
+
+func calculateNonce(gid string) (string, string, error) {
+	t := time.Now()
+	now := t.Round(time.Hour).String()
+	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
+	current := fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)
+	previous := fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, prev)
+
+	// sha hash current/previous
+
+	return current, previous, nil
 }
 
 func getUserInfo(state string, code string) ([]byte, error) {
@@ -252,8 +262,9 @@ func GetUserID(req *http.Request) (string, error) {
 	}
 
 	if ses.Values["id"] == nil {
-		// PhDevBin.Log.Notice("GetUserID called for unauthenticated user")
-		return "", nil
+		err := errors.New("GetUserID called for unauthenticated user")
+		PhDevBin.Log.Notice(err)
+		return "", err
 	}
 
 	userID := ses.Values["id"].(string)
