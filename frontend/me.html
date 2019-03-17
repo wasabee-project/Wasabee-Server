@@ -22,12 +22,12 @@
 </li>
 <li class="list-group-item">Display Name: {{.IngressName}}
 <br/>
-<small>This is how you are shown on the maps. This information is not verified with ingress, do not trust that agents are who they show up as here.</small>
+<small>This is how you are shown on the maps. This information should only be trusted for agents who are verified at V.</small>
 </li>
 {{if .VVerified}}
-<li class="list-group-item">V Status: Verified </li>
+<li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Verified </li>
 {{else}}
-<li class="list-group-item">V Status: Not Verified <a href="{{ Webroot }}/login">Login again to recheck</a></li>
+<li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Not Verified <a href="{{ Webroot }}/login">Login again to recheck</a></li>
 <li class="list-group-item">
 <form action="/me" method="get">
 <input type="text" name="name" />
