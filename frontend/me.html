@@ -24,6 +24,7 @@
 <br/>
 <small>This is how you are shown on the maps. This information should only be trusted for agents who are verified at V.</small>
 </li>
+{{if VEnlOne}}
 {{if .VVerified}}
 <li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Verified </li>
 {{else}}
@@ -34,6 +35,7 @@
 <input type="submit" name="update" value="update display name" />
 </form>
 </li>
+{{end}}
 {{end}}
 </div>
 

@@ -173,6 +173,7 @@ func phdevBotTemplates(t *template.Template) error {
 		"TGRunning":    PhDevBin.TGRunning,
 		"Webroot":      PhDevBin.GetWebroot,
 		"WebAPIPath":   PhDevBin.GetWebAPIPath,
+		"VEnlOne":      PhDevBin.GetvEnlOne,
 	}
 	config.templateSet = template.New("").Funcs(funcMap)
 	if err != nil {

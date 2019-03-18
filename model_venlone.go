@@ -44,6 +44,7 @@ func SetVEnlOne(w string) {
 	vc.configured = true
 }
 
+// for templates
 func GetvEnlOne() bool {
 	return vc.configured
 }
@@ -82,6 +83,10 @@ func VSearchUser(gid string, res *Vresult) error {
 }
 
 func VUpdateUser(gid string, res *Vresult) error {
+	if vc.configured == false {
+		return errors.New("V API key not configured (VUpdateUser, should never happen)")
+	}
+
 	if res.Status == "ok" && res.Data.Agent != "" {
 		Log.Debug("Updating V data for ", res.Data.Agent)
 		_, err := db.Exec("UPDATE user SET iname = ?, VVerified = ?, Vblacklisted = ? WHERE gid = ?", res.Data.Agent, res.Data.Verified, res.Data.Blacklisted, gid)
