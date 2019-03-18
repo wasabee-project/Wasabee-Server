@@ -53,17 +53,17 @@ type Location struct {
 }
 
 type Transition struct {
-	Type     string  `json:"_type"`
-	Event    string  `json:"event"`
-	ID       float64 `json:"wtst"`
+	Type      string  `json:"_type"`
+	Event     string  `json:"event"`
+	ID        float64 `json:"wtst"`
 	TimeStamp float64 `json:"tst"`
-	Lat      float64 `json:"lat"`
-	Lon      float64 `json:"lon"`
-	Topic    string  `json:"topic"`
-	Trigger  string  `json:"t"`
-	Accuracy float64 `json:"acc"`
-	Tid      string  `json:"tid"`
-	Desc     string  `json:"desc"`
+	Lat       float64 `json:"lat"`
+	Lon       float64 `json:"lon"`
+	Topic     string  `json:"topic"`
+	Trigger   string  `json:"t"`
+	Accuracy  float64 `json:"acc"`
+	Tid       string  `json:"tid"`
+	Desc      string  `json:"desc"`
 }
 
 // every query in here should be prepared since these are called VERY frequently

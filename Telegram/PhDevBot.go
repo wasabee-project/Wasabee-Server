@@ -16,9 +16,9 @@ type TGConfiguration struct {
 	APIKey       string
 	FrontendPath string
 	// make this a []*template.Template, one for each language...
-	templateSet  *template.Template
-	teamKbd      tgbotapi.ReplyKeyboardMarkup
-	baseKbd      tgbotapi.ReplyKeyboardMarkup
+	templateSet *template.Template
+	teamKbd     tgbotapi.ReplyKeyboardMarkup
+	baseKbd     tgbotapi.ReplyKeyboardMarkup
 }
 
 var config TGConfiguration

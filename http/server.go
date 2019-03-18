@@ -22,7 +22,7 @@ type Configuration struct {
 	Root              string
 	path              string
 	domain            string
-	apipath			  string
+	apipath           string
 	oauthStateString  string
 	CertDir           string
 	GoogleClientID    string
@@ -49,7 +49,7 @@ func initializeConfig(initialConfig Configuration) {
 
 	config.Root = strings.TrimSuffix(config.Root, "/")
 
-    // this can be hardcoded for now
+	// this can be hardcoded for now
 	config.apipath = "api/v1"
 
 	// Extract "path" fron "root"
