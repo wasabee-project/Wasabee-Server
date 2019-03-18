@@ -1,2 +1,6 @@
 add CONSTRAINT `x` FOREIGN KEY (gid) REFERENCES table (gid) ON DELETE CASCADE
 and related foreign keys
+
+move frontend/ files to frontend/en/ and start supporting translations
+* done for Telegram, need work for https
+
