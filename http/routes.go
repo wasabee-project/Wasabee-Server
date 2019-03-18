@@ -1,6 +1,7 @@
 package PhDevHTTP
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
 	"time"
+	"crypto/sha256"
 )
 
 func setupRoutes(r *mux.Router) {
@@ -24,8 +26,8 @@ func setupRoutes(r *mux.Router) {
 	// Simple -- the old-style, encrypted, unauthenticated/authorized documents
 	r.HandleFunc("/simple", uploadRoute).Methods("POST")
 	r.HandleFunc("/simple/{document}", getRoute).Methods("GET")
-	r.HandleFunc("/simple/{document}", deleteRoute).Methods("DELETE")
-	r.HandleFunc("/simple/{document}", updateRoute).Methods("PUT")
+	// r.HandleFunc("/simple/{document}", deleteRoute).Methods("DELETE")
+	// r.HandleFunc("/simple/{document}", updateRoute).Methods("PUT")
 
 	// OwnTracks URL
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
@@ -39,11 +41,12 @@ func setupRoutes(r *mux.Router) {
 
 func setupAuthRoutes(r *mux.Router) {
 	// This block requires authentication
-	// Draw -- new-style, (XXX TO BE) parsed, not-encrypted, authenticated, authorized, more-functional
-	r.HandleFunc("/draw", uploadRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}", getRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}", deleteRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{document}", updateRoute).Methods("PUT")
+	// Draw -- new-style, parsed, not-encrypted, authenticated, authorized, more-functional
+	r.HandleFunc("/draw", uploadDrawRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}", getDrawRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}", deleteDrawRoute).Methods("DELETE")
+	r.HandleFunc("/draw/{document}", updateDrawRoute).Methods("PUT")
+	// r.HandleFunc("/draw/{document}/addlink/", updateDrawRoute).Methods("PUT")
 
 	// user info
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
@@ -94,54 +97,6 @@ func statusRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return
-}
-
-func getRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id := vars["document"]
-
-	doc, err := PhDevBin.Request(id)
-	if err != nil {
-		notFoundRoute(res, req)
-	}
-
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(res, "%s", doc.Content)
-}
-
-func deleteRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id := vars["document"]
-
-	// this should go away
-	me, err := GetUserID(req)
-	if err != nil || me == "" {
-		PhDevBin.Log.Error("Not logged in, cannot delete document")
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	doc, err := PhDevBin.Request(id)
-	if err != nil {
-		PhDevBin.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError) // should be 404?
-		return
-	}
-	if me != doc.UserID {
-		PhDevBin.Log.Errorf("Attempt to delete document owned by someone else (%s, %s)", me, doc.UserID)
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	err = PhDevBin.Delete(id)
-	if err != nil {
-		PhDevBin.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(res, "OK: document removed.\n")
 }
 
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
@@ -227,12 +182,9 @@ func calculateNonce(gid string) (string, string, error) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
 	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
-	current := fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)
-	previous := fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, prev)
-
-	// sha hash current/previous
-
-	return current, previous, nil
+	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)))
+	previous := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, prev)))
+	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:]), nil
 }
 
 func getUserInfo(state string, code string) ([]byte, error) {

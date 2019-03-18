@@ -193,9 +193,6 @@ func authMW(next http.Handler) http.Handler {
 		gid = id.(string)
 
 		nonce, pNonce, _ := calculateNonce(gid)
-		PhDevBin.Log.Debug("expected: ", nonce)
-		PhDevBin.Log.Debug("also accept: ", pNonce)
-
 		in, ok := ses.Values["nonce"]
 		if ok != true || in == nil {
 			PhDevBin.Log.Error("gid set, but nonce not")
@@ -203,17 +200,14 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 		inNonce := in.(string)
-		PhDevBin.Log.Debug("client sent: ", inNonce)
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				// session timed out
-				PhDevBin.Log.Debug("session timed out")
+				PhDevBin.Log.Debug("Session timed out")
 				ses.Values["nonce"] = "unset"
 				ses.Save(req, res)
 			} else {
-				// half-way to timeout
-				PhDevBin.Log.Debug("updating to new nonce")
+				PhDevBin.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
 				ses.Save(req, res)
 			}
