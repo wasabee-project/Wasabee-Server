@@ -106,7 +106,17 @@ func PhDevBot(init TGConfiguration) error {
 }
 
 func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, strings.TrimSpace(inMsg.Message.Text))
+	var lockey string
+	if inMsg.Message.IsCommand() {
+		tokens := strings.Split(inMsg.Message.Text, " ")
+		if len(tokens) == 2 {
+			lockey = tokens[1]
+		}
+	} else {
+		lockey = inMsg.Message.Text
+	}
+	strings.TrimSpace(lockey)
+	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, lockey)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		tmp, _ := phdevBotTemplateExecute("InitOneFail", nil)
@@ -119,10 +129,20 @@ func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) e
 }
 
 func phdevBotNewUser_Verify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, strings.TrimSpace(inMsg.Message.Text))
+	var authtoken string
+	if inMsg.Message.IsCommand() {
+		tokens := strings.Split(inMsg.Message.Text, " ")
+		if len(tokens) == 2 {
+			authtoken = tokens[1]
+		}
+	} else {
+		authtoken = inMsg.Message.Text
+	}
+	strings.TrimSpace(authtoken)
+	err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, authtoken)
 	if err != nil {
 		PhDevBin.Log.Error(err)
-		tmp, _ := phdevBotTemplateExecute("InitOneFail", nil)
+		tmp, _ := phdevBotTemplateExecute("InitTwoFail", nil)
 		msg.Text = tmp
 	} else {
 		tmp, _ := phdevBotTemplateExecute("InitTwoSuccess", nil)

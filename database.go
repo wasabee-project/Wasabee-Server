@@ -40,7 +40,6 @@ func Connect(uri string) error {
 		Log.Noticef("Setting up `documents` table...")
 		_, err := db.Exec(`CREATE TABLE documents (
 			id varchar(64) PRIMARY KEY,
-			uploader varchar(32) NULL DEFAULT NULL,
 			content longblob NOT NULL,
 			upload datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			expiration datetime NULL DEFAULT NULL,

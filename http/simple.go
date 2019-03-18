@@ -105,15 +105,6 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	userID, err := GetUserID(req)
-	if err != nil {
-		PhDevBin.Log.Notice(err)
-		return
-	}
-	if userID != "" {
-		doc.UserID = userID
-	}
-
 	err = PhDevBin.Store(&doc)
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
 		res.WriteHeader(http.StatusBadRequest)

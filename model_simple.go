@@ -21,7 +21,6 @@ type Document struct {
 	Upload     time.Time
 	Expiration time.Time
 	Views      int
-	UserID     string
 }
 
 // Store a document object in the database.
@@ -69,56 +68,13 @@ func Store(document *Document) error {
 
 	// Write the document to the database
 	_, err = db.Exec(
-		"INSERT INTO documents (id, uploader, content, upload, expiration, views) VALUES (?, ?, ?, ?, ?, 0)",
+		"INSERT INTO documents (id, content, upload, expiration, views) VALUES (?, ?, ?, ?, 0)",
 		hex.EncodeToString(databaseID[:]),
-		document.UserID,
 		string(data),
 		document.Upload.UTC().Format("2006-01-02 15:04:05"), // don't use NOW() since this is used in the key...
 		expiration)
 	if err != nil {
 		Log.Error(err)
-		return err
-	}
-	return nil
-}
-
-// Update a document object in the database.
-func Update(document *Document) error {
-	// Round the timestamps on the object. Won't affect the database, but we want consistency.
-	document.Upload = time.Now().Round(time.Second)
-
-	// Normalize new lines
-	document.Content = strings.Trim(strings.Replace(strings.Replace(document.Content, "\r\n", "\n", -1), "\r", "\n", -1), "\n") + "\n"
-
-	// Don't accept binary files
-	if strings.Contains(document.Content, "\x00") {
-		return errors.New("file contains 0x00 bytes")
-	}
-
-	escaped := ""
-	escaped = EscapeHTML(document.Content)
-
-	// Server-Side Encryption
-	key, err := scrypt.Key([]byte(document.ID), []byte(document.Upload.UTC().Format("2006-01-02 15:04:05")), 16384, 8, 1, 24)
-	if err != nil {
-		Log.Errorf("Invalid script parameters: %s", err)
-	}
-	data, err := encrypt([]byte(escaped), key)
-	if err != nil {
-		Log.Errorf("AES error: %s", err)
-		return err
-	}
-
-	databaseID := sha256.Sum256([]byte(document.ID))
-
-	// Write the document to the database
-	_, err = db.Exec(
-		"UPDATE documents SET content=?, upload=? WHERE id=? AND uploader=?",
-		string(data),
-		document.Upload.UTC().Format("2006-01-02 15:04:05"),
-		hex.EncodeToString(databaseID[:]),
-		document.UserID)
-	if err != nil {
 		return err
 	}
 	return nil
@@ -179,15 +135,4 @@ func Request(id string) (Document, error) {
 
 	doc.Content = StripHTML(doc.Content)
 	return doc, nil
-}
-
-func Delete(id string) error {
-	databaseID := sha256.Sum256([]byte(id))
-	_, err := db.Exec("DELETE FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:]))
-	if err != nil {
-		if err.Error() != "sql: no rows in result set" {
-			Log.Warningf("Error deleting document: %s", err)
-		}
-	}
-	return err
 }
