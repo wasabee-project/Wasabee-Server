@@ -2,7 +2,6 @@ package PhDevBin
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 )
 
@@ -40,14 +39,12 @@ func InitUser(gid string) error {
 	if err != nil {
 		Log.Notice(err)
 	}
-	s, _ := json.MarshalIndent(&vdata, "", "  ")
-	Log.Debug(string(s))
 
 	var tmpName string
 	if vdata.Data.Agent != "" {
 		tmpName = vdata.Data.Agent
 	} else {
-		tmpName = "Agent_" + gid[:5]
+		tmpName = "Agent_" + gid[:8]
 	}
 
 	lockey, err := GenerateSafeName()
