@@ -6,19 +6,19 @@ import (
 	"errors"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
-	"io/ioutil"
 )
 
 type TGConfiguration struct {
 	APIKey       string
 	FrontendPath string
-	templateSet map[string]*template.Template
-	teamKbd     tgbotapi.ReplyKeyboardMarkup
-	baseKbd     tgbotapi.ReplyKeyboardMarkup
+	templateSet  map[string]*template.Template
+	teamKbd      tgbotapi.ReplyKeyboardMarkup
+	baseKbd      tgbotapi.ReplyKeyboardMarkup
 }
 
 var config TGConfiguration
@@ -51,19 +51,18 @@ func PhDevBot(init TGConfiguration) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-
 	updates, err := bot.GetUpdatesChan(u)
 	for update := range updates {
 		if update.Message == nil {
 			continue
 		}
 
-		PhDevBin.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+		// PhDevBin.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		// s, _ := json.MarshalIndent(update.Message, "", "  ")
 		// PhDevBin.Log.Debug(string(s))
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-		PhDevBin.Log.Debug("Language: ", update.Message.From.LanguageCode)
+		// PhDevBin.Log.Debug("Language: ", update.Message.From.LanguageCode)
 		defaultReply, err := phdevBotTemplateExecute("default", update.Message.From.LanguageCode, nil)
 		msg.Text = defaultReply
 		msg.ParseMode = "MarkDown"
@@ -163,7 +162,7 @@ func phdevBotTemplates(t map[string]*template.Template) error {
 	}
 	config.FrontendPath = frontendPath
 
-	PhDevBin.Log.Debugf("Loading Template function map")
+	PhDevBin.Log.Debugf("Building Template function map")
 	funcMap := template.FuncMap{
 		"TGGetBotName": PhDevBin.TGGetBotName,
 		"TGGetBotID":   PhDevBin.TGGetBotID,
@@ -185,10 +184,10 @@ func phdevBotTemplates(t map[string]*template.Template) error {
 
 	for _, f := range files {
 		lang := f.Name()
-        if f.IsDir() && len(lang) == 2 {
-	       config.templateSet[lang] = template.New("").Funcs(funcMap) // one map for all languages
-	       config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.tg")
-	       PhDevBin.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
+		if f.IsDir() && len(lang) == 2 {
+			config.templateSet[lang] = template.New("").Funcs(funcMap) // one funcMap for all languages
+			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.tg")
+			PhDevBin.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}
 	}
 
@@ -196,11 +195,11 @@ func phdevBotTemplates(t map[string]*template.Template) error {
 }
 
 func phdevBotTemplateExecute(name, lang string, data interface{}) (string, error) {
-    if lang == "" {
+	if lang == "" {
 		lang = "en"
 	}
 
-    _, ok := config.templateSet[lang]
+	_, ok := config.templateSet[lang]
 	if ok == false {
 		lang = "en" // default to english if the map doesn't exist
 	}
@@ -208,6 +207,7 @@ func phdevBotTemplateExecute(name, lang string, data interface{}) (string, error
 	var tpBuffer bytes.Buffer
 	if err := config.templateSet[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
 		PhDevBin.Log.Notice(err)
+		// XXX if lang != "en" { (?retry in en? - the template may be broken) }
 		return "", err
 	}
 	return tpBuffer.String(), nil
@@ -275,7 +275,6 @@ func phdevBotTeamKeyboard(gid string) (tgbotapi.ReplyKeyboardMarkup, error) {
 // This is where command processing takes place
 func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid string) error {
 	if inMsg.Message.IsCommand() {
-		PhDevBin.Log.Debug("Found command", inMsg.Message.Command())
 		switch inMsg.Message.Command() {
 		case "start":
 			tmp, _ := phdevBotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
@@ -305,8 +304,6 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 		if x+1 < len(inMsg.Message.Text) {
 			name = inMsg.Message.Text[x+1:]
 		}
-		PhDevBin.Log.Debugf("Command [%s]", cmd)
-		PhDevBin.Log.Debugf("name [%s]", name)
 		switch cmd {
 		case "Home":
 			msg.ReplyMarkup = config.baseKbd
@@ -345,7 +342,6 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 	}
 
 	if inMsg.Message.Location != nil {
-		PhDevBin.Log.Debug("Got TG Location")
 		PhDevBin.UserLocation(gid,
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
