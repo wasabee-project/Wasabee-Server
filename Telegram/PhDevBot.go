@@ -10,13 +10,13 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"io/ioutil"
 )
 
 type TGConfiguration struct {
 	APIKey       string
 	FrontendPath string
-	// make this a []*template.Template, one for each language...
-	templateSet *template.Template
+	templateSet map[string]*template.Template
 	teamKbd     tgbotapi.ReplyKeyboardMarkup
 	baseKbd     tgbotapi.ReplyKeyboardMarkup
 }
@@ -51,11 +51,6 @@ func PhDevBot(init TGConfiguration) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	defaultReply, err := phdevBotTemplateExecute("default", nil)
-	if err != nil {
-		PhDevBin.Log.Critical(err)
-		return (err)
-	}
 
 	updates, err := bot.GetUpdatesChan(u)
 	for update := range updates {
@@ -68,6 +63,8 @@ func PhDevBot(init TGConfiguration) error {
 		// PhDevBin.Log.Debug(string(s))
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+		PhDevBin.Log.Debug("Language: ", update.Message.From.LanguageCode)
+		defaultReply, err := phdevBotTemplateExecute("default", update.Message.From.LanguageCode, nil)
 		msg.Text = defaultReply
 		msg.ParseMode = "MarkDown"
 		// s, _ := json.MarshalIndent(msg, "", "  ")
@@ -120,10 +117,10 @@ func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) e
 	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, lockey)
 	if err != nil {
 		PhDevBin.Log.Error(err)
-		tmp, _ := phdevBotTemplateExecute("InitOneFail", nil)
+		tmp, _ := phdevBotTemplateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
-		tmp, _ := phdevBotTemplateExecute("InitOneSuccess", nil)
+		tmp, _ := phdevBotTemplateExecute("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	}
 	return err
@@ -143,16 +140,16 @@ func phdevBotNewUser_Verify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update)
 	err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, authtoken)
 	if err != nil {
 		PhDevBin.Log.Error(err)
-		tmp, _ := phdevBotTemplateExecute("InitTwoFail", nil)
+		tmp, _ := phdevBotTemplateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
-		tmp, _ := phdevBotTemplateExecute("InitTwoSuccess", nil)
+		tmp, _ := phdevBotTemplateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	}
 	return err
 }
 
-func phdevBotTemplates(t *template.Template) error {
+func phdevBotTemplates(t map[string]*template.Template) error {
 	if config.FrontendPath == "" {
 		err := errors.New("FrontendPath not configured")
 		PhDevBin.Log.Critical(err)
@@ -175,20 +172,41 @@ func phdevBotTemplates(t *template.Template) error {
 		"WebAPIPath":   PhDevBin.GetWebAPIPath,
 		"VEnlOne":      PhDevBin.GetvEnlOne,
 	}
-	config.templateSet = template.New("").Funcs(funcMap)
+	config.templateSet = make(map[string]*template.Template)
+
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
 	PhDevBin.Log.Notice("Including frontend telegram templates from: ", config.FrontendPath)
-	config.templateSet.ParseGlob(config.FrontendPath + "/*.tg")
-	PhDevBin.Log.Debug(config.templateSet.DefinedTemplates())
+	files, err := ioutil.ReadDir(config.FrontendPath)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+	}
+
+	for _, f := range files {
+		lang := f.Name()
+        if f.IsDir() && len(lang) == 2 {
+	       config.templateSet[lang] = template.New("").Funcs(funcMap) // one map for all languages
+	       config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.tg")
+	       PhDevBin.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
+		}
+	}
 
 	return nil
 }
 
-func phdevBotTemplateExecute(name string, data interface{}) (string, error) {
+func phdevBotTemplateExecute(name, lang string, data interface{}) (string, error) {
+    if lang == "" {
+		lang = "en"
+	}
+
+    _, ok := config.templateSet[lang]
+	if ok == false {
+		lang = "en" // default to english if the map doesn't exist
+	}
+
 	var tpBuffer bytes.Buffer
-	if err := config.templateSet.ExecuteTemplate(&tpBuffer, name, data); err != nil {
+	if err := config.templateSet[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
 		PhDevBin.Log.Notice(err)
 		return "", err
 	}
@@ -260,15 +278,15 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 		PhDevBin.Log.Debug("Found command", inMsg.Message.Command())
 		switch inMsg.Message.Command() {
 		case "start":
-			tmp, _ := phdevBotTemplateExecute("help", nil)
+			tmp, _ := phdevBotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		case "help":
-			tmp, _ := phdevBotTemplateExecute("help", nil)
+			tmp, _ := phdevBotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		default:
-			tmp, _ := phdevBotTemplateExecute("default", nil)
+			tmp, _ := phdevBotTemplateExecute("default", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		}
@@ -298,21 +316,21 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 			msg.ReplyMarkup = tmp
 			msg.Text = "Teams"
 		case "On:":
-			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", tStruct{
+			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "On",
 				Team:  name,
 			})
 			PhDevBin.SetUserTeamStateName(gid, name, "On")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Off:":
-			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", tStruct{
+			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Off",
 				Team:  name,
 			})
 			PhDevBin.SetUserTeamStateName(gid, name, "Off")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Primary:":
-			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", tStruct{
+			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Primary",
 				Team:  name,
 			})
