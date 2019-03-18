@@ -36,26 +36,27 @@ type Waypoint struct {
 
 // location
 type Location struct {
-	Lat      float64 `json:"lat"`
-	Lon      float64 `json:"lon"`
-	Type     string  `json:"_type"`
-	Topic    string  `json:"topic"`
-	Tid      string  `json:"tid"`
-	T        string  `json:"t"`
-	Conn     string  `json:"conn"`
-	Altitude float64 `json:"alt"`
-	Battery  float64 `json:"batt"`
-	Accuracy float64 `json:"acc"`
-	Vac      float64 `json:"vac"`
-	Tst      float64 `json:"tst"`
-	Vel      float64 `json:"vel"`
+	Type      string   `json:"_type"`
+	Lat       float64  `json:"lat"`
+	Lon       float64  `json:"lon"`
+	Topic     string   `json:"topic,omitempty"`
+	ShortName string   `json:"tid"`
+	T         string   `json:"t,omitempty"`
+	Conn      string   `json:"conn,omitempty"`
+	Altitude  float64  `json:"alt,omitempty"`
+	Battery   float64  `json:"batt,omitempty"`
+	Accuracy  float64  `json:"acc,omitempty"`
+	Vac       float64  `json:"vac,omitempty"`
+	TimeStamp float64  `json:"tst,omitempty"`
+	Velocity  float64  `json:"vel,omitempty"`
+	InRegions []string `json:"inregions,omitempty"`
 }
 
 type Transition struct {
 	Type     string  `json:"_type"`
 	Event    string  `json:"event"`
 	ID       float64 `json:"wtst"`
-	Time     float64 `json:"tst"`
+	TimeStamp float64 `json:"tst"`
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lon"`
 	Topic    string  `json:"topic"`
@@ -68,8 +69,8 @@ type Transition struct {
 // every query in here should be prepared since these are called VERY frequently
 // data is vague on prepared statement performance inprovement -- do real testing
 func OwnTracksUpdate(gid string, otdata json.RawMessage, lat, lon float64) error {
-	// could call ownTracksTidy on the way in ...
-	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", string(otdata), gid)
+	clean, _ := ownTracksTidy(gid, string(otdata))
+	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", string(clean), gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -81,7 +82,6 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var locs []json.RawMessage
 	var tmp sql.NullString
 
-	// this does not take into account location changes made from other sources (e.g. Telegram/https)
 	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, userteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') AND ut.state != 'Off' AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
 	if err != nil {
 		Log.Error(err)
@@ -95,8 +95,9 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 			return json.RawMessage(""), err
 		}
 		if tmp.Valid && tmp.String != "{ }" {
-			clean, _ := ownTracksTidy(gid, tmp.String)
-			locs = append(locs, clean)
+			// clean, _ := ownTracksTidy(gid, tmp.String)
+			// locs = append(locs, clean)
+			locs = append(locs, json.RawMessage(tmp.String))
 		}
 	}
 	s, _ := json.Marshal(locs)
@@ -169,9 +170,45 @@ func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessag
 }
 
 func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
-	// if we need -- parse and clean the data, for now just returning it is fine
-	return json.RawMessage(otdata), nil
+	Log.Debug("Inbound: ", otdata)
+
+	var l Location
+	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
+		Log.Notice(err)
+		return json.RawMessage(otdata), err
+	}
+
+	redo, err := json.Marshal(l)
+	if err != nil {
+		Log.Notice(err)
+		return json.RawMessage(otdata), err
+	}
+	Log.Debug("Outbound: ", string(redo))
+
+	return redo, nil
 }
+
+/*
+func ownTracksExternalUpdate(gid, lat, lon string) (json.RawMessage, error) {
+    get from db ...
+	Log.Debug("Inbound: ", otdata)
+
+	var l Location
+	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
+		Log.Notice(err)
+		return json.RawMessage(otdata), err
+	}
+	update lat/lon/tst...
+
+	redo, err := json.Marshal(l)
+	if err != nil {
+		Log.Notice(err)
+		return json.RawMessage(otdata), err
+	}
+	Log.Debug("Outbound: ", string(redo))
+    write back to db...
+	return redo, nil
+} */
 
 func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, error) {
 	Log.Debug(string(wp))

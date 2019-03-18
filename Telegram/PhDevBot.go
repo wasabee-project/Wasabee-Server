@@ -15,6 +15,7 @@ import (
 type TGConfiguration struct {
 	APIKey       string
 	FrontendPath string
+	// make this a []*template.Template, one for each language...
 	templateSet  *template.Template
 	teamKbd      tgbotapi.ReplyKeyboardMarkup
 	baseKbd      tgbotapi.ReplyKeyboardMarkup
@@ -171,6 +172,7 @@ func phdevBotTemplates(t *template.Template) error {
 		"TGGetBotID":   PhDevBin.TGGetBotID,
 		"TGRunning":    PhDevBin.TGRunning,
 		"Webroot":      PhDevBin.GetWebroot,
+		"WebAPIPath":   PhDevBin.GetWebAPIPath,
 	}
 	config.templateSet = template.New("").Funcs(funcMap)
 	if err != nil {

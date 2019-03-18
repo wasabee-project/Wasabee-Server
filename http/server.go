@@ -22,6 +22,7 @@ type Configuration struct {
 	Root              string
 	path              string
 	domain            string
+	apipath			  string
 	oauthStateString  string
 	CertDir           string
 	GoogleClientID    string
@@ -48,6 +49,9 @@ func initializeConfig(initialConfig Configuration) {
 
 	config.Root = strings.TrimSuffix(config.Root, "/")
 
+    // this can be hardcoded for now
+	config.apipath = "api/v1"
+
 	// Extract "path" fron "root"
 	rootParts := strings.SplitAfterN(config.Root, "/", 4) // https://example.org/[grab this part]
 	config.path = ""
@@ -61,6 +65,7 @@ func initializeConfig(initialConfig Configuration) {
 
 	// used for templates
 	PhDevBin.SetWebroot(config.Root)
+	PhDevBin.SetWebAPIPath(config.apipath)
 
 	if config.GoogleClientID == "" {
 		PhDevBin.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
@@ -109,6 +114,7 @@ func initializeConfig(initialConfig Configuration) {
 		"TGGetBotID":   PhDevBin.TGGetBotID,
 		"TGRunning":    PhDevBin.TGRunning,
 		"Webroot":      PhDevBin.GetWebroot,
+		"WebAPIPath":   PhDevBin.GetWebAPIPath,
 	}
 	config.templateSet = template.New("").Funcs(funcMap)
 	if err != nil {

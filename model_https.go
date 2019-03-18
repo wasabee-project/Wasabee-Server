@@ -1,19 +1,26 @@
 package PhDevBin
 
-var webroot string
-var httpsrunning bool
+var HTTPConfig struct {
+	webroot string
+	apipath string
+}
 
-// currently only used for template functions
 // called at https startup
 func SetWebroot(w string) {
-	webroot = w
-	tgrunning = true
+	HTTPConfig.webroot = w
 }
 
 // called from templates
 func GetWebroot() (string, error) {
-	if tgrunning == false {
-		return "", nil
-	}
-	return webroot, nil
+	return HTTPConfig.webroot, nil
+}
+
+// called at https startup
+func SetWebAPIPath(a string) {
+	HTTPConfig.apipath = a
+}
+
+// called from templates
+func GetWebAPIPath() (string, error) {
+	return HTTPConfig.apipath, nil
 }

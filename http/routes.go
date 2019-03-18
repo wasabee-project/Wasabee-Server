@@ -40,11 +40,11 @@ func setupRoutes(r *mux.Router) {
 func setupAuthRoutes(r *mux.Router) {
 	// This block requires authentication
 	// Draw -- new-style, parsed, not-encrypted, authenticated, authorized, more-functional
-	r.HandleFunc("/draw", uploadDrawRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}", getDrawRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}", deleteDrawRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{document}", updateDrawRoute).Methods("PUT")
-	// r.HandleFunc("/draw/{document}/addlink/", updateDrawRoute).Methods("PUT")
+	r.HandleFunc("/api/v1/draw", uploadDrawRoute).Methods("POST")
+	r.HandleFunc("/api/v1/draw/{document}", getDrawRoute).Methods("GET")
+	r.HandleFunc("/api/v1/draw/{document}", deleteDrawRoute).Methods("DELETE")
+	r.HandleFunc("/api/v1/draw/{document}", updateDrawRoute).Methods("PUT")
+	// r.HandleFunc("/api/v1/draw/{document}/addlink/", updateDrawRoute).Methods("PUT")
 
 	// user info
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
@@ -56,16 +56,16 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
 
 	// teams
-	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
-	r.HandleFunc("/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")  // invite user to team
-	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every user/target on team (team member/owner)
-	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
-	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely (owner)
-	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit (owner)
-	r.HandleFunc("/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team (owner)
-	// r.HandleFunc("/team/{team}/{key}", setUserTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
-	r.HandleFunc("/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
-	r.HandleFunc("/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
+	r.HandleFunc("/api/v1/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
+	r.HandleFunc("/api/v1/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")  // invite user to team
+	r.HandleFunc("/api/v1/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every user/target on team (team member/owner)
+	r.HandleFunc("/api/v1/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
+	r.HandleFunc("/api/v1/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely (owner)
+	r.HandleFunc("/api/v1/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit (owner)
+	r.HandleFunc("/api/v1/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team (owner)
+	// r.HandleFunc("/api/v1/team/{team}/{key}", setUserTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
+	r.HandleFunc("/api/v1/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
+	r.HandleFunc("/api/v1/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
 
 	// doesn't need to be authenticated, but why not?
 	r.HandleFunc("/status", statusRoute).Methods("GET")
@@ -140,7 +140,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// XXX need SOME smarts here; check to see if gid already exists...
 	err = PhDevBin.InitUser(m.Id)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
@@ -173,7 +172,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	nonce, _, _ := calculateNonce(m.Id)
 	ses.Values["nonce"] = nonce
 	ses.Save(req, res)
-	http.Redirect(res, req, "/me?postauth=1", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/me?a=1", http.StatusPermanentRedirect)
 }
 
 func calculateNonce(gid string) (string, string, error) {
