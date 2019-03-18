@@ -1,16 +1,15 @@
 package PhDevHTTP
 
 import (
-// "encoding/json"
- "net/http"
-
-// "errors"
-// "github.com/cloudkucooland/PhDevBin"
-// "github.com/gorilla/mux"
+	// "encoding/json"
+	"net/http"
+	// "errors"
+	// "github.com/cloudkucooland/PhDevBin"
+	// "github.com/gorilla/mux"
 )
 
 func uploadDrawRoute(res http.ResponseWriter, req *http.Request) {
-    return
+	return
 }
 
 func getDrawRoute(res http.ResponseWriter, req *http.Request) {

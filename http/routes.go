@@ -9,11 +9,11 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"crypto/sha256"
 	"errors"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
 	"time"
-	"crypto/sha256"
 )
 
 func setupRoutes(r *mux.Router) {
@@ -26,8 +26,6 @@ func setupRoutes(r *mux.Router) {
 	// Simple -- the old-style, encrypted, unauthenticated/authorized documents
 	r.HandleFunc("/simple", uploadRoute).Methods("POST")
 	r.HandleFunc("/simple/{document}", getRoute).Methods("GET")
-	// r.HandleFunc("/simple/{document}", deleteRoute).Methods("DELETE")
-	// r.HandleFunc("/simple/{document}", updateRoute).Methods("PUT")
 
 	// OwnTracks URL
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")

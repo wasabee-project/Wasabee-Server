@@ -54,7 +54,6 @@ func VSearchUser(gid string, res *Vresult) error {
 		return errors.New("V API key not configured")
 	}
 	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, gid, vc.vAPIKey)
-	// Log.Debug(url)
 	resp, err := http.Get(url)
 	if err != nil {
 		Log.Error(err)
@@ -67,7 +66,7 @@ func VSearchUser(gid string, res *Vresult) error {
 		return err
 	}
 
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		Log.Error(err)
@@ -78,22 +77,19 @@ func VSearchUser(gid string, res *Vresult) error {
 		Log.Info(err)
 		return err
 	}
-	Log.Debug(res.Data.Agent)
+	// Log.Debug(res.Data.Agent)
 	return nil
 }
 
 func VUpdateUser(gid string, res *Vresult) error {
-	Log.Debug("Updating V data for ", gid)
-
-	if res.Data.Agent != "" {
+	if res.Status == "ok" && res.Data.Agent != "" {
+		Log.Debug("Updating V data for ", res.Data.Agent)
 		_, err := db.Exec("UPDATE user SET iname = ?, VVerified = ?, Vblacklisted = ? WHERE gid = ?", res.Data.Agent, res.Data.Verified, res.Data.Blacklisted, gid)
 
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-	} else {
-		Log.Debug("Not verified at V, nothing to update")
 	}
 	return nil
 }

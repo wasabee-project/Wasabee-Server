@@ -24,12 +24,6 @@ type UserData struct {
 		ID   string
 		Name string
 	}
-	OwnedDraws []struct {
-		Hash       string
-		UploadTime string
-		Expiration string
-		Views      string
-	}
 	Telegram struct {
 		UserName  string
 		ID        int
@@ -229,50 +223,6 @@ func GetUserData(gid string, ud *UserData) error {
 			ownedTeam.Name = ""
 		}
 		ud.OwnedTeams = append(ud.OwnedTeams, ownedTeam)
-	}
-
-	var tmpDoc struct {
-		Hash       string
-		UploadTime string
-		Expiration string
-		Views      string
-	}
-	rows1, err := db.Query("SELECT id, upload, expiration, views FROM documents WHERE uploader = ?", gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	// XXX IIRC none of these can be null, just go directly to tmpDoc
-	var docID, upload, expiration, views sql.NullString
-	defer rows1.Close()
-	for rows1.Next() {
-		err := rows1.Scan(&docID, &upload, &expiration, &views)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		if docID.Valid {
-			tmpDoc.Hash = docID.String
-		} else {
-			tmpDoc.Hash = ""
-		}
-		if upload.Valid {
-			tmpDoc.UploadTime = upload.String
-		} else {
-			tmpDoc.UploadTime = ""
-		}
-		if expiration.Valid {
-			tmpDoc.Expiration = expiration.String
-		} else {
-			tmpDoc.Expiration = ""
-		}
-		if views.Valid {
-			tmpDoc.Views = views.String
-		} else {
-			tmpDoc.Views = ""
-		}
-		ud.OwnedDraws = append(ud.OwnedDraws, tmpDoc)
 	}
 
 	// XXX cannot be null -- just JOIN in main query
