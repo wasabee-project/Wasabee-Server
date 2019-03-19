@@ -69,6 +69,9 @@ func setupAuthRoutes(r *mux.Router) {
 
 	// doesn't need to be authenticated, but why not?
 	r.HandleFunc("/status", statusRoute).Methods("GET")
+
+	// server control functions
+	r.HandleFunc("/api/v1/templates/refresh", templateUpdateRoute).Methods("GET") // trigger the server refresh of the template files
 }
 
 func optionsRoute(res http.ResponseWriter, req *http.Request) {
@@ -94,6 +97,18 @@ func statusRoute(res http.ResponseWriter, req *http.Request) {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
+	return
+}
+
+func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
+	// maybe show some interesting numbers, active agents, etc...
+	err := phDevBinHTTPSTemplateConfig()
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
+	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	fmt.Fprintf(res, "Templates reloaded")
 	return
 }
 
