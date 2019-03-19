@@ -60,7 +60,7 @@ func Connect(uri string) error {
 			lockey varchar(64) NULL DEFAULT NULL,
 			OTpassword varchar(64) NULL DEFAULT NULL,
 			VVerified BOOLEAN NOT NULL DEFAULT 0,
-			Vblacklisted BOOLEAN NOT NULL DEFAULT 0
+			VBlacklisted BOOLEAN NOT NULL DEFAULT 0
 		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err
@@ -71,16 +71,17 @@ func Connect(uri string) error {
 	db.QueryRow("SHOW TABLES LIKE 'locations'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `locations` table...")
-		_, err := db.Exec(`CREATE TABLE locations(
-			gid varchar(32) PRIMARY KEY,
+		_, err := db.Exec(`CREATE TABLE locations (
+			gid varchar(32) COLLATE utf8mb4_bin NOT NULL,
 			upTime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			loc POINT
-		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+			loc point NOT NULL,
+			PRIMARY KEY (gid),
+			SPATIAL KEY sp (loc)
+	 	) ENGINE=Aria DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin PAGE_CHECKSUM=1`)
 		if err != nil {
 			return err
 		}
 	}
-	// adding a SPATIAL index on loc would require Aria format instead of Innodb, but we don't query on it (yet) so don't worry (yet)
 
 	table = ""
 	db.QueryRow("SHOW TABLES LIKE 'teams'").Scan(&table)
@@ -129,18 +130,19 @@ func Connect(uri string) error {
 	db.QueryRow("SHOW TABLES LIKE 'target'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `target` table...")
-		_, err := db.Exec(`CREATE TABLE target(
-		CREATE TABLE target (
-			Id bigint NOT NULL,
-			teamID varchar(64) NOT NULL,
-			loc POINT NOT NULL,
-			radius int UNSIGNED NOT NULL DEFAULT 60,
-			type varchar(32) NOT NULL DEFAULT "target",
-			name varchar(128),
+		_, err := db.Exec(`CREATE TABLE target (
+			Id bigint(20) NOT NULL,
+			TeamID varchar(64) NOT NULL,
+			loc point NOT NULL,
+			radius int(10) unsigned NOT NULL DEFAULT '60',
+			type varchar(32) NOT NULL DEFAULT 'target',
+			name varchar(128) DEFAULT NULL,
 			expiration datetime NOT NULL,
-			linkdst varchar(128),
-			KEY (teamID)
-		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
+			linkdst varchar(128) DEFAULT NULL,
+			PRIMARY KEY (Id),
+			KEY teamID (teamID),
+			SPATIAL KEY sp (loc)
+		) ENGINE=Aria DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1`)
 		if err != nil {
 			return err
 		}
