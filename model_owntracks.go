@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"fmt"
+	"time"
 )
 
 // a command to set waypoints
@@ -170,45 +172,53 @@ func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessag
 }
 
 func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
-	Log.Debug("Inbound: ", otdata)
-
 	var l Location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
 		Log.Notice(err)
 		return json.RawMessage(otdata), err
 	}
 
+	// rewrite topic to be owntracks/agent/device-id ?
+
 	redo, err := json.Marshal(l)
 	if err != nil {
 		Log.Notice(err)
 		return json.RawMessage(otdata), err
 	}
-	Log.Debug("Outbound: ", string(redo))
 
 	return redo, nil
 }
 
-/*
-func ownTracksExternalUpdate(gid, lat, lon string) (json.RawMessage, error) {
-    get from db ...
-	Log.Debug("Inbound: ", otdata)
+func ownTracksExternalUpdate(gid, lat, lon string) error {
+    var otdata string
+    err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
 
 	var l Location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
 		Log.Notice(err)
-		return json.RawMessage(otdata), err
+		return  err
 	}
-	update lat/lon/tst...
+
+	l.Lat, _ = strconv.ParseFloat(lat, 64)
+	l.Lon, _ = strconv.ParseFloat(lon, 64)
+	l.Topic = fmt.Sprintf("owntracks/%s/http", gid)
+
+	t := time.Now()
+	l.TimeStamp = float64(t.Unix())
 
 	redo, err := json.Marshal(l)
 	if err != nil {
 		Log.Notice(err)
-		return json.RawMessage(otdata), err
+		return  err
 	}
-	Log.Debug("Outbound: ", string(redo))
-    write back to db...
-	return redo, nil
-} */
+
+	_, err = db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", redo, gid)
+	if err != nil {
+		Log.Notice(err)
+		return  err
+	}
+	return nil
+}
 
 func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, error) {
 	Log.Debug(string(wp))
