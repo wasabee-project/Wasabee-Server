@@ -1,0 +1,41 @@
+{{define "default"}}
+Por favor refiérase a {{ Webroot }}/me para más detalles.
+{{end}}
+
+{{define "help"}}
+Por favor refiérase a {{ Webroot }}/me para más detalles.
+{{end}}
+
+{{define "InitOneFail"}}
+Por favor envíe su Clave de Ubicación Compartida (Share Location Key) para iniciar la verificación.
+
+Por favor refiérase a {{ Webroot }}/me para más detalles.
+{{end}}
+
+{{define "InitOneSuccess"}}
+*Has enviado tu Clave de Ubicación Compartida (Location Share Key) correctamente*
+Ahora necdsjfDZ enviar tu. Lzifl de verificación de {{ Webroot }}/me
+
+*Es probable que necesites volver a cargar la página Par ver el código de verificación. Estará enlistado en el mismo lugar que antes.*
+
+Por favor refiérase a {{ Webroot }}/me para más detalles.
+{{end}}
+
+{{define "InitTwoFail"}}
+*Verification FAILED*
+Por favor envía tu código de verificación sin ningún contenido adicional
+
+Por favor refiérase a {{ Webroot }}/me para más detalles.
+{{end}}
+
+{{define "InitTwoSuccess"}}
+*Verification Successful*
+
+Tu cuenta de Telegram ha sido verificada y podrás recibir actualizaciones y hacer cambios de ubicación.
+{{end}}
+
+{{define "TeamStateChange"}}
+{{if eq .State "On"}}Enabling {{ .Team }}{{end}}
+{{if eq .State "Off"}}Disbling {{ .Team }}{{end}}
+{{if eq .State "Primary"}}Setting {{ .Team }} to primary{{end}}
+{{end}}
