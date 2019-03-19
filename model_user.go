@@ -9,10 +9,11 @@ import (
 type UserData struct {
 	GoogleID      string
 	IngressName   string
+	Level         float64 // unused currently get from V, requires schema change
 	LocationKey   string
 	OwnTracksPW   string
 	VVerified     bool
-	Vblacklisted  bool
+	VBlacklisted  bool
 	OwnTracksJSON string
 	Teams         []struct {
 		ID    string
@@ -25,10 +26,15 @@ type UserData struct {
 	}
 	Telegram struct {
 		UserName  string
-		ID        int
+		ID        int // json changes this to float64, should we just leave it float64 the whole way?
 		Verified  bool
-		Authtoken string
+		Authtoken string `json:"at,omitempty"`
 	}
+	Home struct {
+		Lat    float64
+		Lon    float64
+		Radius float64
+	} // unused currently Tony wants it, requires schema change
 }
 
 // called from Oauth callback
@@ -48,7 +54,7 @@ func InitUser(gid string) error {
 	}
 
 	lockey, err := GenerateSafeName()
-	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, lockey, OTpassword, VVerified, Vblacklisted) VALUES (?,?,?,NULL,?,?)", gid, tmpName, lockey, vdata.Data.Verified, vdata.Data.Blacklisted)
+	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, lockey, OTpassword, VVerified, VBlacklisted) VALUES (?,?,?,NULL,?,?)", gid, tmpName, lockey, vdata.Data.Verified, vdata.Data.Blacklisted)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -151,8 +157,8 @@ func GetUserData(gid string, ud *UserData) error {
 
 	ud.GoogleID = gid
 
-	row := db.QueryRow("SELECT iname, lockey, OTpassword, VVerified, Vblacklisted FROM user WHERE gid = ?", gid)
-	err := row.Scan(&ud.IngressName, &ud.LocationKey, &ot, &ud.VVerified, &ud.Vblacklisted)
+	row := db.QueryRow("SELECT iname, lockey, OTpassword, VVerified, VBlacklisted FROM user WHERE gid = ?", gid)
+	err := row.Scan(&ud.IngressName, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -258,17 +264,24 @@ func GetUserData(gid string, ud *UserData) error {
 	return nil
 }
 
-func UserLocation(id, lat, lon, source string) error {
+func UserLocation(gid, lat, lon, source string) error {
 	var point string
 
 	// sanity checing on bounds?
 	point = fmt.Sprintf("POINT(%s %s)", lat, lon)
-	if _, err := locQuery.Exec(point, id); err != nil {
+	if _, err := locQuery.Exec(point, gid); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	// XXX if source is not "OwnTracks" -- parse and rebuild the user's OT data?
+	if source != "OwnTracks" {
+		err := ownTracksExternalUpdate(gid, lat, lon)
+		if err != nil {
+			Log.Notice(err)
+			return err
+		}
+        // put it out onto MQTT
+	}
 
 	// XXX check for targets in range
 

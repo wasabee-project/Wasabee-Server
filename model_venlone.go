@@ -89,7 +89,7 @@ func VUpdateUser(gid string, res *Vresult) error {
 
 	if res.Status == "ok" && res.Data.Agent != "" {
 		Log.Debug("Updating V data for ", res.Data.Agent)
-		_, err := db.Exec("UPDATE user SET iname = ?, VVerified = ?, Vblacklisted = ? WHERE gid = ?", res.Data.Agent, res.Data.Verified, res.Data.Blacklisted, gid)
+		_, err := db.Exec("UPDATE user SET iname = ?, VVerified = ?, VBlacklisted = ? WHERE gid = ?", res.Data.Agent, res.Data.Verified, res.Data.Blacklisted, gid)
 
 		if err != nil {
 			Log.Error(err)
