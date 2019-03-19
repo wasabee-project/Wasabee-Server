@@ -3,6 +3,7 @@ package PhDevHTTP
 import (
 	// "fmt"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"path/filepath"
@@ -31,7 +32,8 @@ type Configuration struct {
 	store             *sessions.CookieStore
 	sessionName       string
 	CookieSessionKey  string
-	templateSet       *template.Template
+	templateSet       map[string]*template.Template // allow multiple translations
+	// templateSet       *template.Template
 }
 
 var config Configuration
@@ -39,13 +41,6 @@ var config Configuration
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
 	config = initialConfig
-	// Transform frontendPath to an absolute path
-	frontendPath, err := filepath.Abs(config.FrontendPath)
-	if err != nil {
-		PhDevBin.Log.Critical("Frontend path could not be resolved.")
-		panic(err)
-	}
-	config.FrontendPath = frontendPath
 
 	config.Root = strings.TrimSuffix(config.Root, "/")
 
@@ -107,6 +102,18 @@ func initializeConfig(initialConfig Configuration) {
 		panic(err)
 	}
 	PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
+	_ = phDevBinHTTPSTemplateConfig()
+}
+
+func phDevBinHTTPSTemplateConfig() error {
+	// Transform frontendPath to an absolute path
+	frontendPath, err := filepath.Abs(config.FrontendPath)
+	if err != nil {
+		PhDevBin.Log.Critical("Frontend path could not be resolved.")
+		panic(err)
+	}
+	config.FrontendPath = frontendPath
+	config.templateSet = make(map[string]*template.Template)
 
 	PhDevBin.Log.Debugf("Loading Template function map")
 	funcMap := template.FuncMap{
@@ -117,19 +124,42 @@ func initializeConfig(initialConfig Configuration) {
 		"WebAPIPath":   PhDevBin.GetWebAPIPath,
 		"VEnlOne":      PhDevBin.GetvEnlOne,
 	}
-	config.templateSet = template.New("").Funcs(funcMap)
-	if err != nil {
-		PhDevBin.Log.Error(err)
-	}
+
 	PhDevBin.Log.Notice("Including frontend templates from: ", config.FrontendPath)
-	config.templateSet.ParseGlob(config.FrontendPath + "/*.html")
+	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
 		PhDevBin.Log.Error(err)
+		return err
 	}
-	/* PhDevBin.Log.Debugf("Configuring special templates")
-	s := fmt.Sprintf("{{define \"root\"}}%s{{end}}", config.Root)
-	config.templateSet.New("root").Parse(s) */
-	PhDevBin.Log.Debug(config.templateSet.DefinedTemplates())
+
+	for _, f := range files {
+		lang := f.Name()
+		if f.IsDir() && len(lang) == 2 {
+			config.templateSet[lang] = template.New("").Funcs(funcMap) // one funcMap for all languages
+			// load the masters
+			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.html")
+			// overwrite with language specific
+			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.html")
+			PhDevBin.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
+		}
+	}
+	return nil
+}
+
+func phDevBinHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
+	// get the lang from the request
+	lang := "en"
+
+	_, ok := config.templateSet[lang]
+	if ok == false {
+		lang = "en" // default to english if the map doesn't exist
+	}
+
+	if err := config.templateSet[lang].ExecuteTemplate(res, name, data); err != nil {
+		PhDevBin.Log.Notice(err)
+		return err
+	}
+	return nil
 }
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.

@@ -186,6 +186,9 @@ func phdevBotTemplates(t map[string]*template.Template) error {
 		lang := f.Name()
 		if f.IsDir() && len(lang) == 2 {
 			config.templateSet[lang] = template.New("").Funcs(funcMap) // one funcMap for all languages
+			// load the masters
+			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.tg")
+			// overwrite with language specific
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.tg")
 			PhDevBin.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}

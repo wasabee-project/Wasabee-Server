@@ -79,7 +79,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	err := config.templateSet.ExecuteTemplate(res, "index", nil)
+	err := phDevBinHTTPSTemplateExecute(res, req, "index", nil)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -89,7 +89,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 
 func statusRoute(res http.ResponseWriter, req *http.Request) {
 	// maybe show some interesting numbers, active agents, etc...
-	err := config.templateSet.ExecuteTemplate(res, "status", nil)
+	err := phDevBinHTTPSTemplateExecute(res, req, "status", nil)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)

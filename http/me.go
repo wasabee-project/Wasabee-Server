@@ -34,7 +34,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = config.templateSet.ExecuteTemplate(res, "me", ud)
+	err = phDevBinHTTPSTemplateExecute(res, req, "me", ud)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)

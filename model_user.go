@@ -280,7 +280,7 @@ func UserLocation(gid, lat, lon, source string) error {
 			Log.Notice(err)
 			return err
 		}
-        // put it out onto MQTT
+		// put it out onto MQTT
 	}
 
 	// XXX check for targets in range

@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"strconv"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -190,13 +190,13 @@ func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
 }
 
 func ownTracksExternalUpdate(gid, lat, lon string) error {
-    var otdata string
-    err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
+	var otdata string
+	err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
 
 	var l Location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
 		Log.Notice(err)
-		return  err
+		return err
 	}
 
 	l.Lat, _ = strconv.ParseFloat(lat, 64)
@@ -209,13 +209,13 @@ func ownTracksExternalUpdate(gid, lat, lon string) error {
 	redo, err := json.Marshal(l)
 	if err != nil {
 		Log.Notice(err)
-		return  err
+		return err
 	}
 
 	_, err = db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", redo, gid)
 	if err != nil {
 		Log.Notice(err)
-		return  err
+		return err
 	}
 	return nil
 }
