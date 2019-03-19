@@ -10,28 +10,28 @@ It is safe to copy a file from master into a language and edit it in each langua
 
 ## REQUIRED HTTPS Templates
 ```
-{{define "edit"}}
-{{define "index"}}
-{{define "me"}}
-{{define "status"}}
+edit
+index
+me
+status
 ```
 
 ## not required, used to make life easier in the required templates
 ```
-layout.html:{{define "styles"}}
-layout.html:{{define "nav"}}
-layout.html:{{define "footer"}}
+styles
+nav
+footer
 ```
 
 ## REQUIRED Telegram Templates
 ```
-{{define "default"}}
-{{define "help"}}
-{{define "InitOneFail"}}
-{{define "InitOneSuccess"}}
-{{define "InitTwoFail"}}
-{{define "InitTwoSuccess"}}
-{{define "TeamStateChange"}}
+default
+help
+InitOneFail
+InitOneSuccess
+InitTwoFail
+InitTwoSuccess
+TeamStateChange
 ```
 
 Required templates can call any number of non-required templates, a non-required template cannot call another template
