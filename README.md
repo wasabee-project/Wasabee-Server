@@ -22,7 +22,9 @@ https://golang.org/doc/install
 https://www.git-scm.com/book/en/v2/Getting-Started-Installing-Git
 
 3.1 Install the Telegram API bindings
+```
 go get -u github.com/go-telegram-bot-api/telegram-bot-api
+```
 
 4. Use git to checkout the frontend and cmd directories
 ```
@@ -41,10 +43,14 @@ curl -s https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt | sed -r 's/
 https://letsencrypt.org/docs/client-options/
 
 7. Create the certificate directories
+```
 mkdir certs
-install certificates as PhDevBin.fullchain.pem and PhDevBin.key
+#install certificates as PhDevBin.fullchain.pem and PhDevBin.key
+```
+```
 NB: you can point PhDevBin to your ACME directory, so long as both files are named correctly and in the same directory
 TODO: allow different names and the key to be in $CERT_DIR/keys/ as how most ACME clients create them
+```
 
 8. Get a GoogleAPI client ID and secret
 https://developers.google.com/identity/protocols/OAuth2
