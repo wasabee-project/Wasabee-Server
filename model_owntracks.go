@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	// "github.com/cloudkucooland/PhDevBin/Messaging"
 )
 
 // a command to set waypoints
@@ -167,6 +168,7 @@ func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessag
 
 	// do something here
 	Log.Debugf("%s transition %s: %s (%f)", gid, t.Event, t.Desc, t.ID)
+	SendMessage(gid, fmt.Sprintf("%s target area: %s", t.Event, t.Desc))
 
 	return j, nil
 }

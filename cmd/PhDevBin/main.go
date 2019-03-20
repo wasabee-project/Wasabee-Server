@@ -112,7 +112,7 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "none" {
-		go PhDevTelegram.PhDevBot(PhDevTelegram.TGConfiguration{
+		go Telegram.PhDevBot(Telegram.TGConfiguration{
 			APIKey:       c.String("tgkey"),
 			FrontendPath: c.String("frontend-path"),
 		})

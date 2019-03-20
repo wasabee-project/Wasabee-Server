@@ -1,4 +1,4 @@
-package PhDevTelegram
+package Telegram
 
 import (
 	"bytes"
@@ -21,6 +21,7 @@ type TGConfiguration struct {
 	baseKbd      tgbotapi.ReplyKeyboardMarkup
 }
 
+var bot *tgbotapi.BotAPI
 var config TGConfiguration
 
 func PhDevBot(init TGConfiguration) error {
@@ -37,8 +38,10 @@ func PhDevBot(init TGConfiguration) error {
 	}
 	_ = phdevBotTemplates(config.templateSet)
 	_ = phdevBotKeyboards(&config)
+	_ = PhDevBin.PhDevMessagingRegister("Telegram", SendMessage)
 
-	bot, err := tgbotapi.NewBotAPI(config.APIKey)
+	var err error
+	bot, err = tgbotapi.NewBotAPI(config.APIKey)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return err
@@ -354,4 +357,24 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 		msg.Text = "Location Processed"
 	}
 	return nil
+}
+
+func SendMessage(gid, message string) (bool, error) {
+	tgid, err := PhDevBin.GidToTelegram(gid)
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		return false, err
+	}
+	if tgid == 0 {
+		err = errors.New("Telegram ID not found")
+		PhDevBin.Log.Notice(err)
+		return false, err
+	}
+	msg := tgbotapi.NewMessage(tgid, "")
+	msg.Text = message
+	msg.ParseMode = "MarkDown"
+
+	bot.Send(msg)
+	PhDevBin.Log.Notice("Sent message to:", gid)
+	return true, nil
 }

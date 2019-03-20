@@ -50,6 +50,21 @@ func TelegramToGid(tgid int) (string, bool, error) {
 	return gid, verified, nil
 }
 
+func GidToTelegram(gid string) (int64, error) {
+	var tgid int64
+
+	row := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid)
+	err := row.Scan(&tgid)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		return 0, nil
+	}
+	if err != nil {
+		Log.Notice(err)
+		return 0, err
+	}
+	return tgid, nil
+}
+
 func TelegramInitUser(ID int, name string, lockey string) error {
 	authtoken := GenerateName()
 
