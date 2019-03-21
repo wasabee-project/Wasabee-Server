@@ -8,7 +8,6 @@ import (
 )
 
 var db *sql.DB
-var locQuery *sql.Stmt
 var lockeyToGid *sql.Stmt
 var safeName *sql.Stmt
 
@@ -163,13 +162,6 @@ func Connect(uri string) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	// super-frequent query, have it always ready
-	locQuery, err = db.Prepare("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?")
-	if err != nil {
-		Log.Errorf("Couldn't initialize location statement: %s", err)
-		return err
 	}
 
 	safeName, err = db.Prepare("SELECT COUNT(id) FROM documents WHERE id = ?")
