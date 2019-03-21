@@ -19,10 +19,10 @@
 </li>
 	{{ $x := .Id }}
 	{{range .User}}
-        <li class="list-group-item">{{.Name}} ({{.LocKey}}): (State: {{.State}} ) (V: {{.Verified}}) (Color: {{.Color}})<br /><a href="/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a></li>
+        <li class="list-group-item">{{.Name}} ({{.LocKey}}): (State: {{.State}} ) (V: {{.Verified}}) (Color: {{.Color}})<br /><a href="/{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a></li>
 	{{end}}
 <li class="list-group-item">
-<form action="{{Webroot}}/{{WebAPIPath}}/team/{{.Id}}" method="get">
+<form action="/{{WebAPIPath}}/team/{{.Id}}" method="get">
 Location Key: <input type="text" name="key" />
 <input type="submit" name="add" value="add user to team" />
 </form>

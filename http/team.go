@@ -129,7 +129,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/team/"+team+"/edit", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team+"/edit", http.StatusPermanentRedirect)
 }
 
 func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -154,5 +154,5 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/team/"+team+"/edit", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team+"/edit", http.StatusPermanentRedirect)
 }
