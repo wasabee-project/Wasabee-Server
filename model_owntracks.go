@@ -69,8 +69,6 @@ type Transition struct {
 	Desc      string  `json:"desc"`
 }
 
-// every query in here should be prepared since these are called VERY frequently
-// data is vague on prepared statement performance inprovement -- do real testing
 func OwnTracksUpdate(gid string, otdata json.RawMessage, lat, lon float64) error {
 	clean, _ := ownTracksTidy(gid, string(otdata))
 	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", string(clean), gid)
@@ -115,7 +113,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var tmpTarget Waypoint
 	tmpTarget.Type = "waypoint"
 
-	wr, err := db.Query("SELECT Id, t.teamID, X(loc) as lat, Y(loc) as lon, radius, type, name FROM target=t, userteams=ut WHERE ut.teamID = t.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	wr, err := db.Query("SELECT Id, t.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM target=t, userteams=ut WHERE ut.teamID = t.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
 	if err != nil {
 		Log.Error(err)
 		return s, nil // a lie, but getting people location and no targets is better than no data
@@ -201,6 +199,10 @@ func ownTracksExternalUpdate(gid, lat, lon string) error {
 		return err
 	}
 
+    l.Type = "location"
+	if l.ShortName == "" {
+		l.ShortName = "XX"
+	}
 	l.Lat, _ = strconv.ParseFloat(lat, 64)
 	l.Lon, _ = strconv.ParseFloat(lon, 64)
 	l.Topic = fmt.Sprintf("owntracks/%s/http", gid)
@@ -249,8 +251,8 @@ func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, erro
 
 func ownTracksWriteWaypoint(w Waypoint, team string) error {
 	_, err := db.Exec("INSERT INTO target VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14)),NULL) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
-		w.ID, team, w.Lat, w.Lon, w.Radius, "target", w.Desc, w.ID,
-		w.ID, w.Lat, w.Lon, w.Radius, w.Desc)
+		w.ID, team, w.Lon, w.Lat, w.Radius, "target", w.Desc, w.ID,
+		w.ID, w.Lon, w.Lat, w.Radius, w.Desc)
 	if err != nil {
 		Log.Notice(err)
 	}

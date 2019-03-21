@@ -66,12 +66,12 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 	var err error
 	var rows *sql.Rows
 	if fetchAll != true {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted "+
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
 			"AND x.state != 'Off'", team)
 	} else {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, X(l.loc), Y(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted "+
+		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", team)
 	}
@@ -132,7 +132,7 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 
 	var targetid, radius, targettype, targetname, expiration, linkdst sql.NullString
 	var targetrows *sql.Rows
-	targetrows, err = db.Query("SELECT Id, X(loc), Y(loc), radius, type, name, expiration, linkdst FROM target WHERE teamID = ?", team)
+	targetrows, err = db.Query("SELECT Id, Y(loc), X(loc), radius, type, name, expiration, linkdst FROM target WHERE teamID = ?", team)
 	if err != nil {
 		Log.Error(err)
 		return err

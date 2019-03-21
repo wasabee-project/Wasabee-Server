@@ -268,8 +268,8 @@ func UserLocation(gid, lat, lon, source string) error {
 	var point string
 
 	// sanity checing on bounds?
-	point = fmt.Sprintf("POINT(%s %s)", lat, lon)
-	if _, err := locQuery.Exec(point, gid); err != nil {
+	point = fmt.Sprintf("POINT(%s %s)", lon, lat)
+	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?", point, gid); err != nil {
 		Log.Notice(err)
 		return err
 	}
