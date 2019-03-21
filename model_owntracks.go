@@ -85,7 +85,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var locs []json.RawMessage
 	var tmp sql.NullString
 
-	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, userteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') AND ut.state != 'Off' AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
+	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, userteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') AND ut.state != 'Off' AND o.gid = l.gid AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
 	if err != nil {
 		Log.Error(err)
 		return json.RawMessage(""), err
