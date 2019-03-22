@@ -24,7 +24,8 @@ type User struct {
 	Lat         float64
 	Lon         float64
 	Date        string
-	OwnTracks   json.RawMessage
+	OwnTracks   json.RawMessage `json:"OwnTracks,omitmissing"`
+	Distance    float64         `json:"Distance,omitmissing"`
 }
 
 type Target struct {
@@ -290,6 +291,68 @@ func ClearPrimaryTeam(gid string) error {
 	if err != nil {
 		Log.Notice(err)
 		return (err)
+	}
+	return nil
+}
+
+func TeammatesNearGid(gid string, teamList *TeamData) error {
+	var state, lat, lon, otdata sql.NullString
+	var tmpU User
+	var rows *sql.Rows
+
+	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// no ST_Distance_Sphere in MariaDB yet...
+	rows, err = db.Query("SELECT DISTINCT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
+		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
+		"FROM userteams=x, user=u, locations=l, otdata=o "+
+		"WHERE x.teamID IN (SELECT teamID FROM userteams WHERE gid = ?) "+
+		"AND x.state != 'Off' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '3:00:00') "+
+		"HAVING distance < 500 AND distance > 0 ORDER BY distance LIMIT 0,10", lat, lon, lat, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tmpU.Name, &tmpU.LocKey, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if state.Valid && state.String != "Off" {
+			tmpU.State = true
+		}
+		if lat.Valid {
+			tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
+		} else {
+			var f float64
+			f = 0
+			tmpU.Lat = f
+		}
+		if lon.Valid {
+			tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
+		} else {
+			var f float64
+			f = 0
+			tmpU.Lon = f
+		}
+		if otdata.Valid {
+			tmpU.OwnTracks = json.RawMessage(otdata.String)
+		} else {
+			tmpU.OwnTracks = json.RawMessage("{ }")
+		}
+		teamList.User = append(teamList.User, tmpU)
+	}
+	err = rows.Err()
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
 	return nil
 }

@@ -230,7 +230,7 @@ func phdevBotKeyboards(c *TGConfiguration) error {
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
 			tgbotapi.NewKeyboardButton("Teams"),
-			tgbotapi.NewKeyboardButton("Targets Near Me"),
+			tgbotapi.NewKeyboardButton("Teammates Near Me"),
 		),
 	)
 
@@ -339,9 +339,10 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 			})
 			PhDevBin.SetUserTeamStateName(gid, name, "Primary")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
-		case "Targets":
-			msg.Text = "No Nearby Targets Found"
+		case "Teammates":
+			msg.Text, _ = teammatesNear(gid, inMsg)
 			msg.ReplyMarkup = config.baseKbd
+			msg.DisableWebPagePreview = true
 		default:
 			msg.ReplyMarkup = config.baseKbd
 		}
@@ -377,4 +378,18 @@ func SendMessage(gid, message string) (bool, error) {
 	bot.Send(msg)
 	PhDevBin.Log.Notice("Sent message to:", gid)
 	return true, nil
+}
+
+func teammatesNear(gid string, inMsg *tgbotapi.Update) (string, error) {
+	var td PhDevBin.TeamData
+	var txt = ""
+
+	err := PhDevBin.TeammatesNearGid(gid, &td)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		return txt, err
+	}
+	txt, err = phdevBotTemplateExecute("Teammates", inMsg.Message.From.LanguageCode, &td)
+
+	return txt, err
 }

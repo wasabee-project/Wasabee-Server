@@ -199,7 +199,7 @@ func ownTracksExternalUpdate(gid, lat, lon string) error {
 		return err
 	}
 
-    l.Type = "location"
+	l.Type = "location"
 	if l.ShortName == "" {
 		l.ShortName = "XX"
 	}
