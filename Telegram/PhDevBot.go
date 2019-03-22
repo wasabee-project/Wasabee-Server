@@ -230,7 +230,10 @@ func phdevBotKeyboards(c *TGConfiguration) error {
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
 			tgbotapi.NewKeyboardButton("Teams"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("Teammates Near Me"),
+			tgbotapi.NewKeyboardButton("Farms Near Me"),
 			tgbotapi.NewKeyboardButton("Targets Near Me"),
 		),
 	)
@@ -344,6 +347,10 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 			msg.Text, _ = teammatesNear(gid, inMsg)
 			msg.ReplyMarkup = config.baseKbd
 			msg.DisableWebPagePreview = true
+		case "Farms":
+			msg.Text, _ = farmsNear(gid, inMsg)
+			msg.ReplyMarkup = config.baseKbd
+			msg.DisableWebPagePreview = true
 		case "Targets":
 			msg.Text, _ = targetsNear(gid, inMsg)
 			msg.ReplyMarkup = config.baseKbd
@@ -388,8 +395,10 @@ func SendMessage(gid, message string) (bool, error) {
 func teammatesNear(gid string, inMsg *tgbotapi.Update) (string, error) {
 	var td PhDevBin.TeamData
 	var txt = ""
+	maxdistance := 500
+	maxresults := 10
 
-	err := PhDevBin.TeammatesNearGid(gid, &td)
+	err := PhDevBin.TeammatesNearGid(gid, maxdistance, maxresults, &td)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return txt, err
@@ -402,13 +411,31 @@ func teammatesNear(gid string, inMsg *tgbotapi.Update) (string, error) {
 func targetsNear(gid string, inMsg *tgbotapi.Update) (string, error) {
 	var td PhDevBin.TeamData
 	var txt = ""
+	maxdistance := 100
+	maxresults := 10
 
-	err := PhDevBin.TargetsNearGid(gid, &td)
+	err := PhDevBin.TargetsNearGid(gid, maxdistance, maxresults, &td)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return txt, err
 	}
 	txt, err = phdevBotTemplateExecute("Targets", inMsg.Message.From.LanguageCode, &td)
+
+	return txt, err
+}
+
+func farmsNear(gid string, inMsg *tgbotapi.Update) (string, error) {
+	var td PhDevBin.TeamData
+	var txt = ""
+	maxdistance := 100
+	maxresults := 10
+
+	err := PhDevBin.TargetsNearGid(gid, maxdistance, maxresults, &td)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		return txt, err
+	}
+	txt, err = phdevBotTemplateExecute("Farms", inMsg.Message.From.LanguageCode, &td)
 
 	return txt, err
 }

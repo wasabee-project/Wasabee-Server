@@ -61,7 +61,7 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 }
 
 func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
-	var state, lat, lon, otdata sql.NullString
+	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test users all get updated this can be removed
 	var tmpU User
 	var tmpT Target
 
@@ -100,21 +100,12 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		}
 		if lat.Valid {
 			tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpU.Lat = f
 		}
 		if lon.Valid {
 			tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpU.Lon = f
 		}
 		if otdata.Valid {
 			tmpU.OwnTracks = json.RawMessage(otdata.String)
-			// clean this up?
 		} else {
 			tmpU.OwnTracks = json.RawMessage("{ }")
 		}
@@ -156,17 +147,9 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 		}
 		if lat.Valid {
 			tmpT.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpT.Lat = f
 		}
 		if lon.Valid {
 			tmpT.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpT.Lon = f
 		}
 		if radius.Valid {
 			i, _ := strconv.Atoi(radius.String)
@@ -210,7 +193,6 @@ func UserOwnsTeam(id string, team string) (bool, error) {
 	var owner string
 
 	err := db.QueryRow("SELECT owner FROM teams WHERE teamID = ?", team).Scan(&owner)
-	// returning err w/o checking is lazy, but same result
 	if id == owner {
 		return true, err
 	}
@@ -296,7 +278,7 @@ func ClearPrimaryTeam(gid string) error {
 	return nil
 }
 
-func TeammatesNearGid(gid string, teamList *TeamData) error {
+func TeammatesNearGid(gid string, maxdistance, maxresults int, teamList *TeamData) error {
 	var state, lat, lon, otdata sql.NullString
 	var tmpU User
 	var rows *sql.Rows
@@ -313,7 +295,7 @@ func TeammatesNearGid(gid string, teamList *TeamData) error {
 		"FROM userteams=x, user=u, locations=l, otdata=o "+
 		"WHERE x.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
 		"AND x.state != 'Off' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
-		"HAVING distance < 500 AND distance > 0 ORDER BY distance LIMIT 0,10", lat, lon, lat, gid)
+		"HAVING distance < ? AND distance > 0 ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -331,17 +313,9 @@ func TeammatesNearGid(gid string, teamList *TeamData) error {
 		}
 		if lat.Valid {
 			tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpU.Lat = f
 		}
 		if lon.Valid {
 			tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpU.Lon = f
 		}
 		if otdata.Valid {
 			tmpU.OwnTracks = json.RawMessage(otdata.String)
@@ -358,7 +332,7 @@ func TeammatesNearGid(gid string, teamList *TeamData) error {
 	return nil
 }
 
-func TargetsNearGid(gid string, targetList *TeamData) error {
+func TargetsNearGid(gid string, maxdistance, maxresults int, targetList *TeamData) error {
 	var lat, lon, linkdst sql.NullString
 	var tmpT Target
 	var rows *sql.Rows
@@ -374,7 +348,7 @@ func TargetsNearGid(gid string, targetList *TeamData) error {
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
 		"FROM target "+
 		"WHERE teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
-		"HAVING distance < 500 ORDER BY distance LIMIT 0,10", lat, lon, lat, gid)
+		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -392,17 +366,9 @@ func TargetsNearGid(gid string, targetList *TeamData) error {
 		}
 		if lat.Valid {
 			tmpT.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpT.Lat = f
 		}
 		if lon.Valid {
 			tmpT.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		} else {
-			var f float64
-			f = 0
-			tmpT.Lon = f
 		}
 		targetList.Target = append(targetList.Target, tmpT)
 	}

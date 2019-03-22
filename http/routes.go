@@ -46,7 +46,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/draw/{document}", updateDrawRoute).Methods("PUT")
 	// r.HandleFunc("/api/v1/draw/{document}/addlink/", updateDrawRoute).Methods("PUT")
 
-	// user info
+	// user info (all HTML except /me which gives JSON for intel.ingrss.com
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
 	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my OwnTracks Password (cleartext, yes, but SSL is required)
 	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
@@ -66,6 +66,12 @@ func setupAuthRoutes(r *mux.Router) {
 	// r.HandleFunc("/api/v1/team/{team}/{key}", setUserTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
 	r.HandleFunc("/api/v1/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
 	r.HandleFunc("/api/v1/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
+
+	// targets
+	r.HandleFunc("/api/v1/targets/me", targetsNearMeRoute).Methods("GET")                 // show targets near user (html/json)
+	r.HandleFunc("/api/v1/targets/{team}", targetsRoute).Methods("GET")                   // show targets for team
+	r.HandleFunc("/api/v1/targets/{team}", targetsUploadRoute).Methods("POST")            // upload JSON target list
+	r.HandleFunc("/api/v1/targets/{team}/{id}/delete", targetsDeleteRoute).Methods("GET") // upload JSON target list
 
 	// doesn't need to be authenticated, but why not?
 	r.HandleFunc("/status", statusRoute).Methods("GET")
