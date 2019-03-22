@@ -231,6 +231,7 @@ func phdevBotKeyboards(c *TGConfiguration) error {
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
 			tgbotapi.NewKeyboardButton("Teams"),
 			tgbotapi.NewKeyboardButton("Teammates Near Me"),
+			tgbotapi.NewKeyboardButton("Targets Near Me"),
 		),
 	)
 
@@ -343,6 +344,10 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 			msg.Text, _ = teammatesNear(gid, inMsg)
 			msg.ReplyMarkup = config.baseKbd
 			msg.DisableWebPagePreview = true
+		case "Targets":
+			msg.Text, _ = targetsNear(gid, inMsg)
+			msg.ReplyMarkup = config.baseKbd
+			msg.DisableWebPagePreview = true
 		default:
 			msg.ReplyMarkup = config.baseKbd
 		}
@@ -390,6 +395,20 @@ func teammatesNear(gid string, inMsg *tgbotapi.Update) (string, error) {
 		return txt, err
 	}
 	txt, err = phdevBotTemplateExecute("Teammates", inMsg.Message.From.LanguageCode, &td)
+
+	return txt, err
+}
+
+func targetsNear(gid string, inMsg *tgbotapi.Update) (string, error) {
+	var td PhDevBin.TeamData
+	var txt = ""
+
+	err := PhDevBin.TargetsNearGid(gid, &td)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		return txt, err
+	}
+	txt, err = phdevBotTemplateExecute("Targets", inMsg.Message.From.LanguageCode, &td)
 
 	return txt, err
 }

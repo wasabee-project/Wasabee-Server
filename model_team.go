@@ -37,6 +37,7 @@ type Target struct {
 	Type            string // enum ?
 	Expiration      string
 	LinkDestination string
+	Distance        float64
 	// PortalID   string
 }
 
@@ -310,8 +311,8 @@ func TeammatesNearGid(gid string, teamList *TeamData) error {
 	rows, err = db.Query("SELECT DISTINCT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
 		"FROM userteams=x, user=u, locations=l, otdata=o "+
-		"WHERE x.teamID IN (SELECT teamID FROM userteams WHERE gid = ?) "+
-		"AND x.state != 'Off' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '3:00:00') "+
+		"WHERE x.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
+		"AND x.state != 'Off' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
 		"HAVING distance < 500 AND distance > 0 ORDER BY distance LIMIT 0,10", lat, lon, lat, gid)
 	if err != nil {
 		Log.Error(err)
@@ -348,6 +349,62 @@ func TeammatesNearGid(gid string, teamList *TeamData) error {
 			tmpU.OwnTracks = json.RawMessage("{ }")
 		}
 		teamList.User = append(teamList.User, tmpU)
+	}
+	err = rows.Err()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func TargetsNearGid(gid string, targetList *TeamData) error {
+	var lat, lon, linkdst sql.NullString
+	var tmpT Target
+	var rows *sql.Rows
+
+	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// no ST_Distance_Sphere in MariaDB yet...
+	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, expiration, linkdst, Y(loc), X(loc), "+
+		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
+		"FROM target "+
+		"WHERE teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
+		"HAVING distance < 500 ORDER BY distance LIMIT 0,10", lat, lon, lat, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tmpT.Id, &tmpT.Name, &tmpT.Radius, &tmpT.Type, &tmpT.Expiration, &linkdst, &lat, &lon, &tmpT.Distance)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if linkdst.Valid {
+			tmpT.LinkDestination = linkdst.String
+		}
+		if lat.Valid {
+			tmpT.Lat, _ = strconv.ParseFloat(lat.String, 64)
+		} else {
+			var f float64
+			f = 0
+			tmpT.Lat = f
+		}
+		if lon.Valid {
+			tmpT.Lon, _ = strconv.ParseFloat(lon.String, 64)
+		} else {
+			var f float64
+			f = 0
+			tmpT.Lon = f
+		}
+		targetList.Target = append(targetList.Target, tmpT)
 	}
 	err = rows.Err()
 	if err != nil {
