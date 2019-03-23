@@ -112,7 +112,7 @@ func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (string
 		return "", false
 	}
 	if gid == "" {
-		PhDevBin.Log.Noticef("OwnTracks authenticaion failed for: %s", lockey)
+		PhDevBin.Log.Noticef("OwnTracks authentication failed for: %s", lockey)
 		return "", false
 	}
 
