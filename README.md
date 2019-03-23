@@ -1,3 +1,5 @@
+[![GoReportCard](https://goreportcard.com/badge/cloudkucooland/PhDevBin)](https://goreportcard.com/report/cloudkucooland/PhDevBin)
+
 # PhDevBin
 ### The Server-Side component for Phtiv-Draw-Tools and related Ingress tools.
 
