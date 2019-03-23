@@ -47,7 +47,7 @@ func SetVEnlOne(w string) {
 	vc.configured = true
 }
 
-// GetEnlOne is used for templates to determine if V is enabled
+// GetvEnlOne is used for templates to determine if V is enabled
 func GetvEnlOne() bool {
 	return vc.configured
 }
