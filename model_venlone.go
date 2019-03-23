@@ -16,12 +16,14 @@ type vconfig struct {
 
 var vc vconfig
 
+// Vresult is set by the V API
 type Vresult struct {
 	Status  string `json:"status"`
 	Message string `json:"message,omitmissing"`
 	Data    Vagent `json:"data"`
 }
 
+// Vagent is set by the V API
 type Vagent struct {
 	EnlID       string  `json:"enlid"`
 	Vlevel      float64 `json:"vlevel"`
@@ -37,6 +39,7 @@ type Vagent struct {
 	Cellid      string  `json:"cellid"`
 }
 
+// SetVEnlOne is called from main() to initialize the config
 func SetVEnlOne(w string) {
 	Log.Debugf("V.enl.one API Key: %s", w)
 	vc.vAPIKey = w
@@ -44,11 +47,12 @@ func SetVEnlOne(w string) {
 	vc.configured = true
 }
 
-// for templates
+// GetEnlOne is used for templates to determine if V is enabled
 func GetvEnlOne() bool {
 	return vc.configured
 }
 
+// VSearchUser checks a user at V and populates a Vresult
 // gid can be GoogleID, TelegramID or ENL-ID
 func VSearchUser(gid string, res *Vresult) error {
 	if vc.configured == false {
@@ -82,9 +86,11 @@ func VSearchUser(gid string, res *Vresult) error {
 	return nil
 }
 
+// VUpdateUser updates the database to reflect an agent's current status at V.
+// It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
 func VUpdateUser(gid string, res *Vresult) error {
 	if vc.configured == false {
-		return errors.New("V API key not configured (VUpdateUser, should never happen)")
+		return errors.New("V API key not configured")
 	}
 
 	if res.Status == "ok" && res.Data.Agent != "" {
