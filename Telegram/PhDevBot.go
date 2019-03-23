@@ -54,7 +54,7 @@ func PhDevBot(init TGConfiguration) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	updates, err := bot.GetUpdatesChan(u)
+	updates, _ := bot.GetUpdatesChan(u)
 	for update := range updates {
 		if update.Message == nil {
 			continue
@@ -67,6 +67,10 @@ func PhDevBot(init TGConfiguration) error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		// PhDevBin.Log.Debug("Language: ", update.Message.From.LanguageCode)
 		defaultReply, err := phdevBotTemplateExecute("default", update.Message.From.LanguageCode, nil)
+		if err != nil {
+			PhDevBin.Log.Error(err)
+			continue
+		}
 		msg.Text = defaultReply
 		msg.ParseMode = "MarkDown"
 		// s, _ := json.MarshalIndent(msg, "", "  ")

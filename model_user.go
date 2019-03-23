@@ -54,6 +54,10 @@ func InitUser(gid string) error {
 	}
 
 	lockey, err := GenerateSafeName()
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
 	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, lockey, OTpassword, VVerified, VBlacklisted) VALUES (?,?,?,NULL,?,?)", gid, tmpName, lockey, vdata.Data.Verified, vdata.Data.Blacklisted)
 	if err != nil {
 		Log.Notice(err)

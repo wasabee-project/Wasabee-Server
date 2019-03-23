@@ -54,8 +54,8 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 		return false, err
 	}
 	i, err := strconv.Atoi(count)
-	if i < 1 {
-		return false, nil
+	if err != nil || i < 1 {
+		return false, err
 	}
 	return true, nil
 }

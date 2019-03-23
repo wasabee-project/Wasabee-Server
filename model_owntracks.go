@@ -214,6 +214,10 @@ func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
 func ownTracksExternalUpdate(gid, lat, lon string) error {
 	var otdata string
 	err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 
 	var l Location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
