@@ -18,7 +18,7 @@ type WaypointCommand struct {
 	Waypoints WaypointsList `json:"waypoints"`
 }
 
-// WaypointList is defined by the OwnTracks JSON format.
+// WaypointsList is defined by the OwnTracks JSON format.
 // It is always encapsulated in a WaypointCommand and aways contains a list of waypoints.
 type WaypointsList struct {
 	Waypoints []Waypoint `json:"waypoints"`
@@ -167,7 +167,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	return s, nil
 }
 
-// OwnTracksTransistion is called when an agent enters or leaves a WayPoint's radius
+// OwnTracksTransition is called when an agent enters or leaves a WayPoint's radius
 // currently a stub which only sends a message alerting the user that they have made the transition
 // future features are still being considered
 func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessage, error) {
