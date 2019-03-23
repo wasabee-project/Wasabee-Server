@@ -74,9 +74,8 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, err.Error())
 			return
-		} else {
-			doc.Content = string(content)
 		}
+		doc.Content = string(content)
 	}
 
 	// Check exact filesize
