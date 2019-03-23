@@ -44,3 +44,21 @@ Nearest Know Teammates
 [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}})
 {{end}}
 {{end}}
+
+{{define "Farms"}}
+Nearest Farms
+{{range .Target}}
+{{- if eq .Type "farm"}}{{- .Name}}: {{.Distance}}km {{.Type}}
+[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
+{{- end}}
+{{end}}
+{{end}}
+
+{{define "Targets"}}
+Nearest Targets
+{{range .Target}}
+{{- if ne .Type "farm"}}{{- .Name}}: {{.Distance}}km {{.Type}}
+[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
+{{- end}}
+{{end}}
+{{end}}
