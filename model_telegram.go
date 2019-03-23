@@ -74,7 +74,7 @@ func GidToTelegram(gid string) (int64, error) {
 	return tgid, nil
 }
 
-// TelegramInitUserID establishes a new telegram user in the database and begins the verification process
+// TelegramInitUser establishes a new telegram user in the database and begins the verification process
 func TelegramInitUser(ID int, name string, lockey string) error {
 	authtoken := GenerateName()
 
