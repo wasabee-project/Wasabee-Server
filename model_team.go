@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-// team stuff
+// TeamData is the wrapper type containing all the team info
 type TeamData struct {
 	Name   string
 	Id     string
@@ -14,6 +14,7 @@ type TeamData struct {
 	Target []Target
 }
 
+// User is the light version of UserData, containing publicly visible information exported to teams
 type User struct {
 	Name        string
 	Verified    bool
@@ -28,6 +29,7 @@ type User struct {
 	Distance    float64         `json:"Distance,omitmissing"`
 }
 
+// Target is the data for a Waypoint (OwnTracks) or portal target
 type Target struct {
 	Id              int
 	Name            string
@@ -41,6 +43,8 @@ type Target struct {
 	// PortalID   string
 }
 
+// UserInTeam checks to see if a user is in a team and (On|Primary).
+// allowOff == true will report if a user is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling user.
 func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 	var count string
 
@@ -60,6 +64,8 @@ func UserInTeam(id string, team string, allowOff bool) (bool, error) {
 	return true, nil
 }
 
+// FetchTeam populates an entire TeamData struct
+// fetchAll includes users for whom their state == off, should only be used to display lists to the calling user
 func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test users all get updated this can be removed
 	var tmpU User
@@ -189,41 +195,47 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 	return nil
 }
 
-func UserOwnsTeam(id string, team string) (bool, error) {
+// UserOwnsTeam returns true if the userID owns the team identified by teamID
+func UserOwnsTeam(gid, teamID string) (bool, error) {
 	var owner string
 
-	err := db.QueryRow("SELECT owner FROM teams WHERE teamID = ?", team).Scan(&owner)
-	if id == owner {
+	err := db.QueryRow("SELECT owner FROM teams WHERE teamID = ?", teamID).Scan(&owner)
+	// check for err or trust that the calling function will do that?
+	if gid == owner {
 		return true, err
 	}
 	return false, err
 }
 
-func NewTeam(name string, id string) (string, error) {
+// NewTeam initializes a new team and returns a teamID
+// the creating gid is added and enabled on that team by default
+func NewTeam(name, gid string) (string, error) {
 	team, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO teams VALUES (?,?,?)", team, id, name)
+	_, err = db.Exec("INSERT INTO teams VALUES (?,?,?)", team, gid, name)
 	if err != nil {
 		Log.Notice(err)
 	}
-	_, err = db.Exec("INSERT INTO userteams VALUES (?,?,'On','FF0000')", team, id)
+	_, err = db.Exec("INSERT INTO userteams VALUES (?,?,'On','FF0000')", team, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return name, err
 }
 
-func RenameTeam(name string, id string) error {
-	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, id)
+// RenameTeam sets a new name for a teamID
+func RenameTeam(name, teamID string) error {
+	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
 	return err
 }
 
+// DeleteTeam removes the team identified by teamID
 func DeleteTeam(teamID string) error {
 	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
@@ -236,7 +248,8 @@ func DeleteTeam(teamID string) error {
 	return err
 }
 
-func AddUserToTeam(teamID string, lockey string) error {
+// AddUserToTeam adds a user (identified by loction share key) to a team
+func AddUserToTeam(teamID, lockey string) error {
 	gid, err := LockeyToGid(lockey)
 	if err != nil {
 		Log.Notice(err)
@@ -254,7 +267,8 @@ func AddUserToTeam(teamID string, lockey string) error {
 	return nil
 }
 
-func DelUserFromTeam(teamID string, lockey string) error {
+// DelUserFromTeam removes a user (identified by location share key) from a team
+func DelUserFromTeam(teamID, lockey string) error {
 	gid, err := LockeyToGid(lockey)
 	if err != nil {
 		Log.Notice(err)
@@ -269,6 +283,7 @@ func DelUserFromTeam(teamID string, lockey string) error {
 	return nil
 }
 
+// ClearPrimaryTeam sets any team marked as primary to "On" for a user
 func ClearPrimaryTeam(gid string) error {
 	_, err := db.Exec("UPDATE userteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)
 	if err != nil {
@@ -278,6 +293,8 @@ func ClearPrimaryTeam(gid string) error {
 	return nil
 }
 
+// TeammatesNearGid identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
+// the Targets portion of the TeamData is left uninitialized
 func TeammatesNearGid(gid string, maxdistance, maxresults int, teamList *TeamData) error {
 	var state, lat, lon, otdata sql.NullString
 	var tmpU User
@@ -332,6 +349,8 @@ func TeammatesNearGid(gid string, maxdistance, maxresults int, teamList *TeamDat
 	return nil
 }
 
+// TargetsNearGid returns any targets (Waypoints) near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
+// the Users portion of the TeamData is uninitialized
 func TargetsNearGid(gid string, maxdistance, maxresults int, targetList *TeamData) error {
 	var lat, lon, linkdst sql.NullString
 	var tmpT Target
