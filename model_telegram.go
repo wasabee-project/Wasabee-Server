@@ -11,11 +11,14 @@ import (
 var tgbot *tgbotapi.User
 var tgrunning bool
 
+// TGSetBot is called from the Telegram bot startup to let other services know it is running
 func TGSetBot(b *tgbotapi.User) {
 	tgbot = b
 	tgrunning = true
 }
 
+// TGGetBotName returns the bot's telegram username
+// used by templates
 func TGGetBotName() (string, error) {
 	if tgrunning == false {
 		return "", nil
@@ -23,6 +26,8 @@ func TGGetBotName() (string, error) {
 	return tgbot.UserName, nil
 }
 
+// TGGetBotID returns the bot's telegram ID number
+// used by templates
 func TGGetBotID() (int, error) {
 	if tgrunning == false {
 		return 0, nil
@@ -30,10 +35,13 @@ func TGGetBotID() (int, error) {
 	return tgbot.ID, nil
 }
 
+// TGRunning is used by templates to determine if they should display telegram info
 func TGRunning() (bool, error) {
 	return tgrunning, nil
 }
 
+// TelegramToGid returns a gid and V verified status for a given Telegram ID #
+// TODO: some places the tgid is int and others int64 - sort this out
 func TelegramToGid(tgid int) (string, bool, error) {
 	var gid string
 	var verified bool
@@ -50,6 +58,7 @@ func TelegramToGid(tgid int) (string, bool, error) {
 	return gid, verified, nil
 }
 
+// GidToTelegram returns a telegram ID number for a gid
 func GidToTelegram(gid string) (int64, error) {
 	var tgid int64
 
@@ -65,6 +74,7 @@ func GidToTelegram(gid string) (int64, error) {
 	return tgid, nil
 }
 
+// TelegramInitUserID establishes a new telegram user in the database and begins the verification process
 func TelegramInitUser(ID int, name string, lockey string) error {
 	authtoken := GenerateName()
 
@@ -87,6 +97,7 @@ func TelegramInitUser(ID int, name string, lockey string) error {
 	return nil
 }
 
+// TelegramInitUser2 is the second stage of the verication process
 func TelegramInitUser2(ID int, authtoken string) error {
 	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", ID, authtoken)
 	if err != nil {
