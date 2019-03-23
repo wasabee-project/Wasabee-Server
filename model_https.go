@@ -22,7 +22,7 @@ func SetWebAPIPath(a string) {
 	phDevBinHTTPConfig.apipath = a
 }
 
-// GetWebAPIPATH is called from templates
+// GetWebAPIPath is called from templates
 func GetWebAPIPath() (string, error) {
 	return phDevBinHTTPConfig.apipath, nil
 }

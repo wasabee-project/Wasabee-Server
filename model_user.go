@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// user stuff
+// UserData is the complete user struct, used for the /me page
 type UserData struct {
 	GoogleID      string
 	IngressName   string
@@ -37,7 +37,8 @@ type UserData struct {
 	} // unused currently Tony wants it, requires schema change
 }
 
-// called from Oauth callback
+// InitUser is called from Oauth callback to set up a user for the first time
+// if the gid already exists it is ignored
 func InitUser(gid string) error {
 	var vdata Vresult
 
@@ -75,6 +76,8 @@ func InitUser(gid string) error {
 	return err
 }
 
+// SetIngressName is called to update the agent's ingress name in the database
+// The ingress name cannot be updated if V verification has taken place
 func SetIngressName(gid string, name string) error {
 	// if VVerified, ignore name changes -- let the V functions take care of that
 	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ? AND VVerified = 0", name, gid)
@@ -84,7 +87,8 @@ func SetIngressName(gid string, name string) error {
 	return err
 }
 
-// move to model_owntracks.go
+// SetOwnTracksPW updates the database with a new OwnTracks password for a given user
+// TODO: move to model_owntracks.go
 func SetOwnTracksPW(gid string, otpw string) error {
 	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
 	if err != nil {
@@ -93,7 +97,9 @@ func SetOwnTracksPW(gid string, otpw string) error {
 	return err
 }
 
-// move to model_owntracks.go
+// VerifyOwnTracksPW is used to check that the supplied password matches the stored password hash for the given user
+// upon success it returns the gid for the lockey (which is also the owntracks username), on failure it returns ""
+// TODO: move to model_owntracks.go
 func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 	var gid string
 
@@ -110,6 +116,7 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 	return gid, nil
 }
 
+// RemoveUserFromTeam updates the team list to remove the user
 // XXX move to model_team.go
 func RemoveUserFromTeam(gid string, team string) error {
 	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
@@ -118,18 +125,21 @@ func RemoveUserFromTeam(gid string, team string) error {
 	return nil
 }
 
+// SetUserTeamState updates the users state on the team (Off|On|Primary)
 // XXX move to model_team.go
-func SetUserTeamState(gid string, team string, state string) error {
+func SetUserTeamState(gid string, teamID string, state string) error {
 	if state == "Primary" {
 		_ = ClearPrimaryTeam(gid)
 	}
 
-	if _, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, team); err != nil {
+	if _, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
 		Log.Notice(err)
 	}
 	return nil
 }
 
+// SetUserTeamStateName -- same as SetUserTeamState, but takes a team's human name rather than ID
+// BUG: if multiple teams use the same name this will not work
 // XXX move to model_team.go
 func SetUserTeamStateName(gid string, teamname string, state string) error {
 	Log.Debug(teamname)
@@ -143,6 +153,8 @@ func SetUserTeamStateName(gid string, teamname string, state string) error {
 	return SetUserTeamState(gid, id, state)
 }
 
+// LockeyToGid converts a location share key to a user's gid
+// TODO: quit using a prebuilt query from database.go
 func LockeyToGid(lockey string) (string, error) {
 	var gid string
 
@@ -156,6 +168,7 @@ func LockeyToGid(lockey string) (string, error) {
 	return gid, nil
 }
 
+// GetUserData populates a UserData struct based on the gid
 func GetUserData(gid string, ud *UserData) error {
 	var ot sql.NullString
 
@@ -268,10 +281,14 @@ func GetUserData(gid string, ud *UserData) error {
 	return nil
 }
 
+// UserLocation updates the database to reflect a user's current location
+// OwnTracks data is updated to reflect the change
+// TODO: react based on the location
 func UserLocation(gid, lat, lon, source string) error {
 	var point string
 
 	// sanity checing on bounds?
+	// YES, store lon,lat -- the ST_ functions expect it this way
 	point = fmt.Sprintf("POINT(%s %s)", lon, lat)
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?", point, gid); err != nil {
 		Log.Notice(err)

@@ -17,6 +17,9 @@ import (
 	"github.com/gorilla/sessions"
 )
 
+// Configuration is the main configuration data for the https server
+// an initial config is sent from main() and that is updated with defaults
+// in the initializeConfig function
 type Configuration struct {
 	ListenHTTPS       string
 	FrontendPath      string
@@ -146,6 +149,7 @@ func phDevBinHTTPSTemplateConfig() error {
 	return nil
 }
 
+// phDevBinHTTPSTemplateExecute outputs directly to the ResponseWriter
 func phDevBinHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
 	// get the lang from the request
 	lang := "en"
