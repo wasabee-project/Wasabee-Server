@@ -1,26 +1,28 @@
 package PhDevBin
 
-var HTTPConfig struct {
+// phDevBinHTTPConfig stores values from the https server which are used in templates
+// to allow URL creation in other services (e.g. Telegram)
+var phDevBinHTTPConfig struct {
 	webroot string
 	apipath string
 }
 
-// called at https startup
+// SetWebroot is called at https startup
 func SetWebroot(w string) {
-	HTTPConfig.webroot = w
+	phDevBinHTTPConfig.webroot = w
 }
 
-// called from templates
+// GetWebroot is called from templates
 func GetWebroot() (string, error) {
-	return HTTPConfig.webroot, nil
+	return phDevBinHTTPConfig.webroot, nil
 }
 
-// called at https startup
+// SetWebAPIPath is called at https startup
 func SetWebAPIPath(a string) {
-	HTTPConfig.apipath = a
+	phDevBinHTTPConfig.apipath = a
 }
 
-// called from templates
+// GetWebAPIPATH is called from templates
 func GetWebAPIPath() (string, error) {
-	return HTTPConfig.apipath, nil
+	return phDevBinHTTPConfig.apipath, nil
 }
