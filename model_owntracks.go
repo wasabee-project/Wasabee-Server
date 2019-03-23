@@ -293,7 +293,7 @@ func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, 
 	var w WaypointsList
 	j := json.RawMessage("{ }")
 
-	team, err := ownTracksDefaultTeam(gid)
+	team, err := ownTracksPrimaryTeam(gid)
 	if err != nil || team == "" {
 		e := errors.New("Unable to determine primary team for SetWaypointList")
 		Log.Notice(e)

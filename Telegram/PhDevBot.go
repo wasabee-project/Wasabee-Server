@@ -13,6 +13,8 @@ import (
 	"text/template"
 )
 
+// TGConfiguration is the main configuration data for the Telegram interface
+// passed to main() pre-loaded with APIKey and FrontendPath set, the rest is built when the bot starts
 type TGConfiguration struct {
 	APIKey       string
 	FrontendPath string
@@ -24,6 +26,7 @@ type TGConfiguration struct {
 var bot *tgbotapi.BotAPI
 var config TGConfiguration
 
+// PhDevBot is called from main() to start the bot.
 func PhDevBot(init TGConfiguration) error {
 	if init.APIKey == "" {
 		err := errors.New("API Key not set")
@@ -84,13 +87,13 @@ func PhDevBot(init TGConfiguration) error {
 
 		if gid == "" {
 			PhDevBin.Log.Debugf("Unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
-			err = phdevBotNewUser_Init(&msg, &update)
+			err = phdevBotNewUserInit(&msg, &update)
 			if err != nil {
 				PhDevBin.Log.Error(err)
 			}
 		} else if verified == false {
 			PhDevBin.Log.Debugf("Unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
-			err = phdevBotNewUser_Verify(&msg, &update)
+			err = phdevBotNewUserVerify(&msg, &update)
 			if err != nil {
 				PhDevBin.Log.Error(err)
 			}
@@ -109,7 +112,7 @@ func PhDevBot(init TGConfiguration) error {
 	return nil
 }
 
-func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
+func phdevBotNewUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 	var lockey string
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
@@ -132,7 +135,7 @@ func phdevBotNewUser_Init(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) e
 	return err
 }
 
-func phdevBotNewUser_Verify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
+func phdevBotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 	var authtoken string
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
@@ -376,6 +379,7 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 	return nil
 }
 
+// SendMessage is registered with PhDevBin as a message bus to allow other modules to send messages via Telegram
 func SendMessage(gid, message string) (bool, error) {
 	tgid, err := PhDevBin.GidToTelegram(gid)
 	if err != nil {

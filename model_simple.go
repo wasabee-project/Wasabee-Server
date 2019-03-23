@@ -12,7 +12,7 @@ import (
 	"crypto/sha256"
 )
 
-// The maximum file size for simple uploads
+// MaxFilesize is the maximum file size for simple uploads (1MB)
 const MaxFilesize = 1024 * 1024 // 1MB
 
 // Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
