@@ -10,20 +10,23 @@ import (
 	// "github.com/cloudkucooland/PhDevBin/Messaging"
 )
 
-// a command to set waypoints
+// WaypointCommand is defined by the OwnTracks JSON format.
+// It is the top level item in the JSON file when the OwnTracks app sends any waypoint changes
 type WaypointCommand struct {
 	Type      string        `json:"_type"`
 	Action    string        `json:"action"`
 	Waypoints WaypointsList `json:"waypoints"`
 }
 
-// a list of waypoints
+// WaypointList is defined by the OwnTracks JSON format.
+// It is always encapsulated in a WaypointCommand and aways contains a list of waypoints.
 type WaypointsList struct {
 	Waypoints []Waypoint `json:"waypoints"`
 	Type      string     `json:"_type"`
 }
 
-// individual waypoints
+// Waypoint is defined by the OwnTracks JSON format.
+// It is the datatype which contains the information about a waypoint.
 type Waypoint struct {
 	Type   string  `json:"_type"`
 	Desc   string  `json:"desc"`
@@ -37,7 +40,10 @@ type Waypoint struct {
 	Share  bool    `json:"share"` // this was removed from the API, but I'm going to leave it for now
 }
 
-// location
+// Location is defined by the OwnTracks JSON format.
+// This is what is sent from and to the OwnTracks app to indicate a person's location.
+// Type, Lat, Lon, and ShortName are required, all others are optional.
+// N.B. InRegions is not documented but is sent by the iOS client.
 type Location struct {
 	Type      string   `json:"_type"`
 	Lat       float64  `json:"lat"`
@@ -55,6 +61,8 @@ type Location struct {
 	InRegions []string `json:"inregions,omitempty"`
 }
 
+// Transition is defined by the OwnTracks JSON format.
+// It is sent when a person enters or leaves a defined Waypoint's radius.
 type Transition struct {
 	Type      string  `json:"_type"`
 	Event     string  `json:"event"`
@@ -69,6 +77,7 @@ type Transition struct {
 	Desc      string  `json:"desc"`
 }
 
+// OwnTracksUpdate simply stores incoming OwnTracks data into the database
 func OwnTracksUpdate(gid string, otdata json.RawMessage, lat, lon float64) error {
 	clean, _ := ownTracksTidy(gid, string(otdata))
 	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", string(clean), gid)
@@ -79,6 +88,9 @@ func OwnTracksUpdate(gid string, otdata json.RawMessage, lat, lon float64) error
 	return err
 }
 
+// OwnTracksTeams returns a JSON message containing all the agents who are members of the same teams as the requested agent (gid)
+// It also includes all WayPoints/targets for these teams.
+// This is sufficient for returning directly to the OwnTracks app
 func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	var locs []json.RawMessage
 	var tmp sql.NullString
@@ -155,6 +167,9 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 	return s, nil
 }
 
+// OwnTracksTransistion is called when an agent enters or leaves a WayPoint's radius
+// currently a stub which only sends a message alerting the user that they have made the transition
+// future features are still being considered
 func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessage, error) {
 	var t Transition
 	j := json.RawMessage("{ }")
@@ -171,6 +186,10 @@ func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessag
 	return j, nil
 }
 
+// ownTracksTidy parses OwnTracks data (JSON format) and returns a version of that data
+// which has been cleaned and formatted for consistency
+// future features for this are still being considered
+// Should this be a method instead of a function? On what datatype?
 func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
 	var l Location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
@@ -189,6 +208,9 @@ func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
 	return redo, nil
 }
 
+// ownTracksExternalUpdate is called when an agent's location is set through other means
+// such as via the web or telegram interface. This allows agents to choose the method of
+// location reporting which suits their needs best.
 func ownTracksExternalUpdate(gid, lat, lon string) error {
 	var otdata string
 	err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
@@ -224,12 +246,13 @@ func ownTracksExternalUpdate(gid, lat, lon string) error {
 	return nil
 }
 
+// OwnTracksSetWaypoint is called when a waypoint message is received from the OwnTracks application
 func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, error) {
 	Log.Debug(string(wp))
 	var w Waypoint
 	j := json.RawMessage("{ }")
 
-	team, err := ownTracksDefaultTeam(gid) // cache this...
+	team, err := ownTracksPrimaryTeam(gid) // cache this...
 	if err != nil || team == "" {
 		e := errors.New("Unable to determine primary team for SetWaypoint")
 		Log.Notice(e)
@@ -249,6 +272,7 @@ func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, erro
 	return j, nil
 }
 
+// ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the target data to the database
 func ownTracksWriteWaypoint(w Waypoint, team string) error {
 	_, err := db.Exec("INSERT INTO target VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14)),NULL) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
 		w.ID, team, w.Lon, w.Lat, w.Radius, "target", w.Desc, w.ID,
@@ -259,6 +283,7 @@ func ownTracksWriteWaypoint(w Waypoint, team string) error {
 	return err
 }
 
+// OwnTracksSetWaypointList is called when a waypoint list is received from the OwnTracks application
 func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
 	var w WaypointsList
@@ -286,7 +311,8 @@ func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, 
 	return j, nil
 }
 
-func ownTracksDefaultTeam(gid string) (string, error) {
+// owntracksPrimaryTeam is called to determine an agent's primary team -- which is where Waypoint/Target data is saved
+func ownTracksPrimaryTeam(gid string) (string, error) {
 	var primary string
 	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
 	if err != nil && err.Error() == "sql: no rows in result set" {
