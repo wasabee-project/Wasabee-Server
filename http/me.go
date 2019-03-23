@@ -11,7 +11,7 @@ import (
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -42,7 +42,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -63,7 +63,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -85,7 +85,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -106,7 +106,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -127,7 +127,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)

@@ -11,7 +11,7 @@ import (
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	var teamList PhDevBin.TeamData
 
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -34,7 +34,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -53,7 +53,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -77,7 +77,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -107,7 +107,7 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -133,7 +133,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	id, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)

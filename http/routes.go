@@ -225,14 +225,14 @@ func getUserInfo(state string, code string) ([]byte, error) {
 	return contents, nil
 }
 
-func GetUserID(req *http.Request) (string, error) {
+func getUserID(req *http.Request) (string, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
 	}
 
 	if ses.Values["id"] == nil {
-		err := errors.New("GetUserID called for unauthenticated user")
+		err := errors.New("getUserID called for unauthenticated user")
 		PhDevBin.Log.Notice(err)
 		return "", err
 	}

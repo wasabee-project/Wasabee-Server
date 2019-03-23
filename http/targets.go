@@ -9,21 +9,47 @@ import (
 )
 
 func targetsUploadRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	PhDevBin.Log.Debug(gid)
+	// process
 	return
 }
 
 func targetsRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	PhDevBin.Log.Debug(gid)
+
 	// vars := mux.Vars(req)
-	// docID := vars["document"]
+	// teamID := vars["team"]
+	// process
 	return
 }
 
 func targetsDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err.Error())
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	PhDevBin.Log.Debug(gid)
+
+	// process
 	return
 }
 
 func targetsNearMeRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := GetUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
