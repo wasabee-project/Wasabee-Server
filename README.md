@@ -1,5 +1,5 @@
 [![GoReportCard](https://goreportcard.com/badge/cloudkucooland/PhDevBin)](https://goreportcard.com/report/cloudkucooland/PhDevBin)
-[![GoDoc](https://godoc.org/github.com/cloudkucooland/PhDevBin/?status.svg)](https://godoc.org/github.com/cloudkucooland/PhDevBin)
+[![GoDoc](https://godoc.org/github.com/cloudkucooland/PhDevBin?status.svg)](https://godoc.org/github.com/cloudkucooland/PhDevBin)
 # PhDevBin
 ### The Server-Side component for Phtiv-Draw-Tools and related Ingress tools.
 
@@ -67,10 +67,9 @@ setenv HTTPS_LISTEN ":8443"
 setenv GOOGLE_CLIENT_ID "--SOMETHING--SOMETHING--SOMETHING--.apps.googleusercontent.com"
 setenv GOOGLE_CLIENT_SECRET "--SOMETHING--SOMETHING--"
 setenv SESSION_KEY "!-rand0m-32-_char-sTring-blah-xy"
-setenv SESSION_KEY "449FgGieVnNQ15fGnvp9wXxcqTdpdiJc"
+setenv TELEGRAM_API_KEY "--SOMETHING--"
+setenv VENLONE_API_KEY "--SOMETHING--"
 setenv DEBUG 0
-setenv TELEGRAM_API_KEY "tgapikey"
-setenv VENLONE_API_KEY "vapikey"
 ```
 
 10. Go...
