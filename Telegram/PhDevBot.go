@@ -52,7 +52,7 @@ func PhDevBot(init TGConfiguration) error {
 
 	bot.Debug = false
 	PhDevBin.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
-	PhDevBin.TGSetBot(&bot.Self)
+	PhDevBin.TGSetBot(bot.Self.UserName, bot.Self.ID)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -146,7 +146,7 @@ func phdevBotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) 
 		authtoken = inMsg.Message.Text
 	}
 	strings.TrimSpace(authtoken)
-	err := PhDevBin.TelegramInitUser2(inMsg.Message.From.ID, authtoken)
+	err := PhDevBin.TelegramVerifyUser(inMsg.Message.From.ID, authtoken)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		tmp, _ := phdevBotTemplateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
@@ -386,12 +386,13 @@ func SendMessage(gid PhDevBin.GoogleID, message string) (bool, error) {
 		PhDevBin.Log.Notice(err)
 		return false, err
 	}
-	if tgid == 0 {
+	tgid64 := int64(tgid)
+	if tgid64 == 0 {
 		err = errors.New("Telegram ID not found")
 		PhDevBin.Log.Notice(err)
 		return false, err
 	}
-	msg := tgbotapi.NewMessage(tgid, "")
+	msg := tgbotapi.NewMessage(tgid64, "")
 	msg.Text = message
 	msg.ParseMode = "MarkDown"
 

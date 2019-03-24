@@ -226,7 +226,7 @@ func (gid GoogleID) NewTeam(name string) (string, error) {
 	return name, err
 }
 
-// RenameTeam sets a new name for a teamID
+// Rename sets a new name for a teamID
 func (teamID TeamID) Rename(name string) error {
 	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
@@ -235,7 +235,7 @@ func (teamID TeamID) Rename(name string) error {
 	return err
 }
 
-// DeleteTeam removes the team identified by teamID
+// Delete removes the team identified by teamID
 func (teamID TeamID) Delete() error {
 	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
@@ -248,7 +248,7 @@ func (teamID TeamID) Delete() error {
 	return err
 }
 
-// AddUserToTeam adds a user (identified by loction share key) to a team
+// AddUser adds a user (identified by loction share key) to a team
 // TODO: take an interface, switch if LocKey or GoogleID
 func (teamID TeamID) AddUser(lockey LocKey) error {
 	gid, err := lockey.Gid()
@@ -268,7 +268,7 @@ func (teamID TeamID) AddUser(lockey LocKey) error {
 	return nil
 }
 
-// DelUserFromTeam removes a user (identified by location share key) from a team
+// RemoveUser removes a user (identified by location share key) from a team
 // TODO: take an interface, switch if LocKey or GoogleID
 func (teamID TeamID) RemoveUser(lockey LocKey) error {
 	gid, err := lockey.Gid()

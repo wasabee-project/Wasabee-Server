@@ -1,19 +1,19 @@
 package PhDevBin
 
 import (
-	// "database/sql"
 	"errors"
 	"fmt"
-	// "strconv"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	// "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-var tgbot *tgbotapi.User
+var tgbotname string
+var tgbotid int
 var tgrunning bool
 
 // TGSetBot is called from the Telegram bot startup to let other services know it is running
-func TGSetBot(b *tgbotapi.User) {
-	tgbot = b
+func TGSetBot(botname string, botid int) {
+	tgbotname = botname
+	tgbotid = botid
 	tgrunning = true
 }
 
@@ -23,7 +23,7 @@ func TGGetBotName() (string, error) {
 	if tgrunning == false {
 		return "", nil
 	}
-	return tgbot.UserName, nil
+	return tgbotname, nil
 }
 
 // TGGetBotID returns the bot's telegram ID number
@@ -32,7 +32,7 @@ func TGGetBotID() (int, error) {
 	if tgrunning == false {
 		return 0, nil
 	}
-	return tgbot.ID, nil
+	return tgbotid, nil
 }
 
 // TGRunning is used by templates to determine if they should display telegram info
@@ -41,7 +41,6 @@ func TGRunning() (bool, error) {
 }
 
 // TelegramToGid returns a gid and V verified status for a given Telegram ID #
-// TODO: some places the tgid is int and others int64 - sort this out
 func TelegramToGid(tgid int) (GoogleID, bool, error) {
 	var gid GoogleID
 	var verified bool
@@ -59,8 +58,8 @@ func TelegramToGid(tgid int) (GoogleID, bool, error) {
 }
 
 // TelegramID returns a telegram ID number for a gid
-func (gid GoogleID) TelegramID() (int64, error) {
-	var tgid int64
+func (gid GoogleID) TelegramID() (int, error) {
+	var tgid int
 
 	row := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid)
 	err := row.Scan(&tgid)
@@ -97,8 +96,8 @@ func TelegramInitUser(ID int, name string, lockey LocKey) error {
 	return nil
 }
 
-// TelegramInitUser2 is the second stage of the verication process
-func TelegramInitUser2(ID int, authtoken string) error {
+// TelegramVerifyUser is the second stage of the verication process
+func TelegramVerifyUser(ID int, authtoken string) error {
 	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", ID, authtoken)
 	if err != nil {
 		Log.Notice(err)
