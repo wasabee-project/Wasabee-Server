@@ -11,7 +11,7 @@ import (
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -19,7 +19,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var ud PhDevBin.UserData
-	err = PhDevBin.GetUserData(id, &ud)
+	err = gid.GetUserData(&ud)
 	if err != nil {
 		res.Header().Add("Cache-Control", "no-cache")
 		PhDevBin.Log.Notice(err)
@@ -42,7 +42,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -53,7 +53,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := vars["team"]
 	state := vars["state"]
 
-	err = PhDevBin.SetUserTeamState(id, team, state)
+	err = gid.SetUserTeamState(team, state)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -63,7 +63,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -74,8 +74,8 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := vars["team"]
 
 	// do the work
-	PhDevBin.Log.Notice("remove me from team: " + id + " " + team)
-	err = PhDevBin.RemoveUserFromTeam(id, team)
+	PhDevBin.Log.Notice("remove me from team: " + gid.String() + " " + team)
+	err = gid.RemoveUserFromTeam(team)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -85,7 +85,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -96,7 +96,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	name := vars["name"]
 
 	// do the work
-	err = PhDevBin.SetIngressName(id, name)
+	err = gid.SetIngressName(name)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,7 +106,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -117,7 +117,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	otpw := vars["otpw"]
 
 	// do the work
-	err = PhDevBin.SetOwnTracksPW(id, otpw)
+	err = gid.SetOwnTracksPW(otpw)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -127,7 +127,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -139,7 +139,7 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	lon := vars["lon"]
 
 	// do the work
-	err = PhDevBin.UserLocation(id, lat, lon, "https")
+	err = gid.UserLocation(lat, lon, "https")
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

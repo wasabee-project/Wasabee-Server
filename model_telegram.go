@@ -42,8 +42,8 @@ func TGRunning() (bool, error) {
 
 // TelegramToGid returns a gid and V verified status for a given Telegram ID #
 // TODO: some places the tgid is int and others int64 - sort this out
-func TelegramToGid(tgid int) (string, bool, error) {
-	var gid string
+func TelegramToGid(tgid int) (GoogleID, bool, error) {
+	var gid GoogleID
 	var verified bool
 
 	row := db.QueryRow("SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid)
@@ -59,7 +59,7 @@ func TelegramToGid(tgid int) (string, bool, error) {
 }
 
 // GidToTelegram returns a telegram ID number for a gid
-func GidToTelegram(gid string) (int64, error) {
+func GidToTelegram(gid GoogleID) (int64, error) {
 	var tgid int64
 
 	row := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid)

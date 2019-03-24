@@ -11,7 +11,7 @@ import (
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	var teamList PhDevBin.TeamData
 
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -21,7 +21,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := vars["team"]
 
-	safe, err := PhDevBin.UserInTeam(id, team, false)
+	safe, err := PhDevBin.UserInTeam(gid, team, false)
 	if safe {
 		PhDevBin.FetchTeam(team, &teamList, false)
 		data, _ := json.MarshalIndent(teamList, "", "\t")

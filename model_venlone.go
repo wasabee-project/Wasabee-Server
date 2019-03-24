@@ -53,8 +53,8 @@ func GetvEnlOne() bool {
 }
 
 // VSearchUser checks a user at V and populates a Vresult
-// gid can be GoogleID, TelegramID or ENL-ID
-func VSearchUser(gid string, res *Vresult) error {
+// gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
+func VSearchUser(gid GoogleID, res *Vresult) error {
 	if vc.configured == false {
 		return errors.New("V API key not configured")
 	}
@@ -88,7 +88,7 @@ func VSearchUser(gid string, res *Vresult) error {
 
 // VUpdateUser updates the database to reflect an agent's current status at V.
 // It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
-func VUpdateUser(gid string, res *Vresult) error {
+func VUpdateUser(gid GoogleID, res *Vresult) error {
 	if vc.configured == false {
 		return errors.New("V API key not configured")
 	}

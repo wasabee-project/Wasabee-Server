@@ -6,14 +6,14 @@ import (
 
 type messagingConfig struct {
 	inited  bool
-	senders map[string]func(string, string) (bool, error)
+	senders map[string]func(GoogleID, string) (bool, error)
 }
 
 var mc messagingConfig
 
 // SendMessage sends a message to the available message destinations for user specified by "gid"
 // currently only Telegram is supported, but more can be added
-func SendMessage(gid, message string) (bool, error) {
+func SendMessage(gid GoogleID, message string) (bool, error) {
 	// determine which messaging protocols are enabled for gid
 	// pick optimal
 	bus := "Telegram"
@@ -32,7 +32,7 @@ func SendMessage(gid, message string) (bool, error) {
 }
 
 // SendMessageVia sends a message to the destination on the specified bus
-func SendMessageVia(gid, message, bus string) (bool, error) {
+func SendMessageVia(gid GoogleID, message, bus string) (bool, error) {
 	_, ok := mc.senders[bus]
 	if ok == false {
 		err := errors.New("No such bus")
@@ -58,13 +58,13 @@ func SendAnnounce(teamID, message string) error {
 }
 
 // PhDevMessagingRegister is a freaking dumb name for this, maybe just RegisterMessageBus
-func PhDevMessagingRegister(name string, f func(string, string) (bool, error)) error {
+func PhDevMessagingRegister(name string, f func(GoogleID, string) (bool, error)) error {
 	mc.senders[name] = f
 	return nil
 }
 
 // called at server start to init the configuration
 func init() {
-	mc.senders = make(map[string]func(string, string) (bool, error))
+	mc.senders = make(map[string]func(GoogleID, string) (bool, error))
 	mc.inited = true
 }

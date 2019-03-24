@@ -13,7 +13,7 @@ import (
 	"errors"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
+	// "github.com/gorilla/sessions"
 	"time"
 )
 
@@ -135,9 +135,9 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type PhDevUser struct {
-		Id    string `json:"id"`
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Gid   PhDevBin.GoogleID `json:"id"`
+		Name  string            `json:"name"`
+		Email string            `json:"email"`
 	}
 
 	content, err := getUserInfo(req.FormValue("state"), req.FormValue("code"))
@@ -158,15 +158,16 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		PhDevBin.Log.Notice(err)
-		ses = sessions.NewSession(config.store, config.sessionName)
-		ses.Values["nonce"] = ""
+		PhDevBin.Log.Notice("Cookie error: ", err)
+		// ses = sessions.NewSession(config.store, config.sessionName)
+		ses.Values["id"] = ""
+		ses.Values["nonce"] = "unset"
 		ses.Save(req, res)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = PhDevBin.InitUser(m.Id)
+	err = m.Gid.InitUser()
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -175,14 +176,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	// check and update V data on each login
 	var v PhDevBin.Vresult
-	err = PhDevBin.VSearchUser(m.Id, &v)
+	err = PhDevBin.VSearchUser(m.Gid, &v)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		// Agent not found is not a 500 error
 	}
 	if v.Data.Agent != "" {
 		ses.Values["Agent"] = v.Data.Agent
-		err = PhDevBin.VUpdateUser(m.Id, &v)
+		err = PhDevBin.VUpdateUser(m.Gid, &v)
 		if err != nil {
 			PhDevBin.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -194,14 +195,15 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	ses.Values["id"] = m.Id
-	nonce, _, _ := calculateNonce(m.Id)
+	ses.Values["id"] = m.Gid.String()
+	nonce, _, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
 	ses.Save(req, res)
+	// store the first requested URL in the session and redirect back there
 	http.Redirect(res, req, "/me?a=1", http.StatusPermanentRedirect)
 }
 
-func calculateNonce(gid string) (string, string, error) {
+func calculateNonce(gid PhDevBin.GoogleID) (string, string, error) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
 	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
@@ -230,7 +232,7 @@ func getUserInfo(state string, code string) ([]byte, error) {
 	return contents, nil
 }
 
-func getUserID(req *http.Request) (string, error) {
+func getUserID(req *http.Request) (PhDevBin.GoogleID, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
@@ -242,6 +244,6 @@ func getUserID(req *http.Request) (string, error) {
 		return "", err
 	}
 
-	userID := ses.Values["id"].(string)
+	var userID PhDevBin.GoogleID = PhDevBin.GoogleID(ses.Values["id"].(string))
 	return userID, nil
 }

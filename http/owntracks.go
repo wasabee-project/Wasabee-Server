@@ -57,22 +57,22 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	switch t.Type {
 	case "location":
-		PhDevBin.OwnTracksUpdate(gid, jRaw, t.Lat, t.Lon)
-		s, err := PhDevBin.OwnTracksTeams(gid)
+		gid.OwnTracksUpdate(jRaw, t.Lat, t.Lon)
+		s, err := gid.OwnTracksTeams()
 		if err != nil {
 			PhDevBin.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
 		fmt.Fprintf(res, string(s))
 	case "transition":
-		s, err := PhDevBin.OwnTracksTransition(gid, jRaw)
+		s, err := gid.OwnTracksTransition(jRaw)
 		if err != nil {
 			PhDevBin.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
 		fmt.Fprintf(res, string(s))
 	case "waypoints":
-		s, err := PhDevBin.OwnTracksSetWaypointList(gid, jRaw)
+		s, err := gid.OwnTracksSetWaypointList(jRaw)
 		if err != nil {
 			PhDevBin.Log.Notice(err)
 			// XXX use the cmd to send a URL to set primary team?
@@ -83,7 +83,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		}
 		fmt.Fprintf(res, string(s))
 	case "waypoint":
-		s, _ := PhDevBin.OwnTracksSetWaypoint(gid, jRaw)
+		s, _ := gid.OwnTracksSetWaypoint(jRaw)
 		if err != nil {
 			PhDevBin.Log.Notice(err)
 			// e := "{ \"err\": \"Is your primary team set?\" }"
@@ -99,7 +99,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (string, bool) {
+func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (PhDevBin.GoogleID, bool) {
 	lockey, otpw, ok := req.BasicAuth()
 	if ok == false {
 		PhDevBin.Log.Notice("Unable to decode basic authentication")

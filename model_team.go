@@ -45,7 +45,7 @@ type Target struct {
 
 // UserInTeam checks to see if a user is in a team and (On|Primary).
 // allowOff == true will report if a user is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling user.
-func UserInTeam(id string, team string, allowOff bool) (bool, error) {
+func UserInTeam(id GoogleID, team string, allowOff bool) (bool, error) {
 	var count string
 
 	var err error
@@ -196,8 +196,8 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 }
 
 // UserOwnsTeam returns true if the userID owns the team identified by teamID
-func UserOwnsTeam(gid, teamID string) (bool, error) {
-	var owner string
+func UserOwnsTeam(gid GoogleID, teamID string) (bool, error) {
+	var owner GoogleID
 
 	err := db.QueryRow("SELECT owner FROM teams WHERE teamID = ?", teamID).Scan(&owner)
 	// check for err or trust that the calling function will do that?
@@ -209,7 +209,7 @@ func UserOwnsTeam(gid, teamID string) (bool, error) {
 
 // NewTeam initializes a new team and returns a teamID
 // the creating gid is added and enabled on that team by default
-func NewTeam(name, gid string) (string, error) {
+func NewTeam(name string, gid GoogleID) (string, error) {
 	team, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
@@ -284,7 +284,7 @@ func DelUserFromTeam(teamID, lockey string) error {
 }
 
 // ClearPrimaryTeam sets any team marked as primary to "On" for a user
-func ClearPrimaryTeam(gid string) error {
+func ClearPrimaryTeam(gid GoogleID) error {
 	_, err := db.Exec("UPDATE userteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)
 	if err != nil {
 		Log.Notice(err)
@@ -295,7 +295,7 @@ func ClearPrimaryTeam(gid string) error {
 
 // TeammatesNearGid identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
 // the Targets portion of the TeamData is left uninitialized
-func TeammatesNearGid(gid string, maxdistance, maxresults int, teamList *TeamData) error {
+func TeammatesNearGid(gid GoogleID, maxdistance, maxresults int, teamList *TeamData) error {
 	var state, lat, lon, otdata sql.NullString
 	var tmpU User
 	var rows *sql.Rows
@@ -351,7 +351,7 @@ func TeammatesNearGid(gid string, maxdistance, maxresults int, teamList *TeamDat
 
 // TargetsNearGid returns any targets (Waypoints) near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
 // the Users portion of the TeamData is uninitialized
-func TargetsNearGid(gid string, maxdistance, maxresults int, targetList *TeamData) error {
+func TargetsNearGid(gid GoogleID, maxdistance, maxresults int, targetList *TeamData) error {
 	var lat, lon, linkdst sql.NullString
 	var tmpT Target
 	var rows *sql.Rows

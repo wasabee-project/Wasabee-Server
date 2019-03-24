@@ -219,6 +219,9 @@ func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ses, err := config.store.Get(req, config.sessionName)
 		if err != nil {
+			ses.Values["nonce"] = ""
+			ses.Values["id"] = ""
+			ses.Save(req, res)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -230,8 +233,7 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		var gid string
-		gid = id.(string)
+		gid := PhDevBin.GoogleID(id.(string))
 
 		nonce, pNonce, _ := calculateNonce(gid)
 		in, ok := ses.Values["nonce"]
@@ -243,6 +245,8 @@ func authMW(next http.Handler) http.Handler {
 		inNonce := in.(string)
 
 		if inNonce != nonce {
+			PhDevBin.Log.Debug(inNonce)
+			PhDevBin.Log.Debug(nonce)
 			if inNonce != pNonce {
 				PhDevBin.Log.Debug("Session timed out")
 				ses.Values["nonce"] = "unset"

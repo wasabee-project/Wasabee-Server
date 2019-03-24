@@ -78,20 +78,20 @@ type Transition struct {
 }
 
 // OwnTracksUpdate simply stores incoming OwnTracks data into the database
-func OwnTracksUpdate(gid string, otdata json.RawMessage, lat, lon float64) error {
-	clean, _ := ownTracksTidy(gid, string(otdata))
+func (gid GoogleID) OwnTracksUpdate(otdata json.RawMessage, lat, lon float64) error {
+	clean, _ := gid.ownTracksTidy(string(otdata))
 	_, err := db.Exec("UPDATE otdata SET otdata = ? WHERE gid = ?", string(clean), gid)
 	if err != nil {
 		Log.Notice(err)
 	}
-	err = UserLocation(gid, strconv.FormatFloat(lat, 'f', -1, 64), strconv.FormatFloat(lon, 'f', -1, 64), "OwnTracks")
+	err = gid.UserLocation(strconv.FormatFloat(lat, 'f', -1, 64), strconv.FormatFloat(lon, 'f', -1, 64), "OwnTracks")
 	return err
 }
 
 // OwnTracksTeams returns a JSON message containing all the agents who are members of the same teams as the requested agent (gid)
 // It also includes all WayPoints/targets for these teams.
 // This is sufficient for returning directly to the OwnTracks app
-func OwnTracksTeams(gid string) (json.RawMessage, error) {
+func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	var locs []json.RawMessage
 	var tmp sql.NullString
 
@@ -170,7 +170,7 @@ func OwnTracksTeams(gid string) (json.RawMessage, error) {
 // OwnTracksTransition is called when an agent enters or leaves a WayPoint's radius
 // currently a stub which only sends a message alerting the user that they have made the transition
 // future features are still being considered
-func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessage, error) {
+func (gid GoogleID) OwnTracksTransition(transition json.RawMessage) (json.RawMessage, error) {
 	var t Transition
 	j := json.RawMessage("{ }")
 
@@ -190,7 +190,7 @@ func OwnTracksTransition(gid string, transition json.RawMessage) (json.RawMessag
 // which has been cleaned and formatted for consistency
 // future features for this are still being considered
 // Should this be a method instead of a function? On what datatype?
-func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
+func (gid GoogleID) ownTracksTidy(otdata string) (json.RawMessage, error) {
 	var l Location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
 		Log.Notice(err)
@@ -211,7 +211,7 @@ func ownTracksTidy(gid, otdata string) (json.RawMessage, error) {
 // ownTracksExternalUpdate is called when an agent's location is set through other means
 // such as via the web or telegram interface. This allows agents to choose the method of
 // location reporting which suits their needs best.
-func ownTracksExternalUpdate(gid, lat, lon string) error {
+func (gid GoogleID) ownTracksExternalUpdate(lat, lon string) error {
 	var otdata string
 	err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
 	if err != nil {
@@ -251,12 +251,12 @@ func ownTracksExternalUpdate(gid, lat, lon string) error {
 }
 
 // OwnTracksSetWaypoint is called when a waypoint message is received from the OwnTracks application
-func OwnTracksSetWaypoint(gid string, wp json.RawMessage) (json.RawMessage, error) {
+func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, error) {
 	Log.Debug(string(wp))
 	var w Waypoint
 	j := json.RawMessage("{ }")
 
-	team, err := ownTracksPrimaryTeam(gid) // cache this...
+	team, err := gid.PrimaryTeam() // cache this...
 	if err != nil || team == "" {
 		e := errors.New("Unable to determine primary team for SetWaypoint")
 		Log.Notice(e)
@@ -288,12 +288,12 @@ func ownTracksWriteWaypoint(w Waypoint, team string) error {
 }
 
 // OwnTracksSetWaypointList is called when a waypoint list is received from the OwnTracks application
-func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, error) {
+func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
 	var w WaypointsList
 	j := json.RawMessage("{ }")
 
-	team, err := ownTracksPrimaryTeam(gid)
+	team, err := gid.PrimaryTeam()
 	if err != nil || team == "" {
 		e := errors.New("Unable to determine primary team for SetWaypointList")
 		Log.Notice(e)
@@ -315,8 +315,9 @@ func OwnTracksSetWaypointList(gid string, wp json.RawMessage) (json.RawMessage, 
 	return j, nil
 }
 
-// owntracksPrimaryTeam is called to determine an agent's primary team -- which is where Waypoint/Target data is saved
-func ownTracksPrimaryTeam(gid string) (string, error) {
+// PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint/Target data is saved
+// move to model_team.go
+func (gid GoogleID) PrimaryTeam() (string, error) {
 	var primary string
 	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
 	if err != nil && err.Error() == "sql: no rows in result set" {

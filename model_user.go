@@ -5,9 +5,11 @@ import (
 	"fmt"
 )
 
+type GoogleID string
+
 // UserData is the complete user struct, used for the /me page
 type UserData struct {
-	GoogleID      string
+	GoogleID      GoogleID
 	IngressName   string
 	Level         float64 // unused currently get from V, requires schema change
 	LocationKey   string
@@ -39,7 +41,7 @@ type UserData struct {
 
 // InitUser is called from Oauth callback to set up a user for the first time
 // if the gid already exists it is ignored
-func InitUser(gid string) error {
+func (gid GoogleID) InitUser() error {
 	var vdata Vresult
 
 	err := VSearchUser(gid, &vdata)
@@ -51,7 +53,7 @@ func InitUser(gid string) error {
 	if vdata.Data.Agent != "" {
 		tmpName = vdata.Data.Agent
 	} else {
-		tmpName = "Agent_" + gid[:8]
+		tmpName = "Agent_" + gid.String()[:8]
 	}
 
 	lockey, err := GenerateSafeName()
@@ -78,7 +80,7 @@ func InitUser(gid string) error {
 
 // SetIngressName is called to update the agent's ingress name in the database
 // The ingress name cannot be updated if V verification has taken place
-func SetIngressName(gid string, name string) error {
+func (gid GoogleID) SetIngressName(name string) error {
 	// if VVerified, ignore name changes -- let the V functions take care of that
 	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ? AND VVerified = 0", name, gid)
 	if err != nil {
@@ -89,7 +91,7 @@ func SetIngressName(gid string, name string) error {
 
 // SetOwnTracksPW updates the database with a new OwnTracks password for a given user
 // TODO: move to model_owntracks.go
-func SetOwnTracksPW(gid string, otpw string) error {
+func (gid GoogleID) SetOwnTracksPW(otpw string) error {
 	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
 	if err != nil {
 		Log.Notice(err)
@@ -100,8 +102,8 @@ func SetOwnTracksPW(gid string, otpw string) error {
 // VerifyOwnTracksPW is used to check that the supplied password matches the stored password hash for the given user
 // upon success it returns the gid for the lockey (which is also the owntracks username), on failure it returns ""
 // TODO: move to model_owntracks.go
-func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
-	var gid string
+func VerifyOwnTracksPW(lockey string, otpw string) (GoogleID, error) {
+	var gid GoogleID
 
 	r := db.QueryRow("SELECT gid FROM user WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
 	err := r.Scan(&gid)
@@ -118,7 +120,7 @@ func VerifyOwnTracksPW(lockey string, otpw string) (string, error) {
 
 // RemoveUserFromTeam updates the team list to remove the user
 // XXX move to model_team.go
-func RemoveUserFromTeam(gid string, team string) error {
+func (gid GoogleID) RemoveUserFromTeam(team string) error {
 	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
 		Log.Notice(err)
 	}
@@ -127,7 +129,7 @@ func RemoveUserFromTeam(gid string, team string) error {
 
 // SetUserTeamState updates the users state on the team (Off|On|Primary)
 // XXX move to model_team.go
-func SetUserTeamState(gid string, teamID string, state string) error {
+func (gid GoogleID) SetUserTeamState(teamID string, state string) error {
 	if state == "Primary" {
 		_ = ClearPrimaryTeam(gid)
 	}
@@ -141,7 +143,7 @@ func SetUserTeamState(gid string, teamID string, state string) error {
 // SetUserTeamStateName -- same as SetUserTeamState, but takes a team's human name rather than ID
 // BUG: if multiple teams use the same name this will not work
 // XXX move to model_team.go
-func SetUserTeamStateName(gid string, teamname string, state string) error {
+func (gid GoogleID) SetUserTeamStateName(teamname string, state string) error {
 	Log.Debug(teamname)
 	var id string
 	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
@@ -150,13 +152,13 @@ func SetUserTeamStateName(gid string, teamname string, state string) error {
 		Log.Notice(err)
 	}
 
-	return SetUserTeamState(gid, id, state)
+	return gid.SetUserTeamState(id, state)
 }
 
 // LockeyToGid converts a location share key to a user's gid
 // TODO: quit using a prebuilt query from database.go
-func LockeyToGid(lockey string) (string, error) {
-	var gid string
+func LockeyToGid(lockey string) (GoogleID, error) {
+	var gid GoogleID
 
 	r := lockeyToGid.QueryRow(lockey)
 	err := r.Scan(&gid)
@@ -169,7 +171,7 @@ func LockeyToGid(lockey string) (string, error) {
 }
 
 // GetUserData populates a UserData struct based on the gid
-func GetUserData(gid string, ud *UserData) error {
+func (gid GoogleID) GetUserData(ud *UserData) error {
 	var ot sql.NullString
 
 	ud.GoogleID = gid
@@ -284,7 +286,7 @@ func GetUserData(gid string, ud *UserData) error {
 // UserLocation updates the database to reflect a user's current location
 // OwnTracks data is updated to reflect the change
 // TODO: react based on the location
-func UserLocation(gid, lat, lon, source string) error {
+func (gid GoogleID) UserLocation(lat, lon, source string) error {
 	var point string
 
 	// sanity checing on bounds?
@@ -296,7 +298,7 @@ func UserLocation(gid, lat, lon, source string) error {
 	}
 
 	if source != "OwnTracks" {
-		err := ownTracksExternalUpdate(gid, lat, lon)
+		err := gid.ownTracksExternalUpdate(lat, lon)
 		if err != nil {
 			Log.Notice(err)
 			return err
@@ -309,4 +311,8 @@ func UserLocation(gid, lat, lon, source string) error {
 	// XXX send notifications
 
 	return nil
+}
+
+func (gid GoogleID) String() string {
+	return string(gid)
 }

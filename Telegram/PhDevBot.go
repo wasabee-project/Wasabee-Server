@@ -248,9 +248,9 @@ func phdevBotKeyboards(c *TGConfiguration) error {
 	return nil
 }
 
-func phdevBotTeamKeyboard(gid string) (tgbotapi.ReplyKeyboardMarkup, error) {
+func phdevBotTeamKeyboard(gid PhDevBin.GoogleID) (tgbotapi.ReplyKeyboardMarkup, error) {
 	var ud PhDevBin.UserData
-	if err := PhDevBin.GetUserData(gid, &ud); err != nil {
+	if err := gid.GetUserData(&ud); err != nil {
 		return config.teamKbd, err
 	}
 
@@ -290,7 +290,7 @@ func phdevBotTeamKeyboard(gid string) (tgbotapi.ReplyKeyboardMarkup, error) {
 }
 
 // This is where command processing takes place
-func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid string) error {
+func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid PhDevBin.GoogleID) error {
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
 		case "start":
@@ -334,21 +334,21 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 				State: "On",
 				Team:  name,
 			})
-			PhDevBin.SetUserTeamStateName(gid, name, "On")
+			gid.SetUserTeamStateName(name, "On")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Off:":
 			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Off",
 				Team:  name,
 			})
-			PhDevBin.SetUserTeamStateName(gid, name, "Off")
+			gid.SetUserTeamStateName(name, "Off")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Primary:":
 			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Primary",
 				Team:  name,
 			})
-			PhDevBin.SetUserTeamStateName(gid, name, "Primary")
+			gid.SetUserTeamStateName(name, "Primary")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Teammates":
 			msg.Text, _ = teammatesNear(gid, inMsg)
@@ -368,7 +368,7 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 	}
 
 	if inMsg.Message.Location != nil {
-		PhDevBin.UserLocation(gid,
+		gid.UserLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
 			"Telegram",
@@ -380,7 +380,7 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid st
 }
 
 // SendMessage is registered with PhDevBin as a message bus to allow other modules to send messages via Telegram
-func SendMessage(gid, message string) (bool, error) {
+func SendMessage(gid PhDevBin.GoogleID, message string) (bool, error) {
 	tgid, err := PhDevBin.GidToTelegram(gid)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
@@ -400,7 +400,7 @@ func SendMessage(gid, message string) (bool, error) {
 	return true, nil
 }
 
-func teammatesNear(gid string, inMsg *tgbotapi.Update) (string, error) {
+func teammatesNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	var td PhDevBin.TeamData
 	var txt = ""
 	maxdistance := 500
@@ -416,7 +416,7 @@ func teammatesNear(gid string, inMsg *tgbotapi.Update) (string, error) {
 	return txt, err
 }
 
-func targetsNear(gid string, inMsg *tgbotapi.Update) (string, error) {
+func targetsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	var td PhDevBin.TeamData
 	var txt = ""
 	maxdistance := 100
@@ -432,7 +432,7 @@ func targetsNear(gid string, inMsg *tgbotapi.Update) (string, error) {
 	return txt, err
 }
 
-func farmsNear(gid string, inMsg *tgbotapi.Update) (string, error) {
+func farmsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	var td PhDevBin.TeamData
 	var txt = ""
 	maxdistance := 100
