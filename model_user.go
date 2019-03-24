@@ -11,6 +11,9 @@ type GoogleID string
 // TeamID is the primary means for interfacing with teams
 type TeamID string
 
+// LocKey is the location share key
+type LocKey string
+
 // UserData is the complete user struct, used for the /me page
 type UserData struct {
 	GoogleID      GoogleID
@@ -106,7 +109,7 @@ func (gid GoogleID) SetOwnTracksPW(otpw string) error {
 // VerifyOwnTracksPW is used to check that the supplied password matches the stored password hash for the given user
 // upon success it returns the gid for the lockey (which is also the owntracks username), on failure it returns ""
 // TODO: move to model_owntracks.go
-func VerifyOwnTracksPW(lockey string, otpw string) (GoogleID, error) {
+func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
 	var gid GoogleID
 
 	r := db.QueryRow("SELECT gid FROM user WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
@@ -159,9 +162,9 @@ func (gid GoogleID) SetUserTeamStateName(teamname string, state string) error {
 	return gid.SetUserTeamState(id, state)
 }
 
-// LockeyToGid converts a location share key to a user's gid
+// Gid converts a location share key to a user's gid
 // TODO: quit using a prebuilt query from database.go
-func LockeyToGid(lockey string) (GoogleID, error) {
+func (lockey LocKey) Gid() (GoogleID, error) {
 	var gid GoogleID
 
 	r := lockeyToGid.QueryRow(lockey)

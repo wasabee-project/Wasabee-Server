@@ -75,10 +75,10 @@ func (gid GoogleID) TelegramID() (int64, error) {
 }
 
 // TelegramInitUser establishes a new telegram user in the database and begins the verification process
-func TelegramInitUser(ID int, name string, lockey string) error {
+func TelegramInitUser(ID int, name string, lockey LocKey) error {
 	authtoken := GenerateName()
 
-	gid, err := LockeyToGid(lockey)
+	gid, err := lockey.Gid()
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		e := fmt.Sprintf("Location Share Key (%s) is not recognized", lockey)
 		return errors.New(e)

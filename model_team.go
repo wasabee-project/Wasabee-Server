@@ -66,7 +66,7 @@ func (gid GoogleID) UserInTeam(team TeamID, allowOff bool) (bool, error) {
 
 // FetchTeam populates an entire TeamData struct
 // fetchAll includes users for whom their state == off, should only be used to display lists to the calling user
-func FetchTeam(team TeamID, teamList *TeamData, fetchAll bool) error {
+func (team TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test users all get updated this can be removed
 	var tmpU User
 	var tmpT Target
@@ -227,7 +227,7 @@ func (gid GoogleID) NewTeam(name string) (string, error) {
 }
 
 // RenameTeam sets a new name for a teamID
-func RenameTeam(name, teamID TeamID) error {
+func (teamID TeamID) Rename(name string) error {
 	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
 		Log.Notice(err)
@@ -236,7 +236,7 @@ func RenameTeam(name, teamID TeamID) error {
 }
 
 // DeleteTeam removes the team identified by teamID
-func DeleteTeam(teamID TeamID) error {
+func (teamID TeamID) Delete() error {
 	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
@@ -249,8 +249,9 @@ func DeleteTeam(teamID TeamID) error {
 }
 
 // AddUserToTeam adds a user (identified by loction share key) to a team
-func AddUserToTeam(teamID TeamID, lockey string) error {
-	gid, err := LockeyToGid(lockey)
+// TODO: take an interface, switch if LocKey or GoogleID
+func (teamID TeamID) AddUser(lockey LocKey) error {
+	gid, err := lockey.Gid()
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -268,8 +269,9 @@ func AddUserToTeam(teamID TeamID, lockey string) error {
 }
 
 // DelUserFromTeam removes a user (identified by location share key) from a team
-func DelUserFromTeam(teamID TeamID, lockey string) error {
-	gid, err := LockeyToGid(lockey)
+// TODO: take an interface, switch if LocKey or GoogleID
+func (teamID TeamID) RemoveUser(lockey LocKey) error {
+	gid, err := lockey.Gid()
 	if err != nil {
 		Log.Notice(err)
 		return err

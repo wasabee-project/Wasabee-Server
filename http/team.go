@@ -23,7 +23,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.UserInTeam(team, false)
 	if safe {
-		PhDevBin.FetchTeam(team, &teamList, false)
+		team.FetchTeam(&teamList, false)
 		data, _ := json.MarshalIndent(teamList, "", "\t")
 		s := string(data)
 		res.Header().Add("Content-Type", "text/json")
@@ -67,7 +67,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = PhDevBin.DeleteTeam(team)
+	err = team.Delete()
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -92,7 +92,7 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	var teamList PhDevBin.TeamData
-	err = PhDevBin.FetchTeam(team, &teamList, true)
+	err = team.FetchTeam(&teamList, true)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -116,14 +116,14 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := PhDevBin.TeamID(vars["team"])
-	key := vars["key"]
+	key := PhDevBin.LocKey(vars["key"])
 
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = PhDevBin.AddUserToTeam(team, key)
+	err = team.AddUser(key)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -142,13 +142,13 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := PhDevBin.TeamID(vars["team"])
-	key := vars["key"]
+	key := PhDevBin.LocKey(vars["key"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = PhDevBin.DelUserFromTeam(team, key)
+	err = team.RemoveUser(key)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

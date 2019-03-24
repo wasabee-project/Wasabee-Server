@@ -100,13 +100,14 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (PhDevBin.GoogleID, bool) {
-	lockey, otpw, ok := req.BasicAuth()
+	l, otpw, ok := req.BasicAuth()
+	lockey := PhDevBin.LocKey(l)
 	if ok == false {
 		PhDevBin.Log.Notice("Unable to decode basic authentication")
 		return "", false
 	}
 
-	gid, err := PhDevBin.VerifyOwnTracksPW(lockey, otpw)
+	gid, err := lockey.VerifyOwnTracksPW(otpw)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		return "", false

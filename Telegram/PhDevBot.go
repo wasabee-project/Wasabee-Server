@@ -113,16 +113,16 @@ func PhDevBot(init TGConfiguration) error {
 }
 
 func phdevBotNewUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	var lockey string
+	var lockey PhDevBin.LocKey
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) == 2 {
-			lockey = tokens[1]
+			lockey = PhDevBin.LocKey(strings.TrimSpace(tokens[1]))
 		}
 	} else {
-		lockey = inMsg.Message.Text
+		lockey = PhDevBin.LocKey(strings.TrimSpace(inMsg.Message.Text))
 	}
-	strings.TrimSpace(lockey)
+
 	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, lockey)
 	if err != nil {
 		PhDevBin.Log.Error(err)
