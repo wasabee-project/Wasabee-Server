@@ -58,8 +58,8 @@ func TelegramToGid(tgid int) (GoogleID, bool, error) {
 	return gid, verified, nil
 }
 
-// GidToTelegram returns a telegram ID number for a gid
-func GidToTelegram(gid GoogleID) (int64, error) {
+// TelegramID returns a telegram ID number for a gid
+func (gid GoogleID) TelegramID() (int64, error) {
 	var tgid int64
 
 	row := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid)

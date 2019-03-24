@@ -44,7 +44,7 @@ type UserData struct {
 func (gid GoogleID) InitUser() error {
 	var vdata Vresult
 
-	err := VSearchUser(gid, &vdata)
+	err := gid.VSearchUser(&vdata)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -131,7 +131,7 @@ func (gid GoogleID) RemoveUserFromTeam(team string) error {
 // XXX move to model_team.go
 func (gid GoogleID) SetUserTeamState(teamID string, state string) error {
 	if state == "Primary" {
-		_ = ClearPrimaryTeam(gid)
+		_ = gid.ClearPrimaryTeam()
 	}
 
 	if _, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {

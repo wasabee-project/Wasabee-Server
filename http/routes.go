@@ -176,14 +176,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	// check and update V data on each login
 	var v PhDevBin.Vresult
-	err = PhDevBin.VSearchUser(m.Gid, &v)
+	err = m.Gid.VSearchUser(&v)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		// Agent not found is not a 500 error
 	}
 	if v.Data.Agent != "" {
 		ses.Values["Agent"] = v.Data.Agent
-		err = PhDevBin.VUpdateUser(m.Gid, &v)
+		err = m.Gid.VUpdateUser(&v)
 		if err != nil {
 			PhDevBin.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)

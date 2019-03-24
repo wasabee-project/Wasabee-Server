@@ -381,7 +381,7 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid Ph
 
 // SendMessage is registered with PhDevBin as a message bus to allow other modules to send messages via Telegram
 func SendMessage(gid PhDevBin.GoogleID, message string) (bool, error) {
-	tgid, err := PhDevBin.GidToTelegram(gid)
+	tgid, err := gid.TelegramID()
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		return false, err
@@ -406,7 +406,7 @@ func teammatesNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error
 	maxdistance := 500
 	maxresults := 10
 
-	err := PhDevBin.TeammatesNearGid(gid, maxdistance, maxresults, &td)
+	err := gid.TeammatesNear(maxdistance, maxresults, &td)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return txt, err
@@ -422,7 +422,7 @@ func targetsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) 
 	maxdistance := 100
 	maxresults := 10
 
-	err := PhDevBin.TargetsNearGid(gid, maxdistance, maxresults, &td)
+	err := gid.TargetsNear(maxdistance, maxresults, &td)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return txt, err
@@ -438,7 +438,7 @@ func farmsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	maxdistance := 100
 	maxresults := 10
 
-	err := PhDevBin.TargetsNearGid(gid, maxdistance, maxresults, &td)
+	err := gid.TargetsNear(maxdistance, maxresults, &td)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return txt, err

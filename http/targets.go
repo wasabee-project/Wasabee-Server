@@ -57,7 +57,7 @@ func targetsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var data PhDevBin.TeamData
-	err = PhDevBin.TargetsNearGid(gid, 50, 10, &data)
+	err = gid.TargetsNear(50, 10, &data)
 
 	vars := mux.Vars(req)
 	format := vars["f"]

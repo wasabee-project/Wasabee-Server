@@ -21,7 +21,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := vars["team"]
 
-	safe, err := PhDevBin.UserInTeam(gid, team, false)
+	safe, err := gid.UserInTeam(team, false)
 	if safe {
 		PhDevBin.FetchTeam(team, &teamList, false)
 		data, _ := json.MarshalIndent(teamList, "", "\t")
@@ -34,7 +34,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -43,7 +43,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	name := vars["name"]
-	_, err = PhDevBin.NewTeam(name, id)
+	_, err = gid.NewTeam(name)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -53,7 +53,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -62,7 +62,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := vars["team"]
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
+	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -77,7 +77,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -86,7 +86,7 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := vars["team"]
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
+	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -107,7 +107,7 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -118,7 +118,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := vars["team"]
 	key := vars["key"]
 
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
+	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -133,7 +133,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := getUserID(req)
+	gid, err := getUserID(req)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -143,7 +143,7 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := vars["team"]
 	key := vars["key"]
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
+	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
