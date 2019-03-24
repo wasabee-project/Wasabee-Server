@@ -66,7 +66,7 @@ func (gid GoogleID) UserInTeam(team TeamID, allowOff bool) (bool, error) {
 
 // FetchTeam populates an entire TeamData struct
 // fetchAll includes users for whom their state == off, should only be used to display lists to the calling user
-func (team TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
+func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test users all get updated this can be removed
 	var tmpU User
 	var tmpT Target
@@ -77,11 +77,11 @@ func (team TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
-			"AND x.state != 'Off'", team)
+			"AND x.state != 'Off'", teamID)
 	} else {
 		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
-			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", team)
+			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", teamID)
 	}
 	if err != nil {
 		Log.Error(err)
@@ -123,15 +123,15 @@ func (team TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		return err
 	}
 
-	if err := db.QueryRow("SELECT name FROM teams WHERE teamID = ?", team).Scan(&teamList.Name); err != nil {
+	if err := db.QueryRow("SELECT name FROM teams WHERE teamID = ?", teamID).Scan(&teamList.Name); err != nil {
 		Log.Error(err)
 		return err
 	}
-	teamList.Id = team
+	teamList.Id = teamID
 
 	var targetid, radius, targettype, targetname, expiration, linkdst sql.NullString
 	var targetrows *sql.Rows
-	targetrows, err = db.Query("SELECT Id, Y(loc), X(loc), radius, type, name, expiration, linkdst FROM target WHERE teamID = ?", team)
+	targetrows, err = db.Query("SELECT Id, Y(loc), X(loc), radius, type, name, expiration, linkdst FROM target WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Error(err)
 		return err
