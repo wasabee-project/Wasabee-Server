@@ -11,7 +11,7 @@ import (
 func targetsUploadRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -23,7 +23,7 @@ func targetsUploadRoute(res http.ResponseWriter, req *http.Request) {
 func targetsRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -38,7 +38,7 @@ func targetsRoute(res http.ResponseWriter, req *http.Request) {
 func targetsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -51,7 +51,7 @@ func targetsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 func targetsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -71,7 +71,7 @@ func targetsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 
 	// phDevBinHTTPSTemplateExecute outputs to res
 	if err := phDevBinHTTPSTemplateExecute(res, req, "Targets", data); err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

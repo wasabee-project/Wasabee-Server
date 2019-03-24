@@ -13,6 +13,7 @@ import (
 	"errors"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"time"
 )
 
@@ -90,7 +91,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	err := phDevBinHTTPSTemplateExecute(res, req, "index", nil)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return
@@ -100,7 +101,7 @@ func statusRoute(res http.ResponseWriter, req *http.Request) {
 	// maybe show some interesting numbers, active agents, etc...
 	err := phDevBinHTTPSTemplateExecute(res, req, "status", nil)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return
@@ -110,7 +111,7 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	// maybe show some interesting numbers, active agents, etc...
 	err := phDevBinHTTPSTemplateConfig()
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -141,14 +142,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	content, err := getUserInfo(req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
-		fmt.Println(err.Error())
+		PhDevBin.Log.Notice(err)
 		return
 	}
 
 	var m PhDevUser
 	err = json.Unmarshal(content, &m)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -156,14 +157,18 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	// session cookie
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		// cookie is borked, maybe sessionName or key changed
+		PhDevBin.Log.Notice(err)
+		ses = sessions.NewSession(config.store, config.sessionName)
+		ses.Values["nonce"] = ""
+		ses.Save(req,res)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = PhDevBin.InitUser(m.Id)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -172,14 +177,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	var v PhDevBin.Vresult
 	err = PhDevBin.VSearchUser(m.Id, &v)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		PhDevBin.Log.Notice(err)
 		// Agent not found is not a 500 error
 	}
 	if v.Data.Agent != "" {
 		ses.Values["Agent"] = v.Data.Agent
 		err = PhDevBin.VUpdateUser(m.Id, &v)
 		if err != nil {
-			PhDevBin.Log.Notice(err.Error())
+			PhDevBin.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
