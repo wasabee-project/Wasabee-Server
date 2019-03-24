@@ -161,7 +161,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		PhDevBin.Log.Notice(err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Values["nonce"] = ""
-		ses.Save(req,res)
+		ses.Save(req, res)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
