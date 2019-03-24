@@ -2,15 +2,11 @@ package PhDevHTTP
 
 import (
 	"math"
-	"regexp"
 	"strconv"
 	"time"
-	// "github.com/cloudkucooland/PhDevBin"
 )
 
-// blockVariableExpressionCache contains regular expressions for all block variables to improve rendering speed
-var blockVariableExpressionCache = map[string]*regexp.Regexp{}
-
+// formatTime is used only in legacy simple route
 func formatTime(t time.Time, relative bool) string {
 	if relative {
 		if (t == time.Time{}) {
