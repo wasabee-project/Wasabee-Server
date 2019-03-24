@@ -19,7 +19,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := PhDevBin.TeamID(vars["team"])
 
 	safe, err := gid.UserInTeam(team, false)
 	if safe {
@@ -61,7 +61,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := PhDevBin.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
@@ -85,7 +85,7 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := PhDevBin.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
@@ -115,7 +115,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := PhDevBin.TeamID(vars["team"])
 	key := vars["key"]
 
 	safe, err := gid.OwnsTeam(team)
@@ -129,7 +129,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/"+config.apipath+"/team/"+team+"/edit", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }
 
 func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -141,7 +141,7 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := PhDevBin.TeamID(vars["team"])
 	key := vars["key"]
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
@@ -154,5 +154,5 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/"+config.apipath+"/team/"+team+"/edit", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }

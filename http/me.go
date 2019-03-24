@@ -50,7 +50,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := PhDevBin.TeamID(vars["team"])
 	state := vars["state"]
 
 	err = gid.SetUserTeamState(team, state)
@@ -71,10 +71,10 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := PhDevBin.TeamID(vars["team"])
 
 	// do the work
-	PhDevBin.Log.Notice("remove me from team: " + gid.String() + " " + team)
+	PhDevBin.Log.Notice("remove me from team: " + gid.String() + " " + team.String())
 	err = gid.RemoveUserFromTeam(team)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

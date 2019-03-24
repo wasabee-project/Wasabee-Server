@@ -9,7 +9,7 @@ import (
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
 	Name   string
-	Id     string
+	Id     TeamID
 	User   []User
 	Target []Target
 }
@@ -45,7 +45,7 @@ type Target struct {
 
 // UserInTeam checks to see if a user is in a team and (On|Primary).
 // allowOff == true will report if a user is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling user.
-func (gid GoogleID) UserInTeam(team string, allowOff bool) (bool, error) {
+func (gid GoogleID) UserInTeam(team TeamID, allowOff bool) (bool, error) {
 	var count string
 
 	var err error
@@ -66,7 +66,7 @@ func (gid GoogleID) UserInTeam(team string, allowOff bool) (bool, error) {
 
 // FetchTeam populates an entire TeamData struct
 // fetchAll includes users for whom their state == off, should only be used to display lists to the calling user
-func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
+func FetchTeam(team TeamID, teamList *TeamData, fetchAll bool) error {
 	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test users all get updated this can be removed
 	var tmpU User
 	var tmpT Target
@@ -195,8 +195,8 @@ func FetchTeam(team string, teamList *TeamData, fetchAll bool) error {
 	return nil
 }
 
-// UserOwnsTeam returns true if the userID owns the team identified by teamID
-func (gid GoogleID) OwnsTeam(teamID string) (bool, error) {
+// OwnsTeam returns true if the userID owns the team identified by teamID
+func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	var owner GoogleID
 
 	err := db.QueryRow("SELECT owner FROM teams WHERE teamID = ?", teamID).Scan(&owner)
@@ -227,7 +227,7 @@ func (gid GoogleID) NewTeam(name string) (string, error) {
 }
 
 // RenameTeam sets a new name for a teamID
-func RenameTeam(name, teamID string) error {
+func RenameTeam(name, teamID TeamID) error {
 	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
 		Log.Notice(err)
@@ -236,7 +236,7 @@ func RenameTeam(name, teamID string) error {
 }
 
 // DeleteTeam removes the team identified by teamID
-func DeleteTeam(teamID string) error {
+func DeleteTeam(teamID TeamID) error {
 	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
@@ -249,7 +249,7 @@ func DeleteTeam(teamID string) error {
 }
 
 // AddUserToTeam adds a user (identified by loction share key) to a team
-func AddUserToTeam(teamID, lockey string) error {
+func AddUserToTeam(teamID TeamID, lockey string) error {
 	gid, err := LockeyToGid(lockey)
 	if err != nil {
 		Log.Notice(err)
@@ -268,7 +268,7 @@ func AddUserToTeam(teamID, lockey string) error {
 }
 
 // DelUserFromTeam removes a user (identified by location share key) from a team
-func DelUserFromTeam(teamID, lockey string) error {
+func DelUserFromTeam(teamID TeamID, lockey string) error {
 	gid, err := LockeyToGid(lockey)
 	if err != nil {
 		Log.Notice(err)
@@ -349,7 +349,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	return nil
 }
 
-// TargetsNearGid returns any targets (Waypoints) near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
+// TargetsNear returns any targets (Waypoints) near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
 // the Users portion of the TeamData is uninitialized
 func (gid GoogleID) TargetsNear(maxdistance, maxresults int, targetList *TeamData) error {
 	var lat, lon, linkdst sql.NullString
@@ -397,4 +397,8 @@ func (gid GoogleID) TargetsNear(maxdistance, maxresults int, targetList *TeamDat
 		return err
 	}
 	return nil
+}
+
+func (teamID TeamID) String() string {
+	return string(teamID)
 }

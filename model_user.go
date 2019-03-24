@@ -5,7 +5,11 @@ import (
 	"fmt"
 )
 
+// GoogleID is the primary location for interfacing with the user type
 type GoogleID string
+
+// TeamID is the primary means for interfacing with teams
+type TeamID string
 
 // UserData is the complete user struct, used for the /me page
 type UserData struct {
@@ -120,7 +124,7 @@ func VerifyOwnTracksPW(lockey string, otpw string) (GoogleID, error) {
 
 // RemoveUserFromTeam updates the team list to remove the user
 // XXX move to model_team.go
-func (gid GoogleID) RemoveUserFromTeam(team string) error {
+func (gid GoogleID) RemoveUserFromTeam(team TeamID) error {
 	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
 		Log.Notice(err)
 	}
@@ -129,7 +133,7 @@ func (gid GoogleID) RemoveUserFromTeam(team string) error {
 
 // SetUserTeamState updates the users state on the team (Off|On|Primary)
 // XXX move to model_team.go
-func (gid GoogleID) SetUserTeamState(teamID string, state string) error {
+func (gid GoogleID) SetUserTeamState(teamID TeamID, state string) error {
 	if state == "Primary" {
 		_ = gid.ClearPrimaryTeam()
 	}
@@ -145,7 +149,7 @@ func (gid GoogleID) SetUserTeamState(teamID string, state string) error {
 // XXX move to model_team.go
 func (gid GoogleID) SetUserTeamStateName(teamname string, state string) error {
 	Log.Debug(teamname)
-	var id string
+	var id TeamID
 	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
 	err := row.Scan(&id)
 	if err != nil {
