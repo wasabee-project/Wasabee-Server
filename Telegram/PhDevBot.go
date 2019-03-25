@@ -334,21 +334,21 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid Ph
 				State: "On",
 				Team:  name,
 			})
-			gid.SetUserTeamStateName(name, "On")
+			gid.SetTeamStateName(name, "On")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Off:":
 			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Off",
 				Team:  name,
 			})
-			gid.SetUserTeamStateName(name, "Off")
+			gid.SetTeamStateName(name, "Off")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Primary:":
 			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Primary",
 				Team:  name,
 			})
-			gid.SetUserTeamStateName(name, "Primary")
+			gid.SetTeamStateName(name, "Primary")
 			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
 		case "Teammates":
 			msg.Text, _ = teammatesNear(gid, inMsg)

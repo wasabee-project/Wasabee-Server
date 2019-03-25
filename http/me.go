@@ -53,7 +53,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := PhDevBin.TeamID(vars["team"])
 	state := vars["state"]
 
-	err = gid.SetUserTeamState(team, state)
+	err = gid.SetTeamState(team, state)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

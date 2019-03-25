@@ -125,7 +125,7 @@ func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
 	return gid, nil
 }
 
-// RemoveUserFromTeam updates the team list to remove the user
+// RemoveFromTeam updates the team list to remove the user.
 // XXX move to model_team.go
 func (gid GoogleID) RemoveFromTeam(team TeamID) error {
 	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
@@ -134,9 +134,9 @@ func (gid GoogleID) RemoveFromTeam(team TeamID) error {
 	return nil
 }
 
-// SetUserTeamState updates the users state on the team (Off|On|Primary)
+// SetTeamState updates the users state on the team (Off|On|Primary)
 // XXX move to model_team.go
-func (gid GoogleID) SetUserTeamState(teamID TeamID, state string) error {
+func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 	if state == "Primary" {
 		_ = gid.ClearPrimaryTeam()
 	}
@@ -147,10 +147,10 @@ func (gid GoogleID) SetUserTeamState(teamID TeamID, state string) error {
 	return nil
 }
 
-// SetUserTeamStateName -- same as SetUserTeamState, but takes a team's human name rather than ID
+// SetTeamStateName -- same as SetTeamState, but takes a team's human name rather than ID
 // BUG: if multiple teams use the same name this will not work
 // XXX move to model_team.go
-func (gid GoogleID) SetUserTeamStateName(teamname string, state string) error {
+func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
 	Log.Debug(teamname)
 	var id TeamID
 	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
@@ -159,7 +159,7 @@ func (gid GoogleID) SetUserTeamStateName(teamname string, state string) error {
 		Log.Notice(err)
 	}
 
-	return gid.SetUserTeamState(id, state)
+	return gid.SetTeamState(id, state)
 }
 
 // Gid converts a location share key to a user's gid
