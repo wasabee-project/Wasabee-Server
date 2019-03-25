@@ -118,7 +118,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, config.Root+"/"+doc.ID+"\n")
+	fmt.Fprintf(res, config.Root+"/simple/"+doc.ID+"\n")
 }
 
 func getRoute(res http.ResponseWriter, req *http.Request) {
