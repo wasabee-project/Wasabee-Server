@@ -47,8 +47,6 @@ func Store(document *Document) error {
 		return errors.New("file contains 0x00 bytes")
 	}
 
-	escaped := EscapeHTML(document.Content)
-
 	var expiration interface{}
 	if (document.Expiration != time.Time{}) {
 		expiration = document.Expiration.UTC().Format("2006-01-02 15:04:05")
@@ -59,7 +57,7 @@ func Store(document *Document) error {
 	if err != nil {
 		Log.Errorf("Invalid script parameters: %s", err)
 	}
-	data, err := encrypt([]byte(escaped), key)
+	data, err := encrypt([]byte(document.Content), key)
 	if err != nil {
 		Log.Errorf("AES error: %s", err)
 		return err
@@ -134,6 +132,5 @@ func Request(id string) (Document, error) {
 		}
 	}
 
-	doc.Content = StripHTML(doc.Content)
 	return doc, nil
 }

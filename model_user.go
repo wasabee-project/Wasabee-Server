@@ -127,7 +127,7 @@ func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
 
 // RemoveUserFromTeam updates the team list to remove the user
 // XXX move to model_team.go
-func (gid GoogleID) RemoveUserFromTeam(team TeamID) error {
+func (gid GoogleID) RemoveFromTeam(team TeamID) error {
 	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
 		Log.Notice(err)
 	}

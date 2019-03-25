@@ -181,7 +181,7 @@ func (gid GoogleID) OwnTracksTransition(transition json.RawMessage) (json.RawMes
 
 	// do something here
 	Log.Debugf("%s transition %s: %s (%f)", gid, t.Event, t.Desc, t.ID)
-	SendMessage(gid, fmt.Sprintf("%s target area: %s", t.Event, t.Desc))
+	gid.SendMessage(fmt.Sprintf("%s target area: %s", t.Event, t.Desc))
 
 	return j, nil
 }

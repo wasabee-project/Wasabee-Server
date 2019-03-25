@@ -13,7 +13,7 @@ import (
 	"errors"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
-	// "github.com/gorilla/sessions"
+	"github.com/gorilla/sessions"
 	"time"
 )
 
@@ -159,9 +159,13 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
 		PhDevBin.Log.Notice("Cookie error: ", err)
-		// ses = sessions.NewSession(config.store, config.sessionName)
+		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Values["id"] = ""
 		ses.Values["nonce"] = "unset"
+		ses.Options = &sessions.Options{
+			Path:   "/",
+			MaxAge: 3600,
+		}
 		ses.Save(req, res)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -198,6 +202,10 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["id"] = m.Gid.String()
 	nonce, _, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
+	ses.Options = &sessions.Options{
+		Path:   "/",
+		MaxAge: 3600,
+	}
 	ses.Save(req, res)
 	// store the first requested URL in the session and redirect back there
 	http.Redirect(res, req, "/me?a=1", http.StatusPermanentRedirect)

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
@@ -97,7 +99,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	} else if req.FormValue("E") != "" {
 		exp = req.FormValue("E")
 	}
-	doc.Expiration, err = PhDevBin.ParseExpiration(exp)
+	doc.Expiration, err = parseExpiration(exp)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "Invalid expiration.\n")
@@ -130,4 +132,41 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprintf(res, "%s", doc.Content)
+}
+
+// ParseExpiration creates a time.Time object from an expiration string, taking the units m, h, d, w into account.
+func parseExpiration(expiration string) (time.Time, error) {
+	expiration = strings.ToLower(strings.TrimSpace(expiration))
+	if expiration == "volatile" {
+		return time.Unix(-1, 0), nil
+	}
+
+	var multiplier int64
+
+	if strings.HasSuffix(expiration, "h") {
+		expiration = strings.TrimSuffix(expiration, "h")
+		multiplier = 60
+	} else if strings.HasSuffix(expiration, "d") {
+		expiration = strings.TrimSuffix(expiration, "d")
+		multiplier = 60 * 24
+	} else if strings.HasSuffix(expiration, "w") {
+		expiration = strings.TrimSuffix(expiration, "w")
+		multiplier = 60 * 24 * 7
+	} else {
+		expiration = strings.TrimSuffix(expiration, "m")
+		multiplier = 1
+	}
+
+	value, err := strconv.ParseInt(expiration, 10, 0)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	if multiplier*value == 0 {
+		return time.Time{}, nil
+	}
+
+	expirationTime := time.Now().Add(time.Duration(multiplier*value) * time.Minute)
+
+	return expirationTime, nil
 }

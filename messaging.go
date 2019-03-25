@@ -6,20 +6,20 @@ import (
 
 type messagingConfig struct {
 	inited  bool
-	senders map[string]func(GoogleID, string) (bool, error)
+	senders map[string]func(gid GoogleID, message string) (bool, error)
 }
 
 var mc messagingConfig
 
 // SendMessage sends a message to the available message destinations for user specified by "gid"
 // currently only Telegram is supported, but more can be added
-func SendMessage(gid GoogleID, message string) (bool, error) {
+func (gid GoogleID) SendMessage(message string) (bool, error) {
 	// determine which messaging protocols are enabled for gid
 	// pick optimal
 	bus := "Telegram"
 
 	// XXX loop through valid, trying until one works
-	ok, err := SendMessageVia(gid, message, bus)
+	ok, err := gid.SendMessageVia(message, bus)
 	if err != nil {
 		Log.Notice("Unable to send message")
 		return false, err
@@ -32,7 +32,7 @@ func SendMessage(gid GoogleID, message string) (bool, error) {
 }
 
 // SendMessageVia sends a message to the destination on the specified bus
-func SendMessageVia(gid GoogleID, message, bus string) (bool, error) {
+func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 	_, ok := mc.senders[bus]
 	if ok == false {
 		err := errors.New("No such bus")
@@ -48,7 +48,7 @@ func SendMessageVia(gid GoogleID, message, bus string) (bool, error) {
 }
 
 // SendAnnounce sends a message to everyone on the team, determining what is the best route per user
-func SendAnnounce(teamID, message string) error {
+func (teamID TeamID) SendAnnounce(message string) error {
 	// for each user on the team
 	// determine which messaging protocols are enabled for gid
 	// pick optimal

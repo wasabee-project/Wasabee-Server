@@ -75,7 +75,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	// do the work
 	PhDevBin.Log.Notice("remove me from team: " + gid.String() + " " + team.String())
-	err = gid.RemoveUserFromTeam(team)
+	err = gid.RemoveFromTeam(team)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
