@@ -219,6 +219,7 @@ func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ses, err := config.store.Get(req, config.sessionName)
 		if err != nil {
+			PhDevBin.Log.Debug(err)
 			ses.Values["nonce"] = ""
 			ses.Values["id"] = ""
 			ses.Save(req, res)
@@ -229,6 +230,9 @@ func authMW(next http.Handler) http.Handler {
 		id, ok := ses.Values["id"]
 		if ok == false || id == nil {
 			PhDevBin.Log.Debug("Not Logged In")
+			// XXX save the requested URL, use that when authentication is finished (not working)
+			ses.Values["loginReq"] = req.URL
+			ses.Save(req, res)
 			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 			return
 		}

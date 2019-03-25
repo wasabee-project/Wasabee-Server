@@ -171,6 +171,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	location := "/me?a=1"
+	// XXX this doesn't work, should redirect back whence it came
+	if ses.Values["loginReq"] != nil && ses.Values["loginReq"].(string) != "/login" {
+		location = ses.Values["loginReq"].(string)
+		PhDevBin.Log.Debug("loginReq session value =", location)
+		ses.Values["loginReq"] = ""
+	}
+
 	err = m.Gid.InitUser()
 	if err != nil {
 		PhDevBin.Log.Notice(err)
@@ -208,7 +216,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	ses.Save(req, res)
 	// store the first requested URL in the session and redirect back there
-	http.Redirect(res, req, "/me?a=1", http.StatusPermanentRedirect)
+	http.Redirect(res, req, location, http.StatusPermanentRedirect)
 }
 
 func calculateNonce(gid PhDevBin.GoogleID) (string, string, error) {
