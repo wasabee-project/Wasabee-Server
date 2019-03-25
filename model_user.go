@@ -14,15 +14,19 @@ type TeamID string
 // LocKey is the location share key
 type LocKey string
 
+// used only for the V EnlID -- for determining what kind of identifer is passed to interface{} methods in V 
+type enlID string
+
 // UserData is the complete user struct, used for the /me page
 type UserData struct {
 	GoogleID      GoogleID
 	IngressName   string
-	Level         float64 // unused currently get from V, requires schema change
+	Level         float64
 	LocationKey   string
 	OwnTracksPW   string
 	VVerified     bool
 	VBlacklisted  bool
+	Vid			  enlID
 	OwnTracksJSON string
 	Teams         []struct {
 		ID    string
@@ -68,7 +72,8 @@ func (gid GoogleID) InitUser() error {
 		Log.Notice(err)
 		return err
 	}
-	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, lockey, OTpassword, VVerified, VBlacklisted) VALUES (?,?,?,NULL,?,?)", gid, tmpName, lockey, vdata.Data.Verified, vdata.Data.Blacklisted)
+	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid) VALUES (?,?,?,?,NULL,?,?,?)",
+		gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -183,8 +188,8 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 
 	ud.GoogleID = gid
 
-	row := db.QueryRow("SELECT iname, lockey, OTpassword, VVerified, VBlacklisted FROM user WHERE gid = ?", gid)
-	err := row.Scan(&ud.IngressName, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted)
+	row := db.QueryRow("SELECT iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid FROM user WHERE gid = ?", gid)
+	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid)
 	if err != nil {
 		Log.Notice(err)
 		return err

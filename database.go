@@ -56,10 +56,12 @@ func Connect(uri string) error {
 		_, err := db.Exec(`CREATE TABLE user(
 			gid varchar(32) PRIMARY KEY,
 			iname varchar(64) NULL DEFAULT NULL,
+			level tinyint NOT NULL DEFAULT 1,
 			lockey varchar(64) NULL DEFAULT NULL,
 			OTpassword varchar(64) NULL DEFAULT NULL,
 			VVerified BOOLEAN NOT NULL DEFAULT 0,
-			VBlacklisted BOOLEAN NOT NULL DEFAULT 0
+			VBlacklisted BOOLEAN NOT NULL DEFAULT 0,
+			Vid varchar(48) NOT NULL DEFAULT ""
 		) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`)
 		if err != nil {
 			return err

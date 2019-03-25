@@ -95,7 +95,7 @@ func (gid GoogleID) VUpdateUser(res *Vresult) error {
 
 	if res.Status == "ok" && res.Data.Agent != "" {
 		Log.Debug("Updating V data for ", res.Data.Agent)
-		_, err := db.Exec("UPDATE user SET iname = ?, VVerified = ?, VBlacklisted = ? WHERE gid = ?", res.Data.Agent, res.Data.Verified, res.Data.Blacklisted, gid)
+		_, err := db.Exec("UPDATE user SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?", res.Data.Agent, res.Data.Level, res.Data.Verified, res.Data.Blacklisted, res.Data.EnlID, gid)
 
 		if err != nil {
 			Log.Error(err)
