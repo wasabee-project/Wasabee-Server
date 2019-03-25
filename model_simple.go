@@ -15,8 +15,8 @@ import (
 // MaxFilesize is the maximum file size for simple uploads (1MB)
 const MaxFilesize = 1024 * 1024 // 1MB
 
-// Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
-type Document struct {
+// SimpleDocument specifies the content and metadata of a piece of code that is hosted on PhDevBin.
+type SimpleDocument struct {
 	ID         string
 	Content    string
 	Upload     time.Time
@@ -25,7 +25,7 @@ type Document struct {
 }
 
 // Store a document object in the database.
-func Store(document *Document) error {
+func Store(document *SimpleDocument) error {
 	// Generate a name that doesn't exist yet
 	name, err := GenerateSafeName()
 	if err != nil {
@@ -80,8 +80,8 @@ func Store(document *Document) error {
 }
 
 // Request a document from the database by its ID.
-func Request(id string) (Document, error) {
-	doc := Document{ID: id}
+func Request(id string) (SimpleDocument, error) {
+	doc := SimpleDocument{ID: id}
 	var views int
 	var upload, expiration sql.NullString
 	databaseID := sha256.Sum256([]byte(id))
@@ -91,7 +91,7 @@ func Request(id string) (Document, error) {
 		if err.Error() != "sql: no rows in result set" {
 			Log.Warningf("Error retrieving document: %s", err)
 		}
-		return Document{}, err
+		return SimpleDocument{}, err
 	}
 
 	go db.Exec("UPDATE documents SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
@@ -102,12 +102,12 @@ func Request(id string) (Document, error) {
 	key, err := scrypt.Key([]byte(id), []byte(doc.Upload.UTC().Format("2006-01-02 15:04:05")), 16384, 8, 1, 24)
 	if err != nil {
 		Log.Errorf("Invalid script parameters: %s", err)
-		return Document{}, err
+		return SimpleDocument{}, err
 	}
 	data, err := decrypt([]byte(doc.Content), key)
 	if err != nil && !(err.Error() == "cipher: message authentication failed" && !strings.Contains(doc.Content, "\000")) {
 		Log.Errorf("AES error: %s", err)
-		return Document{}, err
+		return SimpleDocument{}, err
 	} else if err == nil {
 		doc.Content = string(data)
 	}
@@ -124,10 +124,10 @@ func Request(id string) (Document, error) {
 			}
 		} else {
 			if err != nil {
-				return Document{}, err
+				return SimpleDocument{}, err
 			}
 			if doc.Expiration.Before(time.Now()) {
-				return Document{}, errors.New("the document has expired")
+				return SimpleDocument{}, errors.New("the document has expired")
 			}
 		}
 	}

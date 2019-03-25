@@ -14,7 +14,7 @@ import (
 
 func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	var err error
-	doc := PhDevBin.Document{}
+	doc := PhDevBin.SimpleDocument{}
 	exp := "14d"
 
 	// Parse form and get content
