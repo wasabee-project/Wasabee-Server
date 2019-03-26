@@ -31,28 +31,31 @@ type Operation struct {
 
 // Portal is defined by the PhtivDraw IITC plugin.
 type Portal struct {
-	ID      PortalID `json:"id"`
-	Name    string   `json:"name"`
-	Lat     string   `json:"lat"` // passing these as strings saves me parsing them
-	Lon     string   `json:"lng"`
-	Comment string   `json:"comment"` // currently not in database, need schema change
+	ID       PortalID `json:"id"`
+	Name     string   `json:"name"`
+	Lat      string   `json:"lat"` // passing these as strings saves me parsing them
+	Lon      string   `json:"lng"`
+	Comment  string   `json:"comment"` // currently not in database, need schema change
+	Hardness string   `json:"hardness"` // currently not in database, need schema change
 }
 
 // Link is defined by the PhtivDraw IITC plugin.
 type Link struct {
 	ID         string   `json:"ID"`
-	From       Portal   `json:"fromPortal"`
-	To         Portal   `json:"toPortal"`
+	From       PortalID `json:"fromPortalId"`
+	To         PortalID `json:"toPortalId"`
 	Desc       string   `json:"description"`
 	AssignedTo GoogleID `json:"assignedTo"`
+	ThrowOrder float64  `json:"throwOrderPos"` // currently not in database, need schema change
 }
 
 // Marker is defined by the PhtivDraw IITC plugin.
 type Marker struct {
-	ID      string     `json:"ID"`
-	Portal  Portal     `json:"portal"`
-	Type    MarkerType `json:"type"`
-	Comment string     `json:"comment"`
+	ID         string     `json:"ID"`
+	PortalID   PortalID   `json:"portalId"`
+	Type       MarkerType `json:"type"`
+	Comment    string     `json:"comment"`
+	AssignedTo GoogleID   `json:"assignedTo"` // currently not in database, need schema change
 }
 
 // PDrawInsert parses a raw op sent from the IITC plugin and stores it in the database
@@ -127,12 +130,8 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 
 func (o *Operation) insertMarker(m *Marker) error {
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, comment) VALUES (?, ?, ?, ?, ?)",
-		m.ID, o.ID, m.Portal.ID, m.Type, m.Comment)
+		m.ID, o.ID, m.PortalID, m.Type, m.Comment)
 	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if err = o.insertPortal(&m.Portal); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -160,17 +159,9 @@ func (o *Operation) insertAnchor(p PortalID) error {
 
 func (o *Operation) insertLink(l *Link) error {
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description) VALUES (?, ?, ?, ?, ?)",
-		l.ID, l.From.ID, l.To.ID, o.ID, l.Desc)
+		l.ID, l.From, l.To, o.ID, l.Desc)
 	if err != nil {
 		Log.Error(err)
-	}
-	if err = o.insertPortal(&l.To); err != nil {
-		Log.Error(err)
-		return err
-	}
-	if err = o.insertPortal(&l.From); err != nil {
-		Log.Error(err)
-		return err
 	}
 	return nil
 }
@@ -192,7 +183,6 @@ func (o *Operation) Delete() error {
 // Populate takes a pointer to an Operation and fills it in; o.ID must be set
 // checks to see that either the gid created the operation or the gid is on the team assigned to the operation
 func (o *Operation) Populate(gid GoogleID) error {
-	portalCache := make(map[PortalID]Portal)
 	var authorized bool
 
 	// permission check and populate Operation top level
@@ -216,22 +206,19 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return errors.New("Unauthorized: this operation owned by someone else")
 	}
 
-	// get portal data into portalCache AND the Operation
-	err = o.PopulatePortals(portalCache)
+	err = o.PopulatePortals()
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	// get marker data, filling in portals from portalCache
-	err = o.PopulateMarkers(portalCache)
+	err = o.PopulateMarkers()
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	// get link data, filling in portals from portalCache
-	err = o.PopulateLinks(portalCache)
+	err = o.PopulateLinks()
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -246,9 +233,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 	return nil
 }
 
-func (o *Operation) PopulatePortals(cache map[PortalID]Portal) error {
+func (o *Operation) PopulatePortals() error {
 	var tmpPortal Portal
-	// var comment sql.NullString
 
 	rows, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon FROM portal WHERE opID = ? ORDER BY name", o.ID)
 	if err != nil {
@@ -263,15 +249,13 @@ func (o *Operation) PopulatePortals(cache map[PortalID]Portal) error {
 			continue
 		}
 		o.OpPortals = append(o.OpPortals, tmpPortal)
-		cache[tmpPortal.ID] = tmpPortal
 	}
 	return nil
 }
 
-func (o *Operation) PopulateMarkers(cache map[PortalID]Portal) error {
+func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
 	var comment sql.NullString
-	var tmpPortalID PortalID
 
 	rows, err := db.Query("SELECT ID, PortalID, type, comment FROM marker WHERE opID = ?", o.ID)
 	if err != nil {
@@ -280,7 +264,7 @@ func (o *Operation) PopulateMarkers(cache map[PortalID]Portal) error {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpPortalID, &tmpMarker.Type, &comment)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &comment)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -290,23 +274,14 @@ func (o *Operation) PopulateMarkers(cache map[PortalID]Portal) error {
 		} else {
 			tmpMarker.Comment = ""
 		}
-		cachedPortal, ok := cache[tmpPortalID]
-		if ok == true {
-			tmpMarker.Portal = cachedPortal
-		} else {
-			Log.Debug("Cache Miss")
-			// query?
-		}
 		o.Markers = append(o.Markers, tmpMarker)
 	}
 	return nil
 }
 
-func (o *Operation) PopulateLinks(cache map[PortalID]Portal) error {
+func (o *Operation) PopulateLinks() error {
 	var tmpLink Link
 	var description sql.NullString
-	var tmpFromPortalID PortalID
-	var tmpToPortalID PortalID
 
 	rows, err := db.Query("SELECT ID, fromPortalID, toPortalID, description FROM link WHERE opID = ?", o.ID)
 	if err != nil {
@@ -315,7 +290,7 @@ func (o *Operation) PopulateLinks(cache map[PortalID]Portal) error {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpFromPortalID, &tmpToPortalID, &description)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -324,21 +299,6 @@ func (o *Operation) PopulateLinks(cache map[PortalID]Portal) error {
 			tmpLink.Desc = description.String
 		} else {
 			tmpLink.Desc = ""
-		}
-		cachedPortal, ok := cache[tmpFromPortalID]
-		if ok == true {
-			tmpLink.From = cachedPortal
-		} else {
-			Log.Debug("Cache Miss")
-			// query?
-		}
-
-		cachedPortal, ok = cache[tmpToPortalID]
-		if ok == true {
-			tmpLink.To = cachedPortal
-		} else {
-			Log.Debug("Cache Miss")
-			// query?
 		}
 		o.Links = append(o.Links, tmpLink)
 	}
