@@ -84,9 +84,9 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 	// the foreign key constraints should take care of these, but just in case...
-	_, _ = db.Exec("DELETE FROM markers WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM links WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM portals WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
 
 	// start the insert process
 	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color) VALUES (?, ?, ?, ?)", o.ID, o.Name, gid, o.Color)
