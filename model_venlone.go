@@ -53,21 +53,24 @@ func GetvEnlOne() bool {
 	return vc.configured
 }
 
-// VSearchUser checks a user at V and populates a Vresult
+// VSearch checks a user at V and populates a Vresult
 // gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
 func (gid GoogleID) VSearch(res *Vresult) error {
 	return vsearch(gid, res)
 }
 
+// VSearch checks a user at V and populates a Vresult
 func (eid EnlID) VSearch(res *Vresult) error {
 	return vsearch(eid, res)
 }
 
+// VSearch checks a user at V and populates a Vresult
 func (tgid TelegramID) VSearch(res *Vresult) error {
 	id := strconv.Itoa(int(tgid))
 	return vsearch(id, res)
 }
 
+// vsearch stands behind the wraper functions and checks a user at V and populates a Vresult
 func vsearch(i interface{}, res *Vresult) error {
 	var searchID string
 	switch id := i.(type) {
@@ -112,7 +115,7 @@ func vsearch(i interface{}, res *Vresult) error {
 	return nil
 }
 
-// VUpdateUser updates the database to reflect an agent's current status at V.
+// VUpdate updates the database to reflect an agent's current status at V.
 // It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) VUpdate(res *Vresult) error {
 	if vc.configured == false {

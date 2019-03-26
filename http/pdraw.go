@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func PDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
+func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 
 	var gid PhDevBin.GoogleID
@@ -48,7 +48,7 @@ func PDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
 
-func PDrawGetRoute(res http.ResponseWriter, req *http.Request) {
+func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(req)
 	id := vars["document"]

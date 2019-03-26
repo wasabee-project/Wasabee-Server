@@ -29,8 +29,8 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/simple/{document}", getRoute).Methods("GET")
 
 	// PDraw w/o auth for testing
-	r.HandleFunc("/pd", PDrawUploadRoute).Methods("POST")
-	r.HandleFunc("/pd/{document}", PDrawGetRoute).Methods("GET")
+	r.HandleFunc("/pd", pDrawUploadRoute).Methods("POST")
+	r.HandleFunc("/pd/{document}", pDrawGetRoute).Methods("GET")
 
 	// OwnTracks URL
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")

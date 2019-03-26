@@ -170,7 +170,7 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	return s, nil
 }
 
-// OwnTrackTargets returns a JSON formatted list of targets.
+// OwnTracksTargets returns a JSON formatted list of targets.
 // iOS does not support sending locations and Waypoints in the same packet.
 func (gid GoogleID) OwnTracksTargets() (json.RawMessage, error) {
 	j := json.RawMessage("{ }")
