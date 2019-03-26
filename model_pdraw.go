@@ -75,10 +75,88 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		authorized = true
 	}
 	if authorized == false {
-		return errors.New("Unauthorized")
+		return errors.New("Unauthorized: this operation owned by someone else")
 	}
 
-	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
+	// clear and start from a blank slate
+	if err = o.Delete(); err != nil {
+		Log.Notice(err)
+		return err
+	}
+
+	// start the insert process
+	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color) VALUES (?, ?, ?, ?)", o.ID, o.Name, gid, o.Color)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	for _, m := range o.Markers {
+		if err = o.insertMarker(&m); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+	for _, l := range o.Links {
+		if err = o.insertLink(&l); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
+	// I bet this isn't needed since they should be covered in links and markers... but just in case
+	for _, p := range o.Portals {
+		if err = o.insertPortal(&p); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+	return nil
+}
+
+func (o *Operation) insertMarker(m *Marker) error {
+	_, err := db.Exec("INSERT INTO marker (ID, opID, portalID, type, comment) VALUES (?, ?, ?, ?, ?)",
+		m.ID, o.ID, m.Portal.ID, m.Type, m.Comment)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = o.insertPortal(&m.Portal); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (o *Operation) insertPortal(p *Portal) error {
+	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc) VALUES (?, ?, ?, POINT(?,?))",
+		p.ID, o.ID, p.Name, p.Lon, p.Lat)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (o *Operation) insertLink(l *Link) error {
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description) VALUES (?, ?, ?, ?, ?)",
+		l.ID, l.From.ID, l.To.ID, o.ID, l.Desc)
+	if err != nil {
+		Log.Error(err)
+	}
+	if err = o.insertPortal(&l.To); err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = o.insertPortal(&l.From); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (o *Operation) Delete() error {
+	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -87,74 +165,5 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
-
-	// start the insert process
-	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color) VALUES (?, ?, ?, ?)", o.ID, o.Name, gid, o.Color)
-	if err != nil {
-		Log.Notice(err)
-		return err
-	}
-
-	for _, m := range o.Markers {
-		if err = insertMarker(&m, o.ID); err != nil {
-			Log.Error(err)
-			continue
-		}
-	}
-	for _, l := range o.Links {
-		if err = insertLink(&l, o.ID); err != nil {
-			Log.Error(err)
-			continue
-		}
-	}
-
-	// I bet this isn't needed since they should be covered in links and markers... but just in case
-	for _, p := range o.Portals {
-		if err = insertPortal(&p, o.ID); err != nil {
-			Log.Error(err)
-			continue
-		}
-	}
-	return nil
-}
-
-func insertMarker(m *Marker, o OperationID) error {
-	_, err := db.Exec("INSERT INTO marker (ID, opID, portalID, type, comment) VALUES (?, ?, ?, ?, ?)",
-		m.ID, o, m.Portal.ID, m.Type, m.Comment)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if err = insertPortal(&m.Portal, o); err != nil {
-		Log.Error(err)
-		return err
-	}
-	return nil
-}
-
-func insertPortal(p *Portal, o OperationID) error {
-	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc) VALUES (?, ?, ?, POINT(?,?))",
-		p.ID, o, p.Name, p.Lon, p.Lat)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	return nil
-}
-
-func insertLink(l *Link, o OperationID) error {
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description) VALUES (?, ?, ?, ?, ?)",
-		l.ID, l.From.ID, l.To.ID, o, l.Desc)
-	if err != nil {
-		Log.Error(err)
-	}
-	if err = insertPortal(&l.To, o); err != nil {
-		Log.Error(err)
-		return err
-	}
-	if err = insertPortal(&l.From, o); err != nil {
-		Log.Error(err)
-		return err
-	}
 	return nil
 }

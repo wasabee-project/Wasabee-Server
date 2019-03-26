@@ -30,13 +30,13 @@ func PDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if string(jBlob) == "" {
 		PhDevBin.Log.Notice("empty JSON")
-		fmt.Fprintf(res, `{ "error": "Empty JSON" }`)
+		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	PhDevBin.Log.Debug(string(jBlob))
+	// PhDevBin.Log.Debug(string(jBlob))
 	err = PhDevBin.PDrawInsert(jRaw, gid)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
@@ -44,7 +44,7 @@ func PDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, `{ "OK": "ok" }`)
+	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
 
 func jsonError(e error) string {
