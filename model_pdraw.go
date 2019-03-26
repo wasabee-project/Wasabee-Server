@@ -128,6 +128,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	return nil
 }
 
+// insertMarkers adds a marker to the database
 func (o *Operation) insertMarker(m *Marker) error {
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, comment) VALUES (?, ?, ?, ?, ?)",
 		m.ID, o.ID, m.PortalID, m.Type, m.Comment)
@@ -138,6 +139,7 @@ func (o *Operation) insertMarker(m *Marker) error {
 	return nil
 }
 
+// insertPortal adds a portal to the database
 func (o *Operation) insertPortal(p *Portal) error {
 	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc) VALUES (?, ?, ?, POINT(?, ?))",
 		p.ID, o.ID, p.Name, p.Lon, p.Lat)
@@ -148,6 +150,7 @@ func (o *Operation) insertPortal(p *Portal) error {
 	return nil
 }
 
+// insertAnchor adds an anchor to the database
 func (o *Operation) insertAnchor(p PortalID) error {
 	_, err := db.Exec("INSERT IGNORE INTO anchor (opID, portalID) VALUES (?, ?)", o.ID, p)
 	if err != nil {
@@ -157,6 +160,7 @@ func (o *Operation) insertAnchor(p PortalID) error {
 	return nil
 }
 
+// insertLink adds a link to the database
 func (o *Operation) insertLink(l *Link) error {
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description) VALUES (?, ?, ?, ?, ?)",
 		l.ID, l.From, l.To, o.ID, l.Desc)
@@ -166,6 +170,7 @@ func (o *Operation) insertLink(l *Link) error {
 	return nil
 }
 
+// Delete removes an operation and all associated data
 func (o *Operation) Delete() error {
 	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
@@ -233,6 +238,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 	return nil
 }
 
+// PopulatePortals fills in the OpPortals list for the Operation. No authorization takes place.
 func (o *Operation) PopulatePortals() error {
 	var tmpPortal Portal
 
@@ -253,6 +259,7 @@ func (o *Operation) PopulatePortals() error {
 	return nil
 }
 
+// PopulateMarkers fills in the Markers list for the Operation. No authorization takes place.
 func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
 	var comment sql.NullString
@@ -279,6 +286,7 @@ func (o *Operation) PopulateMarkers() error {
 	return nil
 }
 
+// PopulateLinks fills in the Links list for the Operation. No authorization takes place.
 func (o *Operation) PopulateLinks() error {
 	var tmpLink Link
 	var description sql.NullString
@@ -305,6 +313,7 @@ func (o *Operation) PopulateLinks() error {
 	return nil
 }
 
+// PopulateAnchors fills in the Anchors list for the Operation. No authorization takes place.
 func (o *Operation) PopulateAnchors() error {
 	var anchor PortalID
 	rows, err := db.Query("SELECT portalID FROM anchor WHERE opID = ?", o.ID)
@@ -324,6 +333,7 @@ func (o *Operation) PopulateAnchors() error {
 	return nil
 }
 
+// String returns the string version of a PortalID
 func (p PortalID) String() string {
 	return string(p)
 }
