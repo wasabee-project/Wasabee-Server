@@ -229,11 +229,12 @@ func authMW(next http.Handler) http.Handler {
 
 		id, ok := ses.Values["id"]
 		if ok == false || id == nil {
-			PhDevBin.Log.Debug("Not Logged In")
+			// PhDevBin.Log.Debug("Not Logged In")
 			// XXX save the requested URL, use that when authentication is finished (not working)
 			ses.Values["loginReq"] = req.URL
+			PhDevBin.Log.Debug(req.URL)
 			ses.Save(req, res)
-			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+			http.Redirect(res, req, "/login?returnto=req.URL", http.StatusPermanentRedirect)
 			return
 		}
 
@@ -249,14 +250,12 @@ func authMW(next http.Handler) http.Handler {
 		inNonce := in.(string)
 
 		if inNonce != nonce {
-			PhDevBin.Log.Debug(inNonce)
-			PhDevBin.Log.Debug(nonce)
 			if inNonce != pNonce {
-				PhDevBin.Log.Debug("Session timed out")
+				// PhDevBin.Log.Debug("Session timed out")
 				ses.Values["nonce"] = "unset"
 				ses.Save(req, res)
 			} else {
-				PhDevBin.Log.Debug("Updating to new nonce")
+				// PhDevBin.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
 				ses.Save(req, res)
 			}
@@ -266,8 +265,6 @@ func authMW(next http.Handler) http.Handler {
 			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
 			return
 		}
-
 		next.ServeHTTP(res, req)
-
 	})
 }

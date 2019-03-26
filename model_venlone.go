@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
 
 type vconfig struct {
@@ -54,11 +55,36 @@ func GetvEnlOne() bool {
 
 // VSearchUser checks a user at V and populates a Vresult
 // gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
-func (gid GoogleID) VSearchUser(res *Vresult) error {
+func (gid GoogleID) VSearch(res *Vresult) error {
+	return vsearch(gid, res)
+}
+
+func (eid EnlID) VSearch(res *Vresult) error {
+	return vsearch(eid, res)
+}
+
+func (tgid TelegramID) VSearch(res *Vresult) error {
+	id := strconv.Itoa(int(tgid))
+	return vsearch(id, res)
+}
+
+func vsearch(i interface{}, res *Vresult) error {
+	var searchID string
+	switch id := i.(type) {
+	case GoogleID:
+		searchID = id.String()
+	case EnlID:
+		searchID = id.String()
+	case string:
+		searchID = id
+	default:
+		searchID = ""
+	}
+
 	if vc.configured == false {
 		return errors.New("V API key not configured")
 	}
-	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, gid, vc.vAPIKey)
+	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, searchID, vc.vAPIKey)
 	resp, err := http.Get(url)
 	if err != nil {
 		Log.Error(err)
@@ -71,7 +97,7 @@ func (gid GoogleID) VSearchUser(res *Vresult) error {
 		return err
 	}
 
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		Log.Error(err)
@@ -88,14 +114,15 @@ func (gid GoogleID) VSearchUser(res *Vresult) error {
 
 // VUpdateUser updates the database to reflect an agent's current status at V.
 // It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
-func (gid GoogleID) VUpdateUser(res *Vresult) error {
+func (gid GoogleID) VUpdate(res *Vresult) error {
 	if vc.configured == false {
 		return errors.New("V API key not configured")
 	}
 
 	if res.Status == "ok" && res.Data.Agent != "" {
 		Log.Debug("Updating V data for ", res.Data.Agent)
-		_, err := db.Exec("UPDATE user SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?", res.Data.Agent, res.Data.Level, res.Data.Verified, res.Data.Blacklisted, res.Data.EnlID, gid)
+		_, err := db.Exec("UPDATE user SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
+			res.Data.Agent, res.Data.Level, res.Data.Verified, res.Data.Blacklisted, res.Data.EnlID, gid)
 
 		if err != nil {
 			Log.Error(err)

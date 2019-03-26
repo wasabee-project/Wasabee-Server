@@ -132,6 +132,8 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func googleRoute(res http.ResponseWriter, req *http.Request) {
+	// XXX get ?returnto= and stuff it in ses.Value["loginReq"]
+
 	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
 	res.Header().Add("Cache-Control", "no-cache")
 	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
@@ -192,14 +194,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	// check and update V data on each login
 	var v PhDevBin.Vresult
-	err = m.Gid.VSearchUser(&v)
+	err = m.Gid.VSearch(&v)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		// Agent not found is not a 500 error
 	}
 	if v.Data.Agent != "" {
 		ses.Values["Agent"] = v.Data.Agent
-		err = m.Gid.VUpdateUser(&v)
+		err = m.Gid.VUpdate(&v)
 		if err != nil {
 			PhDevBin.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)

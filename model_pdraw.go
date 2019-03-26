@@ -35,7 +35,7 @@ type Portal struct {
 	Name     string   `json:"name"`
 	Lat      string   `json:"lat"` // passing these as strings saves me parsing them
 	Lon      string   `json:"lng"`
-	Comment  string   `json:"comment"` // currently not in database, need schema change
+	Comment  string   `json:"comment"`  // currently not in database, need schema change
 	Hardness string   `json:"hardness"` // currently not in database, need schema change
 }
 

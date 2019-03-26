@@ -10,6 +10,9 @@ var tgbotname string
 var tgbotid int
 var tgrunning bool
 
+// TelegramID is a user ID from telegram -- used for V
+type TelegramID int
+
 // TGSetBot is called from the Telegram bot startup to let other services know it is running
 func TGSetBot(botname string, botid int) {
 	tgbotname = botname

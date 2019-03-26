@@ -14,8 +14,11 @@ type TeamID string
 // LocKey is the location share key
 type LocKey string
 
-// used only for the V EnlID -- for determining what kind of identifer is passed to interface{} methods in V
-type enlID string
+// EnlID is a V EnlID
+type EnlID string
+
+// TelegramID is a Telegram user ID
+// type TelegramID int
 
 // UserData is the complete user struct, used for the /me page
 type UserData struct {
@@ -26,7 +29,7 @@ type UserData struct {
 	OwnTracksPW   string
 	VVerified     bool
 	VBlacklisted  bool
-	Vid           enlID
+	Vid           EnlID
 	OwnTracksJSON string
 	Teams         []struct {
 		ID    string
@@ -55,7 +58,7 @@ type UserData struct {
 func (gid GoogleID) InitUser() error {
 	var vdata Vresult
 
-	err := gid.VSearchUser(&vdata)
+	err := gid.VSearch(&vdata)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -327,4 +330,8 @@ func (gid GoogleID) UserLocation(lat, lon, source string) error {
 
 func (gid GoogleID) String() string {
 	return string(gid)
+}
+
+func (eid EnlID) String() string {
+	return string(eid)
 }
