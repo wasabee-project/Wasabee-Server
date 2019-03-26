@@ -28,16 +28,18 @@ type WaypointsList struct {
 // Waypoint is defined by the OwnTracks JSON format.
 // It is the datatype which contains the information about a waypoint.
 type Waypoint struct {
-	Type   string  `json:"_type"`
-	Desc   string  `json:"desc"`
-	Lat    float64 `json:"lat"`
-	Lon    float64 `json:"lon"`
-	Radius float64 `json:"rad"`
-	ID     float64 `json:"tst"`
-	UUID   string  `json:"uuid,omitempty"`
-	Major  string  `json:"major,omitempty"`
-	Minor  string  `json:"minor,omitempty"`
-	Share  bool    `json:"share"` // this was removed from the API, but I'm going to leave it for now
+	Type       string  `json:"_type"`
+	Desc       string  `json:"desc"`
+	Lat        float64 `json:"lat"`
+	Lon        float64 `json:"lon"`
+	Radius     float64 `json:"rad"`
+	ID         float64 `json:"tst"`
+	UUID       string  `json:"uuid,omitempty"`
+	Major      string  `json:"major,omitempty"`
+	Minor      string  `json:"minor,omitempty"`
+	Share      bool    `json:"share"`                // this was removed from the API, but I'm going to leave it for now
+	TargetType string  `json:"targettype,omitempty"` // PhDevBin extension
+	TeamID     string  `json:"teamid,omitempty"`     // PhDevBin extension
 }
 
 // Location is defined by the OwnTracks JSON format.
@@ -115,6 +117,7 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	}
 	s, _ := json.Marshal(locs)
 
+	// XXX just call OwnTracksTargets
 	var wp WaypointCommand
 	wp.Type = "cmd"
 	wp.Action = "setWaypoints"
@@ -165,6 +168,61 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	s, _ = json.Marshal(locs)
 	// Log.Debug(string(s))
 	return s, nil
+}
+
+// OwnTrackTargets returns a JSON formatted list of targets.
+// iOS does not support sending locations and Waypoints in the same packet.
+func (gid GoogleID) OwnTracksTargets() (json.RawMessage, error) {
+	j := json.RawMessage("{ }")
+
+	var wp WaypointCommand
+	wp.Type = "cmd"
+	wp.Action = "setWaypoints"
+	wp.Waypoints.Type = "waypoints"
+
+	var Id, lat, lon, radius sql.NullString
+	var tmpTarget Waypoint
+	tmpTarget.Type = "waypoint"
+
+	wr, err := db.Query("SELECT Id, t.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM target=t, userteams=ut WHERE ut.teamID = t.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	if err != nil {
+		Log.Error(err)
+		return j, err
+	}
+	defer wr.Close()
+	for wr.Next() {
+		err := wr.Scan(&Id, &tmpTarget.TeamID, &lat, &lon, &radius, &tmpTarget.TargetType, &tmpTarget.Desc)
+		if err != nil {
+			Log.Error(err)
+			return j, nil
+		}
+		if Id.Valid {
+			f, _ := strconv.ParseFloat(Id.String, 64)
+			tmpTarget.ID = f
+		}
+		if lat.Valid {
+			f, _ := strconv.ParseFloat(lat.String, 64)
+			tmpTarget.Lat = f
+		}
+		if lon.Valid {
+			f, _ := strconv.ParseFloat(lon.String, 64)
+			tmpTarget.Lon = f
+		}
+		if radius.Valid {
+			f, _ := strconv.ParseFloat(radius.String, 64)
+			tmpTarget.Radius = f
+		}
+		tmpTarget.Share = true
+		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpTarget)
+	}
+
+	j, err = json.Marshal(wp)
+	if err != nil {
+		Log.Error(err)
+		return j, err
+	}
+	// Log.Debug(string(j))
+	return j, nil
 }
 
 // OwnTracksTransition is called when an agent enters or leaves a WayPoint's radius
@@ -252,9 +310,9 @@ func (gid GoogleID) ownTracksExternalUpdate(lat, lon string) error {
 
 // OwnTracksSetWaypoint is called when a waypoint message is received from the OwnTracks application
 func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, error) {
-	Log.Debug(string(wp))
+	// Log.Debug(string(wp))
 	var w Waypoint
-	j := json.RawMessage("{ }")
+	j, _ := gid.OwnTracksTargets()
 
 	team, err := gid.PrimaryTeam() // cache this...
 	if err != nil || team == "" {
@@ -273,7 +331,8 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 		return j, err
 	}
 
-	return j, nil
+	j, err = gid.OwnTracksTargets()
+	return j, err
 }
 
 // ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the target data to the database
@@ -291,7 +350,7 @@ func ownTracksWriteWaypoint(w Waypoint, team string) error {
 func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
 	var w WaypointsList
-	j := json.RawMessage("{ }")
+	j, _ := gid.OwnTracksTargets()
 
 	team, err := gid.PrimaryTeam()
 	if err != nil || team == "" {
@@ -312,7 +371,8 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 		}
 	}
 
-	return j, nil
+	j, err = gid.OwnTracksTargets()
+	return j, err
 }
 
 // PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint/Target data is saved

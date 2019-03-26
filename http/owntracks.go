@@ -40,8 +40,9 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if string(jBlob) == "" {
-		PhDevBin.Log.Notice("empty JSON")
-		fmt.Fprintf(res, "{ }")
+		PhDevBin.Log.Notice("empty JSON: probably delete waypoint / person request")
+		targets, _ := gid.OwnTracksTargets()
+		fmt.Fprintf(res, string(targets))
 		return
 	}
 
@@ -86,10 +87,6 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		s, _ := gid.OwnTracksSetWaypoint(jRaw)
 		if err != nil {
 			PhDevBin.Log.Notice(err)
-			// e := "{ \"err\": \"Is your primary team set?\" }"
-			// http.Error(res, e, http.StatusInternalServerError)
-			// fmt.Fprintf(res, e)
-			// return
 		}
 		fmt.Fprintf(res, string(s))
 	default:

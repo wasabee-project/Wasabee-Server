@@ -314,7 +314,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 		Log.Error(err)
 		return err
 	}
-	Log.Debug("Teammates Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
+	// Log.Debug("Teammates Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
 	// no ST_Distance_Sphere in MariaDB yet...
 	rows, err = db.Query("SELECT DISTINCT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
@@ -335,7 +335,6 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 			Log.Error(err)
 			return err
 		}
-		Log.Debug(tmpU.Name)
 		if state.Valid && state.String != "Off" {
 			tmpU.State = true
 		}
@@ -372,14 +371,14 @@ func (gid GoogleID) TargetsNear(maxdistance, maxresults int, targetList *TeamDat
 		Log.Error(err)
 		return err
 	}
-	Log.Debug("Targets Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
+	// Log.Debug("Targets Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
 	// no ST_Distance_Sphere in MariaDB yet...
 	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, expiration, linkdst, Y(loc), X(loc), "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
 		"FROM target "+
 		"WHERE teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
-		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid.String(), maxdistance, maxresults)
+		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -392,7 +391,6 @@ func (gid GoogleID) TargetsNear(maxdistance, maxresults int, targetList *TeamDat
 			Log.Error(err)
 			return err
 		}
-		Log.Debug(tmpT.Name)
 		if linkdst.Valid {
 			tmpT.LinkDestination = linkdst.String
 		}

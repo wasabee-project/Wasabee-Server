@@ -14,7 +14,7 @@ type TeamID string
 // LocKey is the location share key
 type LocKey string
 
-// used only for the V EnlID -- for determining what kind of identifer is passed to interface{} methods in V 
+// used only for the V EnlID -- for determining what kind of identifer is passed to interface{} methods in V
 type enlID string
 
 // UserData is the complete user struct, used for the /me page
@@ -26,7 +26,7 @@ type UserData struct {
 	OwnTracksPW   string
 	VVerified     bool
 	VBlacklisted  bool
-	Vid			  enlID
+	Vid           enlID
 	OwnTracksJSON string
 	Teams         []struct {
 		ID    string
