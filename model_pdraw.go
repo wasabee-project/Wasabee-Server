@@ -9,6 +9,9 @@ import (
 // OperationID wrapper to ensure type safety
 type OperationID string
 
+// portalID wrapper to ensure type safety
+type portalID string
+
 // MarkerType will be an enum once we figure out the full list
 type MarkerType string
 
@@ -17,19 +20,20 @@ type MarkerType string
 type Operation struct {
 	ID      OperationID `json:"ID"`
 	Name    string      `json:"name"`
-	Gid     GoogleID    `json:"creator"`
-	Color   string      `json:"color"`
+	Gid     GoogleID    `json:"creator"` // IITC plugin sending agent name, need to convert to GID
+	Color   string      `json:"color"`   // could be an enum, but freeform is fine for now
 	Portals []Portal    `json:"portals"`
 	Links   []Link      `json:"links"`
 	Markers []Marker    `json:"markers"`
+	TeamID  TeamID 		`json:"teamid"` // not set in IITC Plugin yet
 }
 
 // Portal is defined by the PhtivDraw IITC plugin.
 type Portal struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
-	Lat     string `json:"lat"` // I'd rather float64 but this is what I'm given
-	Lon     string `json:"lon"` // I'd rather float64 but this is what I'm given
+	Lat     string `json:"lat"` // passing these as strings saves me parsing them
+	Lon     string `json:"lon"`
 	Comment string `json:"comment"`
 }
 
@@ -165,5 +169,40 @@ func (o *Operation) Delete() error {
 	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
+	return nil
+}
+
+// Populate takes a pointer to an Operation and fills it in; o.ID must be set
+// checks to see that either the gid created the operation or the gid is on the team assigned to the operation
+func (o *Operation) Populate(gid GoogleID) error {
+	// portalCache := make(map[portalID]Portal)
+	var authorized bool
+
+	// permission check and populate Operation top level
+	var teamID sql.NullString
+	r := db.QueryRow("SELECT name, gid, color, teamID FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &teamID)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	if teamID.Valid {
+		o.TeamID = TeamID(teamID.String)
+		if inteam, _ := gid.UserInTeam(o.TeamID, false); inteam == true {
+			authorized = true
+		}
+	}
+	if gid == o.Gid {
+		authorized = true
+	}
+	if authorized == false {
+		return errors.New("Unauthorized: this operation owned by someone else")
+	}
+
+	// get portal data into portalCache AND the Operation
+
+	// get marker data, filling in portals from portalCache
+
+	// get link data, filling in portals from portalCache
 	return nil
 }

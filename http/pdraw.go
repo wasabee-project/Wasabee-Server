@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
+	"github.com/gorilla/mux"
 )
 
 func PDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
@@ -45,6 +46,32 @@ func PDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func PDrawGetRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(req)
+	id := vars["document"]
+
+	var gid PhDevBin.GoogleID
+	gid = PhDevBin.GoogleID("118281765050946915735")
+
+	var o PhDevBin.Operation
+	o.ID = PhDevBin.OperationID(id)
+	err := o.Populate(gid)
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	s, err := json.MarshalIndent(o, "", "\t")
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(res, string(s))
 }
 
 func jsonError(e error) string {
