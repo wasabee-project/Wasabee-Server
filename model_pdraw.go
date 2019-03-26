@@ -34,7 +34,7 @@ type Portal struct {
 	ID      PortalID `json:"id"`
 	Name    string   `json:"name"`
 	Lat     string   `json:"lat"` // passing these as strings saves me parsing them
-	Lon     string   `json:"lon"`
+	Lon     string   `json:"lng"`
 	Comment string   `json:"comment"` // currently not in database, need schema change
 }
 
@@ -140,7 +140,7 @@ func (o *Operation) insertMarker(m *Marker) error {
 }
 
 func (o *Operation) insertPortal(p *Portal) error {
-	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc) VALUES (?, ?, ?, POINT(? ?))",
+	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc) VALUES (?, ?, ?, POINT(?, ?))",
 		p.ID, o.ID, p.Name, p.Lon, p.Lat)
 	if err != nil {
 		Log.Error(err)
