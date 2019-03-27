@@ -58,6 +58,7 @@ type UserData struct {
 // It also checks and updates V data. It returns true if the user is authorized to continue, false if the user is blacklisted or otherwise locked at V
 func (gid GoogleID) InitUser() (bool, error) {
 	var vdata Vresult
+	var authError error // delay reporting authorization problems until after INSERT/Vupdate
 
 	err := gid.VSearch(&vdata)
 	if err != nil {
@@ -72,50 +73,58 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Notice(err)
 			return false, err
 		}
-		if vdata.Data.Blacklisted == true {
-			err = errors.New("Blacklisted at V")
-			return false, err
+		if vdata.Data.Quarantine == true {
+			authError = errors.New("Quarantined at V")
 		}
 		if vdata.Data.Flagged == true {
-			err = errors.New("Flagged at V")
-			return false, err
+			authError = errors.New("Flagged at V")
+		}
+		if vdata.Data.Blacklisted == true {
+			authError = errors.New("Blacklisted at V")
 		}
 		if vdata.Data.Banned == true {
-			err = errors.New("Banned at V")
-			return false, err
-		}
-		if vdata.Data.Quarantine == true {
-			err = errors.New("Quarantined at V")
-			return false, err
+			authError = errors.New("Banned at V")
 		}
 	} else {
 		tmpName = "Agent_" + gid.String()[:8]
 	}
 
-	// this block should be skipped if the user is already in the database, using IGNORE is just lazy...
-	lockey, err := GenerateSafeName()
-	if err != nil {
-		Log.Notice(err)
-		return false, err
+	// enl.rocks check goes here
+
+	_, err = gid.IngressName()
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		lockey, err := GenerateSafeName()
+		if err != nil {
+			Log.Error(err)
+			return false, err
+		}
+		_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid) VALUES (?,?,?,?,NULL,?,?,?)",
+			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID)
+		if err != nil {
+			Log.Error(err)
+			return false, err
+		}
+		_, err = db.Exec("INSERT IGNORE INTO locations VALUES (?,NOW(),POINT(0,0))", gid)
+		if err != nil {
+			Log.Error(err)
+			return false, err
+		}
+		_, err = db.Exec("INSERT IGNORE INTO otdata VALUES (?,'{ }')", gid)
+		if err != nil {
+			Log.Error(err)
+			return false, err
+		}
 	}
-	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid) VALUES (?,?,?,?,NULL,?,?,?)",
-		gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID)
-	if err != nil {
-		Log.Notice(err)
-		return false, err
-	}
-	_, err = db.Exec("INSERT IGNORE INTO locations VALUES (?,NOW(),POINT(0,0))", gid)
-	if err != nil {
-		Log.Notice(err)
+
+	if err != nil && err.Error() != "sql: no rows in result set" {
+		Log.Error(err)
 		return false, err
 	}
 
-	_, err = db.Exec("INSERT IGNORE INTO otdata VALUES (?,'{ }')", gid)
-	if err != nil {
-		Log.Notice(err)
-		return false, err
+	if authError != nil {
+		Log.Notice(authError)
+		return false, authError
 	}
-
 	return true, nil
 }
 
@@ -348,6 +357,14 @@ func (gid GoogleID) UserLocation(lat, lon, source string) error {
 	// XXX send notifications
 
 	return nil
+}
+
+func (gid GoogleID) IngressName() (string, error) {
+	var iname string
+	r := db.QueryRow("SELECT iname FROM user WHERE gid = ?", gid)
+	err := r.Scan(&iname)
+
+	return iname, err
 }
 
 func (gid GoogleID) String() string {
