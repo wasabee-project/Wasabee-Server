@@ -140,7 +140,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
-	type PhDevUser struct {
+	type googleData struct {
 		Gid   PhDevBin.GoogleID `json:"id"`
 		Name  string            `json:"name"`
 		Email string            `json:"email"`
@@ -152,7 +152,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var m PhDevUser
+	var m googleData
 	err = json.Unmarshal(content, &m)
 	if err != nil {
 		PhDevBin.Log.Notice(err)
@@ -177,40 +177,23 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	authorized, err := m.Gid.InitUser() // V authorization takes place here now
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if authorized == false {
+		http.Error(res, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	location := "/me?a=1"
 	// XXX this doesn't work, should redirect back whence it came
 	if ses.Values["loginReq"] != nil && ses.Values["loginReq"].(string) != "/login" {
 		location = ses.Values["loginReq"].(string)
 		PhDevBin.Log.Debug("loginReq session value =", location)
 		ses.Values["loginReq"] = ""
-	}
-
-	err = m.Gid.InitUser()
-	if err != nil {
-		PhDevBin.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// check and update V data on each login
-	var v PhDevBin.Vresult
-	err = m.Gid.VSearch(&v)
-	if err != nil {
-		PhDevBin.Log.Notice(err)
-		// Agent not found is not a 500 error
-	}
-	if v.Data.Agent != "" {
-		ses.Values["Agent"] = v.Data.Agent
-		err = m.Gid.VUpdate(&v)
-		if err != nil {
-			PhDevBin.Log.Notice(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if v.Data.Blacklisted == true {
-			http.Error(res, err.Error(), http.StatusUnauthorized)
-			return
-		}
 	}
 
 	ses.Values["id"] = m.Gid.String()

@@ -2,6 +2,7 @@ package PhDevBin
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -53,9 +54,9 @@ type UserData struct {
 	} // unused currently Tony wants it, requires schema change
 }
 
-// InitUser is called from Oauth callback to set up a user for the first time
-// if the gid already exists it is ignored
-func (gid GoogleID) InitUser() error {
+// InitUser is called from Oauth callback to set up a user for the first time.
+// It also checks and updates V data. It returns true if the user is authorized to continue, false if the user is blacklisted or otherwise locked at V
+func (gid GoogleID) InitUser() (bool, error) {
 	var vdata Vresult
 
 	err := gid.VSearch(&vdata)
@@ -66,31 +67,56 @@ func (gid GoogleID) InitUser() error {
 	var tmpName string
 	if vdata.Data.Agent != "" {
 		tmpName = vdata.Data.Agent
+		err = gid.VUpdate(&vdata)
+		if err != nil {
+			Log.Notice(err)
+			return false, err
+		}
+		if vdata.Data.Blacklisted == true {
+			err = errors.New("Blacklisted at V")
+			return false, err
+		}
+		if vdata.Data.Flagged == true {
+			err = errors.New("Flagged at V")
+			return false, err
+		}
+		if vdata.Data.Banned == true {
+			err = errors.New("Banned at V")
+			return false, err
+		}
+		if vdata.Data.Quarantine == true {
+			err = errors.New("Quarantined at V")
+			return false, err
+		}
 	} else {
 		tmpName = "Agent_" + gid.String()[:8]
 	}
 
+	// this block should be skipped if the user is already in the database, using IGNORE is just lazy...
 	lockey, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
-		return err
+		return false, err
 	}
 	_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid) VALUES (?,?,?,?,NULL,?,?,?)",
 		gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID)
 	if err != nil {
 		Log.Notice(err)
-		return err
+		return false, err
 	}
 	_, err = db.Exec("INSERT IGNORE INTO locations VALUES (?,NOW(),POINT(0,0))", gid)
 	if err != nil {
 		Log.Notice(err)
+		return false, err
 	}
 
 	_, err = db.Exec("INSERT IGNORE INTO otdata VALUES (?,'{ }')", gid)
 	if err != nil {
 		Log.Notice(err)
+		return false, err
 	}
-	return err
+
+	return true, nil
 }
 
 // SetIngressName is called to update the agent's ingress name in the database
