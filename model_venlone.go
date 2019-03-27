@@ -26,7 +26,7 @@ type Vresult struct {
 
 // Vagent is set by the V API
 type Vagent struct {
-	EnlID       string  `json:"enlid"`
+	EnlID       EnlID   `json:"enlid"`
 	Vlevel      float64 `json:"vlevel"`
 	Vpoints     float64 `json:"vpoints"`
 	Agent       string  `json:"agent"`

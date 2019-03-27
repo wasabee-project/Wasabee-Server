@@ -228,10 +228,6 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 		ud.OwnTracksPW = ot.String
 	}
 
-	// err = VSearchUser(gid, &ud.VData)
-	// s, _ := json.MarshalIndent(&ud.VData, "", "  ")
-	// Log.Debug(string(s))
-
 	var teamname sql.NullString
 	var tmp struct {
 		ID    string
