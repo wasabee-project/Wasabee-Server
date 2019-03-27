@@ -181,9 +181,9 @@ func StartHTTP(initialConfig Configuration) {
 	r.Use(headersMW)
 	// r.Use(debugMW)
 
+	// s.Use(debugMW)
 	s.Use(headersMW)
 	s.Use(authMW)
-	// s.Use(debugMW)
 
 	// Serve
 	PhDevBin.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
@@ -229,12 +229,10 @@ func authMW(next http.Handler) http.Handler {
 
 		id, ok := ses.Values["id"]
 		if ok == false || id == nil {
-			// PhDevBin.Log.Debug("Not Logged In")
-			// XXX save the requested URL, use that when authentication is finished (not working)
-			ses.Values["loginReq"] = req.URL
-			PhDevBin.Log.Debug(req.URL)
+			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
+			ses.Values["loginReq"] = req.URL.String()
 			ses.Save(req, res)
-			http.Redirect(res, req, "/login?returnto=req.URL", http.StatusPermanentRedirect)
+			http.Redirect(res, req, "/login?returnto="+req.URL.String(), http.StatusPermanentRedirect)
 			return
 		}
 
@@ -267,4 +265,23 @@ func authMW(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(res, req)
 	})
+}
+
+func googleRoute(res http.ResponseWriter, req *http.Request) {
+	ret := req.FormValue("returnto")
+
+	if ret != "" {
+		ses, err := config.store.Get(req, config.sessionName)
+		if err != nil {
+			PhDevBin.Log.Debug(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		ses.Values["loginReq"] = ret
+		ses.Save(req, res)
+	}
+
+	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
+	res.Header().Add("Cache-Control", "no-cache")
+	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
 }

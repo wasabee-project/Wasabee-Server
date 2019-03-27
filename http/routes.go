@@ -45,8 +45,8 @@ func setupRoutes(r *mux.Router) {
 func setupAuthRoutes(r *mux.Router) {
 	// This block requires authentication
 	// Draw -- new-style, parsed, not-encrypted, authenticated, authorized, more-functional
-	r.HandleFunc("/api/v1/draw", uploadDrawRoute).Methods("POST")
-	r.HandleFunc("/api/v1/draw/{document}", getDrawRoute).Methods("GET")
+	r.HandleFunc("/api/v1/draw", pDrawUploadRoute).Methods("POST")
+	r.HandleFunc("/api/v1/draw/{document}", pDrawGetRoute).Methods("GET")
 	r.HandleFunc("/api/v1/draw/{document}", deleteDrawRoute).Methods("DELETE")
 	r.HandleFunc("/api/v1/draw/{document}", updateDrawRoute).Methods("PUT")
 	// r.HandleFunc("/api/v1/draw/{document}/addlink/", updateDrawRoute).Methods("PUT")
@@ -131,14 +131,6 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, "404: Maybe the document is expired or has been removed.\n")
 }
 
-func googleRoute(res http.ResponseWriter, req *http.Request) {
-	// XXX get ?returnto= and stuff it in ses.Value["loginReq"]
-
-	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
-	res.Header().Add("Cache-Control", "no-cache")
-	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
-}
-
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type googleData struct {
 		Gid   PhDevBin.GoogleID `json:"id"`
@@ -189,11 +181,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	location := "/me?a=1"
-	// XXX this doesn't work, should redirect back whence it came
 	if ses.Values["loginReq"] != nil && ses.Values["loginReq"].(string) != "/login" {
 		location = ses.Values["loginReq"].(string)
-		PhDevBin.Log.Debug("loginReq session value =", location)
-		ses.Values["loginReq"] = ""
+		ses.Values["loginReq"] = "" // to not save for future sessions
 	}
 
 	ses.Values["id"] = m.Gid.String()
@@ -204,7 +194,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		MaxAge: 3600,
 	}
 	ses.Save(req, res)
-	// store the first requested URL in the session and redirect back there
 	http.Redirect(res, req, location, http.StatusPermanentRedirect)
 }
 
