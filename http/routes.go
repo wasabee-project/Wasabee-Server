@@ -32,6 +32,10 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/pd", pDrawUploadRoute).Methods("POST")
 	r.HandleFunc("/pd/{document}", pDrawGetRoute).Methods("GET")
 
+	// For enl.rocks community -> PhDevBin team sync
+	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
+	r.HandleFunc("/rocks/", rocksCommunityRoute).Methods("POST")
+
 	// OwnTracks URL
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
 
