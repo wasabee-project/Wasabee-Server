@@ -45,6 +45,9 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "venlonekey", EnvVar: "VENLONE_API_KEY", Value: "",
 		Usage: "V.enl.one API Key. It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
+		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
+		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -57,7 +60,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "PhDevBin"
-	app.Version = "0.6.1"
+	app.Version = "0.6.2"
 	app.Usage = "Phtiv-Draw-Tools Server"
 	app.Flags = flags
 
@@ -95,6 +98,11 @@ func run(c *cli.Context) error {
 	// setup V
 	if c.String("venlonekey") != "" {
 		PhDevBin.SetVEnlOne(c.String("venlonekey"))
+	}
+
+	// setup Rocks
+	if c.String("enlrockskey") != "" {
+		PhDevBin.SetEnlRocks(c.String("enlrockskey"))
 	}
 
 	// Serve HTTPS

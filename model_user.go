@@ -90,6 +90,11 @@ func (gid GoogleID) InitUser() (bool, error) {
 	}
 
 	// enl.rocks check goes here
+	var rocks RocksResult
+	err = gid.RocksSearch(&rocks)
+	if err != nil {
+		Log.Debug(err)
+	}
 
 	_, err = gid.IngressName()
 	if err != nil && err.Error() == "sql: no rows in result set" {
@@ -223,11 +228,12 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 // GetUserData populates a UserData struct based on the gid
 func (gid GoogleID) GetUserData(ud *UserData) error {
 	var ot sql.NullString
+	var otJSON sql.NullString
 
 	ud.GoogleID = gid
 
-	row := db.QueryRow("SELECT iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid FROM user WHERE gid = ?", gid)
-	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid)
+	row := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, ot.otdata FROM user=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid)
+	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &otJSON)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -235,6 +241,11 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 
 	if ot.Valid {
 		ud.OwnTracksPW = ot.String
+	}
+	if otJSON.Valid {
+		ud.OwnTracksJSON = otJSON.String
+	} else {
+		ud.OwnTracksJSON = "{ }"
 	}
 
 	var teamname sql.NullString
@@ -293,25 +304,6 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 		ud.OwnedTeams = append(ud.OwnedTeams, ownedTeam)
 	}
 
-	// XXX cannot be null -- just JOIN in main query
-	var otJSON sql.NullString
-	rows2 := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid)
-	err = rows2.Scan(&otJSON)
-	if err != nil && err.Error() == "sql: no rows in result set" {
-		ud.OwnTracksJSON = "{ }"
-		return nil
-	}
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if otJSON.Valid {
-		ud.OwnTracksJSON = otJSON.String
-	} else {
-		ud.OwnTracksJSON = "{ }"
-	}
-	// defer rows2.Close()
-
 	var authtoken sql.NullString
 	rows3 := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid)
 	err = rows3.Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
@@ -324,7 +316,6 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 		return err
 	}
 	ud.Telegram.Authtoken = authtoken.String
-	// defer rows3.Close()
 
 	return nil
 }
@@ -359,6 +350,7 @@ func (gid GoogleID) UserLocation(lat, lon, source string) error {
 	return nil
 }
 
+// IngressName returns an agent's name for a GoogleID
 func (gid GoogleID) IngressName() (string, error) {
 	var iname string
 	r := db.QueryRow("SELECT iname FROM user WHERE gid = ?", gid)
