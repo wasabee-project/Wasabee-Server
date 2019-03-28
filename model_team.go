@@ -211,7 +211,7 @@ func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 
 // NewTeam initializes a new team and returns a teamID
 // the creating gid is added and enabled on that team by default
-func (gid GoogleID) NewTeam(name string) (string, error) {
+func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 	team, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
@@ -225,7 +225,7 @@ func (gid GoogleID) NewTeam(name string) (string, error) {
 	if err != nil {
 		Log.Notice(err)
 	}
-	return name, err
+	return TeamID(name), err
 }
 
 // Rename sets a new name for a teamID
@@ -279,16 +279,21 @@ func (teamID TeamID) AddUser(in interface{}) error {
 }
 
 // RemoveUser removes a user (identified by location share key) from a team.
-// XXX: take an interface, switch if LocKey or GoogleID
-// XXX: probably not needed since gid.RemoveFromTeam also exists -- do we need both?
-func (teamID TeamID) RemoveUser(lockey LocKey) error {
-	gid, err := lockey.Gid()
-	if err != nil {
-		Log.Notice(err)
-		return err
+func (teamID TeamID) RemoveUser(in interface{}) error {
+	var gid GoogleID
+	switch v := in.(type) {
+	case LocKey:
+		lockey := v
+		gid, _ = lockey.Gid()
+	case GoogleID:
+		gid = v
+	default:
+		Log.Debug("fed unknown type, guessing string")
+		x := v.(string)
+		gid = GoogleID(x)
 	}
 
-	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
+	_, err := db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 		return (err)

@@ -17,6 +17,7 @@ type RocksCommunityNotice struct {
 	User      RocksUser `json:"user"`
 }
 
+// RocksUser is a (minimal) version of the data sent by enl.rocks
 type RocksUser struct {
 	Gid    GoogleID `json:"gid"`
 	TGId   float64  `json:"tg_id"`
@@ -139,6 +140,7 @@ func (gid GoogleID) RocksUpdate(res *RocksUser) error {
 func RocksCommunitySync(msg json.RawMessage) error {
 	// currently I can't get enl.rocks to send the data, nothing I can do here
 
+	// check the source? is the community key enough for this? I don't think so
 	var rc RocksCommunityNotice
 	err := json.Unmarshal(msg, &rc)
 	if err != nil {
@@ -159,13 +161,13 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		return err
 	}
 	if rc.Action == "onJoin" {
-		err := team.AddUser(rc.User.Gid) // XXX need interface parity!
+		err := team.AddUser(rc.User.Gid)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
 	} else {
-		err := rc.User.Gid.RemoveFromTeam(team) // XXX need interface parity!
+		err := team.RemoveUser(rc.User.Gid)
 		if err != nil {
 			Log.Error(err)
 			return err
