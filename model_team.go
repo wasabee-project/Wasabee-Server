@@ -217,7 +217,7 @@ func (gid GoogleID) NewTeam(name string) (string, error) {
 		Log.Notice(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO teams VALUES (?,?,?)", team, gid, name)
+	_, err = db.Exec("INSERT INTO teams (teamID, owner, name, rockskey, rockscomm) VALUES (?,?,?,NULL,NULL)", team, gid, name)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -229,6 +229,7 @@ func (gid GoogleID) NewTeam(name string) (string, error) {
 }
 
 // Rename sets a new name for a teamID
+// does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Rename(name string) error {
 	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
@@ -238,6 +239,7 @@ func (teamID TeamID) Rename(name string) error {
 }
 
 // Delete removes the team identified by teamID
+// does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Delete() error {
 	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
@@ -410,6 +412,18 @@ func (gid GoogleID) TargetsNear(maxdistance, maxresults int, targetList *TeamDat
 		return err
 	}
 	return nil
+}
+
+// SetRocks links a team to a community at enl.rocks.
+// Does not check team ownership -- caller should take care of authorization.
+// Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).
+// adds/deletes at enl.rocks will be pushed here (onJoin/onLeave web hooks must be configured in the community at enl.rocks)
+func (teamID TeamID) SetRocks(key, community string) error {
+	_, err := db.Exec("UPDATE teams SET rockskey = ?, rockscomm = ? WHERE teamID = ?", key, community, teamID)
+	if err != nil {
+		Log.Notice(err)
+	}
+	return err
 }
 
 func (teamID TeamID) String() string {

@@ -1,13 +1,29 @@
 package PhDevBin
 
 import (
-	//	"encoding/json"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 )
+
+// RocksCommunityNotice is sent from a community when an agent is added or removed
+// consumed by RocksCommunitySync function below
+type RocksCommunityNotice struct {
+	Community string    `json:"community"`
+	Action    string    `json:"action"`
+	User      RocksUser `json:"user"`
+}
+
+type RocksUser struct {
+	Gid    GoogleID `json:"gid"`
+	TGId   float64  `json:"tg_id"`
+	TGUser string   `json:"tg_user"`
+	Agent  string   `json:"agentid"`
+	Smurf  bool     `json:"smurf"`
+}
 
 type rocksconfig struct {
 	rocksAPIEndpoint string
@@ -105,22 +121,67 @@ func rockssearch(i interface{}, res *RocksResult) error {
 	return nil
 }
 
-// RocksUpdate updates the database to reflect an agent's current status at V.
+// RocksUpdate updates the database to reflect an agent's current status at enl.rocks.
 // It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
-func (gid GoogleID) RocksUpdate(res *RocksResult) error {
+// XXX on hold until I can get an API key
+func (gid GoogleID) RocksUpdate(res *RocksUser) error {
 	if rocks.configured == false {
 		return errors.New("Rocks API key not configured")
 	}
+	Log.Debug("RocksUpdate doing nothing")
 
-	if res.Status == "ok" && res.Data.Agent != "" {
-		Log.Debug("Updating Rocks data for ", res.Data.Agent)
-		_, err := db.Exec("UPDATE user SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
-			res.Data.Agent, res.Data.Level, res.Data.Verified, res.Data.Blacklisted, res.Data.EnlID, gid)
+	return nil
+}
 
+// RocksCommunitySync is called from the https server when it receives a push notification
+// from the enl.rocks server; which it currently isn't sending even if enabled on a community.
+// The calling function in the https server logs the request, so there is nothing for us to do here yet.
+func RocksCommunitySync(msg json.RawMessage) error {
+	// currently I can't get enl.rocks to send the data, nothing I can do here
+
+	var rc RocksCommunityNotice
+	err := json.Unmarshal(msg, &rc)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	_, err = rc.User.Gid.InitUser()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	err = rc.User.Gid.RocksUpdate(&rc.User)
+
+	team, err := RocksTeamID(rc.Community)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if rc.Action == "onJoin" {
+		err := team.AddUser(rc.User.Gid) // XXX need interface parity!
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	} else {
+		err := rc.User.Gid.RemoveFromTeam(team) // XXX need interface parity!
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
 	}
+
 	return nil
+}
+
+// RocksTeamID takes a rocks community ID and returns an associated teamID
+func RocksTeamID(rockscomm string) (TeamID, error) {
+	var t TeamID
+	err := db.QueryRow("SELECT teamID FROM teams WHERE rockscomm = ?", rockscomm).Scan(&t)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return t, nil
 }
