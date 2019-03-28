@@ -126,6 +126,27 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
+func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	newlockey := vars["newlockey"]
+
+	// do the work
+	err = gid.SetLocKey(newlockey)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+}
+
 func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {

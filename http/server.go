@@ -125,6 +125,7 @@ func phDevBinHTTPSTemplateConfig() error {
 		"Webroot":      PhDevBin.GetWebroot,
 		"WebAPIPath":   PhDevBin.GetWebAPIPath,
 		"VEnlOne":      PhDevBin.GetvEnlOne,
+		"EnlRocks":     PhDevBin.GetEnlRocks,
 	}
 
 	PhDevBin.Log.Notice("Including frontend templates from: ", config.FrontendPath)

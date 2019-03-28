@@ -16,6 +16,7 @@ type TeamData struct {
 
 // User is the light version of UserData, containing publicly visible information exported to teams
 type User struct {
+	Gid         GoogleID
 	Name        string
 	EnlID       EnlID
 	Verified    bool
@@ -23,8 +24,8 @@ type User struct {
 	Color       string
 	State       bool
 	LocKey      string
-	Lat         float64
-	Lon         float64
+	Lat         float64 `json:"lat"`
+	Lon         float64 `json:"lng"`
 	Date        string
 	OwnTracks   json.RawMessage `json:"OwnTracks,omitmissing"`
 	Distance    float64         `json:"Distance,omitmissing"`

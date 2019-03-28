@@ -31,14 +31,14 @@ type RocksAgent struct {
 }
 
 // SetEnlRocks is called from main() to initialize the config
-func SetEnlRocks(w string) {
-	Log.Debugf("enl.rocks API Key: %s", w)
-	rocks.rocksAPIKey = w
+func SetEnlRocks(key string) {
+	Log.Debugf("enl.rocks API Key: %s", key)
+	rocks.rocksAPIKey = key
 	rocks.rocksAPIEndpoint = "https://enlightened.rocks/comm/api"
 	rocks.configured = true
 }
 
-// GetvEnlOne is used for templates to determine if V is enabled
+// GetEnlRocks is used for templates to determine if .Rocks is enabled
 func GetEnlRocks() bool {
 	return rocks.configured
 }
