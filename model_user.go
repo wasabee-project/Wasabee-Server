@@ -93,7 +93,7 @@ func (gid GoogleID) InitUser() (bool, error) {
 	var rocks RocksResult
 	err = gid.RocksSearch(&rocks)
 	if err != nil {
-		Log.Debug(err)
+		Log.Error(err)
 	}
 
 	_, err = gid.IngressName()

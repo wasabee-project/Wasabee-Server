@@ -158,8 +158,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		// cookie is borked, maybe sessionName or key changed
 		PhDevBin.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
-		ses.Values["id"] = ""
-		ses.Values["nonce"] = "unset"
+		delete(ses.Values, "id")
+		delete(ses.Values, "loginReq")
+		delete(ses.Values, "nonce")
 		ses.Options = &sessions.Options{
 			Path:   "/",
 			MaxAge: 3600,
@@ -181,9 +182,15 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	location := "/me?a=1"
-	if ses.Values["loginReq"] != nil && ses.Values["loginReq"].(string) != "/login" {
-		location = ses.Values["loginReq"].(string)
-		ses.Values["loginReq"] = "" // to not save for future sessions
+	if ses.Values["loginReq"] != nil {
+		rr := ses.Values["loginReq"].(string)
+		if rr == "/login" || rr == "/me" || rr == "" {
+			location = "/me?a=2"
+		} else {
+			location = rr
+		}
+		delete(ses.Values, "loginReq")
+		// ses.Values["loginReq"] = nil // to not save for future sessions
 	}
 
 	ses.Values["id"] = m.Gid.String()

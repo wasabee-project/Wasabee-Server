@@ -1,7 +1,6 @@
 package PhDevHTTP
 
 import (
-	// "fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -218,10 +217,12 @@ func debugMW(next http.Handler) http.Handler {
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ses, err := config.store.Get(req, config.sessionName)
+
 		if err != nil {
 			PhDevBin.Log.Debug(err)
-			ses.Values["nonce"] = ""
-			ses.Values["id"] = ""
+			delete(ses.Values, "nonce")
+			delete(ses.Values, "id")
+			delete(ses.Values, "loginReq")
 			ses.Save(req, res)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -282,6 +283,6 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
-	res.Header().Add("Cache-Control", "no-cache")
+	// res.Header().Add("Cache-Control", "no-cache")
 	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
 }
