@@ -20,9 +20,16 @@
 <br/>
 <small>This is the information you will need to give to your operator to be invited on to the op team. Once you are invited onto the team, you will need to enable the team (below). You can disable a team at any time.</small>
 </li>
+<li class="list-group-item">
+<form action="/me" method="get">
+<input type="text" name="newlockey" />
+<input type="submit" name="update" value="set lockey" /><br />
+<small>You may set your Location Share Key to a custom value. Changing it from the randomly assigned value is not recommended.</small>
+</form>
+</li>
 <li class="list-group-item">Display Name: {{.IngressName}}
 <br/>
-<small>This is how you are shown on the maps. This information should only be trusted for agents who are verified at V.</small>
+<small>This is how you are shown on the maps. This information should only be trusted for agents who are verified at <a href="https://v.enl.one/">V</a> or <a href="https://enlightened.rocks">.rocks</a></small>
 </li>
 {{if VEnlOne}}
 {{if .VVerified}}
@@ -36,6 +43,9 @@
 </form>
 </li>
 {{end}}
+{{end}}
+{{if EnlRocks}}
+<li class="list-group-item"><a href="https://enlightened.rocks/">.Rocks Status:</a> Not operational yet</li>
 {{end}}
 <li class="list-group-item"><a href="/{{WebAPIPath}}/targets/me">Targets Near Me</a></li>
 </div>
