@@ -69,9 +69,10 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	}
 
 	var opgid GoogleID
+	var teamID TeamID
 	var authorized bool
-	r := db.QueryRow("SELECT gid FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&opgid)
+	r := db.QueryRow("SELECT gid, teamID FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&opgid, &teamID)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Notice(err)
 		return err
@@ -90,10 +91,17 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	if err = o.Delete(); err != nil {
 		Log.Notice(err)
 		return err
+		// create a new team if one did not already exist
+		if teamID.String() == "" {
+			teamID, err = gid.NewTeam(o.Name)
+			if err != nil {
+				Log.Error(err)
+			}
+		}
 	}
 
 	// start the insert process
-	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color) VALUES (?, ?, ?, ?)", o.ID, o.Name, gid, o.Color)
+	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, teamID) VALUES (?, ?, ?, ?, ?)", o.ID, o.Name, gid, o.Color, teamID.String())
 	if err != nil {
 		Log.Error(err)
 		return err
