@@ -43,8 +43,8 @@ func TGRunning() (bool, error) {
 	return tgrunning, nil
 }
 
-// TelegramToGid returns a gid and V verified status for a given Telegram ID #
-func TelegramToGid(tgid int) (GoogleID, bool, error) {
+// GidV returns a gid and V verified status for a given Telegram ID #
+func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 	var gid GoogleID
 	var verified bool
 

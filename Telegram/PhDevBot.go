@@ -79,7 +79,9 @@ func PhDevBot(init TGConfiguration) error {
 		// s, _ := json.MarshalIndent(msg, "", "  ")
 		// PhDevBin.Log.Debug(string(s))
 
-		gid, verified, err := PhDevBin.TelegramToGid(update.Message.From.ID)
+		tgid := PhDevBin.TelegramID(update.Message.From.ID)
+		gid, verified, err := tgid.GidV()
+
 		if err != nil {
 			PhDevBin.Log.Error(err)
 			continue

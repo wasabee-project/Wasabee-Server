@@ -173,7 +173,7 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 		return "", "", err
 	}
 	if stat.Status != 0 {
-		err = errors.New(fmt.Errorf("Polling %s returned message: %s", eid, stat.Message))
+		err := fmt.Errorf("Polling %s returned message: %s", eid, stat.Message)
 		return "", "", err
 	}
 	return stat.Lat, stat.Lon, nil
