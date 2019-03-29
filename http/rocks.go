@@ -70,3 +70,31 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }
+
+func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	team := PhDevBin.TeamID(vars["team"])
+	rc := vars["rockscomm"]
+	rk := vars["rockskey"]
+
+	safe, err := gid.OwnsTeam(team)
+	if safe != true {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	err = team.SetRocks(rk, rc)
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
+}

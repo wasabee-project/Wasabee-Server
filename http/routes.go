@@ -34,7 +34,6 @@ func setupRoutes(r *mux.Router) {
 
 	// For enl.rocks community -> PhDevBin team sync
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
-	r.HandleFunc("/rocks/", rocksCommunityRoute).Methods("POST")
 
 	// OwnTracks URL
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
@@ -66,14 +65,15 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
 
 	// teams
-	r.HandleFunc("/api/v1/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
-	r.HandleFunc("/api/v1/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")  // invite user to team
-	r.HandleFunc("/api/v1/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every user/target on team (team member/owner)
-	r.HandleFunc("/api/v1/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
-	r.HandleFunc("/api/v1/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely (owner)
-	r.HandleFunc("/api/v1/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit (owner)
-	r.HandleFunc("/api/v1/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")     				// (re)import the team from rocks
-	r.HandleFunc("/api/v1/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team (owner)
+	r.HandleFunc("/api/v1/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")                                              // create a new team
+	r.HandleFunc("/api/v1/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")                                               // invite user to team
+	r.HandleFunc("/api/v1/team/{team}", getTeamRoute).Methods("GET")                                                                             // return the location of every user/target on team (team member/owner)
+	r.HandleFunc("/api/v1/team/{team}", deleteTeamRoute).Methods("DELETE")                                                                       // remove the team completely (owner)
+	r.HandleFunc("/api/v1/team/{team}/delete", deleteTeamRoute).Methods("GET")                                                                   // remove the team completely (owner)
+	r.HandleFunc("/api/v1/team/{team}/edit", editTeamRoute).Methods("GET")                                                                       // GUI to do basic edit (owner)
+	r.HandleFunc("/api/v1/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
+	r.HandleFunc("/api/v1/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
+	r.HandleFunc("/api/v1/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                                                                 // invite user to team (owner)
 	// r.HandleFunc("/api/v1/team/{team}/{key}", setUserTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
 	r.HandleFunc("/api/v1/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
 	r.HandleFunc("/api/v1/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)

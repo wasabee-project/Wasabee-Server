@@ -8,10 +8,12 @@ import (
 
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
-	Name   string
-	Id     TeamID
-	User   []User
-	Target []Target
+	Name      string
+	Id        TeamID
+	User      []User
+	Target    []Target
+	RocksComm string
+	RocksKey  string
 }
 
 // User is the light version of UserData, containing publicly visible information exported to teams
@@ -125,11 +127,18 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		return err
 	}
 
-	if err := db.QueryRow("SELECT name FROM teams WHERE teamID = ?", teamID).Scan(&teamList.Name); err != nil {
+	var rockscomm, rockskey sql.NullString
+	if err := db.QueryRow("SELECT name, rockscomm, rockskey FROM teams WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey); err != nil {
 		Log.Error(err)
 		return err
 	}
 	teamList.Id = teamID
+	if rockscomm.Valid {
+		teamList.RocksComm = rockscomm.String
+	}
+	if rockskey.Valid {
+		teamList.RocksKey = rockskey.String
+	}
 
 	var targetid, radius, targettype, targetname, expiration, linkdst sql.NullString
 	var targetrows *sql.Rows

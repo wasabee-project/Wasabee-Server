@@ -38,8 +38,10 @@ type UserData struct {
 		State string
 	}
 	OwnedTeams []struct {
-		ID   string
-		Name string
+		ID        string
+		Name      string
+		RocksComm string
+		RocksKey  string
 	}
 	Telegram struct {
 		UserName  string
@@ -175,6 +177,7 @@ func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
 
 // RemoveFromTeam updates the team list to remove the user.
 // XXX move to model_team.go
+// XXX this needs to die team.RemoveUser(gid) already exists
 func (gid GoogleID) RemoveFromTeam(team TeamID) error {
 	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
 		Log.Notice(err)
@@ -280,26 +283,39 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 	}
 
 	var ownedTeam struct {
-		ID   string
-		Name string
+		ID        string
+		Name      string
+		RocksComm string
+		RocksKey  string
 	}
-	ownedTeamRow, err := db.Query("SELECT teamID, name FROM teams WHERE owner = ?", gid)
+	ownedTeamRow, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM teams WHERE owner = ?", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer ownedTeamRow.Close()
+	var rockscomm, rockskey sql.NullString
 	for ownedTeamRow.Next() {
-		err := ownedTeamRow.Scan(&ownedTeam.ID, &teamname)
+		err := ownedTeamRow.Scan(&ownedTeam.ID, &teamname, &rockscomm, &rockskey)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		// can be null -- but this should be changed
+		// can be null -- but should change schema to disallow that
 		if teamname.Valid {
 			ownedTeam.Name = teamname.String
 		} else {
 			ownedTeam.Name = ""
+		}
+		if rockscomm.Valid {
+			ownedTeam.RocksComm = rockscomm.String
+		} else {
+			ownedTeam.RocksComm = ""
+		}
+		if rockskey.Valid {
+			ownedTeam.RocksKey = rockskey.String
+		} else {
+			ownedTeam.RocksKey = ""
 		}
 		ud.OwnedTeams = append(ud.OwnedTeams, ownedTeam)
 	}

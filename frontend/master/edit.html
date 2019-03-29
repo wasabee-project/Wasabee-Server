@@ -25,9 +25,25 @@
 <form action="/{{WebAPIPath}}/team/{{.Id}}" method="get">
 Location Key: <input type="text" name="key" />
 <input type="submit" name="add" value="add user to team" />
+<small>This needs to be changed to take an agent name, a GID or an EnlID</small>
 </form>
 </li>
 </ul>
+{{if EnlRocks}}
+<li class="list-group-item">
+<form action="/{{WebAPIPath}}/team/{{.Id}}/rockscfg" method="get">
+Rocks Community Identifier: <input type="text" name="rockscomm" value="{{.RocksComm}}" />
+Rocks Community API Key: <input type="text" name="rockskey" value="{{.RocksKey}}" />
+<input type="submit" name="add" value="configure rocks" />
+<br />
+<small>If you want this team to have its membership populated from an .rocks community, you will need to get the community ID and API key from the community's settings and add them here. Do not do this unless you trust the enl.rocks community.</small>
+</form>
+</li>
+{{if .RocksKey}}
+<li class="list-group-item"><a href="/{{WebAPIPath}}/team/{{.Id}}/rocks">Pull associated enl.rocks community members onto this team</a></li>
+{{end}}
+</ul>
+{{end}}
 </div>
 <!-- content ends here -->				
 					</div>

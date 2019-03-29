@@ -24,6 +24,8 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := gid.UserInTeam(team, false)
 	if safe {
 		team.FetchTeam(&teamList, false)
+		teamList.RocksComm = "unset"
+		teamList.RocksKey = "unset"
 		data, _ := json.MarshalIndent(teamList, "", "\t")
 		s := string(data)
 		res.Header().Add("Content-Type", "text/json")

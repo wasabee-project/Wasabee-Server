@@ -166,6 +166,9 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		return err
 	}
 	err = rc.User.Gid.RocksUpdate(&rc.User)
+	if err != nil {
+		Log.Notice(err)
+	}
 
 	team, err := RocksTeamID(rc.Community)
 	if err != nil {
