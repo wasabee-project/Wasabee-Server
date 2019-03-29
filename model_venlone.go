@@ -10,9 +10,10 @@ import (
 )
 
 type vconfig struct {
-	vAPIEndpoint string
-	vAPIKey      string
-	configured   bool
+	vAPIEndpoint   string
+	vAPIKey        string
+	statusEndpoint string
+	configured     bool
 }
 
 var vc vconfig
@@ -45,6 +46,7 @@ func SetVEnlOne(w string) {
 	Log.Debugf("V.enl.one API Key: %s", w)
 	vc.vAPIKey = w
 	vc.vAPIEndpoint = "https://v.enl.one/api/v1"
+	vc.statusEndpoint = "https://status.enl.one/api/location"
 	vc.configured = true
 }
 
@@ -133,4 +135,45 @@ func (gid GoogleID) VUpdate(res *Vresult) error {
 		}
 	}
 	return nil
+}
+
+// StatusLocation attempts to check for location data from status.enl.one.
+// The API documentation is scant, so this does not work.
+func (e EnlID) StatusLocation() (float64, float64, error) {
+	if vc.configured == false {
+		return float64(0), float64(0), errors.New("V API key not configured")
+	}
+	url := fmt.Sprintf("%s/%s?key=%s", vc.statusEndpoint, e, vc.vAPIKey)
+	resp, err := http.Get(url)
+
+	if err != nil {
+		Log.Error(err)
+		return float64(0), float64(0), nil
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return float64(0), float64(0), nil
+	}
+	Log.Debug(string(body))
+	return float64(0), float64(0), nil
+}
+
+// StatusLocation attempts to check for location data from status.enl.one.
+// The API documentation is scant, so this does not work.
+func (gid GoogleID) StatusLocation() (float64, float64, error) {
+	e, _ := gid.EnlID()
+	lat, lon, err := e.StatusLocation()
+	return lat, lon, err
+}
+
+// EnlID returns the V EnlID for a user if it is known.
+func (gid GoogleID) EnlID() (EnlID, error) {
+	var e EnlID
+	err := db.QueryRow("SELECT Vid FROM user WHERE gid = ?", gid).Scan(&e)
+	if err != nil {
+		Log.Debug(err)
+	}
+	return e, err
 }

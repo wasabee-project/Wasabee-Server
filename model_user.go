@@ -87,11 +87,16 @@ func (gid GoogleID) InitUser() (bool, error) {
 		if vdata.Data.Banned == true {
 			authError = errors.New("Banned at V")
 		}
+
+		// just here for testing
+		_, _, err = vdata.Data.EnlID.StatusLocation()
+		if err != nil {
+			Log.Notice(err)
+		}
 	} else {
 		tmpName = "Agent_" + gid.String()[:8]
 	}
 
-	// enl.rocks check goes here
 	var rocks RocksResult
 	err = gid.RocksSearch(&rocks)
 	if err != nil {
