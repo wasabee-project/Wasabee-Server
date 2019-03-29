@@ -1,12 +1,14 @@
 package PhDevBin
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type vconfig struct {
@@ -137,32 +139,49 @@ func (gid GoogleID) VUpdate(res *Vresult) error {
 	return nil
 }
 
+type statusResponse struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Lon     string `json:"lon"`
+	Lat     string `json:"lat"`
+	Time    string `json:"time"`
+}
+
 // StatusLocation attempts to check for location data from status.enl.one.
 // The API documentation is scant, so this does not work.
-func (e EnlID) StatusLocation() (float64, float64, error) {
+func (enlID EnlID) StatusLocation() (string, string, error) {
 	if vc.configured == false {
-		return float64(0), float64(0), errors.New("V API key not configured")
+		return "", "", errors.New("V API key not configured")
 	}
-	url := fmt.Sprintf("%s/%s?key=%s", vc.statusEndpoint, e, vc.vAPIKey)
+	url := fmt.Sprintf("%s/%s?apikey=%s", vc.statusEndpoint, enlID, vc.vAPIKey)
 	resp, err := http.Get(url)
-
 	if err != nil {
 		Log.Error(err)
-		return float64(0), float64(0), nil
+		return "", "", err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		Log.Error(err)
-		return float64(0), float64(0), nil
+		return "", "", err
 	}
-	Log.Debug(string(body))
-	return float64(0), float64(0), nil
+
+	var stat statusResponse
+	err = json.Unmarshal(body, &stat)
+	if err != nil {
+		Log.Error(err)
+		return "", "", err
+	}
+	if stat.Status != 0 {
+		err = errors.New(fmt.Sprintf("Polling %s returned message: %s", enlID, stat.Message))
+		return "", "", err
+	}
+	return stat.Lat, stat.Lon, nil
 }
 
 // StatusLocation attempts to check for location data from status.enl.one.
 // The API documentation is scant, so this does not work.
-func (gid GoogleID) StatusLocation() (float64, float64, error) {
+func (gid GoogleID) StatusLocation() (string, string, error) {
 	e, _ := gid.EnlID()
 	lat, lon, err := e.StatusLocation()
 	return lat, lon, err
@@ -176,4 +195,46 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 		Log.Debug(err)
 	}
 	return e, err
+}
+
+func StatusServerPoller() {
+	if vc.configured == false {
+		Log.Debug("Not polling status.enl.one")
+		return
+	}
+
+	// loop forever
+	Log.Info("Starting status.enl.one Poller")
+	for {
+		// get list of users who say they use JEAH/RAID
+		row, err := db.Query("SELECT gid, Vid FROM user WHERE RAID = 1")
+		defer row.Close()
+		var gid, vid sql.NullString
+
+		for row.Next() {
+			err = row.Scan(&gid, &vid)
+			// XXX if the user isn't active on any teams, ignore
+			if err != nil {
+				Log.Error(err)
+				continue
+			}
+			if vid.Valid == false {
+				Log.Info("User requested RAID poll, but has not configured V")
+				continue
+			}
+			e := EnlID(vid.String)
+			g := GoogleID(gid.String)
+			lat, lon, err := e.StatusLocation()
+			if err != nil {
+				Log.Error(err)
+				continue
+			}
+			err = g.UserLocation(lat, lon, "status.enl.one")
+			if err != nil {
+				Log.Error(err)
+				continue
+			}
+		}
+		time.Sleep(300 * time.Second)
+	}
 }

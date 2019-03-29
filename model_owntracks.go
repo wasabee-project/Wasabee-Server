@@ -269,7 +269,7 @@ func (gid GoogleID) ownTracksTidy(otdata string) (json.RawMessage, error) {
 // ownTracksExternalUpdate is called when an agent's location is set through other means
 // such as via the web or telegram interface. This allows agents to choose the method of
 // location reporting which suits their needs best.
-func (gid GoogleID) ownTracksExternalUpdate(lat, lon string) error {
+func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
 	var otdata string
 	err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
 	if err != nil {
@@ -289,7 +289,7 @@ func (gid GoogleID) ownTracksExternalUpdate(lat, lon string) error {
 	}
 	l.Lat, _ = strconv.ParseFloat(lat, 64)
 	l.Lon, _ = strconv.ParseFloat(lon, 64)
-	l.Topic = fmt.Sprintf("owntracks/%s/http", gid)
+	l.Topic = fmt.Sprintf("owntracks/%s/%s", gid, source)
 
 	t := time.Now()
 	l.TimeStamp = float64(t.Unix())

@@ -13,9 +13,9 @@ import (
 // RocksCommunityNotice is sent from a community when an agent is added or removed
 // consumed by RocksCommunitySync function below
 type RocksCommunityNotice struct {
-	Community string    `json:"community"`
-	Action    string    `json:"action"`
-	User      RocksUser `json:"user"`
+	Community string     `json:"community"`
+	Action    string     `json:"action"`
+	User      RocksAgent `json:"user"`
 }
 
 // RocksCommunityResponse is returned from a query request
@@ -24,16 +24,17 @@ type RocksCommunityResponse struct {
 	Title      string     `json:"title"`
 	Members    []GoogleID `json:"members"`
 	Moderators []GoogleID `json:"moderators"`
-	User       RocksUser  `json:"user"` // (Members,Moderators || User) present, not both
+	User       RocksAgent `json:"user"` // (Members,Moderators || User) present, not both
 }
 
-// RocksUser is a (minimal) version of the data sent by enl.rocks
-type RocksUser struct {
-	Gid    GoogleID `json:"gid"`
-	TGId   float64  `json:"tg_id"`
-	TGUser string   `json:"tg_user"`
-	Agent  string   `json:"agentid"`
-	Smurf  bool     `json:"smurf"`
+// RocksAgent is a (minimal) version of the data sent by enl.rocks
+type RocksAgent struct {
+	Gid      GoogleID `json:"gid"`
+	TGId     float64  `json:"tg_id"`
+	TGUser   string   `json:"tg_user"`
+	Agent    string   `json:"agentid"`
+	Verified bool     `json:"verified"`
+	Smurf    bool     `json:"smurf"`
 }
 
 type rocksconfig struct {
@@ -45,24 +46,11 @@ type rocksconfig struct {
 
 var rocks rocksconfig
 
-// RocksResult is set by the enl.rocks API
-type RocksResult struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitmissing"`
-	Data    Vagent `json:"data"`
-}
-
-// RocksAgent is set by the Rocks API
-// NOT STARTED
-type RocksAgent struct {
-	EnlID EnlID `json:"enlid"`
-}
-
 // SetEnlRocks is called from main() to initialize the config
 func SetEnlRocks(key string) {
 	Log.Debugf("enl.rocks API Key: %s", key)
 	rocks.rocksAPIKey = key
-	rocks.rocksAPIEndpoint = "https://enlightened.rocks/comm/api" // this is not right
+	rocks.rocksAPIEndpoint = "https://api.dfwenl.rocks/agent" // proxy for now
 	rocks.commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
 	rocks.configured = true
 }
@@ -74,23 +62,23 @@ func GetEnlRocks() bool {
 
 // RocksSearch checks a user at enl.rocks and populates a RocksAgent
 // gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
-func (gid GoogleID) RocksSearch(res *RocksResult) error {
+func (gid GoogleID) RocksSearch(res *RocksAgent) error {
 	return rockssearch(gid, res)
 }
 
 // RocksSearch checks a user at enl.rocks and populates a RocksAgent
-func (eid EnlID) RocksSearch(res *RocksResult) error {
+func (eid EnlID) RocksSearch(res *RocksAgent) error {
 	return rockssearch(eid, res)
 }
 
 // RocksSearch checks a user at enl.rocks and populates a RocksAgent
-func (tgid TelegramID) RocksSearch(res *RocksResult) error {
+func (tgid TelegramID) RocksSearch(res *RocksAgent) error {
 	id := strconv.Itoa(int(tgid))
 	return rockssearch(id, res)
 }
 
-// rockssearch stands behind the wraper functions and checks a user at enl.rocks and populates a RocksResult
-func rockssearch(i interface{}, res *RocksResult) error {
+// rockssearch stands behind the wraper functions and checks a user at enl.rocks and populates a RocksAgent
+func rockssearch(i interface{}, res *RocksAgent) error {
 	var searchID string
 	switch id := i.(type) {
 	case GoogleID:
@@ -106,7 +94,7 @@ func rockssearch(i interface{}, res *RocksResult) error {
 	if rocks.configured == false {
 		return errors.New("Rocks API key not configured")
 	}
-	url := fmt.Sprintf("%s/membership/%s?key=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
+	url := fmt.Sprintf("%s/%s?key=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
 	resp, err := http.Get(url)
 	if err != nil {
 		Log.Error(err)
@@ -120,29 +108,29 @@ func rockssearch(i interface{}, res *RocksResult) error {
 	}
 
 	Log.Debug(string(body))
-	/* err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(body, &res)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if res.Status != "ok" {
-		err = errors.New(res.Message)
-		Log.Info(err)
-		return err
-	} */
-	// Log.Debug(res.Data.Agent)
 	return nil
 }
 
 // RocksUpdate updates the database to reflect an agent's current status at enl.rocks.
 // It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
-// XXX on hold until I can get an API key
-func (gid GoogleID) RocksUpdate(res *RocksUser) error {
+func (gid GoogleID) RocksUpdate(res *RocksAgent) error {
 	if rocks.configured == false {
 		return errors.New("Rocks API key not configured")
 	}
-	Log.Debug("RocksUpdate doing nothing")
+	if res.Agent != "" {
+		Log.Debug("Updating Rocks data for ", res.Agent)
+		_, err := db.Exec("UPDATE user SET iname = ?, RocksVerified = ? WHERE gid = ?", res.Agent, res.Verified, gid)
 
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 

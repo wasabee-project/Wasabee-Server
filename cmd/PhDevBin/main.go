@@ -98,6 +98,7 @@ func run(c *cli.Context) error {
 	// setup V
 	if c.String("venlonekey") != "" {
 		PhDevBin.SetVEnlOne(c.String("venlonekey"))
+		go PhDevBin.StatusServerPoller()
 	}
 
 	// setup Rocks

@@ -32,6 +32,8 @@ type UserData struct {
 	VBlacklisted  bool
 	Vid           EnlID
 	OwnTracksJSON string
+	RocksVerified bool
+	RAID          bool
 	Teams         []struct {
 		ID    string
 		Name  string
@@ -87,22 +89,32 @@ func (gid GoogleID) InitUser() (bool, error) {
 		if vdata.Data.Banned == true {
 			authError = errors.New("Banned at V")
 		}
-
-		// just here for testing
-		_, _, err = vdata.Data.EnlID.StatusLocation()
-		if err != nil {
-			Log.Notice(err)
-		}
-	} else {
-		tmpName = "Agent_" + gid.String()[:8]
 	}
 
-	var rocks RocksResult
+	var rocks RocksAgent
 	err = gid.RocksSearch(&rocks)
 	if err != nil {
 		Log.Error(err)
 	}
+	if rocks.Agent != "" {
+		err = gid.RocksUpdate(&rocks)
+		if err != nil {
+			Log.Notice(err)
+			return false, err
+		}
+		if tmpName == "" {
+			tmpName = rocks.Agent
+		}
+		if rocks.Smurf == true {
+			authError = errors.New("Listed as a smurf at enl.rocks")
+		}
+	}
 
+	if tmpName == "" {
+		tmpName = "Agent_" + gid.String()[:8]
+	}
+
+	// if the user doesn't exist, prepopulate everything
 	_, err = gid.IngressName()
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		lockey, err := GenerateSafeName()
@@ -110,8 +122,8 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid) VALUES (?,?,?,?,NULL,?,?,?)",
-			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID)
+		_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid, RocksVerified, RAID) VALUES (?,?,?,?,NULL,?,?,?)",
+			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID, rocks.Verified, 0)
 		if err != nil {
 			Log.Error(err)
 			return false, err
@@ -126,8 +138,14 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
+		if rocks.Agent != "" {
+			_, err = db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 1, NULL)", rocks.TGId, rocks.Agent, gid)
+			if err != nil {
+				Log.Error(err)
+				return false, err
+			}
+		}
 	}
-
 	if err != nil && err.Error() != "sql: no rows in result set" {
 		Log.Error(err)
 		return false, err
@@ -240,8 +258,8 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 
 	ud.GoogleID = gid
 
-	row := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, ot.otdata FROM user=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid)
-	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &otJSON)
+	row := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, ot.otdata FROM user=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid)
+	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &otJSON)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -356,7 +374,7 @@ func (gid GoogleID) UserLocation(lat, lon, source string) error {
 	}
 
 	if source != "OwnTracks" {
-		err := gid.ownTracksExternalUpdate(lat, lon)
+		err := gid.ownTracksExternalUpdate(lat, lon, source)
 		if err != nil {
 			Log.Notice(err)
 			return err
