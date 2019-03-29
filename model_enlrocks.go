@@ -1,6 +1,7 @@
 package PhDevBin
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,15 @@ type RocksCommunityNotice struct {
 	User      RocksUser `json:"user"`
 }
 
+// RocksCommunityResponse is returned from a query request
+type RocksCommunityResponse struct {
+	Community  string     `json:"community"`
+	Title      string     `json:"title"`
+	Members    []GoogleID `json:"members"`
+	Moderators []GoogleID `json:"moderators"`
+	User       RocksUser  `json:"user"` // (Members,Moderators || User) present, not both
+}
+
 // RocksUser is a (minimal) version of the data sent by enl.rocks
 type RocksUser struct {
 	Gid    GoogleID `json:"gid"`
@@ -30,6 +40,7 @@ type rocksconfig struct {
 	rocksAPIEndpoint string
 	rocksAPIKey      string
 	configured       bool
+	commAPIEndpoint  string
 }
 
 var rocks rocksconfig
@@ -51,7 +62,8 @@ type RocksAgent struct {
 func SetEnlRocks(key string) {
 	Log.Debugf("enl.rocks API Key: %s", key)
 	rocks.rocksAPIKey = key
-	rocks.rocksAPIEndpoint = "https://enlightened.rocks/comm/api"
+	rocks.rocksAPIEndpoint = "https://enlightened.rocks/comm/api" // this is not right
+	rocks.commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
 	rocks.configured = true
 }
 
@@ -174,6 +186,55 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		}
 	}
 
+	return nil
+}
+
+// RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each user to the team
+func (t TeamID) RocksCommunityMemberPull() error {
+	if rocks.configured == false {
+		return errors.New("Rocks API key not configured")
+	}
+
+	var rc sql.NullString
+	err := db.QueryRow("SELECT rockskey FROM teams WHERE teamID = ?", t).Scan(&rc)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// rocks.commAPIEndpoint
+	url := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc.String)
+	Log.Debug(url)
+	resp, err := http.Get(url)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	Log.Debug(string(body))
+	var rr RocksCommunityResponse
+	err = json.Unmarshal(body, &rr)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	for _, user := range rr.Members {
+		// if tmp := user.LocKey(); tmp == "" { // XXX some test to see if the user is already in the system
+		user.InitUser()
+		// }
+		err := t.AddUser(user)
+		if err != nil {
+			Log.Notice(err)
+			continue
+		}
+	}
 	return nil
 }
 

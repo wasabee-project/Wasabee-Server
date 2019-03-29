@@ -72,6 +72,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
 	r.HandleFunc("/api/v1/team/{team}/delete", deleteTeamRoute).Methods("GET")                      // remove the team completely (owner)
 	r.HandleFunc("/api/v1/team/{team}/edit", editTeamRoute).Methods("GET")                          // GUI to do basic edit (owner)
+	r.HandleFunc("/api/v1/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")     				// (re)import the team from rocks
 	r.HandleFunc("/api/v1/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                    // invite user to team (owner)
 	// r.HandleFunc("/api/v1/team/{team}/{key}", setUserTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
 	r.HandleFunc("/api/v1/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)

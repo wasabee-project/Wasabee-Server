@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/cloudkucooland/PhDevBin"
+	"github.com/gorilla/mux"
 )
 
 func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
@@ -42,4 +43,30 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getUserID(req)
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	team := PhDevBin.TeamID(vars["team"])
+
+	safe, err := gid.OwnsTeam(team)
+	if safe != true {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	err = team.RocksCommunityMemberPull()
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }
