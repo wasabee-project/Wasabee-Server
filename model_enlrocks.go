@@ -181,13 +181,13 @@ func RocksCommunitySync(msg json.RawMessage) error {
 }
 
 // RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each user to the team
-func (t TeamID) RocksCommunityMemberPull() error {
+func (teamID TeamID) RocksCommunityMemberPull() error {
 	if rocks.configured == false {
 		return errors.New("Rocks API key not configured")
 	}
 
 	var rc sql.NullString
-	err := db.QueryRow("SELECT rockskey FROM teams WHERE teamID = ?", t).Scan(&rc)
+	err := db.QueryRow("SELECT rockskey FROM teams WHERE teamID = ?", teamID).Scan(&rc)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -208,7 +208,7 @@ func (t TeamID) RocksCommunityMemberPull() error {
 		return err
 	}
 
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 	var rr RocksCommunityResponse
 	err = json.Unmarshal(body, &rr)
 	if err != nil {
@@ -220,7 +220,7 @@ func (t TeamID) RocksCommunityMemberPull() error {
 		// if tmp := user.LocKey(); tmp == "" { // XXX some test to see if the user is already in the system
 		user.InitUser()
 		// }
-		err := t.AddUser(user)
+		err := teamID.AddUser(user)
 		if err != nil {
 			Log.Notice(err)
 			continue
