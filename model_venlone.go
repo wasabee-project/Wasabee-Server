@@ -149,11 +149,11 @@ type statusResponse struct {
 
 // StatusLocation attempts to check for location data from status.enl.one.
 // The API documentation is scant, so this does not work.
-func (enlID EnlID) StatusLocation() (string, string, error) {
+func (eid EnlID) StatusLocation() (string, string, error) {
 	if vc.configured == false {
 		return "", "", errors.New("V API key not configured")
 	}
-	url := fmt.Sprintf("%s/%s?apikey=%s", vc.statusEndpoint, enlID, vc.vAPIKey)
+	url := fmt.Sprintf("%s/%s?apikey=%s", vc.statusEndpoint, eid, vc.vAPIKey)
 	resp, err := http.Get(url)
 	if err != nil {
 		Log.Error(err)
@@ -173,7 +173,7 @@ func (enlID EnlID) StatusLocation() (string, string, error) {
 		return "", "", err
 	}
 	if stat.Status != 0 {
-		err = errors.New(fmt.Errorf("Polling %s returned message: %s", enlID, stat.Message))
+		err = errors.New(fmt.Errorf("Polling %s returned message: %s", eid, stat.Message))
 		return "", "", err
 	}
 	return stat.Lat, stat.Lon, nil
@@ -210,6 +210,10 @@ func StatusServerPoller() {
 	for {
 		// get list of users who say they use JEAH/RAID
 		row, err := db.Query("SELECT gid, Vid FROM user WHERE RAID = 1")
+		if err != nil {
+			Log.Error(err)
+			return
+		}
 		defer row.Close()
 		var gid, vid sql.NullString
 
