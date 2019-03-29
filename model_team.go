@@ -284,6 +284,12 @@ func (teamID TeamID) AddUser(in interface{}) error {
 			return err
 		}
 	}
+	// XXX this needs to be a template and translated
+	_, err = gid.SendMessage("You have been invited on to a team called; you can enable it now if you want.")
+	if err != nil {
+		Log.Notice(err)
+		return (err)
+	}
 	return nil
 }
 

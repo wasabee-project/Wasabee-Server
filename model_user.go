@@ -122,7 +122,7 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid, RocksVerified, RAID) VALUES (?,?,?,?,NULL,?,?,?)",
+		_, err = db.Exec("INSERT IGNORE INTO user (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid, RocksVerified, RAID) VALUES (?,?,?,?,NULL,?,?,?,?,?)",
 			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID, rocks.Verified, 0)
 		if err != nil {
 			Log.Error(err)

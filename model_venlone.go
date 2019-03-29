@@ -173,7 +173,7 @@ func (enlID EnlID) StatusLocation() (string, string, error) {
 		return "", "", err
 	}
 	if stat.Status != 0 {
-		err = errors.New(fmt.Sprintf("Polling %s returned message: %s", enlID, stat.Message))
+		err = errors.New(fmt.Errorf("Polling %s returned message: %s", enlID, stat.Message))
 		return "", "", err
 	}
 	return stat.Lat, stat.Lon, nil
@@ -197,6 +197,8 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 	return e, err
 }
 
+// StatusServerPoller starts up from main and requests any agents who are configured to use RAID/JEAH for location services from the status.enl.one server.
+// XXX this is experimental and very wonky
 func StatusServerPoller() {
 	if vc.configured == false {
 		Log.Debug("Not polling status.enl.one")
@@ -226,6 +228,7 @@ func StatusServerPoller() {
 			g := GoogleID(gid.String)
 			lat, lon, err := e.StatusLocation()
 			if err != nil {
+				// XXX add the user to an exception list? purge the list every 12 hours?
 				Log.Error(err)
 				continue
 			}

@@ -91,12 +91,13 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	if err = o.Delete(); err != nil {
 		Log.Notice(err)
 		return err
-		// create a new team if one did not already exist
-		if teamID.String() == "" {
-			teamID, err = gid.NewTeam(o.Name)
-			if err != nil {
-				Log.Error(err)
-			}
+	}
+
+	// create a new team if one did not already exist
+	if teamID.String() == "" {
+		teamID, err = gid.NewTeam(o.Name)
+		if err != nil {
+			Log.Error(err)
 		}
 	}
 

@@ -107,7 +107,7 @@ func rockssearch(i interface{}, res *RocksAgent) error {
 		return err
 	}
 
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		Log.Error(err)

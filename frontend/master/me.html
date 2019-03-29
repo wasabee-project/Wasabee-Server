@@ -34,7 +34,9 @@
 {{if VEnlOne}}
 {{if .VVerified}}
 <li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> <a href="https://v.enl.one/profile/{{.Vid}}">Verified</a></li>
-<li class="list-group-item"><a href="https://raid.enl.one/">Checking RAID for location data:</a> {{.RAID}}</li>
+<li class="list-group-item"><a href="https://raid.enl.one/">Checking RAID for location data:</a> {{.RAID}}<br />
+<small>RAID is an ENL Android/iPhone app which can share location data. We are still researching the exact configuration to make this work. If you are a RAID user and do not want to use OwnTracks, we can get RAID data. OwnTracks will give more up-to-date information to the operator since there is a lag in our polling the RAID servers.</small>
+</li>
 {{else}}
 <li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Not Verified <a href="{{ Webroot }}/login">Login again to recheck</a></li>
 <li class="list-group-item">
@@ -46,7 +48,9 @@
 {{end}}
 {{end}}
 {{if EnlRocks}}
-<li class="list-group-item"><a href="https://enlightened.rocks/">.Rocks Verified:</a> {{.RocksVerified}}</li>
+<li class="list-group-item"><a href="https://enlightened.rocks/">.Rocks Verified:</a> <a href="http://enlightened.rocks/me">{{.RocksVerified}}</a><br />
+<small>.Rocks verification typically only takes place in relationship to anomolies. Lack of verification does not mean you don't have a .rocks account, it just means you've not been verified at an anomoly event</small>
+</li>
 {{end}}
 <li class="list-group-item"><a href="/{{WebAPIPath}}/targets/me">Targets Near Me</a></li>
 </div>
