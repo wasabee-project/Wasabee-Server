@@ -19,13 +19,7 @@
 <li class="list-group-item">Location Share Key: {{.LocationKey}}
 <br/>
 <small>This is the information you will need to give to your operator to be invited on to the op team. Once you are invited onto the team, you will need to enable the team (below). You can disable a team at any time.</small>
-</li>
-<li class="list-group-item">
-<form action="/me" method="get">
-<input type="text" name="newlockey" />
-<input type="submit" name="update" value="set lockey" /><br />
-<small>You may set your Location Share Key to a custom value. Changing it from the randomly assigned value is not recommended.</small>
-</form>
+<small><a href="/me?newlockey=y">Request a new LocKey</a> (because Frank didn't like his)
 </li>
 <li class="list-group-item">Display Name: {{.IngressName}}
 <br/>
