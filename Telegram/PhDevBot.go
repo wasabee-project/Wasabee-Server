@@ -425,7 +425,7 @@ func targetsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) 
 	maxdistance := 100
 	maxresults := 10
 
-	err := gid.TargetsNear(maxdistance, maxresults, &td)
+	err := gid.WaypointsNear(maxdistance, maxresults, &td)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return txt, err
@@ -441,7 +441,7 @@ func farmsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	maxdistance := 100
 	maxresults := 10
 
-	err := gid.TargetsNear(maxdistance, maxresults, &td)
+	err := gid.WaypointsNear(maxdistance, maxresults, &td)
 	if err != nil {
 		PhDevBin.Log.Error(err)
 		return txt, err
