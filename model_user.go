@@ -138,7 +138,7 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		if rocks.Agent != "" {
+		if rocks.TGId != 0 {
 			_, err = db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 1, NULL)", rocks.TGId, rocks.Agent, gid)
 			if err != nil {
 				Log.Error(err)
