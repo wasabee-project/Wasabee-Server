@@ -64,12 +64,12 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	var err error
 	var rows *sql.Rows
 	if fetchAll != true {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
+		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
 			"AND x.state != 'Off'", teamID)
 	} else {
-		rows, err = db.Query("SELECT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
+		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", teamID)
 	}
@@ -80,7 +80,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpU.Name, &tmpU.LocKey, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.EnlID)
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.LocKey, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.EnlID)
 		if err != nil {
 			Log.Error(err)
 			return err

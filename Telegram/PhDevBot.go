@@ -4,6 +4,7 @@ import (
 	"bytes"
 	// "encoding/json"
 	"errors"
+	"fmt"
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"io/ioutil"
@@ -390,7 +391,7 @@ func SendMessage(gid PhDevBin.GoogleID, message string) (bool, error) {
 	}
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
-		err = errors.New("Telegram ID not found")
+		err = fmt.Errorf("Telegram ID not found for %s", gid)
 		PhDevBin.Log.Notice(err)
 		return false, err
 	}

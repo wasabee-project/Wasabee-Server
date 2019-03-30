@@ -1,7 +1,7 @@
 package PhDevBin
 
 import (
-	"errors"
+	"fmt"
 )
 
 type messagingConfig struct {
@@ -25,7 +25,7 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 		return false, err
 	}
 	if ok == false {
-		err = errors.New("Unable to send message")
+		err = fmt.Errorf("Unable to send message")
 		return false, err
 	}
 	return true, nil
@@ -35,13 +35,13 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 	_, ok := mc.senders[bus]
 	if ok == false {
-		err := errors.New("No such bus")
+		err := fmt.Errorf("No such messaging bus: [%s]", bus)
 		return false, err
 	}
 
 	ok, err := mc.senders[bus](gid, message)
 	if err != nil {
-		Log.Error(err)
+		Log.Notice(err)
 		return false, err
 	}
 	return ok, nil

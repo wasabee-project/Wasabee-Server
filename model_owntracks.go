@@ -161,7 +161,7 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 	var tmpWaypoint Waypoint
 	tmpWaypoint.Type = "waypoint"
 
-	wr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=t, userteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	wr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=w, userteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -313,9 +313,9 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 }
 
 // ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the data to the database.
-// XXX this table needs to be modified to reflect the new reality
+// XXX need to write a thread to invalidate expired waypoints and then remove them
 func ownTracksWriteWaypoint(w Waypoint, team string) error {
-	_, err := db.Exec("INSERT INTO waypoints VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14)),NULL) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
+	_, err := db.Exec("INSERT INTO waypoints VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14))) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
 		w.ID, team, w.Lon, w.Lat, w.Radius, "target", w.Desc, w.ID,
 		w.ID, w.Lon, w.Lat, w.Radius, w.Desc)
 	if err != nil {

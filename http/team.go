@@ -22,17 +22,18 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := PhDevBin.TeamID(vars["team"])
 
 	safe, err := gid.UserInTeam(team, false)
-	if safe {
-		team.FetchTeam(&teamList, false)
-		teamList.RocksComm = "unset"
-		teamList.RocksKey = "unset"
-		data, _ := json.MarshalIndent(teamList, "", "\t")
-		s := string(data)
-		res.Header().Add("Content-Type", "text/json")
-		fmt.Fprintf(res, s)
+	if safe == false {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	http.Error(res, "Unauthorized", http.StatusUnauthorized)
+	team.FetchTeam(&teamList, false)
+	teamList.RocksComm = ""
+	teamList.RocksKey = ""
+	data, _ := json.MarshalIndent(teamList, "", "\t")
+	s := string(data)
+	res.Header().Add("Content-Type", "text/json")
+	fmt.Fprintf(res, s)
+	return
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
