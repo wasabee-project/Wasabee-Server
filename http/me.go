@@ -134,11 +134,7 @@ func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(req)
-	newlockey := vars["newlockey"]
-
-	// do the work
-	err = gid.SetLocKey(newlockey)
+	err = gid.ResetLocKey()
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

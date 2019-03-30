@@ -57,7 +57,7 @@ func setupAuthRoutes(r *mux.Router) {
 	// user info (all HTML except /me which gives JSON for intel.ingrss.com
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
 	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my OwnTracks Password (cleartext, yes, but SSL is required)
-	r.HandleFunc("/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{newlockey}")           // set my OwnTracks Password (cleartext, yes, but SSL is required)
+	r.HandleFunc("/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")				   // request a new lockey
 	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
 	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/teams)
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /me/wonky-team-1234?state={Off|On|Primary}

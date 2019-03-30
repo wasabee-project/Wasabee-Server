@@ -389,9 +389,9 @@ func (gid GoogleID) UserLocation(lat, lon, source string) error {
 	return nil
 }
 
-// SetLocKey updates the database with a new OwnTracks password for a given user
-func (gid GoogleID) SetLocKey(newlockey string) error {
-	Log.Notice("Updating LocKey for user because Frank didn't like his...")
+// ResetLocKey updates the database with a new OwnTracks password for a given user
+func (gid GoogleID) ResetLocKey() error {
+	newlockey := GenerateName()
 	_, err := db.Exec("UPDATE user SET lockey = ? WHERE gid = ?", newlockey, gid)
 	if err != nil {
 		Log.Notice(err)
