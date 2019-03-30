@@ -46,18 +46,30 @@ Nearest Know Teammates
 {{end}}
 
 {{define "Farms"}}
-Nearest Farms
-{{range .Target}}
-{{- if eq .Type "farm"}}{{- .Name}}: {{.Distance}}km {{.Type}}
+Nearest Farms (Markers)
+{{range .Markers}}
+{{- if eq .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
+[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
+{{- end}}
+{{end}}
+Nearest Farms (Waypoints)
+{{range .Waypoints}}
+{{- if eq .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
 [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
 {{- end}}
 {{end}}
 {{end}}
 
 {{define "Targets"}}
-Nearest Targets
-{{range .Target}}
-{{- if ne .Type "farm"}}{{- .Name}}: {{.Distance}}km {{.Type}}
+Nearest Markers (Ops)
+{{range .Markers}}
+{{- if ne .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
+[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
+{{- end}}
+{{end}}
+Nearest Waypoints
+{{range .Waypoints}}
+{{- if ne .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
 [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
 {{- end}}
 {{end}}

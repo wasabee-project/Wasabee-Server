@@ -16,7 +16,7 @@
 <div class="card-header">Team: {{.Name}}</div>
 <div class="card-body"></div>
 <ul class="list-group list-group-flush">
-	{{range .Target}}
+	{{range .Markers}}
         <li class="list-group-item">{{.Name}} ({{.Id}}) {{.Distance}}km
 		<a href="https://maps.google.com/?ll={{.Lat}},{{.Lon}}">Google Maps</a>
 		<a href="https://intel.ingress.com/?ll={{.Lat}},{{.Lon}}">Intel</a> (Type : {{.Type}} ) (Radius: {{.Radius}})

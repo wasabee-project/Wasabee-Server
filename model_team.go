@@ -11,7 +11,8 @@ type TeamData struct {
 	Name      string
 	Id        TeamID
 	User      []User
-	Target    []Target
+	Markers   []Marker
+	Waypoints []Waypoint
 	RocksComm string
 	RocksKey  string
 }
@@ -31,20 +32,6 @@ type User struct {
 	Date        string
 	OwnTracks   json.RawMessage `json:"OwnTracks,omitmissing"`
 	Distance    float64         `json:"Distance,omitmissing"`
-}
-
-// Target is the data for a Waypoint (OwnTracks) or portal target
-type Target struct {
-	Id              int
-	Name            string
-	Lat             float64
-	Lon             float64
-	Radius          int    // in meters
-	Type            string // enum ?
-	Expiration      string
-	LinkDestination string
-	Distance        float64
-	// PortalID   string
 }
 
 // UserInTeam checks to see if a user is in a team and (On|Primary).
@@ -73,7 +60,6 @@ func (gid GoogleID) UserInTeam(team TeamID, allowOff bool) (bool, error) {
 func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test users all get updated this can be removed
 	var tmpU User
-	var tmpT Target
 
 	var err error
 	var rows *sql.Rows
@@ -140,68 +126,8 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		teamList.RocksKey = rockskey.String
 	}
 
-	var targetid, radius, targettype, targetname, expiration, linkdst sql.NullString
-	var targetrows *sql.Rows
-	targetrows, err = db.Query("SELECT Id, Y(loc), X(loc), radius, type, name, expiration, linkdst FROM target WHERE teamID = ?", teamID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	defer targetrows.Close()
-	for targetrows.Next() {
-		err := targetrows.Scan(&targetid, &lat, &lon, &radius, &targettype, &targetname, &expiration, &linkdst)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-
-		if targetid.Valid {
-			i, _ := strconv.Atoi(targetid.String)
-			tmpT.Id = i
-		} else {
-			tmpT.Id = 0
-		}
-		if lat.Valid {
-			tmpT.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		}
-		if lon.Valid {
-			tmpT.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		}
-		if radius.Valid {
-			i, _ := strconv.Atoi(radius.String)
-			tmpT.Radius = i
-		} else {
-			tmpT.Radius = 30
-		}
-		if targettype.Valid {
-			tmpT.Type = targettype.String
-		} else {
-			tmpT.Type = "target"
-		}
-		if targetname.Valid {
-			tmpT.Name = targetname.String
-		} else {
-			tmpT.Name = "Unnamed Target"
-		}
-		if expiration.Valid {
-			tmpT.Expiration = expiration.String
-		} else {
-			tmpT.Expiration = ""
-		}
-		if linkdst.Valid {
-			tmpT.LinkDestination = linkdst.String
-		} else {
-			tmpT.LinkDestination = ""
-		}
-
-		teamList.Target = append(teamList.Target, tmpT)
-	}
-	err = targetrows.Err()
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
+	// XXX Markers
+	// XXX Waypoints
 
 	return nil
 }
@@ -327,7 +253,6 @@ func (gid GoogleID) ClearPrimaryTeam() error {
 }
 
 // TeammatesNear identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
-// the Targets portion of the TeamData is left uninitialized
 func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
 	var state, lat, lon, otdata sql.NullString
 	var tmpU User
@@ -383,24 +308,24 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	return nil
 }
 
-// TargetsNear returns any targets (Waypoints) near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
+// WaypointsNear returns any Waypoints near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
 // the Users portion of the TeamData is uninitialized
-func (gid GoogleID) TargetsNear(maxdistance, maxresults int, targetList *TeamData) error {
-	var lat, lon, linkdst sql.NullString
-	var tmpT Target
+func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) error {
+	var lat, lon sql.NullString
 	var rows *sql.Rows
+	var tmpW Waypoint
 
 	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	// Log.Debug("Targets Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
+	// Log.Debug("Waypoints Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
 	// no ST_Distance_Sphere in MariaDB yet...
-	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, expiration, linkdst, Y(loc), X(loc), "+
+	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, Y(loc), X(loc), teamID, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
-		"FROM target "+
+		"FROM waypoints "+
 		"WHERE teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
 		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
@@ -410,27 +335,28 @@ func (gid GoogleID) TargetsNear(maxdistance, maxresults int, targetList *TeamDat
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpT.Id, &tmpT.Name, &tmpT.Radius, &tmpT.Type, &tmpT.Expiration, &linkdst, &lat, &lon, &tmpT.Distance)
+		err := rows.Scan(&tmpW.ID, &tmpW.Desc, &tmpW.Radius, &tmpW.MarkerType, &lat, &lon, &tmpW.TeamID, &tmpW.Distance)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		if linkdst.Valid {
-			tmpT.LinkDestination = linkdst.String
-		}
 		if lat.Valid {
-			tmpT.Lat, _ = strconv.ParseFloat(lat.String, 64)
+			tmpW.Lat, _ = strconv.ParseFloat(lat.String, 64)
 		}
 		if lon.Valid {
-			tmpT.Lon, _ = strconv.ParseFloat(lon.String, 64)
+			tmpW.Lon, _ = strconv.ParseFloat(lon.String, 64)
 		}
-		targetList.Target = append(targetList.Target, tmpT)
+		td.Waypoints = append(td.Waypoints, tmpW)
 	}
 	err = rows.Err()
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
+	return nil
+}
+
+func (gid GoogleID) MarkersNear(maxdistance, maxresults int, td *TeamData) error {
 	return nil
 }
 

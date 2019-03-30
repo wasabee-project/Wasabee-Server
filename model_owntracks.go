@@ -38,8 +38,9 @@ type Waypoint struct {
 	Major      string  `json:"major,omitempty"`
 	Minor      string  `json:"minor,omitempty"`
 	Share      bool    `json:"share"`                // this was removed from the API, but I'm going to leave it for now
-	TargetType string  `json:"targettype,omitempty"` // PhDevBin extension
+	MarkerType string  `json:"markertype,omitempty"` // PhDevBin extension
 	TeamID     string  `json:"teamid,omitempty"`     // PhDevBin extension
+	Distance   float64 `json:"distance,omitempty"`   // PhDevBin extension
 }
 
 // Location is defined by the OwnTracks JSON format.
@@ -91,7 +92,7 @@ func (gid GoogleID) OwnTracksUpdate(otdata json.RawMessage, lat, lon float64) er
 }
 
 // OwnTracksTeams returns a JSON message containing all the agents who are members of the same teams as the requested agent (gid)
-// It also includes all WayPoints/targets for these teams.
+// It also includes all WayPoints for these teams.
 // This is sufficient for returning directly to the OwnTracks app
 func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	var locs []json.RawMessage
@@ -117,50 +118,11 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	}
 	s, _ := json.Marshal(locs)
 
-	// XXX just call OwnTracksTargets
 	var wp WaypointCommand
-	wp.Type = "cmd"
-	wp.Action = "setWaypoints"
-	wp.Waypoints.Type = "waypoints"
-	// not all of these can be null, just write to the struct directly
-	// yeah, but lots of ParseFloat conversions in here... maybe a sexier way, but this is readable
-	var Id, teamID, lat, lon, radius, typeId, nameId sql.NullString
-	var tmpTarget Waypoint
-	tmpTarget.Type = "waypoint"
-
-	wr, err := db.Query("SELECT Id, t.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM target=t, userteams=ut WHERE ut.teamID = t.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	err = gid.otWaypoints(&wp)
 	if err != nil {
 		Log.Error(err)
-		return s, nil // a lie, but getting people location and no targets is better than no data
-	}
-	defer wr.Close()
-	for wr.Next() {
-		err := wr.Scan(&Id, &teamID, &lat, &lon, &radius, &typeId, &nameId)
-		if err != nil {
-			Log.Error(err)
-			return s, nil
-		}
-		if Id.Valid {
-			f, _ := strconv.ParseFloat(Id.String, 64)
-			tmpTarget.ID = f
-		}
-		if nameId.Valid {
-			tmpTarget.Desc = nameId.String
-		}
-		if lat.Valid {
-			f, _ := strconv.ParseFloat(lat.String, 64)
-			tmpTarget.Lat = f
-		}
-		if lon.Valid {
-			f, _ := strconv.ParseFloat(lon.String, 64)
-			tmpTarget.Lon = f
-		}
-		if radius.Valid {
-			f, _ := strconv.ParseFloat(radius.String, 64)
-			tmpTarget.Radius = f
-		}
-		tmpTarget.Share = true
-		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpTarget)
+		return s, err
 	}
 	wps, _ := json.Marshal(wp)
 	locs = append(locs, wps)
@@ -170,50 +132,16 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	return s, nil
 }
 
-// OwnTracksTargets returns a JSON formatted list of targets.
+// OwnTracksWaypoints returns a JSON formatted list of targets.
 // iOS does not support sending locations and Waypoints in the same packet.
-func (gid GoogleID) OwnTracksTargets() (json.RawMessage, error) {
+func (gid GoogleID) OwnTracksWaypoints() (json.RawMessage, error) {
 	j := json.RawMessage("{ }")
 
 	var wp WaypointCommand
-	wp.Type = "cmd"
-	wp.Action = "setWaypoints"
-	wp.Waypoints.Type = "waypoints"
-
-	var Id, lat, lon, radius sql.NullString
-	var tmpTarget Waypoint
-	tmpTarget.Type = "waypoint"
-
-	wr, err := db.Query("SELECT Id, t.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM target=t, userteams=ut WHERE ut.teamID = t.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	err := gid.otWaypoints(&wp)
 	if err != nil {
 		Log.Error(err)
 		return j, err
-	}
-	defer wr.Close()
-	for wr.Next() {
-		err := wr.Scan(&Id, &tmpTarget.TeamID, &lat, &lon, &radius, &tmpTarget.TargetType, &tmpTarget.Desc)
-		if err != nil {
-			Log.Error(err)
-			return j, nil
-		}
-		if Id.Valid {
-			f, _ := strconv.ParseFloat(Id.String, 64)
-			tmpTarget.ID = f
-		}
-		if lat.Valid {
-			f, _ := strconv.ParseFloat(lat.String, 64)
-			tmpTarget.Lat = f
-		}
-		if lon.Valid {
-			f, _ := strconv.ParseFloat(lon.String, 64)
-			tmpTarget.Lon = f
-		}
-		if radius.Valid {
-			f, _ := strconv.ParseFloat(radius.String, 64)
-			tmpTarget.Radius = f
-		}
-		tmpTarget.Share = true
-		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpTarget)
 	}
 
 	j, err = json.Marshal(wp)
@@ -221,8 +149,57 @@ func (gid GoogleID) OwnTracksTargets() (json.RawMessage, error) {
 		Log.Error(err)
 		return j, err
 	}
-	// Log.Debug(string(j))
 	return j, nil
+}
+
+func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
+	wp.Type = "cmd"
+	wp.Action = "setWaypoints"
+	wp.Waypoints.Type = "waypoints"
+
+	var Id, lat, lon, radius sql.NullString
+	var tmpWaypoint Waypoint
+	tmpWaypoint.Type = "waypoint"
+
+	wr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=t, userteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer wr.Close()
+	for wr.Next() {
+		err := wr.Scan(&Id, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
+		if err != nil {
+			Log.Error(err)
+			return nil
+		}
+		if Id.Valid {
+			f, _ := strconv.ParseFloat(Id.String, 64)
+			tmpWaypoint.ID = f
+		}
+		if lat.Valid {
+			f, _ := strconv.ParseFloat(lat.String, 64)
+			tmpWaypoint.Lat = f
+		}
+		if lon.Valid {
+			f, _ := strconv.ParseFloat(lon.String, 64)
+			tmpWaypoint.Lon = f
+		}
+		if radius.Valid {
+			f, _ := strconv.ParseFloat(radius.String, 64)
+			tmpWaypoint.Radius = f
+		}
+		tmpWaypoint.Share = true
+		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpWaypoint)
+	}
+
+	/* mr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=t, userteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer mr.Close() */
+	return nil
 }
 
 // OwnTracksTransition is called when an agent enters or leaves a WayPoint's radius
@@ -312,7 +289,7 @@ func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
 func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
 	var w Waypoint
-	j, _ := gid.OwnTracksTargets()
+	j, _ := gid.OwnTracksWaypoints()
 
 	team, err := gid.PrimaryTeam() // cache this...
 	if err != nil || team == "" {
@@ -331,7 +308,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 		return j, err
 	}
 
-	j, err = gid.OwnTracksTargets()
+	j, err = gid.OwnTracksWaypoints()
 	return j, err
 }
 
@@ -350,7 +327,7 @@ func ownTracksWriteWaypoint(w Waypoint, team string) error {
 func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
 	var w WaypointsList
-	j, _ := gid.OwnTracksTargets()
+	j, _ := gid.OwnTracksWaypoints()
 
 	team, err := gid.PrimaryTeam()
 	if err != nil || team == "" {
@@ -371,7 +348,7 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 		}
 	}
 
-	j, err = gid.OwnTracksTargets()
+	j, err = gid.OwnTracksWaypoints()
 	return j, err
 }
 

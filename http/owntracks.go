@@ -41,8 +41,8 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if string(jBlob) == "" {
 		PhDevBin.Log.Notice("empty JSON: probably delete waypoint / person request")
-		targets, _ := gid.OwnTracksTargets()
-		fmt.Fprintf(res, string(targets))
+		waypoints, _ := gid.OwnTracksWaypoints()
+		fmt.Fprintf(res, string(waypoints))
 		return
 	}
 
