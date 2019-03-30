@@ -132,7 +132,7 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	return s, nil
 }
 
-// OwnTracksWaypoints returns a JSON formatted list of targets.
+// OwnTracksWaypoints returns a JSON formatted list of waypoints.
 // iOS does not support sending locations and Waypoints in the same packet.
 func (gid GoogleID) OwnTracksWaypoints() (json.RawMessage, error) {
 	j := json.RawMessage("{ }")
@@ -214,9 +214,9 @@ func (gid GoogleID) OwnTracksTransition(transition json.RawMessage) (json.RawMes
 		return j, err
 	}
 
-	// do something here
+	// XXX do something here -- or not
 	Log.Debugf("%s transition %s: %s (%f)", gid, t.Event, t.Desc, t.ID)
-	gid.SendMessage(fmt.Sprintf("%s target area: %s", t.Event, t.Desc))
+	gid.SendMessage(fmt.Sprintf("%s area: %s", t.Event, t.Desc))
 
 	return j, nil
 }
@@ -312,9 +312,10 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 	return j, err
 }
 
-// ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the target data to the database
+// ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the data to the database.
+// XXX this table needs to be modified to reflect the new reality
 func ownTracksWriteWaypoint(w Waypoint, team string) error {
-	_, err := db.Exec("INSERT INTO target VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14)),NULL) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
+	_, err := db.Exec("INSERT INTO waypoints VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14)),NULL) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
 		w.ID, team, w.Lon, w.Lat, w.Radius, "target", w.Desc, w.ID,
 		w.ID, w.Lon, w.Lat, w.Radius, w.Desc)
 	if err != nil {
@@ -352,7 +353,7 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 	return j, err
 }
 
-// PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint/Target data is saved
+// PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint data is saved
 // move to model_team.go
 func (gid GoogleID) PrimaryTeam() (string, error) {
 	var primary string

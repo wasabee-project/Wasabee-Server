@@ -1,0 +1,53 @@
+{{define "Waypoints"}}
+<html lang="en">
+<head>
+<title>Waypont List: {{.Name}}</title>
+{{template "styles"}}
+</head>
+<body>
+{{template "nav"}}
+		<div class="content-sction-a">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="content-section-a">
+<!-- content starts here -->
+<div class="card mb-2">
+<div class="card-header">Team: {{.Name}}</div>
+<div class="card-body"></div>
+<ul class="list-group list-group-flush">
+	{{range .Markers}}
+        <li class="list-group-item">{{.Name}} ({{.Id}}) {{.Distance}}km
+		<a href="https://maps.google.com/?ll={{.Lat}},{{.Lon}}">Google Maps</a>
+		<a href="https://intel.ingress.com/?ll={{.Lat}},{{.Lon}}">Intel</a> (Type : {{.Type}} ) (Radius: {{.Radius}})
+		</li>
+	{{end}}
+	{{range .Waypoints}}
+        <li class="list-group-item">{{.Desc}} ({{.ID}}) {{.Distance}}km
+		<a href="https://maps.google.com/?ll={{.Lat}},{{.Lon}}">Google Maps</a>
+		<a href="https://intel.ingress.com/?ll={{.Lat}},{{.Lon}}">Intel</a> (Type : {{.Type}} ) (Radius: {{.Radius}})
+		</li>
+	{{end}}
+</ul>
+</div>
+<!-- content ends here -->				
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- /.container -->
+
+	</div>
+	<!-- /.intro-header -->
+
+{{template "footer"}}
+
+	<!-- jQuery -->
+	<script src="https://phtiv.com/phtivdrawtools/js/jquery.js"></script>
+
+	<!-- Bootstrap Core JavaScript -->
+	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
+</body>
+</html>
+{{end}}

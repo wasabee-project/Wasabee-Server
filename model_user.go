@@ -382,7 +382,8 @@ func (gid GoogleID) UserLocation(lat, lon, source string) error {
 		// put it out onto MQTT
 	}
 
-	// XXX check for targets in range
+	// XXX check for waypoints in range
+	// XXX check for markers in range
 
 	// XXX send notifications
 

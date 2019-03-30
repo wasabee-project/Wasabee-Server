@@ -78,11 +78,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
 	r.HandleFunc("/api/v1/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
 
-	// targets
-	r.HandleFunc("/api/v1/targets/me", targetsNearMeRoute).Methods("GET")                 // show targets near user (html/json)
-	r.HandleFunc("/api/v1/targets/{team}", targetsRoute).Methods("GET")                   // show targets for team
-	r.HandleFunc("/api/v1/targets/{team}", targetsUploadRoute).Methods("POST")            // upload JSON target list
-	r.HandleFunc("/api/v1/targets/{team}/{id}/delete", targetsDeleteRoute).Methods("GET") // upload JSON target list
+	// waypoints
+	r.HandleFunc("/api/v1/waypoints/me", waypointsNearMeRoute).Methods("GET") // show waypoints near user (html/json)
 
 	// doesn't need to be authenticated, but why not?
 	r.HandleFunc("/status", statusRoute).Methods("GET")
