@@ -30,11 +30,13 @@ type RocksCommunityResponse struct {
 // RocksAgent is a (minimal) version of the data sent by enl.rocks
 type RocksAgent struct {
 	Gid      GoogleID `json:"gid"`
-	TGId     float64  `json:"tg_id"`
+	TGId     int64    `json:"tg_id"`
 	TGUser   string   `json:"tg_user"`
 	Agent    string   `json:"agentid"`
 	Verified bool     `json:"verified"`
 	Smurf    bool     `json:"smurf"`
+	Fullname string   `json:"fullname"`
+	Email    string   `json:"email"`
 }
 
 type rocksconfig struct {
@@ -62,23 +64,23 @@ func GetEnlRocks() bool {
 
 // RocksSearch checks a user at enl.rocks and populates a RocksAgent
 // gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
-func (gid GoogleID) RocksSearch(res *RocksAgent) error {
-	return rockssearch(gid, res)
+func (gid GoogleID) RocksSearch(agent *RocksAgent) error {
+	return rockssearch(gid, agent)
 }
 
 // RocksSearch checks a user at enl.rocks and populates a RocksAgent
-func (eid EnlID) RocksSearch(res *RocksAgent) error {
-	return rockssearch(eid, res)
+func (eid EnlID) RocksSearch(agent *RocksAgent) error {
+	return rockssearch(eid, agent)
 }
 
 // RocksSearch checks a user at enl.rocks and populates a RocksAgent
-func (tgid TelegramID) RocksSearch(res *RocksAgent) error {
+func (tgid TelegramID) RocksSearch(agent *RocksAgent) error {
 	id := strconv.Itoa(int(tgid))
-	return rockssearch(id, res)
+	return rockssearch(id, agent)
 }
 
 // rockssearch stands behind the wraper functions and checks a user at enl.rocks and populates a RocksAgent
-func rockssearch(i interface{}, res *RocksAgent) error {
+func rockssearch(i interface{}, agent *RocksAgent) error {
 	var searchID string
 	switch id := i.(type) {
 	case GoogleID:
@@ -108,7 +110,7 @@ func rockssearch(i interface{}, res *RocksAgent) error {
 	}
 
 	// Log.Debug(string(body))
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(body, &agent)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -118,17 +120,29 @@ func rockssearch(i interface{}, res *RocksAgent) error {
 
 // RocksUpdate updates the database to reflect an agent's current status at enl.rocks.
 // It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
-func (gid GoogleID) RocksUpdate(res *RocksAgent) error {
+func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 	if rocks.configured == false {
 		return errors.New("Rocks API key not configured")
 	}
-	if res.Agent != "" {
-		Log.Debug("Updating Rocks data for ", res.Agent)
-		_, err := db.Exec("UPDATE user SET iname = ?, RocksVerified = ? WHERE gid = ?", res.Agent, res.Verified, gid)
+	if agent.Agent != "" {
+		Log.Debug("Updating Rocks data for ", agent.Agent)
+		_, err := db.Exec("UPDATE user SET iname = ?, RocksVerified = ? WHERE gid = ?", agent.Agent, agent.Verified, gid)
 
 		if err != nil {
 			Log.Error(err)
 			return err
+		}
+
+		Log.Debugf("TGId = %d", agent.TGId)
+		// we trust .rocks to verify telegram info; if it is not already set for a user, just import it.
+		if agent.TGId > 0 { // negative numbers are group chats, 0 is invalid
+			Log.Debugf("telegram data %d %s %s", agent.TGId, agent.TGUser, gid)
+			_, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", agent.TGId, agent.TGUser, gid)
+			if err != nil {
+				Log.Error(err)
+				return err
+			}
+
 		}
 	}
 	return nil
@@ -153,10 +167,11 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		Log.Error(err)
 		return err
 	}
-	err = rc.User.Gid.RocksUpdate(&rc.User)
-	if err != nil {
-		Log.Notice(err)
-	}
+	// InitUser does this now
+	// err = rc.User.Gid.RocksUpdate(&rc.User)
+	// if err != nil {
+	//		Log.Notice(err)
+	// }
 
 	team, err := RocksTeamID(rc.Community)
 	if err != nil {

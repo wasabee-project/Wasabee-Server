@@ -59,23 +59,23 @@ func GetvEnlOne() bool {
 
 // VSearch checks a user at V and populates a Vresult
 // gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
-func (gid GoogleID) VSearch(res *Vresult) error {
-	return vsearch(gid, res)
+func (gid GoogleID) VSearch(vres *Vresult) error {
+	return vsearch(gid, vres)
 }
 
 // VSearch checks a user at V and populates a Vresult
-func (eid EnlID) VSearch(res *Vresult) error {
-	return vsearch(eid, res)
+func (eid EnlID) VSearch(vres *Vresult) error {
+	return vsearch(eid, vres)
 }
 
 // VSearch checks a user at V and populates a Vresult
-func (tgid TelegramID) VSearch(res *Vresult) error {
+func (tgid TelegramID) VSearch(vres *Vresult) error {
 	id := strconv.Itoa(int(tgid))
-	return vsearch(id, res)
+	return vsearch(id, vres)
 }
 
 // vsearch stands behind the wraper functions and checks a user at V and populates a Vresult
-func vsearch(i interface{}, res *Vresult) error {
+func vsearch(i interface{}, vres *Vresult) error {
 	var searchID string
 	switch id := i.(type) {
 	case GoogleID:
@@ -105,31 +105,31 @@ func vsearch(i interface{}, res *Vresult) error {
 	}
 
 	// Log.Debug(string(body))
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(body, &vres)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if res.Status != "ok" {
-		err = errors.New(res.Message)
+	if vres.Status != "ok" {
+		err = errors.New(vres.Message)
 		Log.Info(err)
 		return err
 	}
-	// Log.Debug(res.Data.Agent)
+	// Log.Debug(vres.Data.Agent)
 	return nil
 }
 
 // VUpdate updates the database to reflect an agent's current status at V.
 // It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
-func (gid GoogleID) VUpdate(res *Vresult) error {
+func (gid GoogleID) VUpdate(vres *Vresult) error {
 	if vc.configured == false {
 		return errors.New("V API key not configured")
 	}
 
-	if res.Status == "ok" && res.Data.Agent != "" {
-		Log.Debug("Updating V data for ", res.Data.Agent)
+	if vres.Status == "ok" && vres.Data.Agent != "" {
+		Log.Debug("Updating V data for ", vres.Data.Agent)
 		_, err := db.Exec("UPDATE user SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
-			res.Data.Agent, res.Data.Level, res.Data.Verified, res.Data.Blacklisted, res.Data.EnlID, gid)
+			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, vres.Data.EnlID, gid)
 
 		if err != nil {
 			Log.Error(err)

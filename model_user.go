@@ -2,7 +2,6 @@ package PhDevBin
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 )
 
@@ -61,33 +60,34 @@ type UserData struct {
 // InitUser is called from Oauth callback to set up a user for the first time.
 // It also checks and updates V data. It returns true if the user is authorized to continue, false if the user is blacklisted or otherwise locked at V
 func (gid GoogleID) InitUser() (bool, error) {
-	var vdata Vresult
 	var authError error // delay reporting authorization problems until after INSERT/Vupdate
+	var tmpName string
 
+	var vdata Vresult
 	err := gid.VSearch(&vdata)
 	if err != nil {
 		Log.Notice(err)
 	}
-
-	var tmpName string
 	if vdata.Data.Agent != "" {
-		tmpName = vdata.Data.Agent
 		err = gid.VUpdate(&vdata)
 		if err != nil {
 			Log.Notice(err)
 			return false, err
 		}
+		if tmpName == "" {
+			tmpName = vdata.Data.Agent
+		}
 		if vdata.Data.Quarantine == true {
-			authError = errors.New("Quarantined at V")
+			authError = fmt.Errorf("%s quarantined at V", vdata.Data.Agent)
 		}
 		if vdata.Data.Flagged == true {
-			authError = errors.New("Flagged at V")
+			authError = fmt.Errorf("%s flagged at V", vdata.Data.Agent)
 		}
 		if vdata.Data.Blacklisted == true {
-			authError = errors.New("Blacklisted at V")
+			authError = fmt.Errorf("%s blacklisted at V", vdata.Data.Agent)
 		}
 		if vdata.Data.Banned == true {
-			authError = errors.New("Banned at V")
+			authError = fmt.Errorf("%s banned at V", vdata.Data.Agent)
 		}
 	}
 
@@ -106,17 +106,16 @@ func (gid GoogleID) InitUser() (bool, error) {
 			tmpName = rocks.Agent
 		}
 		if rocks.Smurf == true {
-			authError = errors.New("Listed as a smurf at enl.rocks")
+			authError = fmt.Errorf("%s listed as a smurf at enl.rocks", rocks.Agent)
 		}
-	}
-
-	if tmpName == "" {
-		tmpName = "Agent_" + gid.String()[:8]
 	}
 
 	// if the user doesn't exist, prepopulate everything
 	_, err = gid.IngressName()
 	if err != nil && err.Error() == "sql: no rows in result set" {
+		if tmpName == "" {
+			tmpName = "Agent_" + gid.String()[:8]
+		}
 		lockey, err := GenerateSafeName()
 		if err != nil {
 			Log.Error(err)
@@ -137,13 +136,6 @@ func (gid GoogleID) InitUser() (bool, error) {
 		if err != nil {
 			Log.Error(err)
 			return false, err
-		}
-		if rocks.TGId != 0 {
-			_, err = db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 1, NULL)", rocks.TGId, rocks.Agent, gid)
-			if err != nil {
-				Log.Error(err)
-				return false, err
-			}
 		}
 	}
 	if err != nil && err.Error() != "sql: no rows in result set" {
