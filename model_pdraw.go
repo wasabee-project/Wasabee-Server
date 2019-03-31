@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strconv"
 )
 
 // OperationID wrapper to ensure type safety
@@ -342,7 +343,40 @@ func (o *Operation) PopulateAnchors() error {
 	return nil
 }
 
+// this is still very early -- dunno what the client is going to want
+func (teamID TeamID) pdMarkers(tl *TeamData) error {
+	mr, err := db.Query("SELECT m.ID, m.portalID, m.type, m.comment, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID = ?) AND m.portalID = p.ID AND m.opID = p.opID", teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer mr.Close()
+
+	var tmpMarker Marker
+	var tmpWaypoint Waypoint
+	for mr.Next() {
+		err := mr.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.Comment, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		tl.Markers = append(tl.Markers, tmpMarker)
+
+		tmpWaypoint.Type = "_waypoint"
+		tmpWaypoint.MarkerType = tmpMarker.Type.String()
+		tmpWaypoint.TeamID = teamID.String()
+		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+tmpMarker.ID[:7], 0, 64)
+		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
+	}
+	return nil
+}
+
 // String returns the string version of a PortalID
 func (p PortalID) String() string {
 	return string(p)
+}
+
+// String returns the string version of a PortalID
+func (m MarkerType) String() string {
+	return string(m)
 }

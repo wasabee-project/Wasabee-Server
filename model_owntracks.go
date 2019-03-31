@@ -32,8 +32,8 @@ type Waypoint struct {
 	Desc       string  `json:"desc"`
 	Lat        float64 `json:"lat"`
 	Lon        float64 `json:"lon"`
-	Radius     float64 `json:"rad"`
-	ID         float64 `json:"tst"`
+	Radius     int64   `json:"rad"`
+	ID         int64   `json:"tst"`
 	UUID       string  `json:"uuid,omitempty"`
 	Major      string  `json:"major,omitempty"`
 	Minor      string  `json:"minor,omitempty"`
@@ -174,7 +174,7 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 			return nil
 		}
 		if Id.Valid {
-			f, _ := strconv.ParseFloat(Id.String, 64)
+			f, _ := strconv.ParseInt(Id.String, 0, 64)
 			tmpWaypoint.ID = f
 		}
 		if lat.Valid {
@@ -186,7 +186,7 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 			tmpWaypoint.Lon = f
 		}
 		if radius.Valid {
-			f, _ := strconv.ParseFloat(radius.String, 64)
+			f, _ := strconv.ParseInt(radius.String, 0, 64)
 			tmpWaypoint.Radius = f
 		}
 		tmpWaypoint.Share = true
@@ -199,6 +199,46 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 		return err
 	}
 	defer mr.Close() */
+	return nil
+}
+
+// otWaypoints takes populates a teamlist's waypoints struct
+func (teamID TeamID) otWaypoints(tl *TeamData) error {
+	var Id, lat, lon, radius sql.NullString
+	var tmpWaypoint Waypoint
+	tmpWaypoint.Type = "waypoint"
+
+	wr, err := db.Query("SELECT Id, teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints WHERE teamID = ?", teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer wr.Close()
+	for wr.Next() {
+		err := wr.Scan(&Id, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
+		if err != nil {
+			Log.Error(err)
+			return nil
+		}
+		if Id.Valid {
+			f, _ := strconv.ParseInt(Id.String, 0, 64)
+			tmpWaypoint.ID = f
+		}
+		if lat.Valid {
+			f, _ := strconv.ParseFloat(lat.String, 64)
+			tmpWaypoint.Lat = f
+		}
+		if lon.Valid {
+			f, _ := strconv.ParseFloat(lon.String, 64)
+			tmpWaypoint.Lon = f
+		}
+		if radius.Valid {
+			f, _ := strconv.ParseInt(radius.String, 0, 64)
+			tmpWaypoint.Radius = f
+		}
+		tmpWaypoint.Share = true
+		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
+	}
 	return nil
 }
 

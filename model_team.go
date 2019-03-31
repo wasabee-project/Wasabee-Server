@@ -126,8 +126,16 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		teamList.RocksKey = rockskey.String
 	}
 
-	// XXX Markers
-	// XXX Waypoints
+	// Markers
+	err = teamID.pdMarkers(teamList)
+	if err != nil {
+		Log.Error(err)
+	}
+	// Waypoints
+	err = teamID.otWaypoints(teamList)
+	if err != nil {
+		Log.Error(err)
+	}
 
 	return nil
 }
