@@ -124,6 +124,12 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 		Log.Error(err)
 		return s, err
 	}
+
+	err = gid.pdWaypoints(&wp)
+	if err != nil {
+		Log.Error(err)
+		return s, err
+	}
 	wps, _ := json.Marshal(wp)
 	locs = append(locs, wps)
 
@@ -139,6 +145,12 @@ func (gid GoogleID) OwnTracksWaypoints() (json.RawMessage, error) {
 
 	var wp WaypointCommand
 	err := gid.otWaypoints(&wp)
+	if err != nil {
+		Log.Error(err)
+		return j, err
+	}
+
+	err = gid.pdWaypoints(&wp)
 	if err != nil {
 		Log.Error(err)
 		return j, err
@@ -193,12 +205,6 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpWaypoint)
 	}
 
-	/* mr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=t, userteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer mr.Close() */
 	return nil
 }
 
