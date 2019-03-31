@@ -169,7 +169,7 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 	wp.Action = "setWaypoints"
 	wp.Waypoints.Type = "waypoints"
 
-	var Id, lat, lon, radius sql.NullString
+	var ID, lat, lon, radius sql.NullString
 	var tmpWaypoint Waypoint
 	tmpWaypoint.Type = "waypoint"
 
@@ -180,13 +180,13 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 	}
 	defer wr.Close()
 	for wr.Next() {
-		err := wr.Scan(&Id, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
+		err := wr.Scan(&ID, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
 		if err != nil {
 			Log.Error(err)
 			return nil
 		}
-		if Id.Valid {
-			f, _ := strconv.ParseInt(Id.String, 0, 64)
+		if ID.Valid {
+			f, _ := strconv.ParseInt(ID.String, 0, 64)
 			tmpWaypoint.ID = f
 		}
 		if lat.Valid {
@@ -210,24 +210,24 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 
 // otWaypoints takes populates a teamlist's waypoints struct
 func (teamID TeamID) otWaypoints(tl *TeamData) error {
-	var Id, lat, lon, radius sql.NullString
+	var ID, lat, lon, radius sql.NullString
 	var tmpWaypoint Waypoint
 	tmpWaypoint.Type = "waypoint"
 
-	wr, err := db.Query("SELECT Id, teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints WHERE teamID = ?", teamID)
+	wr, err := db.Query("SELECT ID, teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer wr.Close()
 	for wr.Next() {
-		err := wr.Scan(&Id, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
+		err := wr.Scan(&ID, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
 		if err != nil {
 			Log.Error(err)
 			return nil
 		}
-		if Id.Valid {
-			f, _ := strconv.ParseInt(Id.String, 0, 64)
+		if ID.Valid {
+			f, _ := strconv.ParseInt(ID.String, 0, 64)
 			tmpWaypoint.ID = f
 		}
 		if lat.Valid {

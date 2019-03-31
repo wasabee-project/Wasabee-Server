@@ -9,7 +9,7 @@ import (
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
 	Name      string
-	Id        TeamID
+	ID        TeamID
 	User      []User
 	Markers   []Marker
 	Waypoints []Waypoint
@@ -118,7 +118,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		Log.Error(err)
 		return err
 	}
-	teamList.Id = teamID
+	teamList.ID = teamID
 	if rockscomm.Valid {
 		teamList.RocksComm = rockscomm.String
 	}
@@ -364,6 +364,7 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 	return nil
 }
 
+// MarkersNear returns markers near the gid's current location and populates both the Markers and Waypoints of a TeamData
 func (gid GoogleID) MarkersNear(maxdistance, maxresults int, td *TeamData) error {
 	return nil
 }
