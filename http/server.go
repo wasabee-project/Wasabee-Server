@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/unrolled/logger"
 )
 
 // Configuration is the main configuration data for the https server
@@ -39,6 +41,20 @@ type Configuration struct {
 }
 
 var config Configuration
+var unrolled *logger.Logger
+var logfile *os.File
+
+func init() {
+	logfile, err := os.OpenFile("phdevbin.log", os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		PhDevBin.Log.Fatal(err)
+	}
+
+	unrolled = logger.New(logger.Options{
+		Prefix: "PhDevHTTPS",
+		Out:    logfile,
+	})
+}
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
@@ -179,6 +195,7 @@ func StartHTTP(initialConfig Configuration) {
 	setupRoutes(r)
 
 	r.Use(headersMW)
+	r.Use(unrolled.Handler)
 	// r.Use(debugMW)
 
 	// s.Use(debugMW)

@@ -42,7 +42,7 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/", frontRoute).Methods("GET")
 
 	// 404 error page
-	// r.PathPrefix("/").HandlerFunc(notFoundRoute)
+	r.PathPrefix("/").HandlerFunc(notFoundRoute)
 }
 
 func setupAuthRoutes(r *mux.Router) {
@@ -127,11 +127,8 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Cache-Control", "no-cache")
-	// why not just: http.Error(res, "404: Maybe the document is expired or has been removed.", http.StatusFileNotFound)
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	res.WriteHeader(404)
-	fmt.Fprint(res, "404: Maybe the document is expired or has been removed.\n")
+	http.Error(res, "404: No light here.", http.StatusNotFound)
+	return
 }
 
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
