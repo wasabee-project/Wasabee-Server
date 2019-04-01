@@ -28,6 +28,9 @@ var flags = []cli.Flag{
 		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":8443",
 		Usage: "HTTPS listen address."},
 	cli.StringFlag{
+		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "PhDevBin.log",
+		Usage: "HTTPS log file."},
+	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
 		Usage: "Location of the frontend files."},
 	cli.StringFlag{
@@ -116,6 +119,7 @@ func run(c *cli.Context) error {
 			GoogleClientID:   c.String("googleclient"),
 			GoogleSecret:     c.String("googlesecret"),
 			CookieSessionKey: c.String("sessionkey"),
+			Logfile:          c.String("httpslog"),
 		})
 	}
 
