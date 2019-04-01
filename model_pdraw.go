@@ -373,7 +373,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 }
 
 func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
-	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM userteams=t WHERE gid = ?)) AND m.portalID = p.ID AND m.opID = p.opID", gid)
+	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM userteams=t WHERE gid = ? AND state != 'Off')) AND m.portalID = p.ID AND m.opID = p.opID", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -391,6 +391,33 @@ func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
 		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
 		tmpWaypoint.Radius = 150
 		wc.Waypoints.Waypoints = append(wc.Waypoints.Waypoints, tmpWaypoint)
+	}
+	return nil
+}
+
+// XXX this doesn't yet check distances
+func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData) error {
+	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p "+
+		"WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM userteams=t WHERE gid = ? AND state != 'Off')) "+
+		"AND m.portalID = p.ID AND m.opID = p.opID", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer mr.Close()
+	var markerID string
+	var tmpWaypoint Waypoint
+	for mr.Next() {
+		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		tmpWaypoint.Type = "_waypoint"
+		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
+		tmpWaypoint.Radius = 150
+		tmpWaypoint.Distance = 1
+		td.Waypoints = append(td.Waypoints, tmpWaypoint)
 	}
 	return nil
 }

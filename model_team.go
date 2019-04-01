@@ -361,6 +361,8 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 		Log.Error(err)
 		return err
 	}
+
+	err = gid.pdMarkersNear(maxdistance, maxresults, td)
 	return nil
 }
 
