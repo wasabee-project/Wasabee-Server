@@ -17,12 +17,12 @@
 <div class="card-body"></div>
 <ul class="list-group list-group-flush">
 </li>
-	{{ $x := .Id }}
+	{{ $x := .ID }}
 	{{range .User}}
         <li class="list-group-item">{{.Name}} ({{.LocKey}}): (State: {{.State}} ) (V: {{.Verified}}) (Color: {{.Color}})<br /><a href="/{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a></li>
 	{{end}}
 <li class="list-group-item">
-<form action="/{{WebAPIPath}}/team/{{.Id}}" method="get">
+<form action="/{{WebAPIPath}}/team/{{.ID}}" method="get">
 Location Key: <input type="text" name="key" />
 <input type="submit" name="add" value="add user to team" />
 <small>This needs to be changed to take an agent name, a GID or an EnlID</small>
@@ -31,7 +31,7 @@ Location Key: <input type="text" name="key" />
 </ul>
 {{if EnlRocks}}
 <li class="list-group-item">
-<form action="/{{WebAPIPath}}/team/{{.Id}}/rockscfg" method="get">
+<form action="/{{WebAPIPath}}/team/{{.ID}}/rockscfg" method="get">
 Rocks Community Identifier: <input type="text" name="rockscomm" value="{{.RocksComm}}" />
 Rocks Community API Key: <input type="text" name="rockskey" value="{{.RocksKey}}" />
 <input type="submit" name="add" value="configure rocks" />
@@ -40,7 +40,7 @@ Rocks Community API Key: <input type="text" name="rockskey" value="{{.RocksKey}}
 </form>
 </li>
 {{if .RocksKey}}
-<li class="list-group-item"><a href="/{{WebAPIPath}}/team/{{.Id}}/rocks">Pull associated enl.rocks community members onto this team</a></li>
+<li class="list-group-item"><a href="/{{WebAPIPath}}/team/{{.ID}}/rocks">Pull associated enl.rocks community members onto this team</a></li>
 {{end}}
 </ul>
 {{end}}
