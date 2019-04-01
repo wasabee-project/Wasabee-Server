@@ -37,24 +37,13 @@ type Configuration struct {
 	sessionName       string
 	CookieSessionKey  string
 	templateSet       map[string]*template.Template // allow multiple translations
+	Logfile			  string
 	// templateSet       *template.Template
 }
 
 var config Configuration
 var unrolled *logger.Logger
 var logfile *os.File
-
-func init() {
-	logfile, err := os.OpenFile("phdevbin.log", os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		PhDevBin.Log.Fatal(err)
-	}
-
-	unrolled = logger.New(logger.Options{
-		Prefix: "PhDevHTTPS",
-		Out:    logfile,
-	})
-}
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
@@ -121,6 +110,19 @@ func initializeConfig(initialConfig Configuration) {
 	}
 	PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
 	_ = phDevBinHTTPSTemplateConfig()
+
+	if config.Logfile == "" {
+		config.Logfile = "phdevbin.log"
+	}
+	PhDevBin.Log.Noticef("https logfile: %s", config.Logfile)
+	logfile, err := os.OpenFile(config.Logfile, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		PhDevBin.Log.Fatal(err)
+	}
+	unrolled = logger.New(logger.Options{
+		Prefix: "PhDevHTTPS",
+		Out:    logfile,
+	})
 }
 
 func phDevBinHTTPSTemplateConfig() error {
