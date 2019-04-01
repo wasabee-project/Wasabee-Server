@@ -246,29 +246,31 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
+		redirectURL := "/login?returnto="+req.URL.String()
+
 		id, ok := ses.Values["id"]
 		if ok == false || id == nil {
 			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
 			ses.Values["loginReq"] = req.URL.String()
 			ses.Save(req, res)
-			http.Redirect(res, req, "/login?returnto="+req.URL.String(), http.StatusPermanentRedirect)
+			http.Redirect(res, req, redirectURL, http.StatusPermanentRedirect)
 			return
 		}
 
 		gid := PhDevBin.GoogleID(id.(string))
 
-		nonce, pNonce, _ := calculateNonce(gid)
 		in, ok := ses.Values["nonce"]
 		if ok != true || in == nil {
 			PhDevBin.Log.Error("gid set, but nonce not")
-			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+			http.Redirect(res, req, redirectURL, http.StatusPermanentRedirect)
 			return
 		}
 		inNonce := in.(string)
+		nonce, pNonce, _ := calculateNonce(gid)
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				// PhDevBin.Log.Debug("Session timed out")
+				PhDevBin.Log.Debug("Session timed out for", gid.String())
 				ses.Values["nonce"] = "unset"
 				ses.Save(req, res)
 			} else {
@@ -279,7 +281,7 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		if ses.Values["nonce"] == "unset" {
-			http.Redirect(res, req, "/login", http.StatusPermanentRedirect)
+			http.Redirect(res, req, redirectURL, http.StatusPermanentRedirect)
 			return
 		}
 		next.ServeHTTP(res, req)
@@ -289,18 +291,21 @@ func authMW(next http.Handler) http.Handler {
 func googleRoute(res http.ResponseWriter, req *http.Request) {
 	ret := req.FormValue("returnto")
 
-	if ret != "" {
-		ses, err := config.store.Get(req, config.sessionName)
-		if err != nil {
-			PhDevBin.Log.Debug(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		ses.Values["loginReq"] = ret
-		ses.Save(req, res)
+	ses, err := config.store.Get(req, config.sessionName)
+	if err != nil {
+		PhDevBin.Log.Debug(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	if ret != "" {
+		ses.Values["loginReq"] = ret
+	} else {
+		ses.Values["loginReq"] = "/me?a=99"
+	}
+	ses.Save(req, res)
 
 	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
 	// res.Header().Add("Cache-Control", "no-cache")
-	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
+	// http.Redirect(res, req, url, http.StatusTemporaryRedirect)
+	http.Redirect(res, req, url, http.StatusFound)
 }

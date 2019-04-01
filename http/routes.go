@@ -158,12 +158,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		// cookie is borked, maybe sessionName or key changed
 		PhDevBin.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
-		delete(ses.Values, "id")
-		delete(ses.Values, "loginReq")
-		delete(ses.Values, "nonce")
 		ses.Options = &sessions.Options{
 			Path:   "/",
-			MaxAge: 3600,
+			MaxAge: -1, // force delete
 		}
 		ses.Save(req, res)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -181,16 +178,17 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	location := "/me?a=1"
+	location := "/me?a=0"
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
-		if rr == "/login" || rr == "/me" || rr == "" {
-			location = "/me?a=2"
+		PhDevBin.Log.Debug("deep-link redirecting to", rr)
+		if rr == "" || rr[:3] == "/me" || rr[:6] == "/login" {
+			PhDevBin.Log.Debug("deep-link redirecting to /me?a=1 after cleanup")
+			location = "/me?a=1"
 		} else {
 			location = rr
 		}
 		delete(ses.Values, "loginReq")
-		// ses.Values["loginReq"] = nil // to not save for future sessions
 	}
 
 	ses.Values["id"] = m.Gid.String()
@@ -198,10 +196,11 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:   "/",
-		MaxAge: 3600,
+		MaxAge: 0,
 	}
 	ses.Save(req, res)
-	http.Redirect(res, req, location, http.StatusPermanentRedirect)
+	// http.Redirect(res, req, location, http.StatusPermanentRedirect)
+	http.Redirect(res, req, location, http.StatusFound)
 }
 
 func calculateNonce(gid PhDevBin.GoogleID) (string, string, error) {
