@@ -37,7 +37,7 @@ type Configuration struct {
 	sessionName       string
 	CookieSessionKey  string
 	templateSet       map[string]*template.Template // allow multiple translations
-	Logfile			  string
+	Logfile           string
 	// templateSet       *template.Template
 }
 
@@ -115,7 +115,7 @@ func initializeConfig(initialConfig Configuration) {
 		config.Logfile = "phdevbin.log"
 	}
 	PhDevBin.Log.Noticef("https logfile: %s", config.Logfile)
-	logfile, err := os.OpenFile(config.Logfile, os.O_RDWR|os.O_CREATE, 0644)
+	logfile, err := os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		PhDevBin.Log.Fatal(err)
 	}
@@ -196,12 +196,13 @@ func StartHTTP(initialConfig Configuration) {
 	setupAuthRoutes(s)
 	setupRoutes(r)
 
+	// r.Use(debugMW)
 	r.Use(headersMW)
 	r.Use(unrolled.Handler)
-	// r.Use(debugMW)
 
 	// s.Use(debugMW)
-	s.Use(headersMW)
+	// s.Use(headersMW) // seems to be redundant on s.
+	// s.Use(unrolled.Handler) // seems to be redundant on s.
 	s.Use(authMW)
 
 	// Serve
@@ -248,7 +249,7 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		redirectURL := "/login?returnto="+req.URL.String()
+		redirectURL := "/login?returnto=" + req.URL.String()
 
 		id, ok := ses.Values["id"]
 		if ok == false || id == nil {
