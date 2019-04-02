@@ -4,3 +4,5 @@ and related foreign keys
 move frontend/ files to frontend/en/ and start supporting translations
 * done for Telegram, need work for https
 
+// rebuild location table if it gets trashed again
+// insert into locations (gid, upTime, loc) SELECT gid, NOW(), POINT(0,0) FROM user;
