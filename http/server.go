@@ -114,7 +114,7 @@ func initializeConfig(initialConfig Configuration) {
 	if config.Logfile == "" {
 		config.Logfile = "phdevbin.log"
 	}
-	PhDevBin.Log.Noticef("https logfile: %s", config.Logfile)
+	PhDevBin.Log.Infof("https logfile: %s", config.Logfile)
 	logfile, err := os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		PhDevBin.Log.Fatal(err)
@@ -146,7 +146,7 @@ func phDevBinHTTPSTemplateConfig() error {
 		"EnlRocks":     PhDevBin.GetEnlRocks,
 	}
 
-	PhDevBin.Log.Notice("Including frontend templates from: ", config.FrontendPath)
+	PhDevBin.Log.Info("Including frontend templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
 		PhDevBin.Log.Error(err)
@@ -249,14 +249,17 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		redirectURL := "/login?returnto=" + req.URL.String()
+		var redirectURL = "/login"
+		if req.URL.String()[:3] != "/me" {
+			redirectURL = "/login?returnto=" + req.URL.String()
+		} 
 
 		id, ok := ses.Values["id"]
 		if ok == false || id == nil {
 			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
 			ses.Values["loginReq"] = req.URL.String()
 			ses.Save(req, res)
-			http.Redirect(res, req, redirectURL, http.StatusPermanentRedirect)
+			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return
 		}
 
@@ -265,11 +268,11 @@ func authMW(next http.Handler) http.Handler {
 		in, ok := ses.Values["nonce"]
 		if ok != true || in == nil {
 			PhDevBin.Log.Error("gid set, but nonce not")
-			http.Redirect(res, req, redirectURL, http.StatusPermanentRedirect)
+			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return
 		}
 		inNonce := in.(string)
-		nonce, pNonce, _ := calculateNonce(gid)
+		nonce, pNonce := calculateNonce(gid)
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
@@ -284,7 +287,7 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		if ses.Values["nonce"] == "unset" {
-			http.Redirect(res, req, redirectURL, http.StatusPermanentRedirect)
+			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return
 		}
 		next.ServeHTTP(res, req)
@@ -303,7 +306,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	if ret != "" {
 		ses.Values["loginReq"] = ret
 	} else {
-		ses.Values["loginReq"] = "/me?a=99"
+		ses.Values["loginReq"] = "/me"
 	}
 	ses.Save(req, res)
 

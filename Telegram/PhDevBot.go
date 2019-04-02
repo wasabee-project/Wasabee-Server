@@ -189,7 +189,7 @@ func phdevBotTemplates(t map[string]*template.Template) error {
 	if err != nil {
 		PhDevBin.Log.Error(err)
 	}
-	PhDevBin.Log.Notice("Including frontend telegram templates from: ", config.FrontendPath)
+	PhDevBin.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
 		PhDevBin.Log.Error(err)

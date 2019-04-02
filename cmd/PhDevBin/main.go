@@ -107,6 +107,7 @@ func run(c *cli.Context) error {
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
 		PhDevBin.SetEnlRocks(c.String("enlrockskey"))
+		// PhDevBin.RevalidateEveryone()
 	}
 
 	// Serve HTTPS

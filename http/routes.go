@@ -55,14 +55,16 @@ func setupAuthRoutes(r *mux.Router) {
 	// r.HandleFunc("/api/v1/draw/{document}/addlink/", updateDrawRoute).Methods("PUT")
 
 	// user info (all HTML except /me which gives JSON for intel.ingrss.com
-	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
-	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my OwnTracks Password (cleartext, yes, but SSL is required)
-	r.HandleFunc("/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")                   // request a new lockey
-	r.HandleFunc("/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
-	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                    // show my stats (agen name/teams)
-	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /me/wonky-team-1234?state={Off|On|Primary}
-	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
-	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
+	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (agent name/teams)
+
+	r.HandleFunc("/api/v1/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
+	r.HandleFunc("/api/v1/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my OwnTracks Password (cleartext, yes, but SSL is required)
+	r.HandleFunc("/api/v1/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")                   // request a new lockey
+	r.HandleFunc("/api/v1/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
+	r.HandleFunc("/api/v1/me", meShowRoute).Methods("GET")                                                    // -- do not use, just here for safety
+	r.HandleFunc("/api/v1/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /api/v1/me/wonky-team-1234?state={Off|On|Primary}
+	r.HandleFunc("/api/v1/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
+	r.HandleFunc("/api/v1/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
 
 	// teams
 	r.HandleFunc("/api/v1/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")                                              // create a new team
@@ -167,22 +169,11 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	authorized, err := m.Gid.InitUser() // V authorization takes place here now
-	if err != nil {
-		PhDevBin.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if authorized == false {
-		http.Error(res, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
 	location := "/me?a=0"
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		PhDevBin.Log.Debug("deep-link redirecting to", rr)
-		if rr == "" || rr[:3] == "/me" || rr[:6] == "/login" {
+		if rr[:3] == "/me" || rr[:6] == "/login" {
 			PhDevBin.Log.Debug("deep-link redirecting to /me?a=1 after cleanup")
 			location = "/me?a=1"
 		} else {
@@ -191,25 +182,37 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		delete(ses.Values, "loginReq")
 	}
 
+	authorized, err := m.Gid.InitUser() // V & .rocks authorization takes place here now
+	if err != nil {
+		PhDevBin.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// XXX can err be nil and authorized == false?
+	if authorized == false {
+		http.Error(res, "Smurf", http.StatusUnauthorized)
+		return
+	}
+
 	ses.Values["id"] = m.Gid.String()
-	nonce, _, _ := calculateNonce(m.Gid)
+	nonce, _  := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:   "/",
 		MaxAge: 0,
 	}
 	ses.Save(req, res)
-	// http.Redirect(res, req, location, http.StatusPermanentRedirect)
 	http.Redirect(res, req, location, http.StatusFound)
 }
 
-func calculateNonce(gid PhDevBin.GoogleID) (string, string, error) {
+func calculateNonce(gid PhDevBin.GoogleID) (string, string) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
 	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
+	// something specific to the user, something secret, something short-term
 	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)))
 	previous := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, prev)))
-	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:]), nil
+	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:])
 }
 
 func getUserInfo(state string, code string) ([]byte, error) {

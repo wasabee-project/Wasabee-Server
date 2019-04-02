@@ -27,16 +27,14 @@ type RocksCommunityResponse struct {
 	User       RocksAgent `json:"user"` // (Members,Moderators || User) present, not both
 }
 
-// RocksAgent is a (minimal) version of the data sent by enl.rocks
+// RocksAgent is the data sent by enl.rocks -- the version sent in the CommunityResponse is different, but close enough for our purposes
 type RocksAgent struct {
 	Gid      GoogleID `json:"gid"`
-	TGId     int64    `json:"tg_id"`
-	TGUser   string   `json:"tg_user"`
+	TGId     int64    `json:"tgid"`
 	Agent    string   `json:"agentid"`
 	Verified bool     `json:"verified"`
 	Smurf    bool     `json:"smurf"`
-	Fullname string   `json:"fullname"`
-	Email    string   `json:"email"`
+	Fullname string   `json:"name"`
 }
 
 type rocksconfig struct {
@@ -52,7 +50,7 @@ var rocks rocksconfig
 func SetEnlRocks(key string) {
 	Log.Debugf("enl.rocks API Key: %s", key)
 	rocks.rocksAPIKey = key
-	rocks.rocksAPIEndpoint = "https://api.dfwenl.rocks/agent" // proxy for now
+	rocks.rocksAPIEndpoint = "https://api.dfwenl.rocks/agent"
 	rocks.commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
 	rocks.configured = true
 }
@@ -109,7 +107,7 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 		return err
 	}
 
-	// Log.Debug(string(body))
+	Log.Debug(string(body))
 	err = json.Unmarshal(body, &agent)
 	if err != nil {
 		Log.Error(err)
@@ -125,7 +123,7 @@ func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 		return errors.New("Rocks API key not configured")
 	}
 	if agent.Agent != "" {
-		Log.Debug("Updating Rocks data for ", agent.Agent)
+		// Log.Debug("Updating Rocks data for ", agent.Agent)
 		_, err := db.Exec("UPDATE user SET iname = ?, RocksVerified = ? WHERE gid = ?", agent.Agent, agent.Verified, gid)
 
 		if err != nil {
@@ -133,11 +131,10 @@ func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 			return err
 		}
 
-		Log.Debugf("TGId = %d", agent.TGId)
 		// we trust .rocks to verify telegram info; if it is not already set for a user, just import it.
+		// XXX using agent name for telegramName isn't right in many cases -- need to reverify later
 		if agent.TGId > 0 { // negative numbers are group chats, 0 is invalid
-			Log.Debugf("telegram data %d %s %s", agent.TGId, agent.TGUser, gid)
-			_, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", agent.TGId, agent.TGUser, gid)
+			_, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", agent.TGId, agent.Agent, gid)
 			if err != nil {
 				Log.Error(err)
 				return err
@@ -149,8 +146,6 @@ func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 }
 
 // RocksCommunitySync is called from the https server when it receives a push notification
-// from the enl.rocks server; which it currently isn't sending even if enabled on a community.
-// The calling function in the https server logs the request, so there is nothing for us to do here yet.
 func RocksCommunitySync(msg json.RawMessage) error {
 	// currently I can't get enl.rocks to send the data, nothing I can do here
 
@@ -167,11 +162,6 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		Log.Error(err)
 		return err
 	}
-	// InitUser does this now
-	// err = rc.User.Gid.RocksUpdate(&rc.User)
-	// if err != nil {
-	//		Log.Notice(err)
-	// }
 
 	team, err := RocksTeamID(rc.Community)
 	if err != nil {
@@ -208,7 +198,6 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return err
 	}
 
-	// rocks.commAPIEndpoint
 	url := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc.String)
 	Log.Debug(url)
 	resp, err := http.Get(url)

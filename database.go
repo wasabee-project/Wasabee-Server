@@ -30,7 +30,7 @@ func Connect(uri string) error {
 	if err != nil {
 		return err
 	}
-	Log.Noticef("Database version: %s", version)
+	Log.Infof("Database version: %s", version)
 
 	// Create tables
 	var table string

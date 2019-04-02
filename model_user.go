@@ -37,6 +37,7 @@ type UserData struct {
 		ID    string
 		Name  string
 		State string
+		RocksComm string
 	}
 	OwnedTeams []struct {
 		ID        string
@@ -271,9 +272,10 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 		ID    string
 		Name  string
 		State string
+		RocksComm string
 	}
 
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state "+
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state, rockscomm "+
 		"FROM teams=t, userteams=x "+
 		"WHERE x.gid = ? AND x.teamID = t.teamID", gid)
 	if err != nil {
@@ -282,8 +284,9 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 	}
 
 	defer rows.Close()
+	var rc sql.NullString
 	for rows.Next() {
-		err := rows.Scan(&tmp.ID, &teamname, &tmp.State)
+		err := rows.Scan(&tmp.ID, &teamname, &tmp.State, &rc)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -293,6 +296,11 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 			tmp.Name = teamname.String
 		} else {
 			tmp.Name = ""
+		}
+		if rc.Valid {
+			tmp.RocksComm = rc.String
+		} else {
+			tmp.RocksComm = ""
 		}
 		ud.Teams = append(ud.Teams, tmp)
 	}
@@ -407,4 +415,46 @@ func (gid GoogleID) String() string {
 
 func (eid EnlID) String() string {
 	return string(eid)
+}
+
+func RevalidateEveryone() error {
+	rows, err := db.Query("SELECT gid FROM user")
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	var gid GoogleID
+	defer rows.Close()
+	for rows.Next() {
+		var v Vresult
+		var r RocksAgent
+
+		err := rows.Scan(&gid)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		err = gid.VSearch(&v)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		err = gid.VUpdate(&v)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		err = gid.RocksSearch(&r)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		err = gid.RocksUpdate(&r)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+	return nil
 }

@@ -127,7 +127,7 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 	}
 
 	if vres.Status == "ok" && vres.Data.Agent != "" {
-		Log.Debug("Updating V data for ", vres.Data.Agent)
+		// Log.Debug("Updating V data for ", vres.Data.Agent)
 		_, err := db.Exec("UPDATE user SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
 			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, vres.Data.EnlID, gid)
 

@@ -19,7 +19,7 @@
 <li class="list-group-item">Location Share Key: {{.LocationKey}}
 <br/>
 <small>This is the information you will need to give to your operator to be invited on to the op team. Once you are invited onto the team, you will need to enable the team (below). You can disable a team at any time.</small>
-<small><a href="/me?newlockey=y">Request a new LocKey</a> (because Frank didn't like his)
+<small><a href="/{{WebAPIPath}}/me?newlockey=y">Request a new LocKey</a> (because Frank didn't like his)
 </li>
 <li class="list-group-item">Display Name: {{.IngressName}}
 <br/>
@@ -32,9 +32,9 @@
 <small>RAID is an ENL Android/iPhone app which can share location data. We are still researching the exact configuration to make this work. If you are a RAID user and do not want to use OwnTracks, we can get RAID data. OwnTracks will give more up-to-date information to the operator since there is a lag in our polling the RAID servers.</small>
 </li>
 {{else}}
-<li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Not Verified <a href="{{ Webroot }}/login">Login again to recheck</a></li>
+<li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Not Verified</li>
 <li class="list-group-item">
-<form action="/me" method="get">
+<form action="/{{WebAPIPath}}/me" method="get">
 <input type="text" name="name" />
 <input type="submit" name="update" value="update display name" />
 </form>
@@ -69,7 +69,7 @@
 {{end}}
 </li>
 <li class="list-group-item">
-<form action="/me" method="get">
+<form action="/{{WebAPIPath}}/me" method="get">
 <input type="text" name="otpw" />
 <input type="submit" name="update" value="update OT Password" />
 </form>
@@ -115,14 +115,19 @@
 	{{range .Teams}}
 		<li class="list-group-item">{{.Name}} ({{.State}})  
 {{if eq .State "Off"}}
-			<a href="/me/{{.ID}}?state=On">On</a>
+			[ <a href="/{{WebAPIPath}}/me/{{.ID}}?state=On">On</a> ]
 {{else}}
     {{if eq .State "Primary"}}
-			<a href="/me/{{.ID}}?state=Off">Off</a>
+			[ <a href="/{{WebAPIPath}}/me/{{.ID}}?state=Off">Off</a> ]
     {{else}}
-			<a href="/me/{{.ID}}?state=Off">Off</a>
-			<a href="/me/{{.ID}}?state=Primary">Primary</a>
+			[ <a href="/{{WebAPIPath}}/me/{{.ID}}?state=Off">Off</a> |
+			<a href="/{{WebAPIPath}}/me/{{.ID}}?state=Primary">Primary</a> ]
     {{end}}
+{{end}}
+{{if .RocksComm}}
+			[ <a href="https://enlightened.rocks/comm/{{.RocksComm}}">This team is managed at enlightened.rocks</a> ]
+{{else}}
+			[ <a href="/{{WebAPIPath}}/me/{{.ID}}/delete">Remove Me</a> ]
 {{end}}
 		</li>
 	{{end}}
@@ -154,7 +159,7 @@
   <div class="card-header">Manual Location Set</div>
   <div class="card-body">
 		<li class="list-group-item">
-<form action="/me" method="get">
+<form action="/{{WebAPIPath}}/me" method="get">
 Lat: <input type="text" name="lat" value="0" id="lat" />
 Lon: <input type="text" name="lon" value="0" id="lon" />
 <input type="submit" name="location" value="set location" />
