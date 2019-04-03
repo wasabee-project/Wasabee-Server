@@ -3,6 +3,48 @@
 # PhDevBin
 ### The Server-Side component for Phtiv-Draw-Tools and related Ingress tools.
 
+## But... OPSEC!!!!? Tools!!!
+
+RES have RESwue. Every RES agent who wants it has access to it. ENL has great tools too. But ours are hidden away in silos, locked up and only shown to trained and certified operators--who aren't even allowed to mention that they exist. A tool that no one can use is useless. These secure ENL tools are good. But they do not give us a strategic advantage because (1) no one can use them and (2) RES have everything we do, maybe not in the same form, but every feature we have, they have too. We are not going to leak the ENL tools. Rather, we are going to provide a tool to ENL agents who want access to something that doesn't require operator training, 64 vouches on V and a blood test to make sure you bleed green. 
+
+## But... opsec? My data?
+
+If you use the "simple" mode of transfering draws, your data is encoded in IITC, sent to the server and never decoded. It is stored encrypted in such a way that it is only decryptable upon request. The URL is the key. We don't know the URL. If you lose the URL, the draw is inaccessible.
+
+If you use the normal method, much more features will be enabled. You control access to your data by your teams. By default each op gets a unique team. But you can transfer multiple ops to the same team.
+
+## But... how do you make sure that only ENL agents use this.
+
+RES have RESwue. They _can_ use this (minimally). But why would they. Why entrust their op data to us?
+
+We verify agent information with both V and .rocks. We observe the blacklisted/smurf/banned flags. If an agent is not verified at V or rocks, they are flagged as unverified. You can add unverified agents to your teams, that's up to you.
+
+## I use an enl.rocks community to manage my telegram channel. I don't want to manage a second list of users. 
+
+Excellent. You can link a team to an enl.rocks community to a team. Any changes in the community will instantly be made in the team.
+
+## I don't want to use your app for sharing my location data.
+
+We use OwnTracks now, our own app will be forthcoming. OwnTracks is open source. But you don't have to trust it.
+
+We can pull from the RAID location store if you give us permission.
+
+You can send your location via the telegram bot.
+
+You can send your location via the web interface.
+
+Maybe we will support glympse someday, if someone really wants it.
+
+## Why not just use ... ?
+
+Because we like building our own tools. Genetic diversity is a good thing.
+
+## But ... opsec, why is the code open?
+
+I believe that open code gets looked at, bugs found, problems solved. ENL have completely decompiled/deobfuscated RESwue--all their attempts to hide the code was wasted effort. I have no doubt they have seen most of our "secret" tools (flips, even high-level operators) happen. Hiding code does not make it secure. 
+
+Yes, anyone can run this server. You will need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, I really should test that) without V and rocks support enabled. Enjoy. Run your own instance. Keep your data on a private server. You do not have to trust us to use these tools. 
+
 ## INSTALL
 1. Install and configure MySQL or MariaDB
 https://mariadb.com/kb/en/library/where-to-download-mariadb/
