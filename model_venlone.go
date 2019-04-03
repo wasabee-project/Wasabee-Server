@@ -29,18 +29,18 @@ type Vresult struct {
 
 // Vagent is set by the V API
 type Vagent struct {
-	EnlID       EnlID   `json:"enlid"`
-	Vlevel      float64 `json:"vlevel"`
-	Vpoints     float64 `json:"vpoints"`
-	Agent       string  `json:"agent"`
-	Level       float64 `json:"level"`
-	Quarantine  bool    `json:"quarantine"`
-	Active      bool    `json:"active"`
-	Blacklisted bool    `json:"blacklisted"`
-	Verified    bool    `json:"verified"`
-	Flagged     bool    `json:"flagged"`
-	Banned      bool    `json:"banned_by_nia"`
-	Cellid      string  `json:"cellid"`
+	EnlID       EnlID  `json:"enlid"`
+	Vlevel      int64  `json:"vlevel"`
+	Vpoints     int64  `json:"vpoints"`
+	Agent       string `json:"agent"`
+	Level       int64  `json:"level"`
+	Quarantine  bool   `json:"quarantine"`
+	Active      bool   `json:"active"`
+	Blacklisted bool   `json:"blacklisted"`
+	Verified    bool   `json:"verified"`
+	Flagged     bool   `json:"flagged"`
+	Banned      bool   `json:"banned_by_nia"`
+	Cellid      string `json:"cellid"`
 }
 
 // SetVEnlOne is called from main() to initialize the config
