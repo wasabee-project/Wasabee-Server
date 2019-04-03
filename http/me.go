@@ -73,9 +73,8 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := PhDevBin.TeamID(vars["team"])
 
-	// do the work
-	PhDevBin.Log.Notice("remove me from team: " + gid.String() + " " + team.String())
-	err = gid.RemoveFromTeam(team)
+	// PhDevBin.Log.Debug("remove me from team: " + gid.String() + " " + team.String())
+	err = team.RemoveUser(gid)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

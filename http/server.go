@@ -122,6 +122,12 @@ func initializeConfig(initialConfig Configuration) {
 	unrolled = logger.New(logger.Options{
 		Prefix: "PhDevHTTPS",
 		Out:    logfile,
+		IgnoredRequestURIs: []string{"/favicon.ico",
+			"/simple",
+			"/apple-touch-icon-precomposed.png",
+			"/apple-touch-icon-120x120-precomposed.png",
+			"/apple-touch-icon-120x120.png",
+			"/apple-touch-icon.png"},
 	})
 }
 
@@ -169,7 +175,8 @@ func phDevBinHTTPSTemplateConfig() error {
 
 // phDevBinHTTPSTemplateExecute outputs directly to the ResponseWriter
 func phDevBinHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
-	// get the lang from the request
+	// XXX get the lang from the request
+	// XXX read and parse the request language header
 	lang := "en"
 
 	_, ok := config.templateSet[lang]

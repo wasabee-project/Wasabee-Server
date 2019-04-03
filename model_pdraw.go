@@ -368,6 +368,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 		tmpWaypoint.TeamID = teamID.String()
 		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+tmpMarker.ID[:7], 0, 64)
 		tmpWaypoint.Radius = 150
+		tmpWaypoint.Share = true
 		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
 	}
 	return nil
@@ -391,6 +392,7 @@ func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
 		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
 		tmpWaypoint.Radius = 150
+		tmpWaypoint.Share = true
 		wc.Waypoints.Waypoints = append(wc.Waypoints.Waypoints, tmpWaypoint)
 	}
 	return nil
@@ -425,6 +427,7 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
 		tmpWaypoint.Radius = 150
+		tmpWaypoint.Share = true
 		td.Waypoints = append(td.Waypoints, tmpWaypoint)
 	}
 

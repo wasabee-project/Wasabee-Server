@@ -59,9 +59,9 @@ Because we like building our own tools. Genetic diversity is a good thing.
 
 ## But ... opsec, why is the code open?
 
-I believe that open code gets looked at, bugs found, problems solved. ENL have completely decompiled/deobfuscated RESwue--all their attempts to hide the code was wasted effort. I have no doubt they have seen most of our "secret" tools (flips, even high-level operators) happen. Hiding code does not make it secure. 
+I believe that open code gets looked at, bugs found, problems solved. ENL have completely decompiled/deobfuscated RESwue--all their attempts to hide the code was wasted effort. I have no doubt they have seen most of our "secret" tools (flips, even high-level operators, happen). Hiding code does not make it secure. API endpoint probing tools exist. Obscurity is not security, it only makes life harder on the tool maintainers, which can actaully make the code less secure because it is harder to audit. 
 
-Yes, anyone can run this server. You will need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, I really should test that) without V and rocks support enabled. Enjoy. Run your own instance. Keep your data on a private server. You do not have to trust us to use these tools. 
+Yes, anyone can run this server software. That does not give everyone access to all the ENL data. You will need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, I really should test that) without V and rocks support enabled. Do you have moral objections to V? Do you hate the rocks people? That's fine. Run your own instance. Disable the parts you don't like. Keep your data on a private server. You do not have to trust us to use these tools. We don't have to trust you to let you use the tools. There is no strategic advantage to be had in secrecy when the other side already has a full toolset available to every agent. 
 
 ## MQTT?
 

@@ -47,9 +47,9 @@ type UserData struct {
 	}
 	Telegram struct {
 		UserName  string
-		ID        int // json changes this to float64, should we just leave it float64 the whole way?
+		ID        int64
 		Verified  bool
-		Authtoken string `json:"at,omitempty"`
+		Authtoken string
 	}
 	Home struct {
 		Lat    float64
@@ -152,10 +152,10 @@ func (gid GoogleID) InitUser() (bool, error) {
 }
 
 // SetIngressName is called to update the agent's ingress name in the database
-// The ingress name cannot be updated if V verification has taken place
+// The ingress name cannot be updated if V or Rocks verification has taken place
 func (gid GoogleID) SetIngressName(name string) error {
 	// if VVerified, ignore name changes -- let the V functions take care of that
-	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ? AND VVerified = 0", name, gid)
+	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ? AND VVerified = 0 AND RocksVerified = 0", name, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -191,16 +191,6 @@ func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
 	return gid, nil
 }
 
-// RemoveFromTeam updates the team list to remove the user.
-// XXX move to model_team.go
-// XXX this needs to die team.RemoveUser(gid) already exists
-func (gid GoogleID) RemoveFromTeam(team TeamID) error {
-	if _, err := db.Exec("DELETE FROM userteams WHERE gid = ? AND teamID = ?", team, gid); err != nil {
-		Log.Notice(err)
-	}
-	return nil
-}
-
 // SetTeamState updates the users state on the team (Off|On|Primary)
 // XXX move to model_team.go
 func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
@@ -215,10 +205,8 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 }
 
 // SetTeamStateName -- same as SetTeamState, but takes a team's human name rather than ID
-// BUG: if multiple teams use the same name this will not work
-// XXX move to model_team.go
+// XXX BUG: if multiple teams use the same name this will not work
 func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
-	Log.Debug(teamname)
 	var id TeamID
 	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
 	err := row.Scan(&id)
@@ -417,7 +405,9 @@ func (eid EnlID) String() string {
 	return string(eid)
 }
 
-func RevalidateEveryone() error {
+// revalidateEveryone -- if the schema changes or another reason causes us to need to pull data from V and rocks, this is a function which does that
+// V had bulk API functions we should use instead. This is good enough, and I hope we don't need it again.
+func revalidateEveryone() error {
 	rows, err := db.Query("SELECT gid FROM user")
 	if err != nil {
 		Log.Error(err)
