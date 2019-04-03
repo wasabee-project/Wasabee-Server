@@ -5,13 +5,13 @@
 
 ## But... OPSEC!!!!? Tools!!!
 
-RES have RESwue. Every RES agent who wants it has access to it. ENL has great tools too. But ours are hidden away in silos, locked up and only shown to trained and certified operators--who aren't even allowed to mention that they exist. A tool that no one can use is useless. These secure ENL tools are good. But they do not give us a strategic advantage because (1) no one can use them and (2) RES have everything we do, maybe not in the same form, but every feature we have, they have too. We are not going to leak the ENL tools. Rather, we are going to provide a tool to ENL agents who want access to something that doesn't require operator training, 64 vouches on V and a blood test to make sure you bleed green. 
+RES have RESwue. Every RES agent who wants it has access to it. ENL has great tools too. But ours are hidden away in silos, locked up and only shown to trained and certified operators--who aren't even allowed to mention that they exist. A tool that no one can use is useless. These secure ENL tools are good. But they do not give us a strategic advantage because (1) no one can use them and (2) RES have everything we do (maybe not in the same form, but every feature we have, they have too). We are not going to leak the ENL tools. Rather, we are going to provide a tool to ENL agents who want access to something that doesn't require operator training, 64 vouches on V and a blood test to make sure you bleed green. 
 
 ## But... opsec? My data?
 
 If you use the "simple" mode of transfering draws, your data is encoded in IITC, sent to the server and never decoded. It is stored encrypted in such a way that it is only decryptable upon request. The URL is the key. We don't know the URL. If you lose the URL, the draw is inaccessible.
 
-If you use the normal method, many more features will be enabled (proximity to marker notifications). You control access to your data by your teams. By default each op gets a unique team. But you can transfer multiple ops to the same team.
+If you use the normal method, many more features will be enabled (proximity to marker notifications). You control access to your data by your teams. By default each op gets a unique team. But you can transfer multiple ops to the same team. Only your team members can see your op plans and locations. Each agent controls their own status (active/inactive) on teams. Team owners control who is on the teams. Trust is always bidirectional (*with a minor qualification for teams linked to open .rocks communities).
 
 ## My personal data!
 
@@ -59,7 +59,7 @@ Because we like building our own tools. Genetic diversity is a good thing.
 
 ## But ... opsec, why is the code open?
 
-I believe that open code gets looked at, bugs found, problems solved. ENL have completely decompiled/deobfuscated RESwue--all their attempts to hide the code was wasted effort. I have no doubt they have seen most of our "secret" tools (flips, even high-level operators, happen). Hiding code does not make it secure. API endpoint probing tools exist. Obscurity is not security, it only makes life harder on the tool maintainers, which can actaully make the code less secure because it is harder to audit. 
+I believe that open code gets looked at, bugs found, problems solved. ENL have completely decompiled/deobfuscated the RESwue client--all their attempts to hide the code was wasted effort. I have no doubt they have seen most of our "secret" tools (flips, even high-level operators, happen). Hiding code does not make it secure. API endpoint probing tools exist. Obscurity is not security, it only makes life harder on the tool maintainers, which can actaully make the code less secure because it is harder to audit. 
 
 Yes, anyone can run this server software. That does not give everyone access to all the ENL data. You will need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, I really should test that) without V and rocks support enabled. Do you have moral objections to V? Do you hate the rocks people? That's fine. Run your own instance. Disable the parts you don't like. Keep your data on a private server. You do not have to trust us to use these tools. We don't have to trust you to let you use the tools. There is no strategic advantage to be had in secrecy when the other side already has a full toolset available to every agent. 
 
