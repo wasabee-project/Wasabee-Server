@@ -13,19 +13,27 @@ If you use the "simple" mode of transfering draws, your data is encoded in IITC,
 
 If you use the normal method, many more features will be enabled (proximity to marker notifications). You control access to your data by your teams. By default each op gets a unique team. But you can transfer multiple ops to the same team.
 
+## My personal data!
+
+We do not store your real name, your email address or any primary identifiying information. We do store your GoogleID, the EnlID that V creates (if you use V) and your agent name (if you use V or rocks). If you configure Telegram (either here or at .rocks), we store your telegram ID as well. As support is added for other messaging systems, we will store any messaging identifiers you opt-in to.
+
+We do not store historical location data. The only data point we have stored is your most recent check-in. If, at the end of your op, you use the web interface to set the values to something absurd (0,0 is handy), we will not know where you are or where you've been. We are seriously considering setting all stale data (older than 12 hours?) to an absurd value.
+
 ## But... how do you make sure that only ENL agents use this.
 
-RES have RESwue. They _can_ use this (minimally). But why would they. Why entrust their op data to us?
+RES have RESwue. They _can_ use this (minimally). But why would they? Why whould they entrust their op data to us?
 
-We verify agent information with both V and .rocks. We observe the blacklisted/smurf/banned flags. If an agent is not verified at V or rocks, they are flagged as unverified. You can add unverified agents to your teams, that's up to you.
+We verify agent information with both V and .rocks. We observe the blacklisted/smurf/flagged/banned. If an agent is not verified at V or rocks, they are displayed as unverified. You can add unverified agents to your teams if you want, that's up to you. We don't force people to use V or rocks. They are helpful tools, not systems that control.
 
 ## I use an enl.rocks community to manage my telegram channel. I don't want to manage a second list of users. 
 
 Excellent. You can link a team to an enl.rocks community to a team. Any changes in the community will instantly be made in the team.
 
+If there is a use-case for it, we can reverse this too and have a team manage a community. This is low-priority at the moment because no one has needed (or asked for) it yet.
+
 ## I use a V team ...
 
-Cool. It wouldn't be hard to add that support if you really use it.
+Cool. It wouldn't be hard to add support for manually pulling team data across if this is a real use-case. V does not have push notifications, nor does it have an API to manage team members, so it would require operator action to sync the changes.
 
 ## Our group uses GroupMe/Slack/Hangouts/AIM/ICQ/IRC...
 
@@ -40,6 +48,8 @@ We can pull from the RAID location store if you give us permission.
 You can send your location via the telegram bot.
 
 You can send your location via the web interface.
+
+You don't have to opt into sharing your location. You lose some functionalty, but location based notifications is only one part of this tool.
 
 Maybe we will support glympse someday, if someone really wants it.
 
