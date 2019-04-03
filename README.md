@@ -11,7 +11,7 @@ RES have RESwue. Every RES agent who wants it has access to it. ENL has great to
 
 If you use the "simple" mode of transfering draws, your data is encoded in IITC, sent to the server and never decoded. It is stored encrypted in such a way that it is only decryptable upon request. The URL is the key. We don't know the URL. If you lose the URL, the draw is inaccessible.
 
-If you use the normal method, much more features will be enabled. You control access to your data by your teams. By default each op gets a unique team. But you can transfer multiple ops to the same team.
+If you use the normal method, many more features will be enabled (proximity to marker notifications). You control access to your data by your teams. By default each op gets a unique team. But you can transfer multiple ops to the same team.
 
 ## But... how do you make sure that only ENL agents use this.
 
@@ -22,6 +22,14 @@ We verify agent information with both V and .rocks. We observe the blacklisted/s
 ## I use an enl.rocks community to manage my telegram channel. I don't want to manage a second list of users. 
 
 Excellent. You can link a team to an enl.rocks community to a team. Any changes in the community will instantly be made in the team.
+
+## I use a V team ...
+
+Cool. It wouldn't be hard to add that support if you really use it.
+
+## Our group uses GroupMe/Slack/Hangouts/AIM/ICQ/IRC...
+
+Look through the Telegram code. Adding support for your favorite system probably won't be too hard. Probably 2 files, 300 lines of code and you'll have basic functionality. Send a patch.
 
 ## I don't want to use your app for sharing my location data.
 
@@ -44,6 +52,18 @@ Because we like building our own tools. Genetic diversity is a good thing.
 I believe that open code gets looked at, bugs found, problems solved. ENL have completely decompiled/deobfuscated RESwue--all their attempts to hide the code was wasted effort. I have no doubt they have seen most of our "secret" tools (flips, even high-level operators) happen. Hiding code does not make it secure. 
 
 Yes, anyone can run this server. You will need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, I really should test that) without V and rocks support enabled. Enjoy. Run your own instance. Keep your data on a private server. You do not have to trust us to use these tools. 
+
+## MQTT?
+
+Not used yet. I have plans.
+
+## Wouldn't (my favorite database) be a better choice than MariaDB/MySQL?
+
+I've been working with MySQL since the 1990s. It is what I know. (mfd) may be cool, get to porting if you want to prove it is better.
+
+## Go? I like python/C/COBOL/perl/php5/node.js
+
+Opposite answer to the above... I didn't know Go when I started this. I learned Go. I really like Go now. That's saying a lot because I'm a crusty old C hack. I know C, PHP, Python ... but this just came together very quickly in Go. Go with it.
 
 ## INSTALL
 1. Install and configure MySQL or MariaDB
