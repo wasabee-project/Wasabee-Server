@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strconv"
 )
 
@@ -362,7 +363,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 		}
 		tl.Markers = append(tl.Markers, tmpMarker)
 
-		tmpWaypoint.Type = "_waypoint"
+		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.MarkerType = tmpMarker.Type.String()
 		tmpWaypoint.TeamID = teamID.String()
 		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+tmpMarker.ID[:7], 0, 64)
@@ -387,7 +388,7 @@ func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
 			Log.Error(err)
 			continue
 		}
-		tmpWaypoint.Type = "_waypoint"
+		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
 		tmpWaypoint.Radius = 150
 		wc.Waypoints.Waypoints = append(wc.Waypoints.Waypoints, tmpWaypoint)
@@ -395,11 +396,19 @@ func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
 	return nil
 }
 
-// XXX this doesn't yet check distances
 func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData) error {
-	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p "+
+	var lat, lon string
+	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name, "+
+		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(p.loc))) * cos(radians(X(p.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(p.loc))))) AS distance "+
+		"FROM marker=m, portal=p "+
 		"WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM userteams=t WHERE gid = ? AND state != 'Off')) "+
-		"AND m.portalID = p.ID AND m.opID = p.opID", gid)
+		"AND m.portalID = p.ID AND m.opID = p.opID", lat, lon, lat, gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -408,17 +417,21 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 	var markerID string
 	var tmpWaypoint Waypoint
 	for mr.Next() {
-		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
+		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc, &tmpWaypoint.Distance)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
-		tmpWaypoint.Type = "_waypoint"
+		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
 		tmpWaypoint.Radius = 150
-		tmpWaypoint.Distance = 1
 		td.Waypoints = append(td.Waypoints, tmpWaypoint)
 	}
+
+	// since otWaypoints already set, we need to resort
+	sort.Slice(td.Waypoints, func(i, j int) bool {
+		return td.Waypoints[i].Distance < td.Waypoints[j].Distance
+	})
 	return nil
 }
 

@@ -1,8 +1,11 @@
 {{define "default"}}
-Please see {{ Webroot }}/me for details (default)
+Please see {{ Webroot }}/me for details
 {{end}}
 
 {{define "help"}}
+If everything is working correctly, you should see helpful buttons near the message input area.
+If not, try saying "/start"
+
 Please see {{ Webroot }}/me for details (help)
 {{end}}
 
@@ -33,7 +36,7 @@ Your telegram account is now verified and can receive updates and submit locatio
 
 {{define "TeamStateChange"}}
 {{if eq .State "On"}}Enabling {{ .Team }}{{end}}
-{{if eq .State "Off"}}Disbling {{ .Team }}{{end}}
+{{if eq .State "Off"}}Disabling {{ .Team }}{{end}}
 {{if eq .State "Primary"}}Setting {{ .Team }} to primary{{end}}
 {{end}}
 
@@ -46,31 +49,21 @@ Nearest Know Teammates
 {{end}}
 
 {{define "Farms"}}
-Nearest Farms (Markers)
-{{range .Markers}}
-{{- if eq .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
-[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
-{{- end}}
-{{end}}
-Nearest Farms (Waypoints)
-{{range .Waypoints}}
-{{- if eq .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
-[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
-{{- end}}
+Nearest Farms
+{{- range .Waypoints}}
+{{- if eq .MarkerType "farm"}}
+{{.Desc}}: {{.Distance}}km [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}}){{end -}}
 {{end}}
 {{end}}
 
 {{define "Targets"}}
-Nearest Markers (Ops)
-{{range .Markers}}
-{{- if ne .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
-[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
-{{- end}}
+Nearest Targets
+{{- range .Waypoints}}
+{{- if ne .MarkerType "farm"}}
+{{.Desc}}: {{.Distance}}km [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}}) {{.MarkerType}}{{end -}}
 {{end}}
-Nearest Waypoints
-{{range .Waypoints}}
-{{- if ne .Type "farm"}}{{- .Desc}}: {{.Distance}}km {{.Type}}
-[Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}})
-{{- end}}
 {{end}}
+
+{{define "tmp"}}
+Testing
 {{end}}

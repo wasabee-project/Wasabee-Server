@@ -195,7 +195,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	ses.Values["id"] = m.Gid.String()
-	nonce, _  := calculateNonce(m.Gid)
+	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:   "/",

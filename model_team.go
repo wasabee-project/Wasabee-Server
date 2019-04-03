@@ -354,6 +354,7 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 		if lon.Valid {
 			tmpW.Lon, _ = strconv.ParseFloat(lon.String, 64)
 		}
+		tmpW.Type = "waypoint"
 		td.Waypoints = append(td.Waypoints, tmpW)
 	}
 	err = rows.Err()

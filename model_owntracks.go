@@ -201,6 +201,7 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 			f, _ := strconv.ParseInt(radius.String, 0, 64)
 			tmpWaypoint.Radius = f
 		}
+		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.Share = true
 		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpWaypoint)
 	}
@@ -243,6 +244,7 @@ func (teamID TeamID) otWaypoints(tl *TeamData) error {
 			tmpWaypoint.Radius = f
 		}
 		tmpWaypoint.Share = true
+		tmpWaypoint.Type = "waypoint"
 		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
 	}
 	return nil
@@ -262,7 +264,7 @@ func (gid GoogleID) OwnTracksTransition(transition json.RawMessage) (json.RawMes
 
 	// XXX do something here -- or not
 	Log.Debugf("%s transition %s: %s (%f)", gid, t.Event, t.Desc, t.ID)
-	gid.SendMessage(fmt.Sprintf("%s area: %s", t.Event, t.Desc))
+	// gid.SendMessage(fmt.Sprintf("%s area: %s", t.Event, t.Desc))
 
 	return j, nil
 }
@@ -293,8 +295,8 @@ func (gid GoogleID) ownTracksTidy(otdata string) (json.RawMessage, error) {
 // such as via the web or telegram interface. This allows agents to choose the method of
 // location reporting which suits their needs best.
 func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
-	var otdata string
-	err := db.QueryRow("SELECT otdata FROM otdata WHERE gid = ?", gid).Scan(&otdata)
+	var otdata, lockey string
+	err := db.QueryRow("SELECT ot.otdata, u.lockey FROM otdata=ot, user=u WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&otdata, &lockey)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -308,11 +310,11 @@ func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
 
 	l.Type = "location"
 	if l.ShortName == "" {
-		l.ShortName = "XX"
+		l.ShortName = lockey[:2]
 	}
 	l.Lat, _ = strconv.ParseFloat(lat, 64)
 	l.Lon, _ = strconv.ParseFloat(lon, 64)
-	l.Topic = fmt.Sprintf("owntracks/%s/%s", gid, source)
+	l.Topic = fmt.Sprintf("owntracks/%s/%s", lockey, source)
 
 	t := time.Now()
 	l.TimeStamp = float64(t.Unix())
@@ -344,7 +346,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 		return j, e
 	}
 
-	if err := json.Unmarshal(wp, &w); err != nil {
+	if err = json.Unmarshal(wp, &w); err != nil {
 		// Log.Notice(err)
 		return j, err
 	}

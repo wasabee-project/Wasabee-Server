@@ -13,19 +13,12 @@
 					<div class="content-section-a">
 <!-- content starts here -->
 <div class="card mb-2">
-<div class="card-header">Team: {{.Name}}</div>
+<div class="card-header">Waypoints/Markers Near Me</div>
 <div class="card-body"></div>
 <ul class="list-group list-group-flush">
-	{{range .Markers}}
-        <li class="list-group-item">{{.Name}} ({{.Id}}) {{.Distance}}km
-		<a href="https://maps.google.com/?ll={{.Lat}},{{.Lon}}">Google Maps</a>
-		<a href="https://intel.ingress.com/?ll={{.Lat}},{{.Lon}}">Intel</a> (Type : {{.Type}} ) (Radius: {{.Radius}})
-		</li>
-	{{end}}
 	{{range .Waypoints}}
-        <li class="list-group-item">{{.Desc}} ({{.ID}}) {{.Distance}}km
-		<a href="https://maps.google.com/?ll={{.Lat}},{{.Lon}}">Google Maps</a>
-		<a href="https://intel.ingress.com/?ll={{.Lat}},{{.Lon}}">Intel</a> (Type : {{.Type}} ) (Radius: {{.Radius}})
+        <li class="list-group-item">{{.Desc}} {{.Distance}}km (Type : {{.MarkerType}} ) <br />
+		[ <a href="https://maps.google.com/?ll={{.Lat}},{{.Lon}}">Google Maps</a> | <a href="https://intel.ingress.com/?ll={{.Lat}},{{.Lon}}">Intel</a> ]
 		</li>
 	{{end}}
 </ul>

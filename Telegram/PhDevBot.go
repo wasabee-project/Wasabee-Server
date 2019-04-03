@@ -105,11 +105,9 @@ func PhDevBot(init TGConfiguration) error {
 				PhDevBin.Log.Error(err)
 			}
 		}
-		if msg.Text != "" {
-			msg.ReplyToMessageID = update.Message.MessageID
-		}
 
 		bot.Send(msg)
+		bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
 	}
 
 	return nil
@@ -220,10 +218,11 @@ func phdevBotTemplateExecute(name, lang string, data interface{}) (string, error
 		lang = "en" // default to english if the map doesn't exist
 	}
 
+	// s, _ := json.MarshalIndent(&data, "", "\t")
+	// PhDevBin.Log.Debugf("Calling template %s[%s] with data %s", name, lang, string(s))
 	var tpBuffer bytes.Buffer
 	if err := config.templateSet[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
 		PhDevBin.Log.Notice(err)
-		// XXX if lang != "en" { (?retry in en? - the template may be broken) }
 		return "", err
 	}
 	return tpBuffer.String(), nil
@@ -416,8 +415,12 @@ func teammatesNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error
 		return txt, err
 	}
 	txt, err = phdevBotTemplateExecute("Teammates", inMsg.Message.From.LanguageCode, &td)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		return txt, err
+	}
 
-	return txt, err
+	return txt, nil
 }
 
 func targetsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
@@ -432,8 +435,12 @@ func targetsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) 
 		return txt, err
 	}
 	txt, err = phdevBotTemplateExecute("Targets", inMsg.Message.From.LanguageCode, &td)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		return txt, err
+	}
 
-	return txt, err
+	return txt, nil
 }
 
 func farmsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
@@ -448,6 +455,10 @@ func farmsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 		return txt, err
 	}
 	txt, err = phdevBotTemplateExecute("Farms", inMsg.Message.From.LanguageCode, &td)
+	if err != nil {
+		PhDevBin.Log.Error(err)
+		return txt, err
+	}
 
-	return txt, err
+	return txt, nil
 }

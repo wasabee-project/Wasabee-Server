@@ -252,7 +252,7 @@ func authMW(next http.Handler) http.Handler {
 		var redirectURL = "/login"
 		if req.URL.String()[:3] != "/me" {
 			redirectURL = "/login?returnto=" + req.URL.String()
-		} 
+		}
 
 		id, ok := ses.Values["id"]
 		if ok == false || id == nil {

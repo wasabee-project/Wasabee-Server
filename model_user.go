@@ -34,9 +34,9 @@ type UserData struct {
 	RocksVerified bool
 	RAID          bool
 	Teams         []struct {
-		ID    string
-		Name  string
-		State string
+		ID        string
+		Name      string
+		State     string
 		RocksComm string
 	}
 	OwnedTeams []struct {
@@ -269,9 +269,9 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 
 	var teamname sql.NullString
 	var tmp struct {
-		ID    string
-		Name  string
-		State string
+		ID        string
+		Name      string
+		State     string
 		RocksComm string
 	}
 
