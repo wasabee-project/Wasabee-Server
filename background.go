@@ -26,7 +26,7 @@ func locationClean() {
 			Log.Error(err)
 			continue
 		}
-		_, err = db.Exec("UPDATE locations SET loc = POINTFROMTEXT(?) upTime = NOW() WHERE gid = ?", "POINT(0 0)", gid)
+		_, err = db.Exec("UPDATE locations SET loc = POINTFROMTEXT(?), upTime = NOW() WHERE gid = ?", "POINT(0 0)", gid)
 		if err != nil {
 			Log.Error(err)
 		}
