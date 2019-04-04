@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
 
 	"golang.org/x/oauth2"
 
@@ -37,6 +38,9 @@ func setupRoutes(r *mux.Router) {
 
 	// OwnTracks URL
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
+
+	r.HandleFunc("/static/{doc}", staticRoute).Methods("GET")
+	r.HandleFunc("/static/{dir}/{doc}", staticRoute).Methods("GET")
 
 	// index
 	r.HandleFunc("/", frontRoute).Methods("GET")
@@ -243,10 +247,37 @@ func getUserID(req *http.Request) (PhDevBin.GoogleID, error) {
 
 	if ses.Values["id"] == nil {
 		err := errors.New("getUserID called for unauthenticated user")
-		PhDevBin.Log.Notice(err)
+		PhDevBin.Log.Critical(err)
 		return "", err
 	}
 
 	var userID PhDevBin.GoogleID = PhDevBin.GoogleID(ses.Values["id"].(string))
 	return userID, nil
+}
+
+func staticRoute(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	doc, ok := vars["doc"]
+
+	// XXX I've never been able to trigger this, can probably remove
+	if ok != true {
+		PhDevBin.Log.Debug("Marty, Doc is not OK")
+		notFoundRoute(res, req)
+		return
+	}
+
+	var cleandoc string
+	dir, ok := vars["dir"]
+	if ok == true {
+		PhDevBin.Log.Debugf("static file requested: %s/%s", dir, doc)
+		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
+		cleandoc = path.Join(config.FrontendPath, "static", dir, doc)
+	} else {
+		PhDevBin.Log.Debugf("static file requested: %s", doc)
+		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
+		cleandoc = path.Join(config.FrontendPath, "static", doc)
+	}
+	PhDevBin.Log.Debugf("serving: %s", cleandoc)
+	http.ServeFile(res, req, cleandoc)
+	return
 }

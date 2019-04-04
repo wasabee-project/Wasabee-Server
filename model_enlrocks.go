@@ -157,10 +157,14 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		return err
 	}
 
-	_, err = rc.User.Gid.InitUser()
-	if err != nil {
-		Log.Error(err)
-		return err
+	_, err = rc.User.Gid.IngressName()
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		Log.Debugf("Importing previously unknown user: %s", rc.User.Gid)
+		_, err = rc.User.Gid.InitUser()
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
 	}
 
 	team, err := RocksTeamID(rc.Community)
@@ -221,10 +225,18 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	}
 
 	for _, user := range rr.Members {
-		// if tmp := user.LocKey(); tmp == "" { // XXX some test to see if the user is already in the system
-		user.InitUser()
-		// }
-		err := teamID.AddUser(user)
+		_, err = user.IngressName()
+		if err != nil && err.Error() == "sql: no rows in result set" {
+			Log.Debugf("Importing previously unknown user: %s", user)
+			_, err = user.InitUser() // add user to system if they don't already exist
+			if err != nil {
+				Log.Notice(err)
+				continue
+			}
+		}
+		// XXX deal with other errors?
+
+		err = teamID.AddUser(user)
 		if err != nil {
 			Log.Notice(err)
 			continue

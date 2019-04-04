@@ -59,9 +59,9 @@ type UserData struct {
 }
 
 // InitUser is called from Oauth callback to set up a user for the first time.
-// It also checks and updates V data. It returns true if the user is authorized to continue, false if the user is blacklisted or otherwise locked at V
+// It also checks and updates V and enl.rocks data. It returns true if the user is authorized to continue, false if the user is blacklisted or otherwise locked at V or enl.rocks.
 func (gid GoogleID) InitUser() (bool, error) {
-	var authError error // delay reporting authorization problems until after INSERT/Vupdate
+	var authError error // delay reporting authorization problems until after INSERT/Vupdate/RocksUpdate
 	var tmpName string
 
 	var vdata Vresult
@@ -151,10 +151,11 @@ func (gid GoogleID) InitUser() (bool, error) {
 	return true, nil
 }
 
-// SetIngressName is called to update the agent's ingress name in the database
-// The ingress name cannot be updated if V or Rocks verification has taken place
+// SetIngressName is called to update the agent's ingress name in the database.
+// The ingress name cannot be updated if V or Rocks verification has taken place.
+// XXX Do we even want to allow this any longer since V and rocks are giving us data? Unverified agents can just live with the Agent_XXXXXX name.
 func (gid GoogleID) SetIngressName(name string) error {
-	// if VVerified, ignore name changes -- let the V functions take care of that
+	// if VVerified or RocksVerified: ignore name changes -- let the V/Rocks functions take care of that
 	_, err := db.Exec("UPDATE user SET iname = ? WHERE gid = ? AND VVerified = 0 AND RocksVerified = 0", name, gid)
 	if err != nil {
 		Log.Notice(err)
