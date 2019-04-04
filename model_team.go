@@ -3,6 +3,7 @@ package PhDevBin
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -198,31 +199,44 @@ func (teamID TeamID) Delete() error {
 // AddUser adds a user (identified by LocKey or GoogleID) to a team
 func (teamID TeamID) AddUser(in interface{}) error {
 	var gid GoogleID
+	var err error
 	switch v := in.(type) {
 	case LocKey:
 		lockey := v
-		gid, _ = lockey.Gid()
+		gid, err = lockey.Gid()
+		if err != nil && err.Error() == "sql: no rows in result set" {
+			err = fmt.Errorf("Unknown lockey: %s", lockey)
+			Log.Notice(err)
+			return err
+		}
 	case GoogleID:
 		gid = v
 	case EnlID:
-		enlID := v
-		gid, _ = enlID.Gid()
+		eid := v
+		gid, err = eid.Gid()
+		if err != nil && err.Error() == "sql: no rows in result set" {
+			err = fmt.Errorf("Unknown EnlID: %s", eid)
+			Log.Notice(err)
+			return err
+		}
 	default:
 		Log.Debugf("fed unknown type, guessing agent name as string: %s", v)
 		x := v.(string)
-		gid, _ = SearchAgentName(x)
-	}
-
-	_, err := db.Exec("INSERT INTO userteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
-	if err != nil {
-		tmp := err.Error()
-		if tmp[:10] != "Error 1062" {
+		gid, err = SearchAgentName(x)
+		if err != nil && err.Error() == "sql: no rows in result set" {
+			err = fmt.Errorf("Unknown agent: %s", x)
 			Log.Notice(err)
 			return err
 		}
 	}
+
+	_, err = db.Exec("INSERT IGNORE INTO userteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
 	// XXX this needs to be a template and translated
-	_, err = gid.SendMessage("You have been invited on to a team called; you can enable it now if you want.")
+	_, err = gid.SendMessage("You have been invited on to a team called {{.}}; you may enable it now if you want. {{RootPath}}/me")
 	if err != nil {
 		Log.Notice(err)
 		return (err)
@@ -345,10 +359,10 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 	}
 
 	/* This would use the ST_ Index... instead of offloading it until the HAVING -- saving a lot of db calculations if we get a lot of Waypoints
-	       AND MBRContains( LineString(
-	   	Point( 42.353443 + 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 + 1 / 111.1),
-	   	Point( 42.353443 - 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 - 1 / 111.1)
-	       ), loc)
+	   AND MBRContains( LineString(
+	Point( 42.353443 + 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 + 1 / 111.1),
+	Point( 42.353443 - 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 - 1 / 111.1)
+	   ), loc)
 	*/
 
 	defer rows.Close()

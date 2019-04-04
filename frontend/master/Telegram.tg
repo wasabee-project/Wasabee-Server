@@ -51,7 +51,7 @@ Nearest Know Teammates
 {{define "Farms"}}
 Nearest Farms
 {{- range .Waypoints}}
-{{- if eq .MarkerType "farm"}}
+{{- if eq .MarkerType "OTWaypointFarmAlert"}}
 {{.Desc}}: {{.Distance}}km [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}}){{end -}}
 {{end}}
 {{end}}
@@ -59,7 +59,7 @@ Nearest Farms
 {{define "Targets"}}
 Nearest Targets
 {{- range .Waypoints}}
-{{- if ne .MarkerType "farm"}}
+{{- if ne .MarkerType "OTWaypointFarmAlert"}}
 {{.Desc}}: {{.Distance}}km [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) | [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}}) | [Intel](https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=12&pll={{.Lat}},{{.Lon}}) {{.MarkerType}}{{end -}}
 {{end}}
 {{end}}

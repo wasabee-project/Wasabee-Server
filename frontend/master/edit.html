@@ -18,8 +18,11 @@
 <ul class="list-group list-group-flush">
 </li>
 	{{ $x := .ID }}
+	{{ $rc := .RocksComm }}
 	{{range .User}}
-        <li class="list-group-item">{{.Name}} ({{.LocKey}}): (State: {{.State}} ) (V: {{.Verified}}) (Color: {{.Color}})<br /><a href="/{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a></li>
+        <li class="list-group-item">{{.Name}} ({{.State}}) {{if .EnlID}} <a href="https://v.enl.one/profile/{{.EnlID}}">V Profile</a> {{end}} <br />
+		{{if not $rc}}<a href="/{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a>{{end}}
+		</li>
 	{{end}}
 <li class="list-group-item">
 <form action="/{{WebAPIPath}}/team/{{.ID}}" method="get">

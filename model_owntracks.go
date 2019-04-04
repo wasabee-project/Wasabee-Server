@@ -364,7 +364,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 func ownTracksWriteWaypoint(w Waypoint, team string) error {
 	_, err := db.Exec("INSERT INTO waypoints (Id, teamID, loc, radius, type, name, expiration) VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14))) "+
 		"ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
-		w.ID, team, w.Lon, w.Lat, w.Radius, "target", w.Desc, w.ID,
+		w.ID, team, w.Lon, w.Lat, w.Radius, "OTWaypointFarmAlert", w.Desc, w.ID,
 		w.ID, w.Lon, w.Lat, w.Radius, w.Desc)
 	if err != nil {
 		Log.Notice(err)

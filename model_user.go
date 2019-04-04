@@ -115,7 +115,7 @@ func (gid GoogleID) InitUser() (bool, error) {
 	_, err = gid.IngressName()
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		if tmpName == "" {
-			tmpName = "Agent_" + gid.String()[:8]
+			tmpName = "UnverifiedAgent_" + gid.String()[:15]
 		}
 		lockey, err := GenerateSafeName()
 		if err != nil {
