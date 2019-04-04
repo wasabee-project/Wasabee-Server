@@ -449,3 +449,14 @@ func revalidateEveryone() error {
 	}
 	return nil
 }
+
+// SearchAgentName gets a GoogleID from an Agent's name
+func SearchAgentName(agent string) (GoogleID, error) {
+	var gid GoogleID
+	err := db.QueryRow("SELECT gid FROM user WHERE iname= ?", agent).Scan(&gid)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return gid, nil
+}

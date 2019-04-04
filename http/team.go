@@ -6,6 +6,7 @@ import (
 	"github.com/cloudkucooland/PhDevBin"
 	"github.com/gorilla/mux"
 	"net/http"
+	"strings"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -119,7 +120,28 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := PhDevBin.TeamID(vars["team"])
-	key := PhDevBin.LocKey(vars["key"])
+	tmp := vars["key"] // Could be a lockkey, googleID, enlID or agent name
+	var key interface{}
+	switch len(tmp) { // length gives us a guess, presence of a - makes us certain
+	case 40:
+		if strings.IndexByte(tmp, '-') != -1 {
+			key = PhDevBin.LocKey(tmp) // Looks like a GoogleID
+		} else {
+			key = PhDevBin.EnlID(tmp)
+		}
+	case 21:
+		if strings.IndexByte(tmp, '-') != -1 {
+			key = PhDevBin.LocKey(tmp)
+		} else {
+			key = PhDevBin.GoogleID(tmp) // Looks like a GoogleID
+		}
+	default:
+		if strings.IndexByte(tmp, '-') != -1 {
+			key = PhDevBin.LocKey(tmp)
+		} else {
+			key = string(tmp) // trigger a search by AgentID
+		}
+	}
 
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {

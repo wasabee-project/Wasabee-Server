@@ -204,10 +204,13 @@ func (teamID TeamID) AddUser(in interface{}) error {
 		gid, _ = lockey.Gid()
 	case GoogleID:
 		gid = v
+	case EnlID:
+		enlID := v
+		gid, _ = enlID.Gid()
 	default:
-		Log.Debug("fed unknown type, guessing string")
+		Log.Debugf("fed unknown type, guessing agent name as string: %s", v)
 		x := v.(string)
-		gid = GoogleID(x)
+		gid, _ = SearchAgentName(x)
 	}
 
 	_, err := db.Exec("INSERT INTO userteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
