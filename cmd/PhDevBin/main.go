@@ -63,7 +63,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "PhDevBin"
-	app.Version = "0.6.2"
+	app.Version = "0.6.4"
 	app.Usage = "Phtiv-Draw-Tools Server"
 	app.Flags = flags
 
@@ -107,7 +107,6 @@ func run(c *cli.Context) error {
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
 		PhDevBin.SetEnlRocks(c.String("enlrockskey"))
-		// PhDevBin.RevalidateEveryone()
 	}
 
 	// Serve HTTPS
@@ -131,6 +130,9 @@ func run(c *cli.Context) error {
 			FrontendPath: c.String("frontend-path"),
 		})
 	}
+
+	// Location cleanup, waypoint expiration, etc
+	go PhDevBin.BackgroundTasks()
 
 	// Sleep
 	select {}

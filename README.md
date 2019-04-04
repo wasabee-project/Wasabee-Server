@@ -17,7 +17,7 @@ If you use the normal method, many more features will be enabled (proximity to m
 
 We do not store your real name, your email address or any primary identifiying information. We do store your GoogleID, the EnlID that V creates (if you use V) and your agent name (if you use V or rocks). If you configure Telegram (either here or at .rocks), we store your telegram ID as well. As support is added for other messaging systems, we will store any messaging identifiers you opt-in to.
 
-We do not store historical location data. The only data point we have stored is your most recent check-in. If, at the end of your op, you use the web interface to set the values to something absurd (0,0 is handy), we will not know where you are or where you've been. We are seriously considering setting all stale data (older than 12 hours?) to an absurd value.
+We do not store historical location data. The only data point we have stored is your most recent check-in. If, at the end of your op, you use the web interface to set the values to something absurd (0,0 is handy), we will not know where you are or where you've been. All stale location data (older than 3 hours) is removed.
 
 ## But... how do you make sure that only ENL agents use this.
 
