@@ -164,7 +164,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 	if err != nil {
 		Log.Notice(err)
 	}
-	_, err = db.Exec("INSERT INTO userteams VALUES (?,?,'On','FF0000')", team, gid)
+	_, err = db.Exec("INSERT INTO userteams (teamID, gid, state, color) VALUES (?,?,'On','00FF00')", team, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -210,7 +210,7 @@ func (teamID TeamID) AddUser(in interface{}) error {
 		gid = GoogleID(x)
 	}
 
-	_, err := db.Exec("INSERT INTO userteams values (?, ?, 'Off', '')", teamID, gid)
+	_, err := db.Exec("INSERT INTO userteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
 	if err != nil {
 		tmp := err.Error()
 		if tmp[:10] != "Error 1062" {
@@ -340,6 +340,13 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 		Log.Error(err)
 		return err
 	}
+
+	/* This would use the ST_ Index... instead of offloading it until the HAVING -- saving a lot of db calculations if we get a lot of Waypoints
+	       AND MBRContains( LineString(
+	   	Point( 42.353443 + 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 + 1 / 111.1),
+	   	Point( 42.353443 - 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 - 1 / 111.1)
+	       ), loc)
+	*/
 
 	defer rows.Close()
 	for rows.Next() {

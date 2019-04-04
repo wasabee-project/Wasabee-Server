@@ -361,9 +361,9 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 }
 
 // ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the data to the database.
-// XXX need to write a thread to invalidate expired waypoints and then remove them
 func ownTracksWriteWaypoint(w Waypoint, team string) error {
-	_, err := db.Exec("INSERT INTO waypoints VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14))) ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
+	_, err := db.Exec("INSERT INTO waypoints (Id, teamID, loc, radius, type, name, expiration) VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14))) "+
+		"ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
 		w.ID, team, w.Lon, w.Lat, w.Radius, "target", w.Desc, w.ID,
 		w.ID, w.Lon, w.Lat, w.Radius, w.Desc)
 	if err != nil {

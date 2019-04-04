@@ -128,12 +128,12 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO locations VALUES (?,NOW(),POINT(0,0))", gid)
+		_, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,NOW(),POINT(0,0))", gid)
 		if err != nil {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO otdata VALUES (?,'{ }')", gid)
+		_, err = db.Exec("INSERT IGNORE INTO otdata (gid, otdata) VALUES (?,'{ }')", gid)
 		if err != nil {
 			Log.Error(err)
 			return false, err
