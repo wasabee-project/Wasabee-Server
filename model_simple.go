@@ -134,3 +134,18 @@ func Request(id string) (SimpleDocument, error) {
 
 	return doc, nil
 }
+
+func simpleDocClean() {
+	// do it this way to get RowsAffected
+	stmt, _ := db.Prepare("DELETE FROM documents WHERE expiration < CURRENT_TIMESTAMP AND expiration > FROM_UNIXTIME(0)")
+
+	result, err := stmt.Exec()
+	if err != nil {
+		Log.Errorf("Couldn't execute cleanup statement: %s", err)
+	} else {
+		n, err := result.RowsAffected()
+		if err == nil && n > 0 {
+			Log.Debugf("Cleaned up %d documents.", n)
+		}
+	}
+}

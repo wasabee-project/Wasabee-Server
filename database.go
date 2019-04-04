@@ -2,14 +2,11 @@ package PhDevBin
 
 import (
 	"database/sql"
-	"time"
-	// MySQL/MariaDB Database Driver
 	_ "github.com/go-sql-driver/mysql"
+	"time"
 )
 
 var db *sql.DB
-var lockeyToGid *sql.Stmt
-var safeName *sql.Stmt
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don't exist yet.
 func Connect(uri string) error {
@@ -32,6 +29,16 @@ func Connect(uri string) error {
 	}
 	Log.Infof("Database version: %s", version)
 
+	err = setupTables()
+	if err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
+// setupTables checks for the existence of tables and creates them if needed
+// XXX THIS IS CURRENTLY OUT OF SYNC WITH REALITY
+func setupTables() error {
 	// Create tables
 	var table string
 	db.QueryRow("SHOW TABLES LIKE 'documents'").Scan(&table)
@@ -165,41 +172,5 @@ func Connect(uri string) error {
 			return err
 		}
 	}
-
-	safeName, err = db.Prepare("SELECT COUNT(id) FROM documents WHERE id = ?")
-	if err != nil {
-		Log.Errorf("Couldn't initialize safeName: %s", err)
-		return err
-	}
-
-	lockeyToGid, err = db.Prepare("SELECT gid FROM user WHERE lockey = ?")
-	if err != nil {
-		Log.Errorf("Couldn't initialize lockeyToGid: %s", err)
-		return err
-	}
-
-	go cleanup()
 	return nil
-}
-
-func cleanup() {
-	stmt, err := db.Prepare("DELETE FROM documents WHERE expiration < CURRENT_TIMESTAMP AND expiration > FROM_UNIXTIME(0)")
-	if err != nil {
-		Log.Errorf("Couldn't initialize cleanup statement: %s", err)
-		return
-	}
-
-	for {
-		result, err := stmt.Exec()
-		if err != nil {
-			Log.Errorf("Couldn't execute cleanup statement: %s", err)
-		} else {
-			n, err := result.RowsAffected()
-			if err == nil && n > 0 {
-				Log.Debugf("Cleaned up %d documents.", n)
-			}
-		}
-
-		time.Sleep(10 * time.Minute)
-	}
 }

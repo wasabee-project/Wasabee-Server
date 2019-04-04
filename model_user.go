@@ -219,11 +219,10 @@ func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
 }
 
 // Gid converts a location share key to a user's gid
-// TODO: quit using a prebuilt query from database.go
 func (lockey LocKey) Gid() (GoogleID, error) {
 	var gid GoogleID
 
-	r := lockeyToGid.QueryRow(lockey)
+	r := db.QueryRow("SELECT gid FROM user WHERE lockey = ?", lockey)
 	err := r.Scan(&gid)
 	if err != nil {
 		Log.Notice(err)
@@ -381,7 +380,7 @@ func (gid GoogleID) UserLocation(lat, lon, source string) error {
 
 // ResetLocKey updates the database with a new OwnTracks password for a given user
 func (gid GoogleID) ResetLocKey() error {
-	newlockey := GenerateName()
+	newlockey, _ := GenerateSafeName()
 	_, err := db.Exec("UPDATE user SET lockey = ? WHERE gid = ?", newlockey, gid)
 	if err != nil {
 		Log.Notice(err)
@@ -459,4 +458,24 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return "", err
 	}
 	return gid, nil
+}
+
+// Delete removes an agent and all associated data
+func (gid GoogleID) Delete() error {
+	_, err := db.Exec("DELETE FROM user WHERE gid = ?", gid)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+
+	// the foreign key constraints should take care of these, but just in case...
+	_, _ = db.Exec("DELETE FROM otdata WHERE gid = ?", gid)
+	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
+	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
+	_, _ = db.Exec("DELETE FROM userteams WHERE gid = ?", gid)
+
+	// get all the teams the agent owns
+	// remove each team and userteam data
+
+	return nil
 }

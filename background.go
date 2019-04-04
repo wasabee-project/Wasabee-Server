@@ -8,6 +8,7 @@ import (
 func BackgroundTasks() {
 	locationClean()
 	waypointClean()
+	simpleDocClean()
 
 	time.Sleep(3600 * time.Second)
 	Log.Debug("Running Background Tasks")
@@ -51,5 +52,6 @@ func waypointClean() {
 	if err != nil {
 		Log.Error(err)
 	}
+
 	return
 }
