@@ -185,11 +185,12 @@ func (teamID TeamID) Rename(name string) error {
 // Delete removes the team identified by teamID
 // does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Delete() error {
-	_, err := db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
+	// XXX once we push to rocks, don't do it this way; remove each user manually, so they get cleared from rocks community
+	_, err := db.Exec("DELETE FROM userteams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
-	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ?", teamID)
+	_, err = db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -235,8 +236,7 @@ func (teamID TeamID) AddUser(in interface{}) error {
 		Log.Notice(err)
 		return err
 	}
-	// XXX this needs to be a template and translated
-	_, err = gid.SendMessage("You have been invited on to a team called {{.}}; you may enable it now if you want. {{RootPath}}/me")
+	_, err = gid.SendMessageTemplate("team-add", "en", teamID) // XXX not hardcode  "en" and use name, not ID
 	if err != nil {
 		Log.Notice(err)
 		return (err)
@@ -264,6 +264,7 @@ func (teamID TeamID) RemoveUser(in interface{}) error {
 		Log.Notice(err)
 		return (err)
 	}
+	// XXX push to rocks community
 	return nil
 }
 

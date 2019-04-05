@@ -66,6 +66,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")                   // request a new lockey
 	r.HandleFunc("/api/v1/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
 	r.HandleFunc("/api/v1/me", meShowRoute).Methods("GET")                                                    // -- do not use, just here for safety
+	r.HandleFunc("/api/v1/me/delete", meDeleteRoute).Methods("GET")                                           // purge all info for a user
 	r.HandleFunc("/api/v1/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /api/v1/me/wonky-team-1234?state={Off|On|Primary}
 	r.HandleFunc("/api/v1/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
 	r.HandleFunc("/api/v1/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
@@ -94,6 +95,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/templates/refresh", templateUpdateRoute).Methods("GET") // trigger the server refresh of the template files
 }
 
+// probably useless now, but need to test before committing a removal
 func optionsRoute(res http.ResponseWriter, req *http.Request) {
 	// I think this is now taken care of in the middleware
 	res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
@@ -101,6 +103,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 	return
 }
 
+// display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	err := phDevBinHTTPSTemplateExecute(res, req, "index", nil)
 	if err != nil {
@@ -110,6 +113,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 	return
 }
 
+// this can go away
 func statusRoute(res http.ResponseWriter, req *http.Request) {
 	// maybe show some interesting numbers, active agents, etc...
 	err := phDevBinHTTPSTemplateExecute(res, req, "status", nil)
@@ -120,8 +124,8 @@ func statusRoute(res http.ResponseWriter, req *http.Request) {
 	return
 }
 
+// this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
 func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
-	// maybe show some interesting numbers, active agents, etc...
 	err := phDevBinHTTPSTemplateConfig()
 	if err != nil {
 		PhDevBin.Log.Notice(err)
@@ -132,11 +136,13 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	return
 }
 
+// called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "404: No light here.", http.StatusNotFound)
 	return
 }
 
+// final step of the oauth cycle
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type googleData struct {
 		Gid   PhDevBin.GoogleID `json:"id"`
@@ -187,14 +193,13 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	authorized, err := m.Gid.InitUser() // V & .rocks authorization takes place here now
+	if authorized == false {
+		http.Error(res, "Smurf go away!", http.StatusUnauthorized)
+		return
+	}
 	if err != nil {
 		PhDevBin.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	// XXX can err be nil and authorized == false?
-	if authorized == false {
-		http.Error(res, "Smurf", http.StatusUnauthorized)
 		return
 	}
 
@@ -209,6 +214,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, location, http.StatusFound)
 }
 
+// the secret value exchanged / verified each request
+// not really a nonce, but it started life as one
 func calculateNonce(gid PhDevBin.GoogleID) (string, string) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
@@ -219,6 +226,8 @@ func calculateNonce(gid PhDevBin.GoogleID) (string, string) {
 	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:])
 }
 
+// read the result from google at end of oauth session
+// should we save the token in the session cookie for any reason?
 func getUserInfo(state string, code string) ([]byte, error) {
 	if state != config.oauthStateString {
 		return nil, fmt.Errorf("invalid oauth state")
@@ -239,12 +248,15 @@ func getUserInfo(state string, code string) ([]byte, error) {
 	return contents, nil
 }
 
+// read the gid from the session cookie and return it
+// this is the primary way to ensure a user is authenticated
 func getUserID(req *http.Request) (PhDevBin.GoogleID, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
 	}
 
+	// XXX I think this is impossible to trigger now
 	if ses.Values["id"] == nil {
 		err := errors.New("getUserID called for unauthenticated user")
 		PhDevBin.Log.Critical(err)

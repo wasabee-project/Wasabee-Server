@@ -2,8 +2,9 @@ package PhDevBin
 
 import (
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
 	"time"
+	// need a comment here to make lint happy
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB

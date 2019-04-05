@@ -241,6 +241,11 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 
 	row := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, ot.otdata FROM user=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid)
 	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &otJSON)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
+		err = fmt.Errorf("Unknown GoogleID: %s. Try restarting your browser.", gid)
+		return err
+	}
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -462,7 +467,20 @@ func SearchAgentName(agent string) (GoogleID, error) {
 
 // Delete removes an agent and all associated data
 func (gid GoogleID) Delete() error {
-	_, err := db.Exec("DELETE FROM user WHERE gid = ?", gid)
+	// teams require special attention since they might be linked to .rocks communities
+	var teamID TeamID
+	rows, err := db.Query("SELECT teamID FROM teams WHERE owner = ?", gid)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	for rows.Next() {
+		err = rows.Scan(&teamID)
+		teamID.Delete()
+	}
+
+	// brute force delete everyhing else
+	_, err = db.Exec("DELETE FROM user WHERE gid = ?", gid)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -473,9 +491,6 @@ func (gid GoogleID) Delete() error {
 	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM userteams WHERE gid = ?", gid)
-
-	// get all the teams the agent owns
-	// remove each team and userteam data
 
 	return nil
 }
