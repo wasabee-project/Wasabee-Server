@@ -1,9 +1,9 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -11,12 +11,12 @@ import (
 func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var data PhDevBin.TeamData
+	var data WASABI.TeamData
 	err = gid.WaypointsNear(50, 10, &data)
 
 	vars := mux.Vars(req)
@@ -29,9 +29,9 @@ func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// phDevBinHTTPSTemplateExecute outputs to res
-	if err := phDevBinHTTPSTemplateExecute(res, req, "Waypoints", data); err != nil {
-		PhDevBin.Log.Notice(err)
+	// wasabiHTTPSTemplateExecute outputs to res
+	if err := wasabiHTTPSTemplateExecute(res, req, "Waypoints", data); err != nil {
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

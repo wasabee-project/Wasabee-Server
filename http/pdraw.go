@@ -1,4 +1,4 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"encoding/json"
@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 )
 
 func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 
-	var gid PhDevBin.GoogleID
-	gid = PhDevBin.GoogleID("118281765050946915735")
+	var gid WASABI.GoogleID
+	gid = WASABI.GoogleID("118281765050946915735")
 
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/json" {
@@ -25,22 +25,22 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
-		PhDevBin.Log.Notice("empty JSON")
+		WASABI.Log.Notice("empty JSON")
 		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	// PhDevBin.Log.Debug(string(jBlob))
-	err = PhDevBin.PDrawInsert(jRaw, gid)
+	// WASABI.Log.Debug(string(jBlob))
+	err = WASABI.PDrawInsert(jRaw, gid)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -53,21 +53,21 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
-	var gid PhDevBin.GoogleID
-	gid = PhDevBin.GoogleID("118281765050946915735")
+	var gid WASABI.GoogleID
+	gid = WASABI.GoogleID("118281765050946915735")
 
-	var o PhDevBin.Operation
-	o.ID = PhDevBin.OperationID(id)
+	var o WASABI.Operation
+	o.ID = WASABI.OperationID(id)
 	err := o.Populate(gid)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	s, err := json.MarshalIndent(o, "", "\t")
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

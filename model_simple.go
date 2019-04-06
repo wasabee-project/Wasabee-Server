@@ -1,4 +1,4 @@
-package PhDevBin
+package WASABI
 
 import (
 	"database/sql"
@@ -15,7 +15,7 @@ import (
 // MaxFilesize is the maximum file size for simple uploads (1MB)
 const MaxFilesize = 1024 * 1024 // 1MB
 
-// SimpleDocument specifies the content and metadata of a piece of code that is hosted on PhDevBin.
+// SimpleDocument specifies the content and metadata of a piece of code that is hosted on WASABI.
 type SimpleDocument struct {
 	ID         string
 	Content    string

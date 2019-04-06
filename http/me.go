@@ -1,4 +1,4 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"encoding/json"
@@ -6,23 +6,23 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var ud PhDevBin.UserData
+	var ud WASABI.UserData
 	err = gid.GetUserData(&ud)
 	if err != nil {
 		res.Header().Add("Cache-Control", "no-cache")
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -34,9 +34,9 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = phDevBinHTTPSTemplateExecute(res, req, "me", ud)
+	err = wasabiHTTPSTemplateExecute(res, req, "me", ud)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -44,18 +44,18 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 	state := vars["state"]
 
 	err = gid.SetTeamState(team, state)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -66,18 +66,18 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 
-	// PhDevBin.Log.Debug("remove me from team: " + gid.String() + " " + team.String())
+	// WASABI.Log.Debug("remove me from team: " + gid.String() + " " + team.String())
 	err = team.RemoveUser(gid)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -88,7 +88,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -99,7 +99,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	// do the work
 	err = gid.SetIngressName(name)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -110,7 +110,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -121,7 +121,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	// do the work
 	err = gid.SetOwnTracksPW(otpw)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -132,14 +132,14 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = gid.ResetLocKey()
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -150,7 +150,7 @@ func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -162,7 +162,7 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	// do the work
 	err = gid.UserLocation(lat, lon, "https")
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -172,16 +172,16 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// do the work
-	PhDevBin.Log.Noticef("User requested delete: %s", gid.String())
+	WASABI.Log.Noticef("User requested delete: %s", gid.String())
 	err = gid.Delete()
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

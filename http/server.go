@@ -1,4 +1,4 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"html/template"
@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/unrolled/logger"
@@ -66,14 +66,14 @@ func initializeConfig(initialConfig Configuration) {
 	config.domain = strings.Split(rootParts[len(rootParts)-1], "/")[0]
 
 	// used for templates
-	PhDevBin.SetWebroot(config.Root)
-	PhDevBin.SetWebAPIPath(config.apipath)
+	WASABI.SetWebroot(config.Root)
+	WASABI.SetWebAPIPath(config.apipath)
 
 	if config.GoogleClientID == "" {
-		PhDevBin.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
+		WASABI.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
 	}
 	if config.GoogleSecret == "" {
-		PhDevBin.Log.Error("GOOGLE_SECRET unset: logins will fail")
+		WASABI.Log.Error("GOOGLE_SECRET unset: logins will fail")
 	}
 
 	config.googleOauthConfig = &oauth2.Config{
@@ -83,44 +83,44 @@ func initializeConfig(initialConfig Configuration) {
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
-	PhDevBin.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
-	PhDevBin.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
-	config.oauthStateString = PhDevBin.GenerateName()
-	PhDevBin.Log.Debugf("oauthStateString: " + config.oauthStateString)
+	WASABI.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
+	WASABI.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
+	config.oauthStateString = WASABI.GenerateName()
+	WASABI.Log.Debugf("oauthStateString: " + config.oauthStateString)
 
 	if config.CookieSessionKey == "" {
-		PhDevBin.Log.Error("SESSION_KEY unset: logins will fail")
+		WASABI.Log.Error("SESSION_KEY unset: logins will fail")
 	} else {
 		key := config.CookieSessionKey
-		PhDevBin.Log.Debugf("Session Key: " + key)
+		WASABI.Log.Debugf("Session Key: " + key)
 		config.store = sessions.NewCookieStore([]byte(key))
-		config.sessionName = "PhDevBin"
+		config.sessionName = "WASABI"
 	}
 
 	// certificate directory cleanup
 	if config.CertDir == "" {
-		PhDevBin.Log.Error("CERDIR unset: defaulting to 'certs'")
+		WASABI.Log.Error("CERDIR unset: defaulting to 'certs'")
 		config.CertDir = "certs"
 	}
 	certdir, err := filepath.Abs(config.CertDir)
 	config.CertDir = certdir
 	if err != nil {
-		PhDevBin.Log.Critical("Certificate path could not be resolved.")
+		WASABI.Log.Critical("Certificate path could not be resolved.")
 		panic(err)
 	}
-	PhDevBin.Log.Debugf("Certificate Directory: " + config.CertDir)
-	_ = phDevBinHTTPSTemplateConfig()
+	WASABI.Log.Debugf("Certificate Directory: " + config.CertDir)
+	_ = wasabiHTTPSTemplateConfig()
 
 	if config.Logfile == "" {
-		config.Logfile = "phdevbin.log"
+		config.Logfile = "wasabi-https.log"
 	}
-	PhDevBin.Log.Infof("https logfile: %s", config.Logfile)
+	WASABI.Log.Infof("https logfile: %s", config.Logfile)
 	logfile, err := os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		PhDevBin.Log.Fatal(err)
+		WASABI.Log.Fatal(err)
 	}
 	unrolled = logger.New(logger.Options{
-		Prefix: "PhDevHTTPS",
+		Prefix: "WASABI",
 		Out:    logfile,
 		IgnoredRequestURIs: []string{"/favicon.ico",
 			"/simple",
@@ -131,31 +131,31 @@ func initializeConfig(initialConfig Configuration) {
 	})
 }
 
-func phDevBinHTTPSTemplateConfig() error {
+func wasabiHTTPSTemplateConfig() error {
 	// Transform frontendPath to an absolute path
 	frontendPath, err := filepath.Abs(config.FrontendPath)
 	if err != nil {
-		PhDevBin.Log.Critical("Frontend path could not be resolved.")
+		WASABI.Log.Critical("Frontend path could not be resolved.")
 		panic(err)
 	}
 	config.FrontendPath = frontendPath
 	config.templateSet = make(map[string]*template.Template)
 
-	PhDevBin.Log.Debugf("Loading Template function map")
+	WASABI.Log.Debugf("Loading Template function map")
 	funcMap := template.FuncMap{
-		"TGGetBotName": PhDevBin.TGGetBotName,
-		"TGGetBotID":   PhDevBin.TGGetBotID,
-		"TGRunning":    PhDevBin.TGRunning,
-		"Webroot":      PhDevBin.GetWebroot,
-		"WebAPIPath":   PhDevBin.GetWebAPIPath,
-		"VEnlOne":      PhDevBin.GetvEnlOne,
-		"EnlRocks":     PhDevBin.GetEnlRocks,
+		"TGGetBotName": WASABI.TGGetBotName,
+		"TGGetBotID":   WASABI.TGGetBotID,
+		"TGRunning":    WASABI.TGRunning,
+		"Webroot":      WASABI.GetWebroot,
+		"WebAPIPath":   WASABI.GetWebAPIPath,
+		"VEnlOne":      WASABI.GetvEnlOne,
+		"EnlRocks":     WASABI.GetEnlRocks,
 	}
 
-	PhDevBin.Log.Info("Including frontend templates from: ", config.FrontendPath)
+	WASABI.Log.Info("Including frontend templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
 		return err
 	}
 
@@ -167,14 +167,14 @@ func phDevBinHTTPSTemplateConfig() error {
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.html")
 			// overwrite with language specific
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.html")
-			PhDevBin.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
+			WASABI.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}
 	}
 	return nil
 }
 
-// phDevBinHTTPSTemplateExecute outputs directly to the ResponseWriter
-func phDevBinHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
+// wasabiHTTPSTemplateExecute outputs directly to the ResponseWriter
+func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
 	// XXX get the lang from the request
 	// XXX read and parse the request language header
 	lang := "en"
@@ -185,7 +185,7 @@ func phDevBinHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, na
 	}
 
 	if err := config.templateSet[lang].ExecuteTemplate(res, name, data); err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		return err
 	}
 	return nil
@@ -213,17 +213,17 @@ func StartHTTP(initialConfig Configuration) {
 	s.Use(authMW)
 
 	// Serve
-	PhDevBin.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
-	err := http.ListenAndServeTLS(config.ListenHTTPS, config.CertDir+"/PhDevBin.fullchain.pem", config.CertDir+"/PhDevBin.key", r)
+	WASABI.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
+	err := http.ListenAndServeTLS(config.ListenHTTPS, config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key", r)
 	if err != nil {
-		PhDevBin.Log.Errorf("HTTPS server error: %s", err)
+		WASABI.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
 	}
 }
 
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Add("Server", "PhDevBin")
+		res.Header().Add("Server", "WASABI")
 		res.Header().Add("X-Content-Type", "nosniff") // We're not a CDN.
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
@@ -237,7 +237,7 @@ func headersMW(next http.Handler) http.Handler {
 func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		dump, _ := httputil.DumpRequest(req, false)
-		PhDevBin.Log.Debug(string(dump))
+		WASABI.Log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
 }
@@ -247,7 +247,7 @@ func authMW(next http.Handler) http.Handler {
 		ses, err := config.store.Get(req, config.sessionName)
 
 		if err != nil {
-			PhDevBin.Log.Debug(err)
+			WASABI.Log.Debug(err)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
@@ -270,11 +270,11 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		gid := PhDevBin.GoogleID(id.(string))
+		gid := WASABI.GoogleID(id.(string))
 
 		in, ok := ses.Values["nonce"]
 		if ok != true || in == nil {
-			PhDevBin.Log.Error("gid set, but nonce not")
+			WASABI.Log.Error("gid set, but nonce not")
 			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return
 		}
@@ -283,11 +283,11 @@ func authMW(next http.Handler) http.Handler {
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				PhDevBin.Log.Debug("Session timed out for", gid.String())
+				WASABI.Log.Debug("Session timed out for", gid.String())
 				ses.Values["nonce"] = "unset"
 				ses.Save(req, res)
 			} else {
-				// PhDevBin.Log.Debug("Updating to new nonce")
+				// WASABI.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
 				ses.Save(req, res)
 			}
@@ -306,7 +306,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
-		PhDevBin.Log.Debug(err)
+		WASABI.Log.Debug(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

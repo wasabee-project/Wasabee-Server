@@ -1,4 +1,4 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 )
 
@@ -22,22 +22,22 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
-		PhDevBin.Log.Notice("empty JSON")
+		WASABI.Log.Notice("empty JSON")
 		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	PhDevBin.Log.Debug(string(jBlob))
-	err = PhDevBin.RocksCommunitySync(jRaw)
+	WASABI.Log.Debug(string(jBlob))
+	err = WASABI.RocksCommunitySync(jRaw)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -48,13 +48,13 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
@@ -64,7 +64,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = team.RocksCommunityMemberPull()
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -74,13 +74,13 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 	rc := vars["rockscomm"]
 	rk := vars["rockskey"]
 
@@ -91,7 +91,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.SetRocks(rk, rc)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

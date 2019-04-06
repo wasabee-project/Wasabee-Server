@@ -1,4 +1,4 @@
-package PhDevBin
+package WASABI
 
 import (
 	"bytes"
@@ -80,8 +80,8 @@ func (teamID TeamID) SendAnnounce(message string) error {
 	return nil
 }
 
-// PhDevMessagingRegister is a freaking dumb name for this, maybe just RegisterMessageBus
-func PhDevMessagingRegister(name string, f func(GoogleID, string) (bool, error)) error {
+// RegisterMessageBus registers a function used to send messages by various protocols
+func RegisterMessageBus(name string, f func(GoogleID, string) (bool, error)) error {
 	mc.senders[name] = f
 	return nil
 }

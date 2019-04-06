@@ -1,4 +1,4 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"encoding/json"
@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 )
 
-// or use the PhDevBin.Location struct
+// or use the WASABI.Location struct
 // this is minimal for what we need here
 type loc struct {
 	Lat  float64 `json:"lat"`
@@ -35,12 +35,12 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
-		PhDevBin.Log.Notice("empty JSON: probably delete waypoint / person request")
+		WASABI.Log.Notice("empty JSON: probably delete waypoint / person request")
 		waypoints, _ := gid.OwnTracksWaypoints()
 		fmt.Fprintf(res, string(waypoints))
 		return
@@ -48,10 +48,10 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	jRaw := json.RawMessage(jBlob)
 
-	// PhDevBin.Log.Debug(string(jBlob))
+	// WASABI.Log.Debug(string(jBlob))
 	var t loc
 	if err = json.Unmarshal(jBlob, &t); err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -61,21 +61,21 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		gid.OwnTracksUpdate(jRaw, t.Lat, t.Lon)
 		s, err := gid.OwnTracksTeams()
 		if err != nil {
-			PhDevBin.Log.Notice(err)
+			WASABI.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
 		fmt.Fprintf(res, string(s))
 	case "transition":
 		s, err := gid.OwnTracksTransition(jRaw)
 		if err != nil {
-			PhDevBin.Log.Notice(err)
+			WASABI.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
 		fmt.Fprintf(res, string(s))
 	case "waypoints":
 		s, err := gid.OwnTracksSetWaypointList(jRaw)
 		if err != nil {
-			PhDevBin.Log.Notice(err)
+			WASABI.Log.Notice(err)
 			// XXX use the cmd to send a URL to set primary team?
 			// e := "{ \"err\": \"Is your primary team set?\" }" // XXX is there a JSON standard for this kind of message?
 			// http.Error(res, e, http.StatusInternalServerError)
@@ -86,31 +86,31 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	case "waypoint":
 		s, _ := gid.OwnTracksSetWaypoint(jRaw)
 		if err != nil {
-			PhDevBin.Log.Notice(err)
+			WASABI.Log.Notice(err)
 		}
 		fmt.Fprintf(res, string(s))
 	default:
-		PhDevBin.Log.Notice("unhandled type: " + t.Type)
-		PhDevBin.Log.Debug(string(jRaw))
+		WASABI.Log.Notice("unhandled type: " + t.Type)
+		WASABI.Log.Debug(string(jRaw))
 		fmt.Fprintf(res, "{ }")
 	}
 }
 
-func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (PhDevBin.GoogleID, bool) {
+func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (WASABI.GoogleID, bool) {
 	l, otpw, ok := req.BasicAuth()
-	lockey := PhDevBin.LocKey(l)
+	lockey := WASABI.LocKey(l)
 	if ok == false {
-		PhDevBin.Log.Notice("Unable to decode basic authentication")
+		WASABI.Log.Notice("Unable to decode basic authentication")
 		return "", false
 	}
 
 	gid, err := lockey.VerifyOwnTracksPW(otpw)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		return "", false
 	}
 	if gid == "" {
-		PhDevBin.Log.Noticef("OwnTracks authentication failed for: %s", lockey)
+		WASABI.Log.Noticef("OwnTracks authentication failed for: %s", lockey)
 		return "", false
 	}
 

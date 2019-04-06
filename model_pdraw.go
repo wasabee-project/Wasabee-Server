@@ -1,4 +1,4 @@
-package PhDevBin
+package WASABI
 
 import (
 	"database/sql"
@@ -410,7 +410,8 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(p.loc))) * cos(radians(X(p.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(p.loc))))) AS distance "+
 		"FROM marker=m, portal=p "+
 		"WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM userteams=t WHERE gid = ? AND state != 'Off')) "+
-		"AND m.portalID = p.ID AND m.opID = p.opID", lat, lon, lat, gid)
+		"AND m.portalID = p.ID AND m.opID = p.opID "+
+		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
 		return err

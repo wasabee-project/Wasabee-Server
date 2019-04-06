@@ -1,4 +1,4 @@
-package PhDevBin
+package WASABI
 
 import (
 	"crypto/rand"

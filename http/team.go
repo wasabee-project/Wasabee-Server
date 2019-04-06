@@ -1,26 +1,26 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strings"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
-	var teamList PhDevBin.TeamData
+	var teamList WASABI.TeamData
 
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 
 	safe, err := gid.UserInTeam(team, false)
 	if safe == false {
@@ -40,7 +40,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -49,7 +49,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	name := vars["name"]
 	_, err = gid.NewTeam(name)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -59,13 +59,13 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
@@ -73,7 +73,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.Delete()
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -83,29 +83,29 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var teamList PhDevBin.TeamData
+	var teamList WASABI.TeamData
 	err = team.FetchTeam(&teamList, true)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = phDevBinHTTPSTemplateExecute(res, req, "edit", teamList)
+	err = wasabiHTTPSTemplateExecute(res, req, "edit", teamList)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -113,31 +113,31 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
+	team := WASABI.TeamID(vars["team"])
 	tmp := vars["key"] // Could be a lockkey, googleID, enlID or agent name
 	var key interface{}
 	switch len(tmp) { // length gives us a guess, presence of a - makes us certain
 	case 40:
 		if strings.IndexByte(tmp, '-') != -1 {
-			key = PhDevBin.LocKey(tmp) // Looks like a GoogleID
+			key = WASABI.LocKey(tmp) // Looks like a GoogleID
 		} else {
-			key = PhDevBin.EnlID(tmp)
+			key = WASABI.EnlID(tmp)
 		}
 	case 21:
 		if strings.IndexByte(tmp, '-') != -1 {
-			key = PhDevBin.LocKey(tmp)
+			key = WASABI.LocKey(tmp)
 		} else {
-			key = PhDevBin.GoogleID(tmp) // Looks like a GoogleID
+			key = WASABI.GoogleID(tmp) // Looks like a GoogleID
 		}
 	default:
 		if strings.IndexByte(tmp, '-') != -1 {
-			key = PhDevBin.LocKey(tmp)
+			key = WASABI.LocKey(tmp)
 		} else {
 			key = string(tmp) // trigger a search by AgentID
 		}
@@ -150,7 +150,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.AddUser(key)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -160,14 +160,14 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getUserID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := PhDevBin.TeamID(vars["team"])
-	key := PhDevBin.LocKey(vars["key"])
+	team := WASABI.TeamID(vars["team"])
+	key := WASABI.LocKey(vars["key"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
@@ -175,7 +175,7 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.RemoveUser(key)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

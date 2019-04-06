@@ -1,4 +1,4 @@
-package PhDevHTTP
+package WASABIhttps
 
 import (
 	"encoding/hex"
@@ -12,7 +12,7 @@ import (
 
 	"crypto/sha256"
 	"errors"
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"time"
@@ -33,7 +33,7 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/pd", pDrawUploadRoute).Methods("POST")
 	r.HandleFunc("/pd/{document}", pDrawGetRoute).Methods("GET")
 
-	// For enl.rocks community -> PhDevBin team sync
+	// For enl.rocks community -> WASABI team sync
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
 
 	// OwnTracks URL
@@ -105,9 +105,9 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	err := phDevBinHTTPSTemplateExecute(res, req, "index", nil)
+	err := wasabiHTTPSTemplateExecute(res, req, "index", nil)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return
@@ -116,9 +116,9 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 // this can go away
 func statusRoute(res http.ResponseWriter, req *http.Request) {
 	// maybe show some interesting numbers, active agents, etc...
-	err := phDevBinHTTPSTemplateExecute(res, req, "status", nil)
+	err := wasabiHTTPSTemplateExecute(res, req, "status", nil)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return
@@ -126,9 +126,9 @@ func statusRoute(res http.ResponseWriter, req *http.Request) {
 
 // this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
 func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
-	err := phDevBinHTTPSTemplateConfig()
+	err := wasabiHTTPSTemplateConfig()
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -145,21 +145,21 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 // final step of the oauth cycle
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type googleData struct {
-		Gid   PhDevBin.GoogleID `json:"id"`
+		Gid   WASABI.GoogleID `json:"id"`
 		Name  string            `json:"name"`
 		Email string            `json:"email"`
 	}
 
 	content, err := getUserInfo(req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		return
 	}
 
 	var m googleData
 	err = json.Unmarshal(content, &m)
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -168,7 +168,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		PhDevBin.Log.Notice("Cookie error: ", err)
+		WASABI.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:   "/",
@@ -182,9 +182,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	location := "/me?a=0"
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
-		PhDevBin.Log.Debug("deep-link redirecting to", rr)
+		WASABI.Log.Debug("deep-link redirecting to", rr)
 		if rr[:3] == "/me" || rr[:6] == "/login" {
-			PhDevBin.Log.Debug("deep-link redirecting to /me?a=1 after cleanup")
+			WASABI.Log.Debug("deep-link redirecting to /me?a=1 after cleanup")
 			location = "/me?a=1"
 		} else {
 			location = rr
@@ -198,7 +198,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -216,7 +216,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 // the secret value exchanged / verified each request
 // not really a nonce, but it started life as one
-func calculateNonce(gid PhDevBin.GoogleID) (string, string) {
+func calculateNonce(gid WASABI.GoogleID) (string, string) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
 	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
@@ -250,7 +250,7 @@ func getUserInfo(state string, code string) ([]byte, error) {
 
 // read the gid from the session cookie and return it
 // this is the primary way to ensure a user is authenticated
-func getUserID(req *http.Request) (PhDevBin.GoogleID, error) {
+func getUserID(req *http.Request) (WASABI.GoogleID, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
@@ -259,11 +259,11 @@ func getUserID(req *http.Request) (PhDevBin.GoogleID, error) {
 	// XXX I think this is impossible to trigger now
 	if ses.Values["id"] == nil {
 		err := errors.New("getUserID called for unauthenticated user")
-		PhDevBin.Log.Critical(err)
+		WASABI.Log.Critical(err)
 		return "", err
 	}
 
-	var userID PhDevBin.GoogleID = PhDevBin.GoogleID(ses.Values["id"].(string))
+	var userID WASABI.GoogleID = WASABI.GoogleID(ses.Values["id"].(string))
 	return userID, nil
 }
 
@@ -273,7 +273,7 @@ func staticRoute(res http.ResponseWriter, req *http.Request) {
 
 	// XXX I've never been able to trigger this, can probably remove
 	if ok != true {
-		PhDevBin.Log.Debug("Marty, Doc is not OK")
+		WASABI.Log.Debug("Marty, Doc is not OK")
 		notFoundRoute(res, req)
 		return
 	}
@@ -281,15 +281,15 @@ func staticRoute(res http.ResponseWriter, req *http.Request) {
 	var cleandoc string
 	dir, ok := vars["dir"]
 	if ok == true {
-		PhDevBin.Log.Debugf("static file requested: %s/%s", dir, doc)
+		WASABI.Log.Debugf("static file requested: %s/%s", dir, doc)
 		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
 		cleandoc = path.Join(config.FrontendPath, "static", dir, doc)
 	} else {
-		PhDevBin.Log.Debugf("static file requested: %s", doc)
+		WASABI.Log.Debugf("static file requested: %s", doc)
 		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
 		cleandoc = path.Join(config.FrontendPath, "static", doc)
 	}
-	PhDevBin.Log.Debugf("serving: %s", cleandoc)
+	WASABI.Log.Debugf("serving: %s", cleandoc)
 	http.ServeFile(res, req, cleandoc)
 	return
 }

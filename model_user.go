@@ -1,4 +1,4 @@
-package PhDevBin
+package WASABI
 
 import (
 	"database/sql"
@@ -138,9 +138,8 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-	}
-	if err != nil && err.Error() != "sql: no rows in result set" {
-		Log.Error(err)
+		_ = gid.ownTracksExternalUpdate("0", "-180.1", "reaper")
+	} else if err != nil {
 		return false, err
 	}
 
@@ -475,7 +474,7 @@ func (gid GoogleID) Delete() error {
 		return err
 	}
 	for rows.Next() {
-		err = rows.Scan(&teamID)
+		_ = rows.Scan(&teamID)
 		teamID.Delete()
 	}
 

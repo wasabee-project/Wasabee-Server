@@ -5,7 +5,7 @@ import (
 	// "encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"io/ioutil"
 	"path/filepath"
@@ -27,11 +27,11 @@ type TGConfiguration struct {
 var bot *tgbotapi.BotAPI
 var config TGConfiguration
 
-// PhDevBot is called from main() to start the bot.
-func PhDevBot(init TGConfiguration) error {
+// WASABIBot is called from main() to start the bot.
+func WASABIBot(init TGConfiguration) error {
 	if init.APIKey == "" {
 		err := errors.New("API Key not set")
-		PhDevBin.Log.Critical(err)
+		WASABI.Log.Critical(err)
 		return err
 	}
 	config.APIKey = init.APIKey
@@ -40,20 +40,20 @@ func PhDevBot(init TGConfiguration) error {
 	if config.FrontendPath == "" {
 		config.FrontendPath = "frontend"
 	}
-	_ = phdevBotTemplates(config.templateSet)
-	_ = phdevBotKeyboards(&config)
-	_ = PhDevBin.PhDevMessagingRegister("Telegram", SendMessage)
+	_ = WASABIbotTemplates(config.templateSet)
+	_ = WASABIbotKeyboards(&config)
+	_ = WASABI.RegisterMessageBus("Telegram", SendMessage)
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(config.APIKey)
 	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
 		return err
 	}
 
 	bot.Debug = false
-	PhDevBin.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
-	PhDevBin.TGSetBot(bot.Self.UserName, bot.Self.ID)
+	WASABI.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
+	WASABI.TGSetBot(bot.Self.UserName, bot.Self.ID)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -64,45 +64,45 @@ func PhDevBot(init TGConfiguration) error {
 			continue
 		}
 
-		// PhDevBin.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+		// WASABI.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		// s, _ := json.MarshalIndent(update.Message, "", "  ")
-		// PhDevBin.Log.Debug(string(s))
+		// WASABI.Log.Debug(string(s))
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-		// PhDevBin.Log.Debug("Language: ", update.Message.From.LanguageCode)
-		defaultReply, err := phdevBotTemplateExecute("default", update.Message.From.LanguageCode, nil)
+		// WASABI.Log.Debug("Language: ", update.Message.From.LanguageCode)
+		defaultReply, err := WASABIbotTemplateExecute("default", update.Message.From.LanguageCode, nil)
 		if err != nil {
-			PhDevBin.Log.Error(err)
+			WASABI.Log.Error(err)
 			continue
 		}
 		msg.Text = defaultReply
 		msg.ParseMode = "MarkDown"
 		// s, _ := json.MarshalIndent(msg, "", "  ")
-		// PhDevBin.Log.Debug(string(s))
+		// WASABI.Log.Debug(string(s))
 
-		tgid := PhDevBin.TelegramID(update.Message.From.ID)
+		tgid := WASABI.TelegramID(update.Message.From.ID)
 		gid, verified, err := tgid.GidV()
 
 		if err != nil {
-			PhDevBin.Log.Error(err)
+			WASABI.Log.Error(err)
 			continue
 		}
 
 		if gid == "" {
-			PhDevBin.Log.Debugf("Unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
-			err = phdevBotNewUserInit(&msg, &update)
+			WASABI.Log.Debugf("Unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
+			err = WASABIbotNewUserInit(&msg, &update)
 			if err != nil {
-				PhDevBin.Log.Error(err)
+				WASABI.Log.Error(err)
 			}
 		} else if verified == false {
-			PhDevBin.Log.Debugf("Unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
-			err = phdevBotNewUserVerify(&msg, &update)
+			WASABI.Log.Debugf("Unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
+			err = WASABIbotNewUserVerify(&msg, &update)
 			if err != nil {
-				PhDevBin.Log.Error(err)
+				WASABI.Log.Error(err)
 			}
 		} else { // verified user, process message
-			if err = phdevBotMessage(&msg, &update, gid); err != nil {
-				PhDevBin.Log.Error(err)
+			if err = WASABIbotMessage(&msg, &update, gid); err != nil {
+				WASABI.Log.Error(err)
 			}
 		}
 
@@ -113,30 +113,30 @@ func PhDevBot(init TGConfiguration) error {
 	return nil
 }
 
-func phdevBotNewUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	var lockey PhDevBin.LocKey
+func WASABIbotNewUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
+	var lockey WASABI.LocKey
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) == 2 {
-			lockey = PhDevBin.LocKey(strings.TrimSpace(tokens[1]))
+			lockey = WASABI.LocKey(strings.TrimSpace(tokens[1]))
 		}
 	} else {
-		lockey = PhDevBin.LocKey(strings.TrimSpace(inMsg.Message.Text))
+		lockey = WASABI.LocKey(strings.TrimSpace(inMsg.Message.Text))
 	}
 
-	err := PhDevBin.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, lockey)
+	err := WASABI.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, lockey)
 	if err != nil {
-		PhDevBin.Log.Error(err)
-		tmp, _ := phdevBotTemplateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
+		WASABI.Log.Error(err)
+		tmp, _ := WASABIbotTemplateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
-		tmp, _ := phdevBotTemplateExecute("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
+		tmp, _ := WASABIbotTemplateExecute("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	}
 	return err
 }
 
-func phdevBotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
+func WASABIbotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 	var authtoken string
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
@@ -147,50 +147,50 @@ func phdevBotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) 
 		authtoken = inMsg.Message.Text
 	}
 	strings.TrimSpace(authtoken)
-	err := PhDevBin.TelegramVerifyUser(inMsg.Message.From.ID, authtoken)
+	err := WASABI.TelegramVerifyUser(inMsg.Message.From.ID, authtoken)
 	if err != nil {
-		PhDevBin.Log.Error(err)
-		tmp, _ := phdevBotTemplateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
+		WASABI.Log.Error(err)
+		tmp, _ := WASABIbotTemplateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
-		tmp, _ := phdevBotTemplateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
+		tmp, _ := WASABIbotTemplateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	}
 	return err
 }
 
-func phdevBotTemplates(t map[string]*template.Template) error {
+func WASABIbotTemplates(t map[string]*template.Template) error {
 	if config.FrontendPath == "" {
 		err := errors.New("FrontendPath not configured")
-		PhDevBin.Log.Critical(err)
+		WASABI.Log.Critical(err)
 		return err
 	}
 
 	frontendPath, err := filepath.Abs(config.FrontendPath)
 	if err != nil {
-		PhDevBin.Log.Critical("Frontend path couldn't be resolved.")
+		WASABI.Log.Critical("Frontend path couldn't be resolved.")
 		panic(err)
 	}
 	config.FrontendPath = frontendPath
 
-	PhDevBin.Log.Debugf("Building Template function map")
+	WASABI.Log.Debugf("Building Template function map")
 	funcMap := template.FuncMap{
-		"TGGetBotName": PhDevBin.TGGetBotName,
-		"TGGetBotID":   PhDevBin.TGGetBotID,
-		"TGRunning":    PhDevBin.TGRunning,
-		"Webroot":      PhDevBin.GetWebroot,
-		"WebAPIPath":   PhDevBin.GetWebAPIPath,
-		"VEnlOne":      PhDevBin.GetvEnlOne,
+		"TGGetBotName": WASABI.TGGetBotName,
+		"TGGetBotID":   WASABI.TGGetBotID,
+		"TGRunning":    WASABI.TGRunning,
+		"Webroot":      WASABI.GetWebroot,
+		"WebAPIPath":   WASABI.GetWebAPIPath,
+		"VEnlOne":      WASABI.GetvEnlOne,
 	}
 	config.templateSet = make(map[string]*template.Template)
 
 	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
 	}
-	PhDevBin.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
+	WASABI.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
 	}
 
 	for _, f := range files {
@@ -201,14 +201,14 @@ func phdevBotTemplates(t map[string]*template.Template) error {
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.tg")
 			// overwrite with language specific
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.tg")
-			PhDevBin.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
+			WASABI.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}
 	}
 
 	return nil
 }
 
-func phdevBotTemplateExecute(name, lang string, data interface{}) (string, error) {
+func WASABIbotTemplateExecute(name, lang string, data interface{}) (string, error) {
 	if lang == "" {
 		lang = "en"
 	}
@@ -219,16 +219,16 @@ func phdevBotTemplateExecute(name, lang string, data interface{}) (string, error
 	}
 
 	// s, _ := json.MarshalIndent(&data, "", "\t")
-	// PhDevBin.Log.Debugf("Calling template %s[%s] with data %s", name, lang, string(s))
+	// WASABI.Log.Debugf("Calling template %s[%s] with data %s", name, lang, string(s))
 	var tpBuffer bytes.Buffer
 	if err := config.templateSet[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		return "", err
 	}
 	return tpBuffer.String(), nil
 }
 
-func phdevBotKeyboards(c *TGConfiguration) error {
+func WASABIbotKeyboards(c *TGConfiguration) error {
 	c.teamKbd = tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("Home"),
@@ -250,8 +250,8 @@ func phdevBotKeyboards(c *TGConfiguration) error {
 	return nil
 }
 
-func phdevBotTeamKeyboard(gid PhDevBin.GoogleID) (tgbotapi.ReplyKeyboardMarkup, error) {
-	var ud PhDevBin.UserData
+func WASABIbotTeamKeyboard(gid WASABI.GoogleID) (tgbotapi.ReplyKeyboardMarkup, error) {
+	var ud WASABI.UserData
 	if err := gid.GetUserData(&ud); err != nil {
 		return config.teamKbd, err
 	}
@@ -292,19 +292,19 @@ func phdevBotTeamKeyboard(gid PhDevBin.GoogleID) (tgbotapi.ReplyKeyboardMarkup, 
 }
 
 // This is where command processing takes place
-func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid PhDevBin.GoogleID) error {
+func WASABIbotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid WASABI.GoogleID) error {
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
 		case "start":
-			tmp, _ := phdevBotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
+			tmp, _ := WASABIbotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		case "help":
-			tmp, _ := phdevBotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
+			tmp, _ := WASABIbotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		default:
-			tmp, _ := phdevBotTemplateExecute("default", inMsg.Message.From.LanguageCode, nil)
+			tmp, _ := WASABIbotTemplateExecute("default", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		}
@@ -328,30 +328,30 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid Ph
 			msg.ReplyMarkup = config.baseKbd
 			msg.Text = "Home"
 		case "Teams":
-			tmp, _ := phdevBotTeamKeyboard(gid)
+			tmp, _ := WASABIbotTeamKeyboard(gid)
 			msg.ReplyMarkup = tmp
 			msg.Text = "Teams"
 		case "On:":
-			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
+			msg.Text, _ = WASABIbotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "On",
 				Team:  name,
 			})
 			gid.SetTeamStateName(name, "On")
-			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
+			msg.ReplyMarkup, _ = WASABIbotTeamKeyboard(gid)
 		case "Off:":
-			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
+			msg.Text, _ = WASABIbotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Off",
 				Team:  name,
 			})
 			gid.SetTeamStateName(name, "Off")
-			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
+			msg.ReplyMarkup, _ = WASABIbotTeamKeyboard(gid)
 		case "Primary:":
-			msg.Text, _ = phdevBotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
+			msg.Text, _ = WASABIbotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
 				State: "Primary",
 				Team:  name,
 			})
 			gid.SetTeamStateName(name, "Primary")
-			msg.ReplyMarkup, _ = phdevBotTeamKeyboard(gid)
+			msg.ReplyMarkup, _ = WASABIbotTeamKeyboard(gid)
 		case "Teammates":
 			msg.Text, _ = teammatesNear(gid, inMsg)
 			msg.ReplyMarkup = config.baseKbd
@@ -381,17 +381,17 @@ func phdevBotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid Ph
 	return nil
 }
 
-// SendMessage is registered with PhDevBin as a message bus to allow other modules to send messages via Telegram
-func SendMessage(gid PhDevBin.GoogleID, message string) (bool, error) {
+// SendMessage is registered with WASABI as a message bus to allow other modules to send messages via Telegram
+func SendMessage(gid WASABI.GoogleID, message string) (bool, error) {
 	tgid, err := gid.TelegramID()
 	if err != nil {
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		return false, err
 	}
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
 		err = fmt.Errorf("Telegram ID not found for %s", gid)
-		PhDevBin.Log.Notice(err)
+		WASABI.Log.Notice(err)
 		return false, err
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
@@ -399,64 +399,64 @@ func SendMessage(gid PhDevBin.GoogleID, message string) (bool, error) {
 	msg.ParseMode = "MarkDown"
 
 	bot.Send(msg)
-	PhDevBin.Log.Notice("Sent message to:", gid)
+	WASABI.Log.Notice("Sent message to:", gid)
 	return true, nil
 }
 
-func teammatesNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td PhDevBin.TeamData
+func teammatesNear(gid WASABI.GoogleID, inMsg *tgbotapi.Update) (string, error) {
+	var td WASABI.TeamData
 	var txt = ""
 	maxdistance := 500
 	maxresults := 10
 
 	err := gid.TeammatesNear(maxdistance, maxresults, &td)
 	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
 		return txt, err
 	}
-	txt, err = phdevBotTemplateExecute("Teammates", inMsg.Message.From.LanguageCode, &td)
+	txt, err = WASABIbotTemplateExecute("Teammates", inMsg.Message.From.LanguageCode, &td)
 	if err != nil {
-		PhDevBin.Log.Error(err)
-		return txt, err
-	}
-
-	return txt, nil
-}
-
-func targetsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td PhDevBin.TeamData
-	var txt = ""
-	maxdistance := 100
-	maxresults := 10
-
-	err := gid.WaypointsNear(maxdistance, maxresults, &td)
-	if err != nil {
-		PhDevBin.Log.Error(err)
-		return txt, err
-	}
-	txt, err = phdevBotTemplateExecute("Targets", inMsg.Message.From.LanguageCode, &td)
-	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
 		return txt, err
 	}
 
 	return txt, nil
 }
 
-func farmsNear(gid PhDevBin.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td PhDevBin.TeamData
+func targetsNear(gid WASABI.GoogleID, inMsg *tgbotapi.Update) (string, error) {
+	var td WASABI.TeamData
 	var txt = ""
 	maxdistance := 100
 	maxresults := 10
 
 	err := gid.WaypointsNear(maxdistance, maxresults, &td)
 	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
 		return txt, err
 	}
-	txt, err = phdevBotTemplateExecute("Farms", inMsg.Message.From.LanguageCode, &td)
+	txt, err = WASABIbotTemplateExecute("Targets", inMsg.Message.From.LanguageCode, &td)
 	if err != nil {
-		PhDevBin.Log.Error(err)
+		WASABI.Log.Error(err)
+		return txt, err
+	}
+
+	return txt, nil
+}
+
+func farmsNear(gid WASABI.GoogleID, inMsg *tgbotapi.Update) (string, error) {
+	var td WASABI.TeamData
+	var txt = ""
+	maxdistance := 100
+	maxresults := 10
+
+	err := gid.WaypointsNear(maxdistance, maxresults, &td)
+	if err != nil {
+		WASABI.Log.Error(err)
+		return txt, err
+	}
+	txt, err = WASABIbotTemplateExecute("Farms", inMsg.Message.From.LanguageCode, &td)
+	if err != nil {
+		WASABI.Log.Error(err)
 		return txt, err
 	}
 
