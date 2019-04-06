@@ -96,9 +96,9 @@
 		<li class="list-group-item">Status: Not Verified.</li>
 		<li class="list-group-item">Instructions:
     {{if (.Telegram.Authtoken) }}
-        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="https://telegram.me/PhDevBot?start={{.Telegram.Authtoken}}">{{.Telegram.Authtoken}}</a> to get verified.
+        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="https://telegram.me/{{ TGGetBotName }}?start={{.Telegram.Authtoken}}">{{.Telegram.Authtoken}}</a> to get verified.
     {{else}}
-        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="https://telegram.me/PhDevBot?start={{.LocationKey}}">{{.LocationKey}}</a> to start the verification process.
+        Tell the bot (<a href="tg://resolve?domain={{ TGGetBotName }}">@{{ TGGetBotName }}</a>) <a href="https://telegram.me/{{ TGGetBotName }}?start={{.LocationKey}}">{{.LocationKey}}</a> to start the verification process.
     {{end}}
 {{end}}
 		</li>
