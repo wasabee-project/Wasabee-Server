@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // TeamData is the wrapper type containing all the team info
@@ -197,8 +198,11 @@ func (teamID TeamID) Delete() error {
 	return err
 }
 
-// AddUser adds a user (identified by LocKey or GoogleID) to a team
-func (teamID TeamID) AddUser(in interface{}) error {
+// toGid takes anything (for small values of anything) and returns a Gid for it.
+// depends on EnlID.Gid(), LocKey.Gid() and SearchAgentName.
+// If you pass in a string, it will see if it looks like a gid, eid, lockey, or agent name and try that.
+// Do we need to extend this to accept TelegramID?
+func toGid(in interface{}) (GoogleID, error) {
 	var gid GoogleID
 	var err error
 	switch v := in.(type) {
@@ -208,7 +212,7 @@ func (teamID TeamID) AddUser(in interface{}) error {
 		if err != nil && err.Error() == "sql: no rows in result set" {
 			err = fmt.Errorf("Unknown lockey: %s", lockey)
 			Log.Notice(err)
-			return err
+			return "", err
 		}
 	case GoogleID:
 		gid = v
@@ -218,17 +222,53 @@ func (teamID TeamID) AddUser(in interface{}) error {
 		if err != nil && err.Error() == "sql: no rows in result set" {
 			err = fmt.Errorf("Unknown EnlID: %s", eid)
 			Log.Notice(err)
-			return err
+			return "", err
 		}
 	default:
-		Log.Debugf("fed unknown type, guessing agent name as string: %s", v)
-		x := v.(string)
-		gid, err = SearchAgentName(x)
-		if err != nil && err.Error() == "sql: no rows in result set" {
-			err = fmt.Errorf("Unknown agent: %s", x)
-			Log.Notice(err)
-			return err
+		Log.Debugf("fed unknown type, guessing string: %s, determining what it looks like", v)
+		tmp := v.(string)
+		switch len(tmp) { // length gives us a guess, presence of a - makes us certain
+		case 40:
+			if strings.IndexByte(tmp, '-') != -1 {
+				lockey := LocKey(tmp)
+				gid, _ = toGid(lockey) // recurse and try again
+			} else {
+				eid := EnlID(tmp)   // Looks like an EnlID
+				gid, _ = toGid(eid) // recurse and try again
+			}
+		case 21:
+			if strings.IndexByte(tmp, '-') != -1 {
+				lockey := LocKey(tmp)
+				gid, _ = toGid(lockey) // recurse and try again
+			} else {
+				gid = GoogleID(tmp) // Looks like it already is a GoogleID
+			}
+		default:
+			if strings.IndexByte(tmp, '-') != -1 {
+				lockey := LocKey(tmp)
+				gid, _ = toGid(lockey)
+			} else {
+				gid, _ = SearchAgentName(tmp)
+				if err != nil && err.Error() == "sql: no rows in result set" {
+					err = fmt.Errorf("Unknown agent: %s", tmp)
+					Log.Notice(err)
+					return "", err
+				} else if err != nil {
+					Log.Notice(err)
+					return "", err
+				}
+			}
 		}
+	}
+	return gid, nil
+}
+
+// AddUser adds a user (identified by LocKey or GoogleID) to a team
+func (teamID TeamID) AddUser(in interface{}) error {
+	gid, err := toGid(in)
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
 
 	_, err = db.Exec("INSERT IGNORE INTO userteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
@@ -246,20 +286,13 @@ func (teamID TeamID) AddUser(in interface{}) error {
 
 // RemoveUser removes a user (identified by location share key) from a team.
 func (teamID TeamID) RemoveUser(in interface{}) error {
-	var gid GoogleID
-	switch v := in.(type) {
-	case LocKey:
-		lockey := v
-		gid, _ = lockey.Gid()
-	case GoogleID:
-		gid = v
-	default:
-		Log.Debug("fed unknown type, guessing string")
-		x := v.(string)
-		gid = GoogleID(x)
+	gid, err := toGid(in)
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
 
-	_, err := db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
+	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 		return (err)

@@ -120,28 +120,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := WASABI.TeamID(vars["team"])
-	tmp := vars["key"] // Could be a lockkey, googleID, enlID or agent name
-	var key interface{}
-	switch len(tmp) { // length gives us a guess, presence of a - makes us certain
-	case 40:
-		if strings.IndexByte(tmp, '-') != -1 {
-			key = WASABI.LocKey(tmp) // Looks like a GoogleID
-		} else {
-			key = WASABI.EnlID(tmp)
-		}
-	case 21:
-		if strings.IndexByte(tmp, '-') != -1 {
-			key = WASABI.LocKey(tmp)
-		} else {
-			key = WASABI.GoogleID(tmp) // Looks like a GoogleID
-		}
-	default:
-		if strings.IndexByte(tmp, '-') != -1 {
-			key = WASABI.LocKey(tmp)
-		} else {
-			key = string(tmp) // trigger a search by AgentID
-		}
-	}
+	key := vars["key"] // Could be a lockkey, googleID, enlID or agent name, team.Adduser sorts it out for us
 
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
