@@ -6,7 +6,6 @@ import (
 	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 	"net/http"
-	"strings"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
