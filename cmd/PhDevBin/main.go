@@ -4,9 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudkucooland/PhDevBin"
-	"github.com/cloudkucooland/PhDevBin/Telegram"
-	"github.com/cloudkucooland/PhDevBin/http"
+	"github.com/cloudkucooland/WASABI"
+	"github.com/cloudkucooland/WASABI/Telegram"
+	"github.com/cloudkucooland/WASABI/http"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
@@ -28,7 +28,7 @@ var flags = []cli.Flag{
 		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":8443",
 		Usage: "HTTPS listen address."},
 	cli.StringFlag{
-		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "PhDevBin.log",
+		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "wasabi-https.log",
 		Usage: "HTTPS log file."},
 	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
@@ -62,8 +62,8 @@ var flags = []cli.Flag{
 func main() {
 	app := cli.NewApp()
 
-	app.Name = "PhDevBin"
-	app.Version = "0.6.4"
+	app.Name = "WASABI"
+	app.Version = "0.6.6"
 	app.Usage = "Phtiv-Draw-Tools Server"
 	app.Flags = flags
 
@@ -82,36 +82,36 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool("debug") {
-		PhDevBin.SetLogLevel(logging.DEBUG)
+		WASABI.SetLogLevel(logging.DEBUG)
 	}
 
 	// Load words
-	err := PhDevBin.LoadWordsFile(c.String("wordlist"))
+	err := WASABI.LoadWordsFile(c.String("wordlist"))
 	if err != nil {
-		PhDevBin.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
+		WASABI.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
 	}
 
 	// Connect to database
-	err = PhDevBin.Connect(c.String("database"))
+	err = WASABI.Connect(c.String("database"))
 	if err != nil {
-		PhDevBin.Log.Errorf("Error connecting to database: %s", err)
+		WASABI.Log.Errorf("Error connecting to database: %s", err)
 		panic(err)
 	}
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		PhDevBin.SetVEnlOne(c.String("venlonekey"))
-		go PhDevBin.StatusServerPoller()
+		WASABI.SetVEnlOne(c.String("venlonekey"))
+		go WASABI.StatusServerPoller()
 	}
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		PhDevBin.SetEnlRocks(c.String("enlrockskey"))
+		WASABI.SetEnlRocks(c.String("enlrockskey"))
 	}
 
 	// Serve HTTPS
 	if c.String("https") != "none" {
-		go PhDevHTTP.StartHTTP(PhDevHTTP.Configuration{
+		go WASABIhttps.StartHTTP(WASABIhttps.Configuration{
 			ListenHTTPS:      c.String("https"),
 			FrontendPath:     c.String("frontend-path"),
 			Root:             c.String("root"),
@@ -125,14 +125,14 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "none" {
-		go Telegram.PhDevBot(Telegram.TGConfiguration{
+		go Telegram.WASABIBot(Telegram.TGConfiguration{
 			APIKey:       c.String("tgkey"),
 			FrontendPath: c.String("frontend-path"),
 		})
 	}
 
 	// Location cleanup, waypoint expiration, etc
-	go PhDevBin.BackgroundTasks()
+	go WASABI.BackgroundTasks()
 
 	// Sleep
 	select {}
