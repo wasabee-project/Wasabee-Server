@@ -1,6 +1,6 @@
-[![GoReportCard](https://goreportcard.com/badge/cloudkucooland/PhDevBin)](https://goreportcard.com/report/cloudkucooland/PhDevBin)
-[![GoDoc](https://godoc.org/github.com/cloudkucooland/PhDevBin?status.svg)](https://godoc.org/github.com/cloudkucooland/PhDevBin)
-# PhDevBin
+[![GoReportCard](https://goreportcard.com/badge/cloudkucooland/WASABI)](https://goreportcard.com/report/cloudkucooland/WASABI)
+[![GoDoc](https://godoc.org/github.com/cloudkucooland/WASABI?status.svg)](https://godoc.org/github.com/cloudkucooland/WASABI)
+# WASABI
 ### The Server-Side component for Phtiv-Draw-Tools and related Ingress tools.
 
 ## But... OPSEC!!!!? Tools!!!
@@ -102,9 +102,9 @@ go get -u github.com/go-telegram-bot-api/telegram-bot-api
 
 4. Use git to checkout the frontend and cmd directories
 ```
-mkdir PhDevBin ; cd PhDevBin
-go get github.com/cloudkucooland/PhDevBin
-git clone https://github.com/cloudkucooland/PhDevBin/frontend
+mkdir WASABI ; cd WASABI
+go get github.com/cloudkucooland/WASABI
+git clone https://github.com/cloudkucooland/WASABI/frontend
 ```
 
 5. Build the eff_large_wordlist.txt file
@@ -119,10 +119,10 @@ https://letsencrypt.org/docs/client-options/
 7. Create the certificate directories
 ```
 mkdir certs
-#install certificates as PhDevBin.fullchain.pem and PhDevBin.key
+#install certificates as WASABI.fullchain.pem and WASABI.key
 ```
 ```
-NB: you can point PhDevBin to your ACME directory, so long as both files are named correctly and in the same directory
+NB: you can point WASABI to your ACME directory, so long as both files are named correctly and in the same directory
 TODO: allow different names and the key to be in $CERT_DIR/keys/ as how most ACME clients create them
 ```
 
