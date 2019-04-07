@@ -146,8 +146,8 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type googleData struct {
 		Gid   WASABI.GoogleID `json:"id"`
-		Name  string            `json:"name"`
-		Email string            `json:"email"`
+		Name  string          `json:"name"`
+		Email string          `json:"email"`
 	}
 
 	content, err := getUserInfo(req.FormValue("state"), req.FormValue("code"))
