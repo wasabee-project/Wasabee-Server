@@ -124,7 +124,8 @@ func wasabibotNewUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) e
 		lockey = WASABI.LocKey(strings.TrimSpace(inMsg.Message.Text))
 	}
 
-	err := WASABI.TelegramInitUser(inMsg.Message.From.ID, inMsg.Message.From.UserName, lockey)
+	tid := WASABI.TelegramID(inMsg.Message.From.ID)
+	err := tid.TelegramInitUser(inMsg.Message.From.UserName, lockey)
 	if err != nil {
 		WASABI.Log.Error(err)
 		tmp, _ := wasabibotTemplateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
@@ -147,7 +148,8 @@ func wasabibotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update)
 		authtoken = inMsg.Message.Text
 	}
 	strings.TrimSpace(authtoken)
-	err := WASABI.TelegramVerifyUser(inMsg.Message.From.ID, authtoken)
+	tid := WASABI.TelegramID(inMsg.Message.From.ID)
+	err := tid.TelegramVerifyUser(authtoken)
 	if err != nil {
 		WASABI.Log.Error(err)
 		tmp, _ := wasabibotTemplateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)

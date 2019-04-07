@@ -17,9 +17,6 @@ type LocKey string
 // EnlID is a V EnlID
 type EnlID string
 
-// TelegramID is a Telegram user ID
-// type TelegramID int
-
 // UserData is the complete user struct, used for the /me page
 type UserData struct {
 	GoogleID      GoogleID
@@ -474,7 +471,7 @@ func (gid GoogleID) Delete() error {
 		return err
 	}
 	for rows.Next() {
-		_ = rows.Scan(&teamID)
+		rows.Scan(&teamID)
 		teamID.Delete()
 	}
 
