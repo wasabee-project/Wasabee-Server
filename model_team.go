@@ -12,15 +12,15 @@ import (
 type TeamData struct {
 	Name      string
 	ID        TeamID
-	User      []User
+	Agent     []Agent
 	Markers   []Marker
 	Waypoints []Waypoint
 	RocksComm string
 	RocksKey  string
 }
 
-// User is the light version of UserData, containing publicly visible information exported to teams
-type User struct {
+// Agent is the light version of AgentData, containing publicly visible information exported to teams
+type Agent struct {
 	Gid         GoogleID
 	Name        string
 	EnlID       EnlID
@@ -36,9 +36,9 @@ type User struct {
 	Distance    float64         `json:"Distance,omitmissing"`
 }
 
-// UserInTeam checks to see if a user is in a team and (On|Primary).
-// allowOff == true will report if a user is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling user.
-func (gid GoogleID) UserInTeam(team TeamID, allowOff bool) (bool, error) {
+// AgentInTeam checks to see if a agent is in a team and (On|Primary).
+// allowOff == true will report if a agent is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling agent.
+func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 	var count string
 
 	var err error
@@ -58,10 +58,10 @@ func (gid GoogleID) UserInTeam(team TeamID, allowOff bool) (bool, error) {
 }
 
 // FetchTeam populates an entire TeamData struct
-// fetchAll includes users for whom their state == off, should only be used to display lists to the calling user
+// fetchAll includes agent for whom their state == off, should only be used to display lists to the calling agent
 func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
-	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test users all get updated this can be removed
-	var tmpU User
+	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test agent all get updated this can be removed
+	var tmpU Agent
 
 	var err error
 	var rows *sql.Rows
@@ -107,7 +107,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		} else {
 			tmpU.OwnTracks = json.RawMessage("{ }")
 		}
-		teamList.User = append(teamList.User, tmpU)
+		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -142,7 +142,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	return nil
 }
 
-// OwnsTeam returns true if the userID owns the team identified by teamID
+// OwnsTeam returns true if the GoogleID owns the team identified by teamID
 func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	var owner GoogleID
 
@@ -186,7 +186,7 @@ func (teamID TeamID) Rename(name string) error {
 // Delete removes the team identified by teamID
 // does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Delete() error {
-	// XXX once we push to rocks, don't do it this way; remove each user manually, so they get cleared from rocks community
+	// XXX once we push to rocks, don't do it this way; remove each agent manually, so they get cleared from rocks community
 	_, err := db.Exec("DELETE FROM userteams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
@@ -270,15 +270,15 @@ func toGid(in interface{}) (GoogleID, error) {
 	return gid, nil
 }
 
-// AddUser adds a user (identified by LocKey or GoogleID) to a team
-func (teamID TeamID) AddUser(in interface{}) error {
+// AddAgent adds a agent (identified by LocKey, EnlID or GoogleID) to a team
+func (teamID TeamID) AddAgent(in interface{}) error {
 	gid, err := toGid(in)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	if gid == "" {
-		err = fmt.Errorf("unable to identify user to add")
+		err = fmt.Errorf("unable to identify agent to add")
 		Log.Error(err)
 		return err
 	}
@@ -296,8 +296,8 @@ func (teamID TeamID) AddUser(in interface{}) error {
 	return nil
 }
 
-// RemoveUser removes a user (identified by location share key) from a team.
-func (teamID TeamID) RemoveUser(in interface{}) error {
+// RemoveAgent removes a agent (identified by location share key, GoogleID, agent name, or EnlID) from a team.
+func (teamID TeamID) RemoveAgent(in interface{}) error {
 	gid, err := toGid(in)
 	if err != nil {
 		Log.Error(err)
@@ -326,7 +326,7 @@ func (gid GoogleID) ClearPrimaryTeam() error {
 // TeammatesNear identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
 func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
 	var state, lat, lon, otdata sql.NullString
-	var tmpU User
+	var tmpU Agent
 	var rows *sql.Rows
 
 	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
@@ -369,7 +369,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 		} else {
 			tmpU.OwnTracks = json.RawMessage("{ }")
 		}
-		teamList.User = append(teamList.User, tmpU)
+		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -380,7 +380,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 }
 
 // WaypointsNear returns any Waypoints near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
-// the Users portion of the TeamData is uninitialized
+// the Agents portion of the TeamData is uninitialized
 func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) error {
 	var lat, lon sql.NullString
 	var rows *sql.Rows
@@ -463,7 +463,7 @@ func (teamID TeamID) String() string {
 	return string(teamID)
 }
 
-// SetTeamState updates the users state on the team (Off|On|Primary)
+// SetTeamState updates the agent's state on the team (Off|On|Primary)
 func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 	if state == "Primary" {
 		_ = gid.ClearPrimaryTeam()
@@ -479,7 +479,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 // XXX BUG: if multiple teams use the same name this will not work
 func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
 	var id TeamID
-	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
+	row := db.QueryRow("SELECT teamID FROM teams WHERE LOWER(name) LIKE LOWER(?) ORDER BY teamID LIMIT 0,1", teamname)
 	err := row.Scan(&id)
 	if err != nil {
 		Log.Notice(err)
@@ -501,4 +501,10 @@ func (gid GoogleID) PrimaryTeam() (string, error) {
 		return "", err
 	}
 	return primary, nil
+}
+
+// FetchAgent populates the minimal Agent struct
+func FetchAgent(id string, agent *Agent) error {
+	// XXX fill this in
+	return nil
 }

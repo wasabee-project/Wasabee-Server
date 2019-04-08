@@ -17,8 +17,8 @@ type LocKey string
 // EnlID is a V EnlID
 type EnlID string
 
-// UserData is the complete user struct, used for the /me page
-type UserData struct {
+// AgentData is the complete user struct, used for the /me page
+type AgentData struct {
 	GoogleID      GoogleID
 	IngressName   string
 	Level         float64
@@ -50,9 +50,9 @@ type UserData struct {
 	}
 }
 
-// InitUser is called from Oauth callback to set up a user for the first time.
+// InitAgent is called from Oauth callback to set up a user for the first time.
 // It also checks and updates V and enl.rocks data. It returns true if the user is authorized to continue, false if the user is blacklisted or otherwise locked at V or enl.rocks.
-func (gid GoogleID) InitUser() (bool, error) {
+func (gid GoogleID) InitAgent() (bool, error) {
 	var authError error // delay reporting authorization problems until after INSERT/Vupdate/RocksUpdate
 	var tmpName string
 
@@ -168,8 +168,8 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 	return gid, nil
 }
 
-// GetUserData populates a UserData struct based on the gid
-func (gid GoogleID) GetUserData(ud *UserData) error {
+// GetAgentData populates a AgentData struct based on the gid
+func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	var ot sql.NullString
 	var otJSON sql.NullString
 
@@ -288,10 +288,10 @@ func (gid GoogleID) GetUserData(ud *UserData) error {
 	return nil
 }
 
-// UserLocation updates the database to reflect a user's current location
+// AgentLocation updates the database to reflect a user's current location
 // OwnTracks data is updated to reflect the change
 // TODO: react based on the location
-func (gid GoogleID) UserLocation(lat, lon, source string) error {
+func (gid GoogleID) AgentLocation(lat, lon, source string) error {
 	var point string
 
 	// sanity checing on bounds?

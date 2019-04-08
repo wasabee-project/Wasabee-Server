@@ -38,7 +38,6 @@ type Configuration struct {
 	CookieSessionKey  string
 	templateSet       map[string]*template.Template // allow multiple translations
 	Logfile           string
-	// templateSet       *template.Template
 }
 
 var config Configuration
@@ -189,6 +188,13 @@ func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name
 		return err
 	}
 	return nil
+}
+
+// errorScreen outputs directly to the response writer
+// XXX this may not work since http.Error takes a string...
+// XXX maybe replace http.Error calls with this?
+func errorScreen(res http.ResponseWriter, req *http.Request, err error) {
+	_ = wasabiHTTPSTemplateExecute(res, req, "error", err.Error())
 }
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.

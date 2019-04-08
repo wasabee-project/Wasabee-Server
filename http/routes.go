@@ -71,6 +71,10 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
 	r.HandleFunc("/api/v1/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
 
+	// other agents
+	r.HandleFunc("/api/v1/agent/{id}", agentProfileRoute).Methods("GET") // "profile" page, such as it is
+	// r.HandleFunc("/api/v1/agent/{id}/message", agentMessageRoute).Methods("POST")	// send a message to a user
+
 	// teams
 	r.HandleFunc("/api/v1/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")                                              // create a new team
 	r.HandleFunc("/api/v1/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")                                               // invite user to team
@@ -192,7 +196,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		delete(ses.Values, "loginReq")
 	}
 
-	authorized, err := m.Gid.InitUser() // V & .rocks authorization takes place here now
+	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here now
 	if authorized == false {
 		http.Error(res, "Smurf go away!", http.StatusUnauthorized)
 		return

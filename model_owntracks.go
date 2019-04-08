@@ -86,7 +86,7 @@ func (gid GoogleID) OwnTracksUpdate(otdata json.RawMessage, lat, lon float64) er
 	if err != nil {
 		Log.Notice(err)
 	}
-	err = gid.UserLocation(strconv.FormatFloat(lat, 'f', -1, 64), strconv.FormatFloat(lon, 'f', -1, 64), "OwnTracks")
+	err = gid.AgentLocation(strconv.FormatFloat(lat, 'f', -1, 64), strconv.FormatFloat(lon, 'f', -1, 64), "OwnTracks")
 	return err
 }
 

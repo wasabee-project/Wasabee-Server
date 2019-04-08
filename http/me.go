@@ -18,8 +18,8 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var ud WASABI.UserData
-	err = gid.GetUserData(&ud)
+	var ud WASABI.AgentData
+	err = gid.GetAgentData(&ud)
 	if err != nil {
 		res.Header().Add("Cache-Control", "no-cache")
 		WASABI.Log.Notice(err)
@@ -75,7 +75,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := WASABI.TeamID(vars["team"])
 
 	// WASABI.Log.Debug("remove me from team: " + gid.String() + " " + team.String())
-	err = team.RemoveUser(gid)
+	err = team.RemoveAgent(gid)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -160,7 +160,7 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	lon := vars["lon"]
 
 	// do the work
-	err = gid.UserLocation(lat, lon, "https")
+	err = gid.AgentLocation(lat, lon, "https")
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

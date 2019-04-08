@@ -125,7 +125,7 @@ func wasabibotNewUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) e
 	}
 
 	tid := WASABI.TelegramID(inMsg.Message.From.ID)
-	err := tid.TelegramInitUser(inMsg.Message.From.UserName, lockey)
+	err := tid.TelegramInitAgent(inMsg.Message.From.UserName, lockey)
 	if err != nil {
 		WASABI.Log.Error(err)
 		tmp, _ := wasabibotTemplateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
@@ -253,8 +253,8 @@ func wasabibotKeyboards(c *TGConfiguration) error {
 }
 
 func wasabibotTeamKeyboard(gid WASABI.GoogleID) (tgbotapi.ReplyKeyboardMarkup, error) {
-	var ud WASABI.UserData
-	if err := gid.GetUserData(&ud); err != nil {
+	var ud WASABI.AgentData
+	if err := gid.GetAgentData(&ud); err != nil {
 		return config.teamKbd, err
 	}
 
@@ -276,7 +276,7 @@ func wasabibotTeamKeyboard(gid WASABI.GoogleID) (tgbotapi.ReplyKeyboardMarkup, e
 		q := tgbotapi.NewKeyboardButtonRow(on, off, primary)
 		rows = append(rows, q)
 
-		if i > 5 { // too many rows and the screen fills up
+		if i > 8 { // too many rows and the screen fills up
 			break
 		}
 	}
@@ -290,7 +290,6 @@ func wasabibotTeamKeyboard(gid WASABI.GoogleID) (tgbotapi.ReplyKeyboardMarkup, e
 		ResizeKeyboard: true,
 	}
 	return tmp, nil
-
 }
 
 // This is where command processing takes place
@@ -372,7 +371,7 @@ func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid W
 	}
 
 	if inMsg.Message.Location != nil {
-		gid.UserLocation(
+		gid.AgentLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
 			"Telegram",

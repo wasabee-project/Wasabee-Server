@@ -21,7 +21,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := WASABI.TeamID(vars["team"])
 
-	safe, err := gid.UserInTeam(team, false)
+	safe, err := gid.AgentInTeam(team, false)
 	if safe == false {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -126,7 +126,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = team.AddUser(key)
+	err = team.AddAgent(key)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -151,7 +151,7 @@ func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = team.RemoveUser(key)
+	err = team.RemoveAgent(key)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

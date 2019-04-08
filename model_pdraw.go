@@ -211,7 +211,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 	}
 	if teamID.Valid {
 		o.TeamID = TeamID(teamID.String)
-		if inteam, _ := gid.UserInTeam(o.TeamID, false); inteam == true {
+		if inteam, _ := gid.AgentInTeam(o.TeamID, false); inteam == true {
 			authorized = true
 		}
 	}
@@ -366,7 +366,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.MarkerType = tmpMarker.Type.String()
 		tmpWaypoint.TeamID = teamID.String()
-		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+tmpMarker.ID[:7], 0, 64)
+		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+tmpMarker.ID[:6], 0, 64) 
 		tmpWaypoint.Radius = 150
 		tmpWaypoint.Share = true
 		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)

@@ -198,7 +198,7 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 }
 
 // StatusServerPoller starts up from main and requests any agents who are configured to use RAID/JEAH for location services from the status.enl.one server.
-// XXX this is experimental and very wonky
+// It works, but more research is necessary on the settings required on the permissions.
 func StatusServerPoller() {
 	if vc.configured == false {
 		Log.Debug("Not polling status.enl.one")
@@ -236,7 +236,7 @@ func StatusServerPoller() {
 				Log.Error(err)
 				continue
 			}
-			err = g.UserLocation(lat, lon, "status.enl.one")
+			err = g.AgentLocation(lat, lon, "status.enl.one")
 			if err != nil {
 				Log.Error(err)
 				continue

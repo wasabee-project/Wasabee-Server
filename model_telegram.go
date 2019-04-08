@@ -76,8 +76,8 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 	return tgid, nil
 }
 
-// TelegramInitUser establishes a new telegram user in the database and begins the verification process
-func (tgid TelegramID) TelegramInitUser(name string, lockey LocKey) error {
+// TelegramInitAgent establishes a new telegram user in the database and begins the verification process
+func (tgid TelegramID) TelegramInitAgent(name string, lockey LocKey) error {
 	authtoken := GenerateName()
 
 	gid, err := lockey.Gid()
