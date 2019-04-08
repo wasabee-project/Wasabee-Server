@@ -48,11 +48,6 @@ type UserData struct {
 		Verified  bool
 		Authtoken string
 	}
-	Home struct {
-		Lat    float64
-		Lon    float64
-		Radius float64
-	} // unused currently Tony wants it, requires schema change
 }
 
 // InitUser is called from Oauth callback to set up a user for the first time.
