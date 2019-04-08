@@ -400,18 +400,30 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 	return j, err
 }
 
-// PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint data is saved
-// move to model_team.go
-func (gid GoogleID) PrimaryTeam() (string, error) {
-	var primary string
-	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
-	if err != nil && err.Error() == "sql: no rows in result set" {
-		Log.Debug("Primary Team Not Set")
-		return "", nil
-	}
+// SetOwnTracksPW updates the database with a new OwnTracks password for a given user
+// TODO: move to model_owntracks.go
+func (gid GoogleID) SetOwnTracksPW(otpw string) error {
+	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
 	if err != nil {
-		Log.Error(err)
+		Log.Notice(err)
+	}
+	return err
+}
+
+// VerifyOwnTracksPW is used to check that the supplied password matches the stored password hash for the given user
+// upon success it returns the gid for the lockey (which is also the owntracks username), on failure it returns ""
+func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
+	var gid GoogleID
+
+	r := db.QueryRow("SELECT gid FROM user WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
+	err := r.Scan(&gid)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
 		return "", err
 	}
-	return primary, nil
+	if err != nil && err == sql.ErrNoRows {
+		return "", nil
+	}
+
+	return gid, nil
 }

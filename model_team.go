@@ -462,3 +462,43 @@ func (teamID TeamID) SetRocks(key, community string) error {
 func (teamID TeamID) String() string {
 	return string(teamID)
 }
+
+// SetTeamState updates the users state on the team (Off|On|Primary)
+func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
+	if state == "Primary" {
+		_ = gid.ClearPrimaryTeam()
+	}
+
+	if _, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
+		Log.Notice(err)
+	}
+	return nil
+}
+
+// SetTeamStateName -- same as SetTeamState, but takes a team's human name rather than ID
+// XXX BUG: if multiple teams use the same name this will not work
+func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
+	var id TeamID
+	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
+	err := row.Scan(&id)
+	if err != nil {
+		Log.Notice(err)
+	}
+
+	return gid.SetTeamState(id, state)
+}
+
+// PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint data is saved
+func (gid GoogleID) PrimaryTeam() (string, error) {
+	var primary string
+	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		Log.Debug("Primary Team Not Set")
+		return "", nil
+	}
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return primary, nil
+}

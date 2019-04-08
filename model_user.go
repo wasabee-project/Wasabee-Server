@@ -159,61 +159,6 @@ func (gid GoogleID) SetIngressName(name string) error {
 	return err
 }
 
-// SetOwnTracksPW updates the database with a new OwnTracks password for a given user
-// TODO: move to model_owntracks.go
-func (gid GoogleID) SetOwnTracksPW(otpw string) error {
-	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
-	if err != nil {
-		Log.Notice(err)
-	}
-	return err
-}
-
-// VerifyOwnTracksPW is used to check that the supplied password matches the stored password hash for the given user
-// upon success it returns the gid for the lockey (which is also the owntracks username), on failure it returns ""
-// TODO: move to model_owntracks.go
-func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
-	var gid GoogleID
-
-	r := db.QueryRow("SELECT gid FROM user WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
-	err := r.Scan(&gid)
-	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
-		return "", err
-	}
-	if err != nil && err == sql.ErrNoRows {
-		return "", nil
-	}
-
-	return gid, nil
-}
-
-// SetTeamState updates the users state on the team (Off|On|Primary)
-// XXX move to model_team.go
-func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
-	if state == "Primary" {
-		_ = gid.ClearPrimaryTeam()
-	}
-
-	if _, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
-		Log.Notice(err)
-	}
-	return nil
-}
-
-// SetTeamStateName -- same as SetTeamState, but takes a team's human name rather than ID
-// XXX BUG: if multiple teams use the same name this will not work
-func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
-	var id TeamID
-	row := db.QueryRow("SELECT teamID FROM teams WHERE name = ?", teamname)
-	err := row.Scan(&id)
-	if err != nil {
-		Log.Notice(err)
-	}
-
-	return gid.SetTeamState(id, state)
-}
-
 // Gid converts a location share key to a user's gid
 func (lockey LocKey) Gid() (GoogleID, error) {
 	var gid GoogleID

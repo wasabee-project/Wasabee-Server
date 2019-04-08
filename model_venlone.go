@@ -245,3 +245,14 @@ func StatusServerPoller() {
 		time.Sleep(300 * time.Second)
 	}
 }
+
+// Gid looks up a GoogleID from an EnlID
+func (eid EnlID) Gid() (GoogleID, error) {
+	var gid GoogleID
+	err := db.QueryRow("SELECT gid FROM user WHERE Vid = ?", eid).Scan(&gid)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return gid, nil
+}
