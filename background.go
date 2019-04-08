@@ -32,7 +32,7 @@ func locationClean() {
 		if err != nil {
 			Log.Error(err)
 		}
-		err = gid.ownTracksExternalUpdate("0", "-180.1", "reaper") // invalid values pop the user off the map
+		err = gid.ownTracksExternalUpdate("0", "0", "reaper") // invalid values pop the user off the map
 		if err != nil {
 			Log.Error(err)
 		}

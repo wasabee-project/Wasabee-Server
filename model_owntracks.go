@@ -351,7 +351,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 	}
 
 	if err = ownTracksWriteWaypoint(w, team); err != nil {
-		// Log.Notice(err)
+		Log.Notice(err)
 		return j, err
 	}
 

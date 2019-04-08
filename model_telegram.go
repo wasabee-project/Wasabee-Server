@@ -77,7 +77,7 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 }
 
 // TelegramInitUser establishes a new telegram user in the database and begins the verification process
-func (tid TelegramID) TelegramInitUser(name string, lockey LocKey) error {
+func (tgid TelegramID) TelegramInitUser(name string, lockey LocKey) error {
 	authtoken := GenerateName()
 
 	gid, err := lockey.Gid()
@@ -90,7 +90,7 @@ func (tid TelegramID) TelegramInitUser(name string, lockey LocKey) error {
 		Log.Notice(err)
 		return err
 	}
-	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tid, name, gid, authtoken)
+	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tgid, name, gid, authtoken)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -100,8 +100,8 @@ func (tid TelegramID) TelegramInitUser(name string, lockey LocKey) error {
 }
 
 // TelegramVerifyUser is the second stage of the verication process
-func (tid TelegramID) TelegramVerifyUser(authtoken string) error {
-	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", tid, authtoken)
+func (tgid TelegramID) TelegramVerifyUser(authtoken string) error {
+	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", tgid, authtoken)
 	if err != nil {
 		Log.Notice(err)
 		return err

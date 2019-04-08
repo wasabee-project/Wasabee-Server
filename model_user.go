@@ -135,7 +135,7 @@ func (gid GoogleID) InitUser() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_ = gid.ownTracksExternalUpdate("0", "-180.1", "reaper")
+		_ = gid.ownTracksExternalUpdate("0", "0", "reaper")
 	} else if err != nil {
 		return false, err
 	}
@@ -453,9 +453,9 @@ func revalidateEveryone() error {
 // SearchAgentName gets a GoogleID from an Agent's name
 func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
-	err := db.QueryRow("SELECT gid FROM user WHERE iname= ?", agent).Scan(&gid)
+	err := db.QueryRow("SELECT gid FROM user WHERE LOWER(iname) LIKE LOWER(?)", agent).Scan(&gid)
 	if err != nil {
-		Log.Error(err)
+		Log.Notice(err)
 		return "", err
 	}
 	return gid, nil

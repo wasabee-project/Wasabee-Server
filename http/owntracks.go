@@ -64,6 +64,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 			WASABI.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
+		// WASABI.Log.Debug(string(s))
 		fmt.Fprintf(res, string(s))
 	case "transition":
 		s, err := gid.OwnTracksTransition(jRaw)
@@ -73,21 +74,10 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		}
 		fmt.Fprintf(res, string(s))
 	case "waypoints":
-		s, err := gid.OwnTracksSetWaypointList(jRaw)
-		if err != nil {
-			WASABI.Log.Notice(err)
-			// XXX use the cmd to send a URL to set primary team?
-			// e := "{ \"err\": \"Is your primary team set?\" }" // XXX is there a JSON standard for this kind of message?
-			// http.Error(res, e, http.StatusInternalServerError)
-			// fmt.Fprintf(res, e)
-			// return
-		}
+		s, _ := gid.OwnTracksSetWaypointList(jRaw)
 		fmt.Fprintf(res, string(s))
 	case "waypoint":
 		s, _ := gid.OwnTracksSetWaypoint(jRaw)
-		if err != nil {
-			WASABI.Log.Notice(err)
-		}
 		fmt.Fprintf(res, string(s))
 	default:
 		WASABI.Log.Notice("unhandled type: " + t.Type)

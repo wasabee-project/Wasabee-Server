@@ -199,9 +199,8 @@ func (teamID TeamID) Delete() error {
 }
 
 // toGid takes anything (for small values of anything) and returns a Gid for it.
-// depends on EnlID.Gid(), LocKey.Gid() and SearchAgentName.
+// depends on EnlID.Gid(), LocKey.Gid(), TelegramID.Gid(), and SearchAgentName.
 // If you pass in a string, it will see if it looks like a gid, eid, lockey, or agent name and try that.
-// Do we need to extend this to accept TelegramID?
 func toGid(in interface{}) (GoogleID, error) {
 	var gid GoogleID
 	var err error
@@ -221,6 +220,14 @@ func toGid(in interface{}) (GoogleID, error) {
 		gid, err = eid.Gid()
 		if err != nil && err.Error() == "sql: no rows in result set" {
 			err = fmt.Errorf("Unknown EnlID: %s", eid)
+			Log.Notice(err)
+			return "", err
+		}
+	case TelegramID:
+		tid := v
+		gid, _, err = tid.GidV()
+		if err != nil && err.Error() == "sql: no rows in result set" {
+			err = fmt.Errorf("Unknown TelegramID: %d", tid)
 			Log.Notice(err)
 			return "", err
 		}
@@ -267,6 +274,11 @@ func toGid(in interface{}) (GoogleID, error) {
 func (teamID TeamID) AddUser(in interface{}) error {
 	gid, err := toGid(in)
 	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if gid == "" {
+		err = fmt.Errorf("unable to identify user to add")
 		Log.Error(err)
 		return err
 	}
