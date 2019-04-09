@@ -1,0 +1,79 @@
+{{define "privacy"}}
+<html lang="en">
+<head>
+<title>WASABI: Privacy Policy</title>
+{{template "styles"}}
+</head>
+<body>
+{{template "nav"}}
+		<div class="content-sction-a">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="content-section-a">
+<!-- content starts here -->
+<div class="card mb-2">
+<div class="card-header"><h1>Privacy Policy</h1></div>
+<div class="card-body">
+<p>This website utilises "cookies." A "cookie" is a small text file that may be used, for example, to collect information about web site activity. Some cookies and other technologies may serve to recall Personal Information previously indicated by a web user. Most browsers allow you to control cookies, including whether or not to accept them and how to remove them. Some cookies are necessary for the operation of our website, if you choose to block them some aspects of the site may not work for you. With your login you allow us to set cookies in your browser.</p>
+
+<p>We do not use any form of web tracking code on this website.</p>
+
+<h2>Personal data</h2>
+<p>When you log in via the Google login, you provide your consent that we may pull personal data from the Google API. We fetch the following fields for persistent storage in your account:</p>
+<ul>
+<li>Google-ID (a number unique to each Google user)</li>
+<li>... that's it. No email, no name, nothing else</li>
+</ul>
+<p>When you log in via the Google login, you, provide consent that we may pull personal data from the <a href="https://v.enl.one/">V</a> and <a href="https://enlightened.rocks/">enlightened.rocks</a> websites. We fetch the following fields for persistent storage in your profile:</p>
+<ul>
+<li>Your Ingress agent name (V and .rocks)</li>
+<li>Your Ingress agent level (V)</li>
+<li>Your status, such as being banned, flagged for cheating, a known member of the Resistance, etc. (V and .rocks)</li>
+<li>Your Telegram user ID (.rocks)</li>
+</ul>
+<p>This data will be updated every time you actively login. We do not check for updated data unless you log in. We may occasionally refresh the data if we believe it has become corrupt or for testing purposes. We will share your GoogleID, links to your profile at V and .rocks, and blacklist status with other authenticated agents. Additional information will be shared with authenticated agents as you authorize by your team memberships.</p>
+
+<p>This website uses the language setting in your browser to display information to you, we do not store or share this information.</p>
+
+<p>You can export your personal data at any time at this URL: <a href="/me">/me</a></p>
+
+<p>You can delete your profile, <a href="/api/v1/me/delete">by clicking this link</a> (warning, there is no confirmation on this). This will remove all the information we have stored concerning you. If you choose to log-in again your data will repopulate from V and .rocks (if available). Team membership, operation information, etc, will all be permenantly lost.</p>
+
+<h2>Hosting</h2>
+<p>Your data is stored on servers in Atlanta, Georgia, USA, in datacenters with a high level of security. Database access is only possible for the website owner and not by the hosting company.</p>
+
+<h2>Data usage</h2>
+<p>Other agents <strong>on your teams</strong> may access your operation and location data. There is no "admin mode" to allow specific users access beyond what you explicitly permit through your team settings. The system administrators can access the database directly for maintainance purposes, but do so only when required for system operation. Location information is stored in different database tables from agent identification information; extra steps are required to associate location information with a particular agent.</p>
+<p>Other websites and third-party applications can access your information with the same level of protection as other users: they must be on your teams.</p>
+
+<p>WASABI does not feature personal profile pages beyond Agent name, level and links to V and .rocks profiles.</p>
+
+<h2>Disclaimer</h2>
+<p>This policy is only valid for content created and provided by the website's owner. It does not apply for any other linked website or Telegram bots or assets.</p>
+
+</div>
+<ul class="list-group list-group-flush">
+</ul>
+</div>
+<!-- content ends here -->
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- /.container -->
+
+	</div>
+	<!-- /.intro-header -->
+
+{{template "footer"}}
+
+	<!-- jQuery -->
+	<script src="https://phtiv.com/phtivdrawtools/js/jquery.js"></script>
+
+	<!-- Bootstrap Core JavaScript -->
+	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
+</body>
+</html>
+{{end}}
