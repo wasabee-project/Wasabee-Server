@@ -219,7 +219,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		authorized = true
 	}
 	if authorized == false {
-		return errors.New("Unauthorized: this operation owned by someone else")
+		return errors.New("Unauthorized: you are not on a team authorized to see this operation")
 	}
 
 	err = o.PopulatePortals()
@@ -453,6 +453,11 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 	return true
 }
 
+// IsOwner returns a bool value determining if the operation is owned by the specified googleID
+func (o Operation) IsOwner(gid GoogleID) bool {
+	return o.ID.IsOwner(gid)
+}
+
 // String returns the string version of a PortalID
 func (p PortalID) String() string {
 	return string(p)
@@ -463,6 +468,8 @@ func (m MarkerType) String() string {
 	return string(m)
 }
 
+// markerIDwaypointID converts (hackishly) a markerID to a waypointID
+// this could be a lot smarter, but we need a deterministic conversion and this works for now
 func markerIDwaypointID(markerID string) int64 {
 	i, _ := strconv.ParseInt("0x"+markerID[:6], 0, 64)
 	return i
