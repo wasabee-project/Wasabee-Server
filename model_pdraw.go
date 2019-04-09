@@ -454,7 +454,7 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 }
 
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID
-func (o Operation) IsOwner(gid GoogleID) bool {
+func (o *Operation) IsOwner(gid GoogleID) bool {
 	return o.ID.IsOwner(gid)
 }
 
