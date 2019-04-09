@@ -1,0 +1,43 @@
+{{define "agent"}}
+<html lang="en">
+<head>
+<title>Agent {{.Name}}</title>
+{{template "styles"}}
+</head>
+<body>
+{{template "nav"}}
+		<div class="content-sction-a">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="content-section-a">
+<!-- content starts here -->
+<div class="card mb-2">
+<div class="card-header">Agent: {{.Name}}</div>
+<div class="card-body">
+{{.Name}} (Level: {{.Level}})
+{{if .Blacklisted}} BLACKLISTED {{end}}
+{{if .EnlID}} <a href="https://v.enl.one/profile/{{.EnlID}}">V Profile</a>{{end}}
+<a href="https://enlightened.rocks/u/{{.Gid}}">Rocks Profile</a>
+</div>
+<!-- content ends here -->				
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- /.container -->
+
+	</div>
+	<!-- /.intro-header -->
+
+{{template "footer"}}
+
+	<!-- jQuery -->
+	<script src="https://phtiv.com/phtivdrawtools/js/jquery.js"></script>
+
+	<!-- Bootstrap Core JavaScript -->
+	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
+</body>
+</html>
+{{end}}
