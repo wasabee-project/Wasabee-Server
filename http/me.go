@@ -11,7 +11,7 @@ import (
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -42,7 +42,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -64,7 +64,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -86,7 +86,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -108,7 +108,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -130,7 +130,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -147,8 +147,8 @@ func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
-func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -170,7 +170,7 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -178,7 +178,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// do the work
-	WASABI.Log.Noticef("User requested delete: %s", gid.String())
+	WASABI.Log.Noticef("Agent requested delete: %s", gid.String())
 	err = gid.Delete()
 	if err != nil {
 		WASABI.Log.Notice(err)

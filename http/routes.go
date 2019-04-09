@@ -62,39 +62,39 @@ func setupAuthRoutes(r *mux.Router) {
 	// r.HandleFunc("/api/v1/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/api/v1/draw/{document}", updateDrawRoute).Methods("PUT")
 
-	// user info (all HTML except /me which gives JSON for intel.ingrss.com
+	// agent info (all HTML except /me which gives JSON for intel.ingrss.com
 	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (agent name/teams)
 
 	r.HandleFunc("/api/v1/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                // set my display name /me?name=deviousness
 	r.HandleFunc("/api/v1/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                // set my OwnTracks Password (cleartext, yes, but SSL is required)
 	r.HandleFunc("/api/v1/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")                   // request a new lockey
-	r.HandleFunc("/api/v1/me", meSetUserLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
+	r.HandleFunc("/api/v1/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
 	r.HandleFunc("/api/v1/me", meShowRoute).Methods("GET")                                                    // -- do not use, just here for safety
-	r.HandleFunc("/api/v1/me/delete", meDeleteRoute).Methods("GET")                                           // purge all info for a user
+	r.HandleFunc("/api/v1/me/delete", meDeleteRoute).Methods("GET")                                           // purge all info for a agent
 	r.HandleFunc("/api/v1/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")           // /api/v1/me/wonky-team-1234?state={Off|On|Primary}
 	r.HandleFunc("/api/v1/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                    // remove me from team
 	r.HandleFunc("/api/v1/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                // remove me from team
 
 	// other agents
 	r.HandleFunc("/api/v1/agent/{id}", agentProfileRoute).Methods("GET") // "profile" page, such as it is
-	// r.HandleFunc("/api/v1/agent/{id}/message", agentMessageRoute).Methods("POST")	// send a message to a user
+	// r.HandleFunc("/api/v1/agent/{id}/message", agentMessageRoute).Methods("POST")	// send a message to a agent
 
 	// teams
 	r.HandleFunc("/api/v1/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")                                              // create a new team
-	r.HandleFunc("/api/v1/team/{team}", addUserToTeamRoute).Methods("GET").Queries("key", "{key}")                                               // invite user to team
-	r.HandleFunc("/api/v1/team/{team}", getTeamRoute).Methods("GET")                                                                             // return the location of every user/target on team (team member/owner)
+	r.HandleFunc("/api/v1/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}")                                               // invite agent to team
+	r.HandleFunc("/api/v1/team/{team}", getTeamRoute).Methods("GET")                                                                             // return the location of every agent/target on team (team member/owner)
 	r.HandleFunc("/api/v1/team/{team}", deleteTeamRoute).Methods("DELETE")                                                                       // remove the team completely (owner)
 	r.HandleFunc("/api/v1/team/{team}/delete", deleteTeamRoute).Methods("GET")                                                                   // remove the team completely (owner)
 	r.HandleFunc("/api/v1/team/{team}/edit", editTeamRoute).Methods("GET")                                                                       // GUI to do basic edit (owner)
 	r.HandleFunc("/api/v1/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
 	r.HandleFunc("/api/v1/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
-	r.HandleFunc("/api/v1/team/{team}/{key}", addUserToTeamRoute).Methods("GET")                                                                 // invite user to team (owner)
-	// r.HandleFunc("/api/v1/team/{team}/{key}", setUserTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
-	r.HandleFunc("/api/v1/team/{team}/{key}/delete", delUserFmTeamRoute).Methods("GET") // remove user from team (owner)
-	r.HandleFunc("/api/v1/team/{team}/{key}", delUserFmTeamRoute).Methods("DELETE")     // remove user from team (owner)
+	r.HandleFunc("/api/v1/team/{team}/{key}", addAgentToTeamRoute).Methods("GET")                                                                 // invite agent to team (owner)
+	// r.HandleFunc("/api/v1/team/{team}/{key}", setAgentTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
+	r.HandleFunc("/api/v1/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET") // remove agent from team (owner)
+	r.HandleFunc("/api/v1/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")     // remove agent from team (owner)
 
 	// waypoints
-	r.HandleFunc("/api/v1/waypoints/me", waypointsNearMeRoute).Methods("GET") // show waypoints near user (html/json)
+	r.HandleFunc("/api/v1/waypoints/me", waypointsNearMeRoute).Methods("GET") // show waypoints near agent (html/json)
 
 	// server control functions
 	r.HandleFunc("/api/v1/templates/refresh", templateUpdateRoute).Methods("GET") // trigger the server refresh of the template files
@@ -154,7 +154,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Email string          `json:"email"`
 	}
 
-	content, err := getUserInfo(req.FormValue("state"), req.FormValue("code"))
+	content, err := getAgentInfo(req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
 		WASABI.Log.Notice(err)
 		return
@@ -223,7 +223,7 @@ func calculateNonce(gid WASABI.GoogleID) (string, string) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
 	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
-	// something specific to the user, something secret, something short-term
+	// something specific to the agent, something secret, something short-term
 	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)))
 	previous := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, prev)))
 	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:])
@@ -231,7 +231,7 @@ func calculateNonce(gid WASABI.GoogleID) (string, string) {
 
 // read the result from google at end of oauth session
 // should we save the token in the session cookie for any reason?
-func getUserInfo(state string, code string) ([]byte, error) {
+func getAgentInfo(state string, code string) ([]byte, error) {
 	if state != config.oauthStateString {
 		return nil, fmt.Errorf("invalid oauth state")
 	}
@@ -239,9 +239,9 @@ func getUserInfo(state string, code string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
-	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	response, err := http.Get("https://www.googleapis.com/oauth2/v2/agentinfo?access_token=" + token.AccessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting user info: %s", err.Error())
+		return nil, fmt.Errorf("failed getting agent info: %s", err.Error())
 	}
 	defer response.Body.Close()
 	contents, err := ioutil.ReadAll(response.Body)
@@ -252,8 +252,8 @@ func getUserInfo(state string, code string) ([]byte, error) {
 }
 
 // read the gid from the session cookie and return it
-// this is the primary way to ensure a user is authenticated
-func getUserID(req *http.Request) (WASABI.GoogleID, error) {
+// this is the primary way to ensure a agent is authenticated
+func getAgentID(req *http.Request) (WASABI.GoogleID, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
@@ -261,13 +261,13 @@ func getUserID(req *http.Request) (WASABI.GoogleID, error) {
 
 	// XXX I think this is impossible to trigger now
 	if ses.Values["id"] == nil {
-		err := errors.New("getUserID called for unauthenticated user")
+		err := errors.New("getAgentID called for unauthenticated agent")
 		WASABI.Log.Critical(err)
 		return "", err
 	}
 
-	var userID WASABI.GoogleID = WASABI.GoogleID(ses.Values["id"].(string))
-	return userID, nil
+	var agentID WASABI.GoogleID = WASABI.GoogleID(ses.Values["id"].(string))
+	return agentID, nil
 }
 
 func staticRoute(res http.ResponseWriter, req *http.Request) {

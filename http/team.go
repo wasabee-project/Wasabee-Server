@@ -11,7 +11,7 @@ import (
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	var teamList WASABI.TeamData
 
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -37,7 +37,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -56,7 +56,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -80,7 +80,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -109,8 +109,8 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -119,7 +119,7 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := WASABI.TeamID(vars["team"])
-	key := vars["key"] // Could be a lockkey, googleID, enlID or agent name, team.Adduser sorts it out for us
+	key := vars["key"] // Could be a lockkey, googleID, enlID or agent name, team.Addagent sorts it out for us
 
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
@@ -135,8 +135,8 @@ func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }
 
-func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

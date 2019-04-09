@@ -13,7 +13,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	var agent WASABI.Agent
 
 	// must be authenticated
-	_, err := getUserID(req)
+	_, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

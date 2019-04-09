@@ -46,7 +46,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -72,7 +72,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
