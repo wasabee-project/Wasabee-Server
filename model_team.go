@@ -23,6 +23,7 @@ type TeamData struct {
 type Agent struct {
 	Gid           GoogleID
 	Name          string
+	Level         int64
 	EnlID         EnlID
 	Verified      bool            `json:"Vverified,omitmissing"`
 	Blacklisted   bool            `json:"blacklisted"`
@@ -211,7 +212,7 @@ func toGid(in interface{}) (GoogleID, error) {
 		gid, err = lockey.Gid()
 		if err != nil && err.Error() == "sql: no rows in result set" {
 			err = fmt.Errorf("Unknown lockey: %s", lockey)
-			Log.Notice(err)
+			Log.Info(err)
 			return "", err
 		}
 	case GoogleID:
@@ -221,7 +222,7 @@ func toGid(in interface{}) (GoogleID, error) {
 		gid, err = eid.Gid()
 		if err != nil && err.Error() == "sql: no rows in result set" {
 			err = fmt.Errorf("Unknown EnlID: %s", eid)
-			Log.Notice(err)
+			Log.Info(err)
 			return "", err
 		}
 	case TelegramID:
@@ -229,11 +230,10 @@ func toGid(in interface{}) (GoogleID, error) {
 		gid, _, err = tid.GidV()
 		if err != nil && err.Error() == "sql: no rows in result set" {
 			err = fmt.Errorf("Unknown TelegramID: %d", tid)
-			Log.Notice(err)
+			Log.Info(err)
 			return "", err
 		}
 	default:
-		Log.Debugf("fed unknown type, guessing string: %s, determining what it looks like", v)
 		tmp := v.(string)
 		switch len(tmp) { // length gives us a guess, presence of a - makes us certain
 		case 40:
@@ -259,7 +259,7 @@ func toGid(in interface{}) (GoogleID, error) {
 				gid, _ = SearchAgentName(tmp)
 				if err != nil && err.Error() == "sql: no rows in result set" {
 					err = fmt.Errorf("Unknown agent: %s", tmp)
-					Log.Notice(err)
+					Log.Info(err)
 					return "", err
 				} else if err != nil {
 					Log.Notice(err)
@@ -511,8 +511,8 @@ func FetchAgent(id string, agent *Agent) error {
 		Log.Error(err)
 		return err
 	}
-	err = db.QueryRow("SELECT u.gid, u.iname, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM user=u WHERE u.gid = ?", gid).Scan(
-		&agent.Gid, &agent.Name, &agent.Verified, &agent.Blacklisted, &agent.EnlID, &agent.RocksVerified)
+	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM user=u WHERE u.gid = ?", gid).Scan(
+		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &agent.EnlID, &agent.RocksVerified)
 	if err != nil {
 		Log.Error(err)
 		return err

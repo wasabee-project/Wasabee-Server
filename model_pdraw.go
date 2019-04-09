@@ -366,7 +366,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.MarkerType = tmpMarker.Type.String()
 		tmpWaypoint.TeamID = teamID.String()
-		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+tmpMarker.ID[:6], 0, 64) 
+		tmpWaypoint.ID = markerIDwaypointID(tmpMarker.ID)
 		tmpWaypoint.Radius = 150
 		tmpWaypoint.Share = true
 		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
@@ -390,7 +390,7 @@ func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
 			continue
 		}
 		tmpWaypoint.Type = "waypoint"
-		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
+		tmpWaypoint.ID = markerIDwaypointID(markerID)
 		tmpWaypoint.Radius = 150
 		tmpWaypoint.Share = true
 		wc.Waypoints.Waypoints = append(wc.Waypoints.Waypoints, tmpWaypoint)
@@ -426,7 +426,7 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 			continue
 		}
 		tmpWaypoint.Type = "waypoint"
-		tmpWaypoint.ID, _ = strconv.ParseInt("0x"+markerID[:7], 0, 64)
+		tmpWaypoint.ID = markerIDwaypointID(markerID)
 		tmpWaypoint.Radius = 150
 		tmpWaypoint.Share = true
 		td.Waypoints = append(td.Waypoints, tmpWaypoint)
@@ -439,6 +439,20 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 	return nil
 }
 
+// IsOwner returns a bool value determining if the operation is owned by the specified googleID
+func (opID OperationID) IsOwner(gid GoogleID) bool {
+	var c int
+	err := db.QueryRow("SELECT COUNT(*) FROM operation WHERE ID = ? and gid = ?", opID, gid).Scan(&c)
+	if err != nil {
+		Log.Error(err)
+		return false
+	}
+	if c < 1 {
+		return false
+	}
+	return true
+}
+
 // String returns the string version of a PortalID
 func (p PortalID) String() string {
 	return string(p)
@@ -447,4 +461,9 @@ func (p PortalID) String() string {
 // String returns the string version of a PortalID
 func (m MarkerType) String() string {
 	return string(m)
+}
+
+func markerIDwaypointID(markerID string) int64 {
+	i, _ := strconv.ParseInt("0x"+markerID[:6], 0, 64)
+	return i
 }

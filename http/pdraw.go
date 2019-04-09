@@ -54,6 +54,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["document"]
 
 	var gid WASABI.GoogleID
+	// XXX temporary for testing, use getGid
 	gid = WASABI.GoogleID("118281765050946915735")
 
 	var o WASABI.Operation
@@ -72,6 +73,33 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Fprintf(res, string(s))
+}
+
+func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	var gid WASABI.GoogleID
+	gid, err := getUserID(req)
+	if err != nil {
+		WASABI.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+
+	// only the ID needs to be set for this
+	var op WASABI.Operation
+	op.ID = WASABI.OperationID(vars["document"])
+
+	if op.ID.IsOwner(gid) == true {
+		err = fmt.Errorf("(not really) deleting operation %s", op.ID)
+		WASABI.Log.Notice(err)
+		// XXX op.Delete()
+	} else {
+		err = fmt.Errorf("Only the owner can delete an operation")
+		WASABI.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusUnauthorized)
+		return
+	}
 }
 
 func jsonError(e error) string {

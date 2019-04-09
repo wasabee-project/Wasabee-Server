@@ -54,9 +54,10 @@ func setupAuthRoutes(r *mux.Router) {
 	// Draw -- new-style, parsed, not-encrypted, authenticated, authorized, more-functional
 	r.HandleFunc("/api/v1/draw", pDrawUploadRoute).Methods("POST")
 	r.HandleFunc("/api/v1/draw/{document}", pDrawGetRoute).Methods("GET")
-	r.HandleFunc("/api/v1/draw/{document}", deleteDrawRoute).Methods("DELETE")
+	r.HandleFunc("/api/v1/draw/{document}", pDrawDeleteRoute).Methods("DELETE")
+	r.HandleFunc("/api/v1/draw/{document}/delete", pDrawDeleteRoute).Methods("GET")
+	// r.HandleFunc("/api/v1/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/api/v1/draw/{document}", updateDrawRoute).Methods("PUT")
-	// r.HandleFunc("/api/v1/draw/{document}/addlink/", updateDrawRoute).Methods("PUT")
 
 	// user info (all HTML except /me which gives JSON for intel.ingrss.com
 	r.HandleFunc("/me", meShowRoute).Methods("GET") // show my stats (agent name/teams)
@@ -186,9 +187,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	location := "/me?a=0"
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
-		WASABI.Log.Debug("deep-link redirecting to", rr)
-		if rr[:3] == "/me" || rr[:6] == "/login" {
-			WASABI.Log.Debug("deep-link redirecting to /me?a=1 after cleanup")
+		// WASABI.Log.Debug("deep-link redirecting to", rr)
+		if rr[:3] == "/me" || rr[:6] == "/login" { // probably just /login now, but leave this in place until I can test more
 			location = "/me?a=1"
 		} else {
 			location = rr
@@ -196,7 +196,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		delete(ses.Values, "loginReq")
 	}
 
-	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here now
+	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
 	if authorized == false {
 		http.Error(res, "Smurf go away!", http.StatusUnauthorized)
 		return
