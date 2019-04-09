@@ -19,21 +19,22 @@ type TeamData struct {
 	RocksKey  string
 }
 
-// Agent is the light version of AgentData, containing publicly visible information exported to teams
+// Agent is the light version of AgentData, containing visible information exported to teams
 type Agent struct {
-	Gid         GoogleID
-	Name        string
-	EnlID       EnlID
-	Verified    bool
-	Blacklisted bool
-	Color       string
-	State       bool
-	LocKey      string
-	Lat         float64 `json:"lat"`
-	Lon         float64 `json:"lng"`
-	Date        string
-	OwnTracks   json.RawMessage `json:"OwnTracks,omitmissing"`
-	Distance    float64         `json:"Distance,omitmissing"`
+	Gid           GoogleID
+	Name          string
+	EnlID         EnlID
+	Verified      bool            `json:"Vverified,omitmissing"`
+	Blacklisted   bool            `json:"blacklisted"`
+	RocksVerified bool            `json:"rocks,omitmissing"`
+	Color         string          `json:"color,omitmissing"`
+	State         bool            `json:state,omitmissing"`
+	LocKey        string          `json:"lockey,omitmissing"`
+	Lat           float64         `json:"lat,omitmissing"`
+	Lon           float64         `json:"lng,omitmissing"`
+	Date          string          `json:"date,omitmissing"`
+	OwnTracks     json.RawMessage `json:"OwnTracks,omitmissing"`
+	Distance      float64         `json:"distance,omitmissing"`
 }
 
 // AgentInTeam checks to see if a agent is in a team and (On|Primary).
@@ -503,8 +504,18 @@ func (gid GoogleID) PrimaryTeam() (string, error) {
 	return primary, nil
 }
 
-// FetchAgent populates the minimal Agent struct
+// FetchAgent populates the minimal Agent struct with data anyone can see
 func FetchAgent(id string, agent *Agent) error {
-	// XXX fill this in
+	gid, err := toGid(id)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	err = db.QueryRow("SELECT u.gid, u.iname, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM user=u WHERE u.gid = ?", gid).Scan(
+		&agent.Gid, &agent.Name, &agent.Verified, &agent.Blacklisted, &agent.EnlID, &agent.RocksVerified)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 	return nil
 }

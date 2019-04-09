@@ -122,6 +122,7 @@ func initializeConfig(initialConfig Configuration) {
 		Prefix: "WASABI",
 		Out:    logfile,
 		IgnoredRequestURIs: []string{"/favicon.ico",
+			"/OwnTracks",
 			"/simple",
 			"/apple-touch-icon-precomposed.png",
 			"/apple-touch-icon-120x120-precomposed.png",
