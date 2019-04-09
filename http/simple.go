@@ -106,7 +106,8 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = WASABI.Store(&doc)
+	dp := &doc
+	err = dp.Store()
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")

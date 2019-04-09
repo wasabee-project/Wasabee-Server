@@ -42,6 +42,9 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/static/{doc}", staticRoute).Methods("GET")
 	r.HandleFunc("/static/{dir}/{doc}", staticRoute).Methods("GET")
 
+	// Privacy Policy
+	r.HandleFunc("/privacy", privacyRoute).Methods("GET")
+
 	// index
 	r.HandleFunc("/", frontRoute).Methods("GET")
 
@@ -93,9 +96,6 @@ func setupAuthRoutes(r *mux.Router) {
 	// waypoints
 	r.HandleFunc("/api/v1/waypoints/me", waypointsNearMeRoute).Methods("GET") // show waypoints near user (html/json)
 
-	// doesn't need to be authenticated, but why not?
-	r.HandleFunc("/status", statusRoute).Methods("GET")
-
 	// server control functions
 	r.HandleFunc("/api/v1/templates/refresh", templateUpdateRoute).Methods("GET") // trigger the server refresh of the template files
 }
@@ -118,10 +118,9 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 	return
 }
 
-// this can go away
-func statusRoute(res http.ResponseWriter, req *http.Request) {
-	// maybe show some interesting numbers, active agents, etc...
-	err := wasabiHTTPSTemplateExecute(res, req, "status", nil)
+// display the privacy policy
+func privacyRoute(res http.ResponseWriter, req *http.Request) {
+	err := wasabiHTTPSTemplateExecute(res, req, "privacy", nil)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

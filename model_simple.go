@@ -15,7 +15,7 @@ import (
 // MaxFilesize is the maximum file size for simple uploads (1MB)
 const MaxFilesize = 1024 * 1024 // 1MB
 
-// SimpleDocument specifies the content and metadata of a piece of code that is hosted on WASABI.
+// SimpleDocument specifies the content and metadata of a simple-style (qbin style) draw.
 type SimpleDocument struct {
 	ID         string
 	Content    string
@@ -25,7 +25,7 @@ type SimpleDocument struct {
 }
 
 // Store a document object in the database.
-func Store(document *SimpleDocument) error {
+func (document *SimpleDocument) Store() error {
 	// Generate a name that doesn't exist yet
 	name, err := GenerateSafeName()
 	if err != nil {
@@ -127,7 +127,7 @@ func Request(id string) (SimpleDocument, error) {
 				return SimpleDocument{}, err
 			}
 			if doc.Expiration.Before(time.Now()) {
-				return SimpleDocument{}, errors.New("the document has expired")
+				return SimpleDocument{}, errors.New("The document has expired")
 			}
 		}
 	}
