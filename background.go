@@ -6,12 +6,14 @@ import (
 
 // BackgroundTasks runs the database cleaning tasks such as expiring waypoints and stale user locations
 func BackgroundTasks() {
-	locationClean()
-	waypointClean()
-	simpleDocClean()
+	for {
+		locationClean()
+		waypointClean()
+		simpleDocClean()
 
-	time.Sleep(3600 * time.Second)
-	Log.Debug("Running Background Tasks")
+		time.Sleep(3600 * time.Second)
+		Log.Debug("Running Background Tasks")
+	}
 }
 
 func locationClean() {

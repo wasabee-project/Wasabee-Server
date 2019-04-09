@@ -19,7 +19,7 @@
 </li>
 	{{ $x := .ID }}
 	{{ $rc := .RocksComm }}
-	{{range .User}}
+	{{range .Agent}}
         <li class="list-group-item">{{.Name}} ({{.State}}) {{if .EnlID}} <a href="https://v.enl.one/profile/{{.EnlID}}">V Profile</a> {{end}} <br />
 		{{if not $rc}}<a href="/{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a>{{end}}
 		</li>
@@ -27,8 +27,8 @@
 <li class="list-group-item">
 <form action="/{{WebAPIPath}}/team/{{.ID}}" method="get">
 <input type="text" name="key" />
-<input type="submit" name="add" value="add user to team" />
-<small>You can use an agent name, a GID, a lockey, or an EnlID</small>
+<input type="submit" name="add" value="Add agent to team" />
+<small>You can use an Agent name, a GoogleID, a lockey, or an EnlID</small>
 </form>
 </li>
 </ul>

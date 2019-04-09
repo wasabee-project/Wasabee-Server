@@ -42,7 +42,7 @@ Your telegram account is now verified and can receive updates and submit locatio
 
 {{define "Teammates"}}
 Nearest Know Teammates
-{{range .User}}
+{{range .Agent}}
 {{.Name}}: {{.Distance}}km ({{.Date}})
 [Google Maps](http://maps.google.com/?q={{.Lat}},{{.Lon}}) [Apple Maps](http://maps.apple.com/?q={{.Lat}},{{.Lon}})
 {{end}}
