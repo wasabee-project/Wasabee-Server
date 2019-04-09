@@ -29,7 +29,7 @@ type Agent struct {
 	Blacklisted   bool            `json:"blacklisted"`
 	RocksVerified bool            `json:"rocks,omitmissing"`
 	Color         string          `json:"color,omitmissing"`
-	State         bool            `json:state,omitmissing"`
+	State         bool            `json:"state,omitmissing"`
 	LocKey        string          `json:"lockey,omitmissing"`
 	Lat           float64         `json:"lat,omitmissing"`
 	Lon           float64         `json:"lng,omitmissing"`
