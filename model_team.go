@@ -45,9 +45,9 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 
 	var err error
 	if allowOff {
-		err = db.QueryRow("SELECT COUNT(*) FROM userteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
 	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM userteams WHERE teamID = ? AND gid = ? AND state != 'Off'", team, gid).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ? AND state != 'Off'", team, gid).Scan(&count)
 	}
 	if err != nil {
 		return false, err
@@ -69,12 +69,12 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	var rows *sql.Rows
 	if fetchAll != true {
 		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
-			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
+			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
 			"AND x.state != 'Off'", teamID)
 	} else {
 		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
-			"FROM teams=t, userteams=x, user=u, locations=l, otdata=o "+
+			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ", teamID)
 	}
 	if err != nil {
@@ -118,7 +118,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	}
 
 	var rockscomm, rockskey sql.NullString
-	if err := db.QueryRow("SELECT name, rockscomm, rockskey FROM teams WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey); err != nil {
+	if err := db.QueryRow("SELECT name, rockscomm, rockskey FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -148,7 +148,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	var owner GoogleID
 
-	err := db.QueryRow("SELECT owner FROM teams WHERE teamID = ?", teamID).Scan(&owner)
+	err := db.QueryRow("SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
 	// check for err or trust that the calling function will do that?
 	if gid == owner {
 		return true, err
@@ -164,11 +164,11 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 		Log.Notice(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO teams (teamID, owner, name, rockskey, rockscomm) VALUES (?,?,?,NULL,NULL)", team, gid, name)
+	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm) VALUES (?,?,?,NULL,NULL)", team, gid, name)
 	if err != nil {
 		Log.Notice(err)
 	}
-	_, err = db.Exec("INSERT INTO userteams (teamID, gid, state, color) VALUES (?,?,'On','00FF00')", team, gid)
+	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color) VALUES (?,?,'On','00FF00')", team, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -178,7 +178,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 // Rename sets a new name for a teamID
 // does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Rename(name string) error {
-	_, err := db.Exec("UPDATE teams SET name = ? WHERE teamID = ?", name, teamID)
+	_, err := db.Exec("UPDATE team SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -189,11 +189,11 @@ func (teamID TeamID) Rename(name string) error {
 // does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Delete() error {
 	// XXX once we push to rocks, don't do it this way; remove each agent manually, so they get cleared from rocks community
-	_, err := db.Exec("DELETE FROM userteams WHERE teamID = ?", teamID)
+	_, err := db.Exec("DELETE FROM agentteams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
-	_, err = db.Exec("DELETE FROM teams WHERE teamID = ?", teamID)
+	_, err = db.Exec("DELETE FROM team WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -288,7 +288,7 @@ func (teamID TeamID) AddAgent(in interface{}) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT IGNORE INTO userteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
+	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -305,7 +305,7 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 		return err
 	}
 
-	_, err = db.Exec("DELETE FROM userteams WHERE teamID = ? AND gid = ?", teamID, gid)
+	_, err = db.Exec("DELETE FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 		return (err)
@@ -316,7 +316,7 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 
 // ClearPrimaryTeam sets any team marked as primary to "On" for a agent
 func (gid GoogleID) ClearPrimaryTeam() error {
-	_, err := db.Exec("UPDATE userteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)
+	_, err := db.Exec("UPDATE agentteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)
 	if err != nil {
 		Log.Notice(err)
 		return (err)
@@ -340,8 +340,8 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	// no ST_Distance_Sphere in MariaDB yet...
 	rows, err = db.Query("SELECT DISTINCT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
-		"FROM userteams=x, user=u, locations=l, otdata=o "+
-		"WHERE x.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
+		"FROM agentteams=x, agent=u, locations=l, otdata=o "+
+		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state != 'Off') "+
 		"AND x.state != 'Off' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
 		"HAVING distance < ? AND distance > 0 ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
@@ -398,7 +398,7 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, Y(loc), X(loc), teamID, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
 		"FROM waypoints "+
-		"WHERE teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') "+
+		"WHERE teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state != 'Off') "+
 		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
@@ -453,7 +453,7 @@ func (gid GoogleID) MarkersNear(maxdistance, maxresults int, td *TeamData) error
 // Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).
 // adds/deletes at enl.rocks will be pushed here (onJoin/onLeave web hooks must be configured in the community at enl.rocks)
 func (teamID TeamID) SetRocks(key, community string) error {
-	_, err := db.Exec("UPDATE teams SET rockskey = ?, rockscomm = ? WHERE teamID = ?", key, community, teamID)
+	_, err := db.Exec("UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", key, community, teamID)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -470,7 +470,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 		_ = gid.ClearPrimaryTeam()
 	}
 
-	if _, err := db.Exec("UPDATE userteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
+	if _, err := db.Exec("UPDATE agentteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
 		Log.Notice(err)
 	}
 	return nil
@@ -480,7 +480,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 // XXX BUG: if multiple teams use the same name this will not work
 func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
 	var id TeamID
-	row := db.QueryRow("SELECT teamID FROM teams WHERE LOWER(name) LIKE LOWER(?) ORDER BY teamID LIMIT 0,1", teamname)
+	row := db.QueryRow("SELECT teamID FROM team WHERE LOWER(name) LIKE LOWER(?) ORDER BY teamID LIMIT 0,1", teamname)
 	err := row.Scan(&id)
 	if err != nil {
 		Log.Notice(err)
@@ -492,7 +492,7 @@ func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
 // PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint data is saved
 func (gid GoogleID) PrimaryTeam() (string, error) {
 	var primary string
-	err := db.QueryRow("SELECT teamID FROM userteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
+	err := db.QueryRow("SELECT teamID FROM agentteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		Log.Debug("Primary Team Not Set")
 		return "", nil
@@ -517,7 +517,7 @@ func FetchAgent(id string, agent *Agent) error {
 		return fmt.Errorf("Unknown agent (redundant check?): %s", id)
 	}
 
-	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM user=u WHERE u.gid = ?", gid).Scan(
+	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(
 		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &agent.EnlID, &agent.RocksVerified)
 	if err != nil {
 		Log.Error(err)

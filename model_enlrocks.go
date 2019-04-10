@@ -124,7 +124,7 @@ func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 	}
 	if agent.Agent != "" {
 		// Log.Debug("Updating Rocks data for ", agent.Agent)
-		_, err := db.Exec("UPDATE user SET iname = ?, RocksVerified = ? WHERE gid = ?", agent.Agent, agent.Verified, gid)
+		_, err := db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", agent.Agent, agent.Verified, gid)
 
 		if err != nil {
 			Log.Error(err)
@@ -196,7 +196,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	}
 
 	var rc sql.NullString
-	err := db.QueryRow("SELECT rockskey FROM teams WHERE teamID = ?", teamID).Scan(&rc)
+	err := db.QueryRow("SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -248,7 +248,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 // RocksTeamID takes a rocks community ID and returns an associated teamID
 func RocksTeamID(rockscomm string) (TeamID, error) {
 	var t TeamID
-	err := db.QueryRow("SELECT teamID FROM teams WHERE rockscomm = ?", rockscomm).Scan(&t)
+	err := db.QueryRow("SELECT teamID FROM team WHERE rockscomm = ?", rockscomm).Scan(&t)
 	if err != nil {
 		Log.Error(err)
 		return "", err

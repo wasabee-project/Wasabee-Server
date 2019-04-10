@@ -97,7 +97,7 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	var locs []json.RawMessage
 	var tmp sql.NullString
 
-	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, userteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM userteams WHERE gid = ? AND state != 'Off') AND ut.state != 'Off' AND o.gid = l.gid AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
+	r, err := db.Query("SELECT DISTINCT o.otdata FROM otdata=o, agentteams=ut, locations=l WHERE o.gid = ut.gid AND o.gid != ? AND ut.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state != 'Off') AND ut.state != 'Off' AND o.gid = l.gid AND l.upTime > SUBTIME(NOW(), '12:00:00')", gid, gid)
 	if err != nil {
 		Log.Error(err)
 		return json.RawMessage(""), err
@@ -172,7 +172,7 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 	var tmpWaypoint Waypoint
 	tmpWaypoint.Type = "waypoint"
 
-	wr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=w, userteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM userteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
+	wr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=w, agentteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM agentteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -295,7 +295,7 @@ func (gid GoogleID) ownTracksTidy(otdata string) (json.RawMessage, error) {
 // location reporting which suits their needs best.
 func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
 	var otdata, lockey string
-	err := db.QueryRow("SELECT ot.otdata, u.lockey FROM otdata=ot, user=u WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&otdata, &lockey)
+	err := db.QueryRow("SELECT ot.otdata, u.lockey FROM otdata=ot, agent=u WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&otdata, &lockey)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -403,7 +403,7 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 // SetOwnTracksPW updates the database with a new OwnTracks password for a given agent
 // TODO: move to model_owntracks.go
 func (gid GoogleID) SetOwnTracksPW(otpw string) error {
-	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
+	_, err := db.Exec("UPDATE agent SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
 	if err != nil {
 		Log.Notice(err)
 	}
@@ -415,7 +415,7 @@ func (gid GoogleID) SetOwnTracksPW(otpw string) error {
 func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
 	var gid GoogleID
 
-	r := db.QueryRow("SELECT gid FROM user WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
+	r := db.QueryRow("SELECT gid FROM agent WHERE OTpassword = PASSWORD(?) AND lockey = ?", otpw, lockey)
 	err := r.Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Notice(err)

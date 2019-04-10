@@ -128,7 +128,7 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 
 	if vres.Status == "ok" && vres.Data.Agent != "" {
 		// Log.Debug("Updating V data for ", vres.Data.Agent)
-		_, err := db.Exec("UPDATE user SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
+		_, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
 			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, vres.Data.EnlID, gid)
 
 		if err != nil {
@@ -190,7 +190,7 @@ func (gid GoogleID) StatusLocation() (string, string, error) {
 // EnlID returns the V EnlID for a agent if it is known.
 func (gid GoogleID) EnlID() (EnlID, error) {
 	var e EnlID
-	err := db.QueryRow("SELECT Vid FROM user WHERE gid = ?", gid).Scan(&e)
+	err := db.QueryRow("SELECT Vid FROM agent WHERE gid = ?", gid).Scan(&e)
 	if err != nil {
 		Log.Debug(err)
 	}
@@ -209,7 +209,7 @@ func StatusServerPoller() {
 	Log.Info("Starting status.enl.one Poller")
 	for {
 		// get list of agents who say they use JEAH/RAID
-		row, err := db.Query("SELECT gid, Vid FROM user WHERE RAID = 1")
+		row, err := db.Query("SELECT gid, Vid FROM agent WHERE RAID = 1")
 		if err != nil {
 			Log.Error(err)
 			return
@@ -249,7 +249,7 @@ func StatusServerPoller() {
 // Gid looks up a GoogleID from an EnlID
 func (eid EnlID) Gid() (GoogleID, error) {
 	var gid GoogleID
-	err := db.QueryRow("SELECT gid FROM user WHERE Vid = ?", eid).Scan(&gid)
+	err := db.QueryRow("SELECT gid FROM agent WHERE Vid = ?", eid).Scan(&gid)
 	if err != nil {
 		Log.Error(err)
 		return "", err

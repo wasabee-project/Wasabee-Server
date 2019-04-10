@@ -67,7 +67,7 @@ func (document *SimpleDocument) Store() error {
 
 	// Write the document to the database
 	_, err = db.Exec(
-		"INSERT INTO documents (id, content, upload, expiration, views) VALUES (?, ?, ?, ?, 0)",
+		"INSERT INTO document (id, content, upload, expiration, views) VALUES (?, ?, ?, ?, 0)",
 		hex.EncodeToString(databaseID[:]),
 		string(data),
 		document.Upload.UTC().Format("2006-01-02 15:04:05"), // don't use NOW() since this is used in the key...
@@ -85,7 +85,7 @@ func Request(id string) (SimpleDocument, error) {
 	var views int
 	var upload, expiration sql.NullString
 	databaseID := sha256.Sum256([]byte(id))
-	err := db.QueryRow("SELECT content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
+	err := db.QueryRow("SELECT content, upload, expiration, views FROM document WHERE id = ?", hex.EncodeToString(databaseID[:])).
 		Scan(&doc.Content, &upload, &expiration, &views)
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
@@ -94,7 +94,7 @@ func Request(id string) (SimpleDocument, error) {
 		return SimpleDocument{}, err
 	}
 
-	go db.Exec("UPDATE documents SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
+	go db.Exec("UPDATE document SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
 	doc.Views = views
 
 	doc.Upload, _ = time.Parse("2006-01-02 15:04:05", upload.String)
@@ -117,7 +117,7 @@ func Request(id string) (SimpleDocument, error) {
 		if doc.Expiration.Before(time.Unix(0, 1)) {
 			if doc.Views > 0 {
 				// Volatile document
-				_, err = db.Exec("DELETE FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:]))
+				_, err = db.Exec("DELETE FROM document WHERE id = ?", hex.EncodeToString(databaseID[:]))
 				if err != nil {
 					Log.Errorf("Couldn't delete volatile document: %s", err)
 				}
@@ -137,7 +137,7 @@ func Request(id string) (SimpleDocument, error) {
 
 func simpleDocClean() {
 	// do it this way to get RowsAffected
-	stmt, _ := db.Prepare("DELETE FROM documents WHERE expiration < CURRENT_TIMESTAMP AND expiration > FROM_UNIXTIME(0)")
+	stmt, _ := db.Prepare("DELETE FROM document WHERE expiration < CURRENT_TIMESTAMP AND expiration > FROM_UNIXTIME(0)")
 
 	result, err := stmt.Exec()
 	if err != nil {
