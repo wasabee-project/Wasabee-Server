@@ -1,5 +1,8 @@
+[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GoReportCard](https://goreportcard.com/badge/cloudkucooland/WASABI)](https://goreportcard.com/report/cloudkucooland/WASABI)
 [![GoDoc](https://godoc.org/github.com/cloudkucooland/WASABI?status.svg)](https://godoc.org/github.com/cloudkucooland/WASABI)
+![GitHub issues](https://img.shields.io/github/issues/cloudkucooland/WASABI.svg)
+
 # WASABI
 ### The Server-Side component for Phtiv-Draw-Tools and related Ingress tools.
 
