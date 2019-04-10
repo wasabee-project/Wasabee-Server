@@ -57,24 +57,24 @@ func GetvEnlOne() bool {
 	return vc.configured
 }
 
-// VSearch checks a user at V and populates a Vresult
+// VSearch checks a agent at V and populates a Vresult
 // gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
 func (gid GoogleID) VSearch(vres *Vresult) error {
 	return vsearch(gid, vres)
 }
 
-// VSearch checks a user at V and populates a Vresult
+// VSearch checks a agent at V and populates a Vresult
 func (eid EnlID) VSearch(vres *Vresult) error {
 	return vsearch(eid, vres)
 }
 
-// VSearch checks a user at V and populates a Vresult
+// VSearch checks a agent at V and populates a Vresult
 func (tgid TelegramID) VSearch(vres *Vresult) error {
 	id := strconv.Itoa(int(tgid))
 	return vsearch(id, vres)
 }
 
-// vsearch stands behind the wraper functions and checks a user at V and populates a Vresult
+// vsearch stands behind the wraper functions and checks a agent at V and populates a Vresult
 func vsearch(i interface{}, vres *Vresult) error {
 	var searchID string
 	switch id := i.(type) {
@@ -120,7 +120,7 @@ func vsearch(i interface{}, vres *Vresult) error {
 }
 
 // VUpdate updates the database to reflect an agent's current status at V.
-// It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
+// It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) VUpdate(vres *Vresult) error {
 	if vc.configured == false {
 		return errors.New("V API key not configured")
@@ -187,7 +187,7 @@ func (gid GoogleID) StatusLocation() (string, string, error) {
 	return lat, lon, err
 }
 
-// EnlID returns the V EnlID for a user if it is known.
+// EnlID returns the V EnlID for a agent if it is known.
 func (gid GoogleID) EnlID() (EnlID, error) {
 	var e EnlID
 	err := db.QueryRow("SELECT Vid FROM user WHERE gid = ?", gid).Scan(&e)
@@ -208,7 +208,7 @@ func StatusServerPoller() {
 	// loop forever
 	Log.Info("Starting status.enl.one Poller")
 	for {
-		// get list of users who say they use JEAH/RAID
+		// get list of agents who say they use JEAH/RAID
 		row, err := db.Query("SELECT gid, Vid FROM user WHERE RAID = 1")
 		if err != nil {
 			Log.Error(err)
@@ -219,7 +219,7 @@ func StatusServerPoller() {
 
 		for row.Next() {
 			err = row.Scan(&gid, &vid)
-			// XXX if the user isn't active on any teams, ignore
+			// XXX if the agent isn't active on any teams, ignore
 			if err != nil {
 				Log.Error(err)
 				continue

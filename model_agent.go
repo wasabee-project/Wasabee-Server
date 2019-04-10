@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// GoogleID is the primary location for interfacing with the user type
+// GoogleID is the primary location for interfacing with the agent type
 type GoogleID string
 
 // TeamID is the primary means for interfacing with teams
@@ -17,7 +17,8 @@ type LocKey string
 // EnlID is a V EnlID
 type EnlID string
 
-// AgentData is the complete user struct, used for the /me page
+// AgentData is the complete agent struct, used for the /me page.
+// XXX move the sub-structs out into individual structs and use those instead of ones also defined in the function bodies.
 type AgentData struct {
 	GoogleID      GoogleID
 	IngressName   string

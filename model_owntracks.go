@@ -400,7 +400,7 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 	return j, err
 }
 
-// SetOwnTracksPW updates the database with a new OwnTracks password for a given user
+// SetOwnTracksPW updates the database with a new OwnTracks password for a given agent
 // TODO: move to model_owntracks.go
 func (gid GoogleID) SetOwnTracksPW(otpw string) error {
 	_, err := db.Exec("UPDATE user SET OTpassword = PASSWORD(?) WHERE gid = ?", otpw, gid)
