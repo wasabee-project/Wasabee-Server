@@ -21,7 +21,7 @@ type EnlID string
 type AgentData struct {
 	GoogleID      GoogleID
 	IngressName   string
-	Level         float64
+	Level         int64
 	LocationKey   string
 	OwnTracksPW   string
 	VVerified     bool
@@ -50,8 +50,8 @@ type AgentData struct {
 	}
 }
 
-// InitAgent is called from Oauth callback to set up a user for the first time.
-// It also checks and updates V and enl.rocks data. It returns true if the user is authorized to continue, false if the user is blacklisted or otherwise locked at V or enl.rocks.
+// InitAgent is called from Oauth callback to set up a agent for the first time.
+// It also checks and updates V and enl.rocks data. It returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked at V or enl.rocks.
 func (gid GoogleID) InitAgent() (bool, error) {
 	var authError error // delay reporting authorization problems until after INSERT/Vupdate/RocksUpdate
 	var tmpName string
@@ -103,7 +103,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		}
 	}
 
-	// if the user doesn't exist, prepopulate everything
+	// if the agent doesn't exist, prepopulate everything
 	_, err = gid.IngressName()
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		if tmpName == "" {
@@ -154,7 +154,7 @@ func (gid GoogleID) SetIngressName(name string) error {
 	return err
 }
 
-// Gid converts a location share key to a user's gid
+// Gid converts a location share key to a agent's gid
 func (lockey LocKey) Gid() (GoogleID, error) {
 	var gid GoogleID
 
@@ -288,7 +288,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	return nil
 }
 
-// AgentLocation updates the database to reflect a user's current location
+// AgentLocation updates the database to reflect a agent's current location
 // OwnTracks data is updated to reflect the change
 // TODO: react based on the location
 func (gid GoogleID) AgentLocation(lat, lon, source string) error {
@@ -319,7 +319,7 @@ func (gid GoogleID) AgentLocation(lat, lon, source string) error {
 	return nil
 }
 
-// ResetLocKey updates the database with a new OwnTracks password for a given user
+// ResetLocKey updates the database with a new OwnTracks password for a given agent
 func (gid GoogleID) ResetLocKey() error {
 	newlockey, _ := GenerateSafeName()
 	_, err := db.Exec("UPDATE user SET lockey = ? WHERE gid = ?", newlockey, gid)

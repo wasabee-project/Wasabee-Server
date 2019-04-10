@@ -18,7 +18,7 @@ type messagingConfig struct {
 
 var mc messagingConfig
 
-// SendMessage sends a message to the available message destinations for user specified by "gid"
+// SendMessage sends a message to the available message destinations for agent specified by "gid"
 // currently only Telegram is supported, but more can be added
 func (gid GoogleID) SendMessage(message string) (bool, error) {
 	// determine which messaging protocols are enabled for gid
@@ -70,9 +70,9 @@ func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 	return ok, nil
 }
 
-// SendAnnounce sends a message to everyone on the team, determining what is the best route per user
+// SendAnnounce sends a message to everyone on the team, determining what is the best route per agent
 func (teamID TeamID) SendAnnounce(message string) error {
-	// for each user on the team
+	// for each agent on the team
 	// determine which messaging protocols are enabled for gid
 	// pick optimal
 

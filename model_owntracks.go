@@ -250,7 +250,7 @@ func (teamID TeamID) otWaypoints(tl *TeamData) error {
 }
 
 // OwnTracksTransition is called when an agent enters or leaves a WayPoint's radius
-// currently a stub which only sends a message alerting the user that they have made the transition
+// currently a stub which only sends a message alerting the agent that they have made the transition
 // future features are still being considered
 func (gid GoogleID) OwnTracksTransition(transition json.RawMessage) (json.RawMessage, error) {
 	var t Transition
@@ -410,7 +410,7 @@ func (gid GoogleID) SetOwnTracksPW(otpw string) error {
 	return err
 }
 
-// VerifyOwnTracksPW is used to check that the supplied password matches the stored password hash for the given user
+// VerifyOwnTracksPW is used to check that the supplied password matches the stored password hash for the given agent
 // upon success it returns the gid for the lockey (which is also the owntracks username), on failure it returns ""
 func (lockey LocKey) VerifyOwnTracksPW(otpw string) (GoogleID, error) {
 	var gid GoogleID

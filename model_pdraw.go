@@ -62,7 +62,7 @@ type Marker struct {
 
 // PDrawInsert parses a raw op sent from the IITC plugin and stores it in the database
 // it will completely overwrite an existing draw with the same ID
-// if the current user is the same as the user who originally uploaded it
+// if the current agent is the same as the agent who originally uploaded it
 func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {

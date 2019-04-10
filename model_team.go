@@ -314,7 +314,7 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 	return nil
 }
 
-// ClearPrimaryTeam sets any team marked as primary to "On" for a user
+// ClearPrimaryTeam sets any team marked as primary to "On" for a agent
 func (gid GoogleID) ClearPrimaryTeam() error {
 	_, err := db.Exec("UPDATE userteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)
 	if err != nil {

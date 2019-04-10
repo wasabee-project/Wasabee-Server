@@ -225,14 +225,14 @@ func StatusServerPoller() {
 				continue
 			}
 			if vid.Valid == false {
-				Log.Info("User requested RAID poll, but has not configured V")
+				Log.Info("Agent requested RAID poll, but has not configured V")
 				continue
 			}
 			e := EnlID(vid.String)
 			g := GoogleID(gid.String)
 			lat, lon, err := e.StatusLocation()
 			if err != nil {
-				// XXX add the user to an exception list? purge the list every 12 hours?
+				// XXX add the agent to an exception list? purge the list every 12 hours?
 				Log.Error(err)
 				continue
 			}

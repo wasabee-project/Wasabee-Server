@@ -60,24 +60,24 @@ func GetEnlRocks() bool {
 	return rocks.configured
 }
 
-// RocksSearch checks a user at enl.rocks and populates a RocksAgent
+// RocksSearch checks a agent at enl.rocks and populates a RocksAgent
 // gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
 func (gid GoogleID) RocksSearch(agent *RocksAgent) error {
 	return rockssearch(gid, agent)
 }
 
-// RocksSearch checks a user at enl.rocks and populates a RocksAgent
+// RocksSearch checks a agent at enl.rocks and populates a RocksAgent
 func (eid EnlID) RocksSearch(agent *RocksAgent) error {
 	return rockssearch(eid, agent)
 }
 
-// RocksSearch checks a user at enl.rocks and populates a RocksAgent
+// RocksSearch checks a agent at enl.rocks and populates a RocksAgent
 func (tgid TelegramID) RocksSearch(agent *RocksAgent) error {
 	id := strconv.Itoa(int(tgid))
 	return rockssearch(id, agent)
 }
 
-// rockssearch stands behind the wraper functions and checks a user at enl.rocks and populates a RocksAgent
+// rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
 func rockssearch(i interface{}, agent *RocksAgent) error {
 	var searchID string
 	switch id := i.(type) {
@@ -117,7 +117,7 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 }
 
 // RocksUpdate updates the database to reflect an agent's current status at enl.rocks.
-// It should be called whenever a user logs in via a new service (if appropriate); currently only https does.
+// It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 	if rocks.configured == false {
 		return errors.New("Rocks API key not configured")
@@ -131,7 +131,7 @@ func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 			return err
 		}
 
-		// we trust .rocks to verify telegram info; if it is not already set for a user, just import it.
+		// we trust .rocks to verify telegram info; if it is not already set for a agent, just import it.
 		// XXX using agent name for telegramName isn't right in many cases -- need to reverify later
 		if agent.TGId > 0 { // negative numbers are group chats, 0 is invalid
 			_, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", agent.TGId, agent.Agent, gid)
@@ -159,7 +159,7 @@ func RocksCommunitySync(msg json.RawMessage) error {
 
 	_, err = rc.User.Gid.IngressName()
 	if err != nil && err.Error() == "sql: no rows in result set" {
-		Log.Debugf("Importing previously unknown user: %s", rc.User.Gid)
+		Log.Debugf("Importing previously unknown agent: %s", rc.User.Gid)
 		_, err = rc.User.Gid.InitAgent()
 		if err != nil {
 			Log.Error(err)
@@ -189,7 +189,7 @@ func RocksCommunitySync(msg json.RawMessage) error {
 	return nil
 }
 
-// RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each user to the team
+// RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
 func (teamID TeamID) RocksCommunityMemberPull() error {
 	if rocks.configured == false {
 		return errors.New("Rocks API key not configured")
@@ -224,11 +224,11 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return err
 	}
 
-	for _, user := range rr.Members {
-		_, err = user.IngressName()
+	for _, agent := range rr.Members {
+		_, err = agent.IngressName()
 		if err != nil && err.Error() == "sql: no rows in result set" {
-			Log.Debugf("Importing previously unknown user: %s", user)
-			_, err = user.InitAgent() // add user to system if they don't already exist
+			Log.Debugf("Importing previously unknown agent: %s", agent)
+			_, err = agent.InitAgent() // add agent to system if they don't already exist
 			if err != nil {
 				Log.Notice(err)
 				continue
@@ -236,7 +236,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		}
 		// XXX deal with other errors?
 
-		err = teamID.AddAgent(user)
+		err = teamID.AddAgent(agent)
 		if err != nil {
 			Log.Notice(err)
 			continue
