@@ -290,7 +290,7 @@ func authMW(next http.Handler) http.Handler {
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				WASABI.Log.Debug("Session timed out for", gid.String())
+				// WASABI.Log.Debug("Session timed out for", gid.String())
 				ses.Values["nonce"] = "unset"
 				ses.Save(req, res)
 			} else {

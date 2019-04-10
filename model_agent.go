@@ -395,7 +395,7 @@ func revalidateEveryone() error {
 func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
 	err := db.QueryRow("SELECT gid FROM user WHERE LOWER(iname) LIKE LOWER(?)", agent).Scan(&gid)
-	if err != nil {
+	if err != nil && err.Error() != "sql: no rows in result set" {
 		Log.Notice(err)
 		return "", err
 	}

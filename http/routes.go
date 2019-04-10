@@ -187,8 +187,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		// WASABI.Log.Debug("deep-link redirecting to", rr)
-		if rr[:3] == "/me" || rr[:6] == "/login" { // probably just /login now, but leave this in place until I can test more
-			location = "/me?a=1"
+		if rr[:3] == "/me" || rr[:6] == "/login" { // leave /me check in place
+			location = "/me?postlogin=1"
 		} else {
 			location = rr
 		}
@@ -239,7 +239,7 @@ func getAgentInfo(state string, code string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
-	response, err := http.Get("https://www.googleapis.com/oauth2/v2/agentinfo?access_token=" + token.AccessToken)
+	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting agent info: %s", err.Error())
 	}

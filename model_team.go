@@ -257,12 +257,16 @@ func toGid(in interface{}) (GoogleID, error) {
 				gid, _ = toGid(lockey)
 			} else {
 				gid, _ = SearchAgentName(tmp)
-				if err != nil && err.Error() == "sql: no rows in result set" {
-					err = fmt.Errorf("Unknown agent: %s", tmp)
+				if err != nil && err.Error() == "sql: no rows in result set" { // XXX this can't happen any longer
+					err = fmt.Errorf("Unknown agent (XXX impossible route): %s", tmp)
 					Log.Info(err)
 					return "", err
 				} else if err != nil {
 					Log.Notice(err)
+					return "", err
+				} else if gid == "" {
+					err = fmt.Errorf("Unknown agent: %s", tmp)
+					Log.Info(err)
 					return "", err
 				}
 			}
@@ -507,6 +511,12 @@ func FetchAgent(id string, agent *Agent) error {
 		Log.Error(err)
 		return err
 	}
+
+	// XXX redundant with previous check?
+	if gid == "" {
+		return fmt.Errorf("Unknown agent (redundant check?): %s", id)
+	}
+
 	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM user=u WHERE u.gid = ?", gid).Scan(
 		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &agent.EnlID, &agent.RocksVerified)
 	if err != nil {
