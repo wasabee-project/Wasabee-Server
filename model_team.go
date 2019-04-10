@@ -289,11 +289,7 @@ func (teamID TeamID) AddAgent(in interface{}) error {
 		Log.Notice(err)
 		return err
 	}
-	_, err = gid.SendMessageTemplate("team-add", "en", teamID) // XXX not hardcode  "en" and use name, not ID
-	if err != nil {
-		Log.Notice(err)
-		return (err)
-	}
+	// XXX send message? Should take place in the caller since we can't know the langauge here
 	return nil
 }
 
