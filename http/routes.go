@@ -71,6 +71,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
 	r.HandleFunc("/api/v1/me", meShowRoute).Methods("GET")                                                     // -- do not use, just here for safety
 	r.HandleFunc("/api/v1/me/delete", meDeleteRoute).Methods("GET")                                            // purge all info for a agent
+	r.HandleFunc("/api/v1/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")      // purge all info for a agent
 	r.HandleFunc("/api/v1/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")            // /api/v1/me/wonky-team-1234?state={Off|On|Primary}
 	r.HandleFunc("/api/v1/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                     // remove me from team
 	r.HandleFunc("/api/v1/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                 // remove me from team

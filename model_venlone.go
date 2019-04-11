@@ -174,6 +174,7 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 	}
 	if stat.Status != 0 {
 		err := fmt.Errorf("Polling %s returned message: %s", eid, stat.Message)
+		eid.StatusLocationDisable()
 		return "", "", err
 	}
 	return stat.Lat, stat.Lon, nil
@@ -185,6 +186,40 @@ func (gid GoogleID) StatusLocation() (string, string, error) {
 	e, _ := gid.EnlID()
 	lat, lon, err := e.StatusLocation()
 	return lat, lon, err
+}
+
+// StatusLocaitonEnable turns RAID/JEAH pulling on for the specified agent
+func (eid EnlID) StatusLocationEnable() error {
+	_, err := db.Exec("UPDATE agent SET RAID = 1 WHERE Vid = ?", eid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// StatusLocationEnable turns RAID/JEAH pulling on for the specified agent
+func (gid GoogleID) StatusLocationEnable() error {
+	eid, err := gid.EnlID()
+	err = eid.StatusLocationEnable()
+	return err
+}
+
+// StatusLocaitonDisable turns RAID/JEAH pulling off for the specified agent
+func (eid EnlID) StatusLocationDisable() error {
+	_, err := db.Exec("UPDATE agent SET RAID = 0 WHERE Vid = ?", eid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// StatusLocationDisable turns RAID/JEAH pulling off for the specified agent
+func (gid GoogleID) StatusLocationDisable() error {
+	eid, err := gid.EnlID()
+	err = eid.StatusLocationDisable()
+	return err
 }
 
 // EnlID returns the V EnlID for a agent if it is known.
@@ -224,6 +259,7 @@ func StatusServerPoller() {
 				Log.Error(err)
 				continue
 			}
+			Log.Debugf("Polling status.enl.one for %s", gid.String)
 			if vid.Valid == false {
 				Log.Info("Agent requested RAID poll, but has not configured V")
 				continue

@@ -29,7 +29,7 @@
 {{if .VVerified}}
 <li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> <a href="https://v.enl.one/profile/{{.Vid}}">Verified</a></li>
 <li class="list-group-item"><a href="https://raid.enl.one/">Checking RAID for location data:</a> {{.RAID}}<br />
-<small>RAID is an ENL Android/iPhone app which can share location data. We are still researching the exact configuration to make this work. If you are a RAID user and do not want to use OwnTracks, we can get RAID data. OwnTracks will give more up-to-date information to the operator since there is a lag in our polling the RAID servers.</small>
+<small>RAID is an ENL Android/iPhone app which can share location data. We are still researching the exact configuration to make this work. If you are a RAID user and do not want to use OwnTracks, we can get RAID data. OwnTracks will give more up-to-date information to the operator since there is a lag in our polling the RAID servers. If a single polling cycle returns an error for you, this value will revert to disabled. <a href="/api/v1/me/statuslocation?sl=On">Enable</a></small>
 </li>
 {{else}}
 <li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Not Verified</li>

@@ -50,7 +50,7 @@ func waypointClean() {
 	}
 
 	// Invalidate expired ones
-	_, err = db.Exec("UPDATE waypoints SET loc = POINTFROMTEXT(?) WHERE expiration < NOW() AND X(loc) != -180.1", "POINT(-180.1 0)")
+	_, err = db.Exec("UPDATE waypoints SET loc = POINTFROMTEXT(?) WHERE expiration < NOW() AND X(loc) != -180.1", "POINT(-180.1 91.1)")
 	if err != nil {
 		Log.Error(err)
 	}

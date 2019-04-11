@@ -189,3 +189,22 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	// XXX delete the session cookie from the browser
 	http.Redirect(res, req, "/", http.StatusPermanentRedirect)
 }
+
+func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		WASABI.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	sl := vars["sl"]
+
+	if sl == "On" {
+		gid.StatusLocationEnable()
+	} else {
+		gid.StatusLocationDisable()
+	}
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+}
