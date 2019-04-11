@@ -188,7 +188,7 @@ func (gid GoogleID) StatusLocation() (string, string, error) {
 	return lat, lon, err
 }
 
-// StatusLocaitonEnable turns RAID/JEAH pulling on for the specified agent
+// StatusLocationEnable turns RAID/JEAH pulling on for the specified agent
 func (eid EnlID) StatusLocationEnable() error {
 	_, err := db.Exec("UPDATE agent SET RAID = 1 WHERE Vid = ?", eid)
 	if err != nil {
@@ -205,7 +205,7 @@ func (gid GoogleID) StatusLocationEnable() error {
 	return err
 }
 
-// StatusLocaitonDisable turns RAID/JEAH pulling off for the specified agent
+// StatusLocationDisable turns RAID/JEAH pulling off for the specified agent
 func (eid EnlID) StatusLocationDisable() error {
 	_, err := db.Exec("UPDATE agent SET RAID = 0 WHERE Vid = ?", eid)
 	if err != nil {
