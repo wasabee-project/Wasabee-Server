@@ -200,8 +200,8 @@ func (eid EnlID) StatusLocationEnable() error {
 
 // StatusLocationEnable turns RAID/JEAH pulling on for the specified agent
 func (gid GoogleID) StatusLocationEnable() error {
-	eid, err := gid.EnlID()
-	err = eid.StatusLocationEnable()
+	eid, _ := gid.EnlID()
+	err := eid.StatusLocationEnable()
 	return err
 }
 
@@ -217,8 +217,8 @@ func (eid EnlID) StatusLocationDisable() error {
 
 // StatusLocationDisable turns RAID/JEAH pulling off for the specified agent
 func (gid GoogleID) StatusLocationDisable() error {
-	eid, err := gid.EnlID()
-	err = eid.StatusLocationDisable()
+	eid, _ := gid.EnlID()
+	err := eid.StatusLocationDisable()
 	return err
 }
 

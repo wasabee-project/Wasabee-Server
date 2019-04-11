@@ -293,7 +293,7 @@ func (teamID TeamID) AddAgent(in interface{}) error {
 		Log.Notice(err)
 		return err
 	}
-	// XXX send message? Should take place in the caller since we can't know the langauge here
+	// XXX send message? Should take place in the caller since we can't know the language here
 	return nil
 }
 
