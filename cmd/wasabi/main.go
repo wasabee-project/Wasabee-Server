@@ -13,19 +13,19 @@ import (
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "database, d", EnvVar: "DATABASE", Value: "phdev:@tcp(localhost)/phdev",
+		Name: "database, d", EnvVar: "DATABASE", Value: "wasabi:GoodPassword@tcp(localhost)/wasabi",
 		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
 	cli.StringFlag{
 		Name: "certs", EnvVar: "CERTDIR", Value: "./certs/",
 		Usage: "Directory where HTTPS certificates are stored."},
 	cli.StringFlag{
-		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://qbin.phtiv.com:8443",
+		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://wasabi.phtiv.com",
 		Usage: "The path under which the application will be reachable from the internet."},
 	cli.StringFlag{
 		Name: "wordlist", EnvVar: "WORD_LIST", Value: "eff_large_wordlist.txt",
 		Usage: "Word list used for random slug generation."},
 	cli.StringFlag{
-		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":8443",
+		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":443",
 		Usage: "HTTPS listen address."},
 	cli.StringFlag{
 		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "wasabi-https.log",
