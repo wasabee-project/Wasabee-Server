@@ -3,7 +3,6 @@ package WASABI
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -296,16 +295,14 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 		return err
 	}
 
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 	var rr rocksPushResponse
 	err = json.Unmarshal(body, &rr)
 	if err != nil {
 		Log.Error(err)
-		return err
 	}
 	if rr.Success != true {
 		Log.Error(rr.Error)
-		return errors.New(rr.Error)
 	}
 	return nil
 }
