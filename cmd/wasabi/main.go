@@ -48,6 +48,9 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "venlonekey", EnvVar: "VENLONE_API_KEY", Value: "",
 		Usage: "V.enl.one API Key. It is recommended to pass this parameter as an environment variable"},
+	cli.BoolFlag{
+		Name: "venlonepoller", EnvVar: "VENLONE_POLLER",
+		Usage: "Poll status.enl.one for RAID/JEAH location data."},
 	cli.StringFlag{
 		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
 		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
@@ -63,10 +66,17 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "WASABI"
-	app.Version = "0.6.6"
-	app.Usage = "Phtiv-Draw-Tools Server"
+	app.Version = "0.6.8"
+	app.Usage = "WASABI Server"
+	app.Authors = []cli.Author{
+		cli.Author{
+			Name: "Scot C. Bontrager",
+			Email: "scot@indievisible.org",
+		},
+	}
+	app.Copyright = "© Scot C. Bontrager"
+	app.HelpName = "wasabi"
 	app.Flags = flags
-
 	app.HideHelp = true
 	cli.AppHelpTemplate = strings.Replace(cli.AppHelpTemplate, "GLOBAL OPTIONS:", "OPTIONS:", 1)
 
@@ -101,7 +111,9 @@ func run(c *cli.Context) error {
 	// setup V
 	if c.String("venlonekey") != "" {
 		WASABI.SetVEnlOne(c.String("venlonekey"))
-		go WASABI.StatusServerPoller()
+		if c.Bool("venlonepoller") {
+			go WASABI.StatusServerPoller()
+		}
 	}
 
 	// setup Rocks
