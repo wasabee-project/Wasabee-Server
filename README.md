@@ -4,7 +4,7 @@
 ![GitHub issues](https://img.shields.io/github/issues/cloudkucooland/WASABI.svg)
 
 # WASABI
-### The Server-Side component for Phtiv-Draw-Tools and related Ingress tools.
+### The Server-Side component for WASABI and related Ingress tools.
 
 ## But... OPSEC!!!!? Tools!!!
 
