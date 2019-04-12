@@ -411,6 +411,7 @@ func (gid GoogleID) Delete() error {
 		Log.Notice(err)
 		return err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		rows.Scan(&teamID)
 		teamID.Delete()

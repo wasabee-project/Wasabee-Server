@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -79,6 +80,11 @@ func (tgid TelegramID) RocksSearch(agent *RocksAgent) error {
 
 // rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
 func rockssearch(i interface{}, agent *RocksAgent) error {
+	if rocks.configured == false {
+		Log.Debug("Rocks API key not configured")
+		return nil
+	}
+
 	var searchID string
 	switch id := i.(type) {
 	case GoogleID:
@@ -91,11 +97,8 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 		searchID = ""
 	}
 
-	if rocks.configured == false {
-		return errors.New("Rocks API key not configured")
-	}
-	url := fmt.Sprintf("%s/%s?key=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
-	resp, err := http.Get(url)
+	apiurl := fmt.Sprintf("%s/%s?key=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
+	resp, err := http.Get(apiurl)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -120,8 +123,10 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 // It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 	if rocks.configured == false {
-		return errors.New("Rocks API key not configured")
+		Log.Debug("Rocks API key not configured")
+		return nil
 	}
+
 	if agent.Agent != "" {
 		// Log.Debug("Updating Rocks data for ", agent.Agent)
 		_, err := db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", agent.Agent, agent.Verified, gid)
@@ -147,8 +152,6 @@ func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 
 // RocksCommunitySync is called from the https server when it receives a push notification
 func RocksCommunitySync(msg json.RawMessage) error {
-	// currently I can't get enl.rocks to send the data, nothing I can do here
-
 	// check the source? is the community key enough for this? I don't think so
 	var rc RocksCommunityNotice
 	err := json.Unmarshal(msg, &rc)
@@ -172,6 +175,10 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		Log.Error(err)
 		return err
 	}
+	if team == "" {
+		return nil
+	}
+
 	if rc.Action == "onJoin" {
 		err := team.AddAgent(rc.User.Gid)
 		if err != nil {
@@ -192,19 +199,21 @@ func RocksCommunitySync(msg json.RawMessage) error {
 // RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
 func (teamID TeamID) RocksCommunityMemberPull() error {
 	if rocks.configured == false {
-		return errors.New("Rocks API key not configured")
+		Log.Debug("Rocks API key not configured")
+		return nil
 	}
 
-	var rc sql.NullString
-	err := db.QueryRow("SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
+	rc, err := teamID.teamToRocksComm()
 	if err != nil {
-		Log.Error(err)
 		return err
 	}
+	if rc == "" {
+		return nil
+	}
 
-	url := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc.String)
-	Log.Debug(url)
-	resp, err := http.Get(url)
+	apiurl := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc)
+	// Log.Debug(apiurl)
+	resp, err := http.Get(apiurl)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -249,9 +258,114 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 func RocksTeamID(rockscomm string) (TeamID, error) {
 	var t TeamID
 	err := db.QueryRow("SELECT teamID FROM team WHERE rockscomm = ?", rockscomm).Scan(&t)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		return "", nil
+	}
 	if err != nil {
 		Log.Error(err)
 		return "", err
 	}
 	return t, nil
+}
+
+type rocksPushResponse struct {
+	Error   string `json:"error"`
+	Success bool   `json:"success"`
+}
+
+func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
+	rc, err := teamID.teamToRocksComm()
+	if err != nil {
+		return err
+	}
+	if rc == "" {
+		return nil
+	}
+
+	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
+	Log.Debug(apiurl)
+	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	Log.Debug(string(body))
+	var rr rocksPushResponse
+	err = json.Unmarshal(body, &rr)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if rr.Success != true {
+		Log.Error(rr.Error)
+		return errors.New(rr.Error)
+	}
+	return nil
+}
+
+// RemoveFromRemoteRocksCommunity removes an agent from a Rocks Community IF that community has API enabled.
+// XXX currently segfaults when looking at the resp.
+func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
+	rc, err := teamID.teamToRocksComm()
+	if err != nil {
+		return err
+	}
+	if rc == "" {
+		return nil
+	}
+
+	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
+	Log.Debug(apiurl)
+	_, err = http.NewRequest("DELETE", apiurl, nil)
+	// resp, err = http.NewRequest("DELETE", apiurl, nil)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	/*
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+
+		Log.Debug(string(body))
+		var rr rocksPushResponse
+		err = json.Unmarshal(body, &rr)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if rr.Success != true {
+			Log.Error(rr.Error)
+			return errors.New(rr.Error)
+		} */
+	return nil
+}
+
+func (teamID TeamID) teamToRocksComm() (string, error) {
+	if rocks.configured == false {
+		Log.Debug("Rocks API key not configured")
+		return "", nil
+	}
+
+	var rc sql.NullString
+	err := db.QueryRow("SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	if rc.Valid == false {
+		return "", nil
+	}
+	return rc.String, nil
 }

@@ -293,7 +293,12 @@ func (teamID TeamID) AddAgent(in interface{}) error {
 		Log.Notice(err)
 		return err
 	}
-	// XXX send message? Should take place in the caller since we can't know the language here
+
+	err = gid.AddToRemoteRocksCommunity(teamID)
+	if err != nil {
+		Log.Notice(err)
+		return (err)
+	}
 	return nil
 }
 
@@ -310,7 +315,12 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 		Log.Notice(err)
 		return (err)
 	}
-	// XXX push to rocks community
+
+	err = gid.RemoveFromRemoteRocksCommunity(teamID)
+	if err != nil {
+		Log.Notice(err)
+		return (err)
+	}
 	return nil
 }
 
