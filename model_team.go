@@ -47,7 +47,7 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 	if allowOff {
 		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
 	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ? AND state != 'Off'", team, gid).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ? AND state IN ('On', 'Primary')", team, gid).Scan(&count)
 	}
 	if err != nil {
 		return false, err
@@ -71,7 +71,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
-			"AND x.state != 'Off'", teamID)
+			"AND x.state IN ('On', 'Primary')", teamID)
 	} else {
 		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
@@ -89,32 +89,11 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 			Log.Error(err)
 			return err
 		}
-		if state.Valid {
-			if state.String != "Off" {
-				tmpU.State = true
-			} else {
-				tmpU.State = false
-			}
-		} else {
-			tmpU.State = false
-		}
-		if lat.Valid {
-			tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		}
-		if lon.Valid {
-			tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		}
-		if otdata.Valid {
-			tmpU.OwnTracks = json.RawMessage(otdata.String)
-		} else {
-			tmpU.OwnTracks = json.RawMessage("{ }")
-		}
+		tmpU.State = isActive(state.String)
+		tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
+		tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
+		tmpU.OwnTracks = json.RawMessage(otdata.String)
 		teamList.Agent = append(teamList.Agent, tmpU)
-	}
-	err = rows.Err()
-	if err != nil {
-		Log.Error(err)
-		return err
 	}
 
 	var rockscomm, rockskey sql.NullString
@@ -351,8 +330,8 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	rows, err = db.Query("SELECT DISTINCT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
 		"FROM agentteams=x, agent=u, locations=l, otdata=o "+
-		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state != 'Off') "+
-		"AND x.state != 'Off' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
+		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state IN ('On', 'Primary')) "+
+		"AND x.state IN ('On', 'Primary') AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
 		"HAVING distance < ? AND distance > 0 ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
@@ -366,26 +345,11 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 			Log.Error(err)
 			return err
 		}
-		if state.Valid && state.String != "Off" {
-			tmpU.State = true
-		}
-		if lat.Valid {
-			tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		}
-		if lon.Valid {
-			tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		}
-		if otdata.Valid {
-			tmpU.OwnTracks = json.RawMessage(otdata.String)
-		} else {
-			tmpU.OwnTracks = json.RawMessage("{ }")
-		}
+		tmpU.State = isActive(state.String)
+		tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
+		tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
+		tmpU.OwnTracks = json.RawMessage(otdata.String)
 		teamList.Agent = append(teamList.Agent, tmpU)
-	}
-	err = rows.Err()
-	if err != nil {
-		Log.Error(err)
-		return err
 	}
 	return nil
 }
@@ -408,7 +372,7 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, Y(loc), X(loc), teamID, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
 		"FROM waypoints "+
-		"WHERE teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state != 'Off') "+
+		"WHERE teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state IN ('On', 'Primary')) "+
 		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
@@ -534,4 +498,12 @@ func FetchAgent(id string, agent *Agent) error {
 		return err
 	}
 	return nil
+}
+
+func isActive(state string) bool {
+	switch state {
+	case "On", "Primary":
+		return true
+	}
+	return false
 }
