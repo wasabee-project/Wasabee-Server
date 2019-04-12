@@ -259,7 +259,7 @@ func StatusServerPoller() {
 				Log.Error(err)
 				continue
 			}
-			Log.Debugf("Polling status.enl.one for %s", gid.String)
+			// Log.Debugf("Polling status.enl.one for %s", gid.String)
 			if vid.Valid == false {
 				Log.Info("Agent requested RAID poll, but has not configured V")
 				continue
