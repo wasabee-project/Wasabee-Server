@@ -32,7 +32,7 @@ We verify agent information with both V and .rocks. We observe the blacklisted/s
 
 Excellent. You can link a team to an enl.rocks community to a team. Any changes in the community will instantly be made in the team.
 
-If there is a use-case for it, we can reverse this too and have a team manage a community. This is low-priority at the moment because no one has needed (or asked for) it yet.
+You can configure the team to push changes to .rocks as well. Adding currently works, deleting does not (yet).
 
 ## I use a V team ...
 
