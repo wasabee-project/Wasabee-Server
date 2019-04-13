@@ -1,7 +1,13 @@
-setenv GOPATH ~/go
-setenv DATABASE "phdev:@tcp(localhost)/phdev"
-setenv ROOT_URL "https://qbin.phtiv.com:8443"
+# setenv GOPATH ~/go
+setenv DATABASE "wasabi:PaSSw0r3D@tcp(localhost)/wasabi"
+setenv ROOT_URL "https://wasabi.example.com:8443"
 setenv HTTPS_LISTEN ":8443"
+setenv HTTPS_LOGFILE "test.log"
 setenv GOOGLE_CLIENT_ID "--SOMETHING--SOMETHING--SOMETHING--.apps.googleusercontent.com"
 setenv GOOGLE_CLIENT_SECRET "--SOMETHING--SOMETHING--"
 setenv SESSION_KEY "!-rand0m-32-_char-sTring-blah-xy"
+# setenv DEBUG 1
+setenv TELEGRAM_API_KEY "000:abc123"
+setenv VENLONE_API_KEY "000"
+# setenv VENLONE_POLLER 1
+setenv ENLROCKS_API_KEY "000"

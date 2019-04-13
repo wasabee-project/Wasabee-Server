@@ -18,7 +18,6 @@ type LocKey string
 type EnlID string
 
 // AgentData is the complete agent struct, used for the /me page.
-// XXX move the sub-structs out into individual structs and use those instead of ones also defined in the function bodies.
 type AgentData struct {
 	GoogleID      GoogleID
 	IngressName   string
@@ -161,9 +160,10 @@ func (gid GoogleID) InitAgent() (bool, error) {
 
 // SetIngressName is called to update the agent's ingress name in the database.
 // The ingress name cannot be updated if V or Rocks verification has taken place.
-// XXX Do we even want to allow this any longer since V and rocks are giving us data? Unverified agents can just live with the Agent_XXXXXX name.
+// ZZZ Do we even want to allow this any longer since V and rocks are giving us data? Unverified agents can just live with the Agent_XXXXXX name.
 func (gid GoogleID) SetIngressName(name string) error {
 	// if VVerified or RocksVerified: ignore name changes -- let the V/Rocks functions take care of that
+	// XXX doesn't take care of the case where they are in .rocks but not verified
 	_, err := db.Exec("UPDATE agent SET iname = ? WHERE gid = ? AND VVerified = 0 AND RocksVerified = 0", name, gid)
 	if err != nil {
 		Log.Notice(err)
@@ -372,7 +372,7 @@ func (gid GoogleID) AgentLocation(lat, lon, source string) error {
 			Log.Notice(err)
 			return err
 		}
-		// put it out onto MQTT
+		// XXX put it out onto MQTT
 	}
 
 	// XXX check for waypoints in range
