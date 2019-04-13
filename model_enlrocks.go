@@ -272,6 +272,7 @@ type rocksPushResponse struct {
 	Success bool   `json:"success"`
 }
 
+// AddToRemoteRocksCommunity adds an agent to a community at .rocks IF that community has API enabled.
 func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	rc, err := teamID.teamToRocksComm()
 	if err != nil {
