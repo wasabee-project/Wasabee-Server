@@ -62,7 +62,7 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 // fetchAll includes agent for whom their state == off, should only be used to display lists to the calling agent
 func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
-	var state, lat, lon, otdata sql.NullString // otdata can no longer be null, once the test agent all get updated this can be removed
+	var state, lat, lon, otdata string
 	var tmpU Agent
 
 	var err error
@@ -89,10 +89,10 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 			Log.Error(err)
 			return err
 		}
-		tmpU.State = isActive(state.String)
-		tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		tmpU.OwnTracks = json.RawMessage(otdata.String)
+		tmpU.State = isActive(state)
+		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
+		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
+		tmpU.OwnTracks = json.RawMessage(otdata)
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 
@@ -167,11 +167,27 @@ func (teamID TeamID) Rename(name string) error {
 // Delete removes the team identified by teamID
 // does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Delete() error {
-	// XXX once we push to rocks, don't do it this way; remove each agent manually, so they get cleared from rocks community
-	_, err := db.Exec("DELETE FROM agentteams WHERE teamID = ?", teamID)
+	// do them one-at-a-time to take care of .rocks sync
+	rows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Error(err)
 	}
+
+	var gid GoogleID
+	defer rows.Close()
+	for rows.Next() {
+		err = rows.Scan(&gid)
+		if err != nil {
+			Log.Notice(err)
+			continue
+		}
+		err = teamID.RemoveAgent(gid)
+		if err != nil {
+			Log.Notice(err)
+			continue
+		}
+	}
+
 	_, err = db.Exec("DELETE FROM team WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
@@ -276,7 +292,7 @@ func (teamID TeamID) AddAgent(in interface{}) error {
 	err = gid.AddToRemoteRocksCommunity(teamID)
 	if err != nil {
 		Log.Notice(err)
-		return (err)
+		// return (err)
 	}
 	return nil
 }
@@ -298,7 +314,7 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 	err = gid.RemoveFromRemoteRocksCommunity(teamID)
 	if err != nil {
 		Log.Notice(err)
-		return (err)
+		// return (err)
 	}
 	return nil
 }
@@ -315,7 +331,7 @@ func (gid GoogleID) ClearPrimaryTeam() error {
 
 // TeammatesNear identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
 func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
-	var state, lat, lon, otdata sql.NullString
+	var state, lat, lon, otdata string
 	var tmpU Agent
 	var rows *sql.Rows
 
@@ -345,19 +361,19 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 			Log.Error(err)
 			return err
 		}
-		tmpU.State = isActive(state.String)
-		tmpU.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		tmpU.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		tmpU.OwnTracks = json.RawMessage(otdata.String)
+		tmpU.State = isActive(state)
+		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
+		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
+		tmpU.OwnTracks = json.RawMessage(otdata)
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 	return nil
 }
 
-// WaypointsNear returns any Waypoints near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
+// WaypointsNear returns any Waypoints and Markers near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
 // the Agents portion of the TeamData is uninitialized
 func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) error {
-	var lat, lon sql.NullString
+	var lat, lon string
 	var rows *sql.Rows
 	var tmpW Waypoint
 
@@ -393,12 +409,8 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 			Log.Error(err)
 			return err
 		}
-		if lat.Valid {
-			tmpW.Lat, _ = strconv.ParseFloat(lat.String, 64)
-		}
-		if lon.Valid {
-			tmpW.Lon, _ = strconv.ParseFloat(lon.String, 64)
-		}
+		tmpW.Lat, _ = strconv.ParseFloat(lat, 64)
+		tmpW.Lon, _ = strconv.ParseFloat(lon, 64)
 		tmpW.Type = "waypoint"
 		tmpW.Share = true
 		td.Waypoints = append(td.Waypoints, tmpW)
@@ -414,11 +426,6 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 		Log.Error(err)
 		return err
 	}
-	return nil
-}
-
-// MarkersNear returns markers near the gid's current location and populates both the Markers and Waypoints of a TeamData
-func (gid GoogleID) MarkersNear(maxdistance, maxresults int, td *TeamData) error {
 	return nil
 }
 

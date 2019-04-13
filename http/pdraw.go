@@ -14,8 +14,12 @@ import (
 func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 
-	var gid WASABI.GoogleID
-	gid = WASABI.GoogleID("118281765050946915735")
+	gid, err := getAgentID(req)
+	if err != nil {
+		WASABI.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/json" {
@@ -53,13 +57,16 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
-	var gid WASABI.GoogleID
-	// XXX temporary for testing, use getGid
-	gid = WASABI.GoogleID("118281765050946915735")
+	gid, err := getAgentID(req)
+	if err != nil {
+		WASABI.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 
 	var o WASABI.Operation
 	o.ID = WASABI.OperationID(id)
-	err := o.Populate(gid)
+	err = o.Populate(gid)
 	if err != nil {
 		WASABI.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -76,11 +83,12 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
-	var gid WASABI.GoogleID
+	res.Header().Set("Content-Type", "application/json")
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		WASABI.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -97,7 +105,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		err = fmt.Errorf("Only the owner can delete an operation")
 		WASABI.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 }

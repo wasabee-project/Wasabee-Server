@@ -21,7 +21,7 @@ import (
 func setupRoutes(r *mux.Router) {
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
-	// Oauth2 stuff
+	// Google Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
 
@@ -29,14 +29,10 @@ func setupRoutes(r *mux.Router) {
 	r.HandleFunc("/simple", uploadRoute).Methods("POST")
 	r.HandleFunc("/simple/{document}", getRoute).Methods("GET")
 
-	// PDraw w/o auth for testing
-	r.HandleFunc("/pd", pDrawUploadRoute).Methods("POST")
-	r.HandleFunc("/pd/{document}", pDrawGetRoute).Methods("GET")
-
 	// For enl.rocks community -> WASABI team sync
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
 
-	// OwnTracks URL
+	// OwnTracks URL -- basic auth is handled internally
 	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
 
 	r.HandleFunc("/static/{doc}", staticRoute).Methods("GET")
@@ -71,7 +67,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
 	r.HandleFunc("/api/v1/me", meShowRoute).Methods("GET")                                                     // -- do not use, just here for safety
 	r.HandleFunc("/api/v1/me/delete", meDeleteRoute).Methods("GET")                                            // purge all info for a agent
-	r.HandleFunc("/api/v1/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")      // purge all info for a agent
+	r.HandleFunc("/api/v1/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")      // toggle RAID/JEAH polling
 	r.HandleFunc("/api/v1/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")            // /api/v1/me/wonky-team-1234?state={Off|On|Primary}
 	r.HandleFunc("/api/v1/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                     // remove me from team
 	r.HandleFunc("/api/v1/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                 // remove me from team
@@ -82,7 +78,7 @@ func setupAuthRoutes(r *mux.Router) {
 
 	// teams
 	r.HandleFunc("/api/v1/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")                                              // create a new team
-	r.HandleFunc("/api/v1/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}")                                              // invite agent to team
+	r.HandleFunc("/api/v1/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}")                                              // invite agent to team (owner)
 	r.HandleFunc("/api/v1/team/{team}", getTeamRoute).Methods("GET")                                                                             // return the location of every agent/target on team (team member/owner)
 	r.HandleFunc("/api/v1/team/{team}", deleteTeamRoute).Methods("DELETE")                                                                       // remove the team completely (owner)
 	r.HandleFunc("/api/v1/team/{team}/delete", deleteTeamRoute).Methods("GET")                                                                   // remove the team completely (owner)
@@ -95,7 +91,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")     // remove agent from team (owner)
 
 	// waypoints
-	r.HandleFunc("/api/v1/waypoints/me", waypointsNearMeRoute).Methods("GET") // show waypoints near agent (html/json)
+	r.HandleFunc("/api/v1/waypoints/me", waypointsNearMeRoute).Methods("GET") // show OT waypoints & Operation markers near agent (html/json)
 
 	// server control functions
 	r.HandleFunc("/api/v1/templates/refresh", templateUpdateRoute).Methods("GET") // trigger the server refresh of the template files
