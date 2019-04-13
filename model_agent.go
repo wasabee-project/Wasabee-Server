@@ -31,24 +31,40 @@ type AgentData struct {
 	OwnTracksJSON string
 	RocksVerified bool
 	RAID          bool
-	Teams         []struct {
-		ID        string
-		Name      string
-		State     string
-		RocksComm string
-	}
-	OwnedTeams []struct {
-		ID        string
-		Name      string
-		RocksComm string
-		RocksKey  string
-	}
-	Telegram struct {
+	OwnedTeams    []AdOwnedTeam
+	Teams         []AdTeam
+	Ops           []AdOperation
+	OwnedOps      []AdOperation
+	Telegram      struct {
 		UserName  string
 		ID        int64
 		Verified  bool
 		Authtoken string
 	}
+}
+
+// AdOwnedTeam is a sub-struct of AgentData
+type AdOwnedTeam struct {
+	ID        string
+	Name      string
+	RocksComm string
+	RocksKey  string
+}
+
+// AdTeam is a sub-struct of AgentData
+type AdTeam struct {
+	ID        string
+	Name      string
+	State     string
+	RocksComm string
+}
+
+// AdOperation is a sub-struct of AgentData
+type AdOperation struct {
+	ID       string
+	Name     string
+	Color    string
+	TeamName string
 }
 
 // InitAgent is called from Oauth callback to set up a agent for the first time.
@@ -171,13 +187,12 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 
 // GetAgentData populates a AgentData struct based on the gid
 func (gid GoogleID) GetAgentData(ud *AgentData) error {
-	var ot sql.NullString
-	var otJSON sql.NullString
 
 	ud.GoogleID = gid
 
 	row := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid)
-	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &otJSON)
+	var ot sql.NullString
+	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &ud.OwnTracksJSON)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
 		err = fmt.Errorf("Unknown GoogleID: %s. Try restarting your browser.", gid)
@@ -187,69 +202,79 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		Log.Notice(err)
 		return err
 	}
-
 	if ot.Valid {
 		ud.OwnTracksPW = ot.String
 	}
-	if otJSON.Valid {
-		ud.OwnTracksJSON = otJSON.String
-	} else {
-		ud.OwnTracksJSON = "{ }"
-	}
 
-	var teamname sql.NullString
-	var tmp struct {
-		ID        string
-		Name      string
-		State     string
-		RocksComm string
-	}
-
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state, rockscomm "+
-		"FROM team=t, agentteams=x "+
-		"WHERE x.gid = ? AND x.teamID = t.teamID", gid)
+	err = adTeams(gid, ud)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
+	err = adOwnedTeams(gid, ud)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	err = adTelegram(gid, ud)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	err = adOps(gid, ud)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func adTeams(gid GoogleID, ud *AgentData) error {
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 	defer rows.Close()
-	var rc sql.NullString
+	var adteam AdTeam
+	var teamname, rc sql.NullString
 	for rows.Next() {
-		err := rows.Scan(&tmp.ID, &teamname, &tmp.State, &rc)
+		err := rows.Scan(&adteam.ID, &teamname, &adteam.State, &rc)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
 		// teamname can be null
 		if teamname.Valid {
-			tmp.Name = teamname.String
+			adteam.Name = teamname.String
 		} else {
-			tmp.Name = ""
+			adteam.Name = ""
 		}
 		if rc.Valid {
-			tmp.RocksComm = rc.String
+			adteam.RocksComm = rc.String
 		} else {
-			tmp.RocksComm = ""
+			adteam.RocksComm = ""
 		}
-		ud.Teams = append(ud.Teams, tmp)
+		ud.Teams = append(ud.Teams, adteam)
 	}
+	return nil
+}
 
-	var ownedTeam struct {
-		ID        string
-		Name      string
-		RocksComm string
-		RocksKey  string
-	}
-	ownedTeamRow, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ?", gid)
+func adOwnedTeams(gid GoogleID, ud *AgentData) error {
+	var ownedTeam AdOwnedTeam
+	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ?", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	defer ownedTeamRow.Close()
-	var rockscomm, rockskey sql.NullString
-	for ownedTeamRow.Next() {
-		err := ownedTeamRow.Scan(&ownedTeam.ID, &teamname, &rockscomm, &rockskey)
+	defer row.Close()
+	var rc, teamname, rockskey sql.NullString
+	for row.Next() {
+		err := row.Scan(&ownedTeam.ID, &teamname, &rc, &rockskey)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -260,8 +285,8 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		} else {
 			ownedTeam.Name = ""
 		}
-		if rockscomm.Valid {
-			ownedTeam.RocksComm = rockscomm.String
+		if rc.Valid {
+			ownedTeam.RocksComm = rc.String
 		} else {
 			ownedTeam.RocksComm = ""
 		}
@@ -272,10 +297,13 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		}
 		ud.OwnedTeams = append(ud.OwnedTeams, ownedTeam)
 	}
+	return nil
+}
 
+func adTelegram(gid GoogleID, ud *AgentData) error {
 	var authtoken sql.NullString
-	rows3 := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid)
-	err = rows3.Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
+	row := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid)
+	err := row.Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		ud.Telegram.ID = 0
 		ud.Telegram.Verified = false
@@ -284,8 +312,43 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		Log.Error(err)
 		return err
 	}
-	ud.Telegram.Authtoken = authtoken.String
+	if authtoken.Valid {
+		ud.Telegram.Authtoken = authtoken.String
+	}
+	return nil
+}
 
+func adOps(gid GoogleID, ud *AgentData) error {
+	var op AdOperation
+	row, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name FROM operation=o, team=t WHERE o.gid = ? AND o.teamID = t.teamID ORDER BY o.Name", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer row.Close()
+	for row.Next() {
+		err := row.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		ud.OwnedOps = append(ud.OwnedOps, op)
+	}
+
+	row2, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state IN ('On', 'Primary')", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer row2.Close()
+	for row2.Next() {
+		err := row2.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		ud.Ops = append(ud.Ops, op)
+	}
 	return nil
 }
 

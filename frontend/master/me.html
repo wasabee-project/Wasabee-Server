@@ -135,6 +135,21 @@
 </div>
 
 <div class="card mb-2">
+<div class="card-header">Operations</div>
+<div class="card-body">
+<small>Disable inactive teams to hide operations.</small>
+</div>
+  <ul class="list-group list-group-flush">
+	{{range .Ops}}
+		<li class="list-group-item"><a href="/api/v1/draw/{{.ID}}">{{.Name}}</a> ({{.TeamName}})</li>
+	{{end}}
+	{{range .OwnedOps}}
+		<li class="list-group-item"><a href="/api/v1/draw/{{.ID}}">{{.Name}}</a> ({{.TeamName}}) (owner)</li>
+	{{end}}
+  </ul>
+</div>
+
+<div class="card mb-2">
   <div class="card-header">My Teams</div>
   <div class="card-body">
   </div>
