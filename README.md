@@ -98,15 +98,15 @@ https://golang.org/doc/install
 3. Install git
 https://www.git-scm.com/book/en/v2/Getting-Started-Installing-Git
 
-3.1 Install the Telegram API bindings
+3.1 Install the various Oauth, MariaDB and Telegram API bindings
 ```
-go get -u github.com/go-telegram-bot-api/telegram-bot-api
+go get -v -u golang.org/x/oauth2/google golang.org/x/crypto/scrypt github.com/urfave/cli github.com/unrolled/logger github.com/op/go-logging github.com/gorilla/sessions github.com/gorilla/mux github.com/go-telegram-bot-api/telegram-bot-api github.com/go-sql-driver/mysql
 ```
 
 4. Use git to checkout the frontend and cmd directories
 ```
+go get github.com/cloudkucooland/wasabi/cmd/wasabi
 mkdir WASABI ; cd WASABI
-go get github.com/cloudkucooland/WASABI
 git clone https://github.com/cloudkucooland/WASABI/frontend
 ```
 
@@ -147,4 +147,4 @@ setenv VENLONE_API_KEY "--SOMETHING--"
 setenv DEBUG 0
 ```
 
-10. Go...
+10. $GOPATH/bin/wasabi
