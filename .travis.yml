@@ -13,7 +13,13 @@ matrix:
   # Mark the build finished if tests pass on other versions of Go.
   fast_finish: true
 
+addons:
+    mariadb: "10.3"
+
 go_import_path: github.com/cloudkucooland/WASABI
+
+before_install:
+     - echo "CREATE DATABASE wasabi" | mysql -u root --password="" 
 
 install:
     - go get golang.org/x/lint/golint
@@ -24,3 +30,4 @@ script:
     - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.11\.([0-9]+|x)$ ]]; then ./.travis.gofmt.sh; fi
     - go test -v -race -test.short ./...        # Run tests with the race detector.
     - go get -v ./...                           # Run Go static analyzer.
+    - go run cmd/wasabi/main.go
