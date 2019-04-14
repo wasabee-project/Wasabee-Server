@@ -20,6 +20,7 @@ func locationClean() {
 	r, err := db.Query("SELECT gid FROM locations WHERE loc != POINTFROMTEXT(?) AND upTime < DATE_SUB(NOW(), INTERVAL 3 HOUR)", "POINT(0 0)")
 	if err != nil {
 		Log.Error(err)
+		return
 	}
 	defer r.Close()
 
@@ -33,10 +34,12 @@ func locationClean() {
 		_, err = db.Exec("UPDATE locations SET loc = POINTFROMTEXT(?), upTime = NOW() WHERE gid = ?", "POINT(0 0)", gid)
 		if err != nil {
 			Log.Error(err)
+			continue
 		}
 		err = gid.ownTracksExternalUpdate("0", "0", "reaper") // invalid values pop the user off the map
 		if err != nil {
 			Log.Error(err)
+			continue
 		}
 	}
 	return
@@ -47,12 +50,14 @@ func waypointClean() {
 	_, err := db.Exec("DELETE FROM waypoints WHERE expiration < DATE_SUB(NOW(), INTERVAL 3 DAY)")
 	if err != nil {
 		Log.Error(err)
+		return
 	}
 
 	// Invalidate expired ones
 	_, err = db.Exec("UPDATE waypoints SET loc = POINTFROMTEXT(?) WHERE expiration < NOW() AND X(loc) != -180.1", "POINT(-180.1 91.1)")
 	if err != nil {
 		Log.Error(err)
+		return
 	}
 
 	return
