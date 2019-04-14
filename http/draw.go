@@ -1,4 +1,4 @@
-package WASABIhttps
+package wasabihttps
 
 import (
 	"net/http"

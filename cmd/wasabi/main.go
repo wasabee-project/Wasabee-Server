@@ -123,7 +123,7 @@ func run(c *cli.Context) error {
 
 	// Serve HTTPS
 	if c.String("https") != "none" {
-		go WASABIhttps.StartHTTP(WASABIhttps.Configuration{
+		go wasabihttps.StartHTTP(wasabihttps.Configuration{
 			ListenHTTPS:      c.String("https"),
 			FrontendPath:     c.String("frontend-path"),
 			Root:             c.String("root"),
@@ -137,7 +137,7 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "none" {
-		go Telegram.WASABIBot(Telegram.TGConfiguration{
+		go wasabitelegram.WASABIBot(wasabitelegram.TGConfiguration{
 			APIKey:       c.String("tgkey"),
 			FrontendPath: c.String("frontend-path"),
 		})

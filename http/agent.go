@@ -1,4 +1,4 @@
-package WASABIhttps
+package wasabithttps
 
 import (
 	"encoding/json"
