@@ -136,7 +136,7 @@ func run(c *cli.Context) error {
 	}
 
 	// Serve Telegram
-	if c.String("tgkey") != "none" {
+	if c.String("tgkey") != "" {
 		go wasabitelegram.WASABIBot(wasabitelegram.TGConfiguration{
 			APIKey:       c.String("tgkey"),
 			FrontendPath: c.String("frontend-path"),

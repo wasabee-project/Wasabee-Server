@@ -31,7 +31,7 @@ var config TGConfiguration
 func WASABIBot(init TGConfiguration) error {
 	if init.APIKey == "" {
 		err := errors.New("API Key not set")
-		WASABI.Log.Critical(err)
+		WASABI.Log.Info(err)
 		return err
 	}
 	config.APIKey = init.APIKey
