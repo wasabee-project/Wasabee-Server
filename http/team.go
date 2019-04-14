@@ -126,11 +126,14 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = team.AddAgent(key)
-	if err != nil {
-		WASABI.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+
+	if key != "" { // prevents a bit of log spam
+		err = team.AddAgent(key)
+		if err != nil {
+			WASABI.Log.Notice(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }
