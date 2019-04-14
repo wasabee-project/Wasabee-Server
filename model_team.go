@@ -230,6 +230,9 @@ func toGid(in interface{}) (GoogleID, error) {
 		}
 	default:
 		tmp := v.(string)
+		if tmp == "" { // no need to look if it is empty
+			return "", nil
+		}
 		switch len(tmp) { // length gives us a guess, presence of a - makes us certain
 		case 40:
 			if strings.IndexByte(tmp, '-') != -1 {
