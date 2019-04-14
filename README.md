@@ -2,6 +2,7 @@
 [![GoReportCard](https://goreportcard.com/badge/cloudkucooland/WASABI)](https://goreportcard.com/report/cloudkucooland/WASABI)
 [![GoDoc](https://godoc.org/github.com/cloudkucooland/WASABI?status.svg)](https://godoc.org/github.com/cloudkucooland/WASABI)
 ![GitHub issues](https://img.shields.io/github/issues/cloudkucooland/WASABI.svg)
+[![Build Status](https://travis-ci.com/cloudkucooland/WASABI.svg?branch=master)](https://travis-ci.com/cloudkucooland/WASABI)
 
 # WASABI
 ### The Server-Side component for WASABI and related Ingress tools.
