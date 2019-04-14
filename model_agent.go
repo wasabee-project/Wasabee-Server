@@ -195,7 +195,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &ud.OwnTracksJSON)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
-		err = fmt.Errorf("Unknown GoogleID: %s. Try restarting your browser.", gid)
+		err = fmt.Errorf("unknown GoogleID: [%s] try restarting your browser", gid)
 		return err
 	}
 	if err != nil {
