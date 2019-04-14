@@ -66,7 +66,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "WASABI"
-	app.Version = "0.6.8"
+	app.Version = "0.6.7"
 	app.Usage = "WASABI Server"
 	app.Authors = []cli.Author{
 		cli.Author{
@@ -142,9 +142,6 @@ func run(c *cli.Context) error {
 			FrontendPath: c.String("frontend-path"),
 		})
 	}
-
-	// Location cleanup, waypoint expiration, etc
-	go WASABI.BackgroundTasks()
 
 	// Sleep
 	select {}
