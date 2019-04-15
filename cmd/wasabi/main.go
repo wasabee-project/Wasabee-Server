@@ -69,7 +69,7 @@ func main() {
 	app.Version = "0.6.7"
 	app.Usage = "WASABI Server"
 	app.Authors = []cli.Author{
-		cli.Author{
+		{
 			Name:  "Scot C. Bontrager",
 			Email: "scot@indievisible.org",
 		},
