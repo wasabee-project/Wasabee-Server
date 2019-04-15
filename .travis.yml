@@ -20,12 +20,12 @@ before_install:
      - echo "CREATE DATABASE wasabi" | mysql -u root --password="" 
 
 install:
-    - go get golang.org/x/lint/golint
+    # - go get golang.org/x/lint/golint
     - go get -t -v $(go list ./... | grep -v integration)
 
 script:
-    - golint -set_exit_status $(go list ./...)
-    # - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.11\.([0-9]+|x)$ ]]; then ./.travis.gofmt.sh; fi
-    - go test -v -race -test.short ./...        # Run tests with the race detector.
+    # - golint -set_exit_status $(go list ./...)
+    #- go test -v -race -test.short ./...        # Run tests with the race detector.
+    - go test -v
     - go get -v ./...                           # Run Go static analyzer.
-    - cmd/wasabi-userupdate/wasabi-userupdate
+    - go run cmd/wasabi-userupdate/main.go
