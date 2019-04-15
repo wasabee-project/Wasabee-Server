@@ -1,6 +1,7 @@
 package wasabihttps
 
 import (
+	"crypto/tls"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -221,9 +223,31 @@ func StartHTTP(initialConfig Configuration) {
 
 	// Serve
 	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
-	err := http.ListenAndServeTLS(config.ListenHTTPS, config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key", r)
+	// XXX what do I need in TLSConfig?
+	srv := &http.Server{
+		Handler: r,
+		Addr: config.ListenHTTPS,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout: 15 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		TLSConfig:	&tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+		},
+	}
+	err := srv.ListenAndServeTLS(config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key")
 	if err != nil {
 		wasabi.Log.Errorf("HTTPS server error: %s", err)
+		// XXX maybe not panic, just graceful shutdown?
 		panic(err)
 	}
 }
