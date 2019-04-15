@@ -2,10 +2,10 @@ package WASABI_test
 
 import (
 	"fmt"
-	"testing"
+	"github.com/cloudkucooland/WASABI"
 	"os"
 	"strconv"
-	"github.com/cloudkucooland/WASABI"
+	"testing"
 )
 
 func TestMain(m *testing.M) {
@@ -35,7 +35,7 @@ func TestVsearch(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	fmt.Printf("%s: %s\n",v.Status, v.Message)
+	fmt.Printf("%s: %s\n", v.Status, v.Message)
 	if v.Status != "ok" {
 		t.Errorf("V Status: %s", v.Status)
 	}
@@ -70,6 +70,6 @@ func TestGid(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	if gid.String() != "118281765050946915735" {
-		t.Errorf("EnlID(%s) = Gid(%s); expecting Gid(118281765050946915735)",eid.String(), gid.String())
+		t.Errorf("EnlID(%s) = Gid(%s); expecting Gid(118281765050946915735)", eid.String(), gid.String())
 	}
 }

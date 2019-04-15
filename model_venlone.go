@@ -92,11 +92,21 @@ func vsearch(i interface{}, vres *Vresult) error {
 		return errors.New("V API key not configured")
 	}
 	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, searchID, vc.vAPIKey)
-	resp, err := http.Get(url)
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -154,11 +164,20 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 		return "", "", errors.New("V API key not configured")
 	}
 	url := fmt.Sprintf("%s/%s?apikey=%s", vc.statusEndpoint, eid, vc.vAPIKey)
-	resp, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		Log.Error(err)
 		return "", "", err
 	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		Log.Error(err)
+		return "", "", err
+	}
+
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

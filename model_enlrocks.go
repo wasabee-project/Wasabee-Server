@@ -3,11 +3,13 @@ package WASABI
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 // RocksCommunityNotice is sent from a community when an agent is added or removed
@@ -321,32 +323,38 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 
 	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
 	Log.Debug(apiurl)
-	_, err = http.NewRequest("DELETE", apiurl, nil)
-	// resp, err = http.NewRequest("DELETE", apiurl, nil)
+	req, err := http.NewRequest("DELETE", apiurl, nil)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	/*
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 
-		Log.Debug(string(body))
-		var rr rocksPushResponse
-		err = json.Unmarshal(body, &rr)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		if rr.Success != true {
-			Log.Error(rr.Error)
-			return errors.New(rr.Error)
-		} */
+	Log.Debug(string(body))
+	var rr rocksPushResponse
+	err = json.Unmarshal(body, &rr)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if rr.Success != true {
+		Log.Error(rr.Error)
+		return errors.New(rr.Error)
+	}
 	return nil
 }
 

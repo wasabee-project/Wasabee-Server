@@ -1,9 +1,9 @@
 package WASABI_test
 
 import (
-	"testing"
-	"os"
 	"github.com/cloudkucooland/WASABI"
+	"os"
+	"testing"
 )
 
 func TestConnect(t *testing.T) {
