@@ -1,8 +1,7 @@
 language: go
 
 go:
-  - "1.12.x"
-  - master
+  - "1.11.x"
 
 matrix:
   # Build OK if fails on unstable development versions of Go.
@@ -29,4 +28,4 @@ script:
     - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.11\.([0-9]+|x)$ ]]; then ./.travis.gofmt.sh; fi
     - go test -v -race -test.short ./...        # Run tests with the race detector.
     - go get -v ./...                           # Run Go static analyzer.
-    - go run cmd/wasabi/main.go
+    - cmd/wasabi-userupdate/wasabi-userupdate
