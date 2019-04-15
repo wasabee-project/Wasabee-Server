@@ -410,7 +410,7 @@ func (eid EnlID) String() string {
 	return string(eid)
 }
 
-// revalidateEveryone -- if the schema changes or another reason causes us to need to pull data from V and rocks, this is a function which does that
+// RevalidateEveryone -- if the schema changes or another reason causes us to need to pull data from V and rocks, this is a function which does that
 // V had bulk API functions we should use instead. This is good enough, and I hope we don't need it again.
 func RevalidateEveryone() error {
 	rows, err := db.Query("SELECT gid FROM agent")

@@ -142,7 +142,6 @@ func setupTables() error {
 		}
 	}
 
-
 	db.QueryRow("SHOW TABLES LIKE 'telegram'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `telegram` table...")
