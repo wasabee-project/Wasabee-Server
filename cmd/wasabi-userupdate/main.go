@@ -57,29 +57,29 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool("debug") {
-		WASABI.SetLogLevel(logging.DEBUG)
+		wasabi.SetLogLevel(logging.DEBUG)
 	}
 
 	// Connect to database
-	err := WASABI.Connect(c.String("database"))
+	err := wasabi.Connect(c.String("database"))
 	if err != nil {
-		WASABI.Log.Errorf("Error connecting to database: %s", err)
+		wasabi.Log.Errorf("Error connecting to database: %s", err)
 		panic(err)
 	}
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		WASABI.SetVEnlOne(c.String("venlonekey"))
+		wasabi.SetVEnlOne(c.String("venlonekey"))
 	}
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		WASABI.SetEnlRocks(c.String("enlrockskey"))
+		wasabi.SetEnlRocks(c.String("enlrockskey"))
 	}
 
-	err = WASABI.RevalidateEveryone()
+	err = wasabi.RevalidateEveryone()
 	if err != nil {
-		WASABI.Log.Errorf("Revalidate Failed: %s", err)
+		wasabi.Log.Errorf("Revalidate Failed: %s", err)
 		panic(err)
 	}
 	return nil

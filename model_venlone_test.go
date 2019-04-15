@@ -1,4 +1,4 @@
-package WASABI_test
+package wasabi_test
 
 import (
 	"fmt"

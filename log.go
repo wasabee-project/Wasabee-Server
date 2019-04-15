@@ -1,4 +1,4 @@
-package WASABI
+package wasabi
 
 import (
 	"os"

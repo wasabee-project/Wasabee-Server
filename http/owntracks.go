@@ -35,12 +35,12 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
-		WASABI.Log.Notice("empty JSON: probably delete waypoint / person request")
+		wasabi.Log.Notice("empty JSON: probably delete waypoint / person request")
 		waypoints, _ := gid.OwnTracksWaypoints()
 		fmt.Fprintf(res, string(waypoints))
 		return
@@ -48,10 +48,10 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	jRaw := json.RawMessage(jBlob)
 
-	// WASABI.Log.Debug(string(jBlob))
+	// wasabi.Log.Debug(string(jBlob))
 	var t loc
 	if err = json.Unmarshal(jBlob, &t); err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -61,15 +61,15 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		gid.OwnTracksUpdate(jRaw, t.Lat, t.Lon)
 		s, err := gid.OwnTracksTeams()
 		if err != nil {
-			WASABI.Log.Notice(err)
+			wasabi.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
-		// WASABI.Log.Debug(string(s))
+		// wasabi.Log.Debug(string(s))
 		fmt.Fprintf(res, string(s))
 	case "transition":
 		s, err := gid.OwnTracksTransition(jRaw)
 		if err != nil {
-			WASABI.Log.Notice(err)
+			wasabi.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
 		fmt.Fprintf(res, string(s))
@@ -80,27 +80,27 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		s, _ := gid.OwnTracksSetWaypoint(jRaw)
 		fmt.Fprintf(res, string(s))
 	default:
-		WASABI.Log.Notice("unhandled type: " + t.Type)
-		WASABI.Log.Debug(string(jRaw))
+		wasabi.Log.Notice("unhandled type: " + t.Type)
+		wasabi.Log.Debug(string(jRaw))
 		fmt.Fprintf(res, "{ }")
 	}
 }
 
-func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (WASABI.GoogleID, bool) {
+func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (wasabi.GoogleID, bool) {
 	l, otpw, ok := req.BasicAuth()
-	lockey := WASABI.LocKey(l)
+	lockey := wasabi.LocKey(l)
 	if ok == false {
-		WASABI.Log.Notice("Unable to decode basic authentication")
+		wasabi.Log.Notice("Unable to decode basic authentication")
 		return "", false
 	}
 
 	gid, err := lockey.VerifyOwnTracksPW(otpw)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		return "", false
 	}
 	if gid == "" {
-		WASABI.Log.Noticef("OwnTracks authentication failed for: %s", lockey)
+		wasabi.Log.Noticef("OwnTracks authentication failed for: %s", lockey)
 		return "", false
 	}
 

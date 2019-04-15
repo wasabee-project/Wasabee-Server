@@ -65,14 +65,14 @@ func initializeConfig(initialConfig Configuration) {
 	config.domain = strings.Split(rootParts[len(rootParts)-1], "/")[0]
 
 	// used for templates
-	WASABI.SetWebroot(config.Root)
-	WASABI.SetWebAPIPath(config.apipath)
+	wasabi.SetWebroot(config.Root)
+	wasabi.SetWebAPIPath(config.apipath)
 
 	if config.GoogleClientID == "" {
-		WASABI.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
+		wasabi.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
 	}
 	if config.GoogleSecret == "" {
-		WASABI.Log.Error("GOOGLE_SECRET unset: logins will fail")
+		wasabi.Log.Error("GOOGLE_SECRET unset: logins will fail")
 	}
 
 	config.googleOauthConfig = &oauth2.Config{
@@ -82,41 +82,41 @@ func initializeConfig(initialConfig Configuration) {
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
-	WASABI.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
-	WASABI.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
-	config.oauthStateString = WASABI.GenerateName()
-	WASABI.Log.Debugf("oauthStateString: " + config.oauthStateString)
+	wasabi.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
+	wasabi.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
+	config.oauthStateString = wasabi.GenerateName()
+	wasabi.Log.Debugf("oauthStateString: " + config.oauthStateString)
 
 	if config.CookieSessionKey == "" {
-		WASABI.Log.Error("SESSION_KEY unset: logins will fail")
+		wasabi.Log.Error("SESSION_KEY unset: logins will fail")
 	} else {
 		key := config.CookieSessionKey
-		WASABI.Log.Debugf("Session Key: " + key)
+		wasabi.Log.Debugf("Session Key: " + key)
 		config.store = sessions.NewCookieStore([]byte(key))
 		config.sessionName = "WASABI"
 	}
 
 	// certificate directory cleanup
 	if config.CertDir == "" {
-		WASABI.Log.Error("CERDIR unset: defaulting to 'certs'")
+		wasabi.Log.Error("CERTDIR unset: defaulting to 'certs'")
 		config.CertDir = "certs"
 	}
 	certdir, err := filepath.Abs(config.CertDir)
 	config.CertDir = certdir
 	if err != nil {
-		WASABI.Log.Critical("Certificate path could not be resolved.")
+		wasabi.Log.Critical("Certificate path could not be resolved.")
 		panic(err)
 	}
-	WASABI.Log.Debugf("Certificate Directory: " + config.CertDir)
+	wasabi.Log.Debugf("Certificate Directory: " + config.CertDir)
 	_ = wasabiHTTPSTemplateConfig()
 
 	if config.Logfile == "" {
 		config.Logfile = "wasabi-https.log"
 	}
-	WASABI.Log.Infof("https logfile: %s", config.Logfile)
+	wasabi.Log.Infof("https logfile: %s", config.Logfile)
 	logfile, err := os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		WASABI.Log.Fatal(err)
+		wasabi.Log.Fatal(err)
 	}
 	unrolled = logger.New(logger.Options{
 		Prefix: "WASABI",
@@ -135,27 +135,27 @@ func wasabiHTTPSTemplateConfig() error {
 	// Transform frontendPath to an absolute path
 	frontendPath, err := filepath.Abs(config.FrontendPath)
 	if err != nil {
-		WASABI.Log.Critical("Frontend path could not be resolved.")
+		wasabi.Log.Critical("Frontend path could not be resolved.")
 		panic(err)
 	}
 	config.FrontendPath = frontendPath
 	config.templateSet = make(map[string]*template.Template)
 
-	WASABI.Log.Debugf("Loading Template function map")
+	wasabi.Log.Debugf("Loading Template function map")
 	funcMap := template.FuncMap{
-		"TGGetBotName": WASABI.TGGetBotName,
-		"TGGetBotID":   WASABI.TGGetBotID,
-		"TGRunning":    WASABI.TGRunning,
-		"Webroot":      WASABI.GetWebroot,
-		"WebAPIPath":   WASABI.GetWebAPIPath,
-		"VEnlOne":      WASABI.GetvEnlOne,
-		"EnlRocks":     WASABI.GetEnlRocks,
+		"TGGetBotName": wasabi.TGGetBotName,
+		"TGGetBotID":   wasabi.TGGetBotID,
+		"TGRunning":    wasabi.TGRunning,
+		"Webroot":      wasabi.GetWebroot,
+		"WebAPIPath":   wasabi.GetWebAPIPath,
+		"VEnlOne":      wasabi.GetvEnlOne,
+		"EnlRocks":     wasabi.GetEnlRocks,
 	}
 
-	WASABI.Log.Info("Including frontend templates from: ", config.FrontendPath)
+	wasabi.Log.Info("Including frontend templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return err
 	}
 
@@ -167,7 +167,7 @@ func wasabiHTTPSTemplateConfig() error {
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.html")
 			// overwrite with language specific
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.html")
-			WASABI.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
+			wasabi.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}
 	}
 	return nil
@@ -185,7 +185,7 @@ func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name
 	}
 
 	if err := config.templateSet[lang].ExecuteTemplate(res, name, data); err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		return err
 	}
 	return nil
@@ -220,10 +220,10 @@ func StartHTTP(initialConfig Configuration) {
 	s.Use(authMW)
 
 	// Serve
-	WASABI.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
+	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
 	err := http.ListenAndServeTLS(config.ListenHTTPS, config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key", r)
 	if err != nil {
-		WASABI.Log.Errorf("HTTPS server error: %s", err)
+		wasabi.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
 	}
 }
@@ -244,7 +244,7 @@ func headersMW(next http.Handler) http.Handler {
 func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		dump, _ := httputil.DumpRequest(req, false)
-		WASABI.Log.Debug(string(dump))
+		wasabi.Log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
 }
@@ -254,7 +254,7 @@ func authMW(next http.Handler) http.Handler {
 		ses, err := config.store.Get(req, config.sessionName)
 
 		if err != nil {
-			WASABI.Log.Debug(err)
+			wasabi.Log.Debug(err)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
@@ -277,11 +277,11 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		gid := WASABI.GoogleID(id.(string))
+		gid := wasabi.GoogleID(id.(string))
 
 		in, ok := ses.Values["nonce"]
 		if ok != true || in == nil {
-			WASABI.Log.Error("gid set, but nonce not")
+			wasabi.Log.Error("gid set, but nonce not")
 			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return
 		}
@@ -290,11 +290,11 @@ func authMW(next http.Handler) http.Handler {
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				// WASABI.Log.Debug("Session timed out for", gid.String())
+				// wasabi.Log.Debug("Session timed out for", gid.String())
 				ses.Values["nonce"] = "unset"
 				ses.Save(req, res)
 			} else {
-				// WASABI.Log.Debug("Updating to new nonce")
+				// wasabi.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
 				ses.Save(req, res)
 			}
@@ -313,7 +313,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
-		WASABI.Log.Debug(err)
+		wasabi.Log.Debug(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

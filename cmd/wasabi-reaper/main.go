@@ -51,18 +51,18 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool("debug") {
-		WASABI.SetLogLevel(logging.DEBUG)
+		wasabi.SetLogLevel(logging.DEBUG)
 	}
 
 	// Connect to database
-	err := WASABI.Connect(c.String("database"))
+	err := wasabi.Connect(c.String("database"))
 	if err != nil {
-		WASABI.Log.Errorf("Error connecting to database: %s", err)
+		wasabi.Log.Errorf("Error connecting to database: %s", err)
 		panic(err)
 	}
 
 	// Location cleanup, waypoint expiration, etc
-	go WASABI.BackgroundTasks()
+	go wasabi.BackgroundTasks()
 
 	// Sleep
 	select {}

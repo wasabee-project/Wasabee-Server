@@ -1,4 +1,4 @@
-package WASABI
+package wasabi
 
 // wasabiHTTPConfig stores values from the https server which are used in templates
 // to allow URL creation in other services (e.g. Telegram)

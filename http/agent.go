@@ -10,12 +10,12 @@ import (
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
-	var agent WASABI.Agent
+	var agent wasabi.Agent
 
 	// must be authenticated
 	_, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -23,7 +23,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	err = WASABI.FetchAgent(id, &agent) // FetchAgent takes gid, lockey, eid ...
+	err = wasabi.FetchAgent(id, &agent) // FetchAgent takes gid, lockey, eid ...
 
 	// if the request comes from intel, just return JSON
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
@@ -36,7 +36,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 
 	// TemplateExecute prints directly to the result writer
 	if err := wasabiHTTPSTemplateExecute(res, req, "agent", agent); err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return

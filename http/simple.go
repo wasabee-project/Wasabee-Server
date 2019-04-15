@@ -14,11 +14,11 @@ import (
 
 func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	var err error
-	doc := WASABI.SimpleDocument{}
+	doc := wasabi.SimpleDocument{}
 	exp := "14d"
 
 	// Parse form and get content
-	req.Body = http.MaxBytesReader(res, req.Body, WASABI.MaxFilesize+1024) // MaxFilesize + 1KB metadata
+	req.Body = http.MaxBytesReader(res, req.Body, wasabi.MaxFilesize+1024) // MaxFilesize + 1KB metadata
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 
 	// Get the document, however the request is formatted
@@ -26,7 +26,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// Parse form
 		err = req.ParseForm()
 		if err != nil {
-			WASABI.Log.Error(err)
+			wasabi.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, err.Error())
 			return
@@ -34,9 +34,9 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		doc.Content = req.PostFormValue("Q")
 	} else if req.Method == "POST" && contentType == "multipart/form-data" {
 		// Parse form
-		err = req.ParseMultipartForm(WASABI.MaxFilesize + 1024)
+		err = req.ParseMultipartForm(wasabi.MaxFilesize + 1024)
 		if err != nil {
-			WASABI.Log.Error(err)
+			wasabi.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, err.Error())
 			return
@@ -52,7 +52,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 			if err != nil {
-				WASABI.Log.Error(err)
+				wasabi.Log.Error(err)
 				res.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprintf(res, err.Error())
 				return
@@ -61,7 +61,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			// Read document
 			content, err := ioutil.ReadAll(file)
 			if err != nil {
-				WASABI.Log.Error(err)
+				wasabi.Log.Error(err)
 				res.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprintf(res, err.Error())
 				return
@@ -72,7 +72,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// Read document
 		content, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			WASABI.Log.Error(err)
+			wasabi.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, err.Error())
 			return
@@ -81,7 +81,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check exact filesize
-	if len(doc.Content) > WASABI.MaxFilesize {
+	if len(doc.Content) > wasabi.MaxFilesize {
 		res.WriteHeader(http.StatusRequestEntityTooLarge)
 		fmt.Fprintf(res, "Maximum document size exceeded.\n")
 		return
@@ -113,7 +113,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")
 		return
 	} else if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		res.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(res, err.Error())
 		return
@@ -126,7 +126,7 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
-	doc, err := WASABI.Request(id)
+	doc, err := wasabi.Request(id)
 	if err != nil {
 		notFoundRoute(res, req)
 	}

@@ -109,7 +109,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	err := wasabiHTTPSTemplateExecute(res, req, "index", nil)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return
@@ -119,7 +119,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 func privacyRoute(res http.ResponseWriter, req *http.Request) {
 	err := wasabiHTTPSTemplateExecute(res, req, "privacy", nil)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	return
@@ -129,7 +129,7 @@ func privacyRoute(res http.ResponseWriter, req *http.Request) {
 func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	err := wasabiHTTPSTemplateConfig()
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -146,21 +146,21 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 // final step of the oauth cycle
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type googleData struct {
-		Gid   WASABI.GoogleID `json:"id"`
+		Gid   wasabi.GoogleID `json:"id"`
 		Name  string          `json:"name"`
 		Email string          `json:"email"`
 	}
 
 	content, err := getAgentInfo(req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		return
 	}
 
 	var m googleData
 	err = json.Unmarshal(content, &m)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -169,7 +169,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		WASABI.Log.Notice("Cookie error: ", err)
+		wasabi.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:   "/",
@@ -183,7 +183,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	location := "/me?a=0"
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
-		// WASABI.Log.Debug("deep-link redirecting to", rr)
+		// wasabi.Log.Debug("deep-link redirecting to", rr)
 		if rr[:3] == "/me" || rr[:6] == "/login" { // leave /me check in place
 			location = "/me?postlogin=1"
 		} else {
@@ -198,7 +198,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -216,7 +216,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 // the secret value exchanged / verified each request
 // not really a nonce, but it started life as one
-func calculateNonce(gid WASABI.GoogleID) (string, string) {
+func calculateNonce(gid wasabi.GoogleID) (string, string) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
 	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
@@ -250,7 +250,7 @@ func getAgentInfo(state string, code string) ([]byte, error) {
 
 // read the gid from the session cookie and return it
 // this is the primary way to ensure a agent is authenticated
-func getAgentID(req *http.Request) (WASABI.GoogleID, error) {
+func getAgentID(req *http.Request) (wasabi.GoogleID, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
@@ -259,11 +259,11 @@ func getAgentID(req *http.Request) (WASABI.GoogleID, error) {
 	// XXX I think this is impossible to trigger now
 	if ses.Values["id"] == nil {
 		err := errors.New("getAgentID called for unauthenticated agent")
-		WASABI.Log.Critical(err)
+		wasabi.Log.Critical(err)
 		return "", err
 	}
 
-	var agentID WASABI.GoogleID = WASABI.GoogleID(ses.Values["id"].(string))
+	var agentID wasabi.GoogleID = wasabi.GoogleID(ses.Values["id"].(string))
 	return agentID, nil
 }
 
@@ -273,7 +273,7 @@ func staticRoute(res http.ResponseWriter, req *http.Request) {
 
 	// XXX I've never been able to trigger this, can probably remove
 	if ok != true {
-		WASABI.Log.Debug("Marty, Doc is not OK")
+		wasabi.Log.Debug("Marty, Doc is not OK")
 		notFoundRoute(res, req)
 		return
 	}
@@ -281,15 +281,15 @@ func staticRoute(res http.ResponseWriter, req *http.Request) {
 	var cleandoc string
 	dir, ok := vars["dir"]
 	if ok == true {
-		WASABI.Log.Debugf("static file requested: %s/%s", dir, doc)
+		wasabi.Log.Debugf("static file requested: %s/%s", dir, doc)
 		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
 		cleandoc = path.Join(config.FrontendPath, "static", dir, doc)
 	} else {
-		WASABI.Log.Debugf("static file requested: %s", doc)
+		wasabi.Log.Debugf("static file requested: %s", doc)
 		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
 		cleandoc = path.Join(config.FrontendPath, "static", doc)
 	}
-	WASABI.Log.Debugf("serving: %s", cleandoc)
+	wasabi.Log.Debugf("serving: %s", cleandoc)
 	http.ServeFile(res, req, cleandoc)
 	return
 }

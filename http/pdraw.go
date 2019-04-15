@@ -16,7 +16,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -29,22 +29,22 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
-		WASABI.Log.Notice("empty JSON")
+		wasabi.Log.Notice("empty JSON")
 		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	// WASABI.Log.Debug(string(jBlob))
-	err = WASABI.PDrawInsert(jRaw, gid)
+	// wasabi.Log.Debug(string(jBlob))
+	err = wasabi.PDrawInsert(jRaw, gid)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -59,23 +59,23 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	var o WASABI.Operation
-	o.ID = WASABI.OperationID(id)
+	var o wasabi.Operation
+	o.ID = wasabi.OperationID(id)
 	err = o.Populate(gid)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	s, err := json.MarshalIndent(o, "", "\t")
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -87,7 +87,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -95,16 +95,16 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
 	// only the ID needs to be set for this
-	var op WASABI.Operation
-	op.ID = WASABI.OperationID(vars["document"])
+	var op wasabi.Operation
+	op.ID = wasabi.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) == true {
 		err = fmt.Errorf("(not really) deleting operation %s", op.ID)
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		// XXX op.Delete()
 	} else {
 		err = fmt.Errorf("Only the owner can delete an operation")
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}

@@ -31,7 +31,7 @@ var config TGConfiguration
 func WASABIBot(init TGConfiguration) error {
 	if init.APIKey == "" {
 		err := errors.New("API Key not set")
-		WASABI.Log.Info(err)
+		wasabi.Log.Info(err)
 		return err
 	}
 	config.APIKey = init.APIKey
@@ -42,18 +42,18 @@ func WASABIBot(init TGConfiguration) error {
 	}
 	_ = wasabibotTemplates(config.templateSet)
 	_ = wasabibotKeyboards(&config)
-	_ = WASABI.RegisterMessageBus("Telegram", SendMessage)
+	_ = wasabi.RegisterMessageBus("Telegram", SendMessage)
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(config.APIKey)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return err
 	}
 
 	bot.Debug = false
-	WASABI.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
-	WASABI.TGSetBot(bot.Self.UserName, bot.Self.ID)
+	wasabi.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
+	wasabi.TGSetBot(bot.Self.UserName, bot.Self.ID)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -64,45 +64,45 @@ func WASABIBot(init TGConfiguration) error {
 			continue
 		}
 
-		// WASABI.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+		// wasabi.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		// s, _ := json.MarshalIndent(update.Message, "", "  ")
-		// WASABI.Log.Debug(string(s))
+		// wasabi.Log.Debug(string(s))
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-		// WASABI.Log.Debug("Language: ", update.Message.From.LanguageCode)
+		// wasabi.Log.Debug("Language: ", update.Message.From.LanguageCode)
 		defaultReply, err := wasabibotTemplateExecute("default", update.Message.From.LanguageCode, nil)
 		if err != nil {
-			WASABI.Log.Error(err)
+			wasabi.Log.Error(err)
 			continue
 		}
 		msg.Text = defaultReply
 		msg.ParseMode = "MarkDown"
 		// s, _ := json.MarshalIndent(msg, "", "  ")
-		// WASABI.Log.Debug(string(s))
+		// wasabi.Log.Debug(string(s))
 
-		tgid := WASABI.TelegramID(update.Message.From.ID)
+		tgid := wasabi.TelegramID(update.Message.From.ID)
 		gid, verified, err := tgid.GidV()
 
 		if err != nil {
-			WASABI.Log.Error(err)
+			wasabi.Log.Error(err)
 			continue
 		}
 
 		if gid == "" {
-			WASABI.Log.Debugf("Unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
+			wasabi.Log.Debugf("Unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
 			err = wasabibotNewUserInit(&msg, &update)
 			if err != nil {
-				WASABI.Log.Error(err)
+				wasabi.Log.Error(err)
 			}
 		} else if verified == false {
-			WASABI.Log.Debugf("Unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
+			wasabi.Log.Debugf("Unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
 			err = wasabibotNewUserVerify(&msg, &update)
 			if err != nil {
-				WASABI.Log.Error(err)
+				wasabi.Log.Error(err)
 			}
 		} else { // verified user, process message
 			if err = wasabibotMessage(&msg, &update, gid); err != nil {
-				WASABI.Log.Error(err)
+				wasabi.Log.Error(err)
 			}
 		}
 
@@ -114,20 +114,20 @@ func WASABIBot(init TGConfiguration) error {
 }
 
 func wasabibotNewUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	var lockey WASABI.LocKey
+	var lockey wasabi.LocKey
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) == 2 {
-			lockey = WASABI.LocKey(strings.TrimSpace(tokens[1]))
+			lockey = wasabi.LocKey(strings.TrimSpace(tokens[1]))
 		}
 	} else {
-		lockey = WASABI.LocKey(strings.TrimSpace(inMsg.Message.Text))
+		lockey = wasabi.LocKey(strings.TrimSpace(inMsg.Message.Text))
 	}
 
-	tid := WASABI.TelegramID(inMsg.Message.From.ID)
+	tid := wasabi.TelegramID(inMsg.Message.From.ID)
 	err := tid.TelegramInitAgent(inMsg.Message.From.UserName, lockey)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		tmp, _ := wasabibotTemplateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
@@ -148,10 +148,10 @@ func wasabibotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update)
 		authtoken = inMsg.Message.Text
 	}
 	strings.TrimSpace(authtoken)
-	tid := WASABI.TelegramID(inMsg.Message.From.ID)
+	tid := wasabi.TelegramID(inMsg.Message.From.ID)
 	err := tid.TelegramVerifyUser(authtoken)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		tmp, _ := wasabibotTemplateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
@@ -164,35 +164,35 @@ func wasabibotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update)
 func wasabibotTemplates(t map[string]*template.Template) error {
 	if config.FrontendPath == "" {
 		err := errors.New("FrontendPath not configured")
-		WASABI.Log.Critical(err)
+		wasabi.Log.Critical(err)
 		return err
 	}
 
 	frontendPath, err := filepath.Abs(config.FrontendPath)
 	if err != nil {
-		WASABI.Log.Critical("Frontend path couldn't be resolved.")
+		wasabi.Log.Critical("Frontend path couldn't be resolved.")
 		panic(err)
 	}
 	config.FrontendPath = frontendPath
 
-	WASABI.Log.Debugf("Building Template function map")
+	wasabi.Log.Debugf("Building Template function map")
 	funcMap := template.FuncMap{
-		"TGGetBotName": WASABI.TGGetBotName,
-		"TGGetBotID":   WASABI.TGGetBotID,
-		"TGRunning":    WASABI.TGRunning,
-		"Webroot":      WASABI.GetWebroot,
-		"WebAPIPath":   WASABI.GetWebAPIPath,
-		"VEnlOne":      WASABI.GetvEnlOne,
+		"TGGetBotName": wasabi.TGGetBotName,
+		"TGGetBotID":   wasabi.TGGetBotID,
+		"TGRunning":    wasabi.TGRunning,
+		"Webroot":      wasabi.GetWebroot,
+		"WebAPIPath":   wasabi.GetWebAPIPath,
+		"VEnlOne":      wasabi.GetvEnlOne,
 	}
 	config.templateSet = make(map[string]*template.Template)
 
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 	}
-	WASABI.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
+	wasabi.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 	}
 
 	for _, f := range files {
@@ -203,7 +203,7 @@ func wasabibotTemplates(t map[string]*template.Template) error {
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.tg")
 			// overwrite with language specific
 			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.tg")
-			WASABI.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
+			wasabi.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}
 	}
 
@@ -221,10 +221,10 @@ func wasabibotTemplateExecute(name, lang string, data interface{}) (string, erro
 	}
 
 	// s, _ := json.MarshalIndent(&data, "", "\t")
-	// WASABI.Log.Debugf("Calling template %s[%s] with data %s", name, lang, string(s))
+	// wasabi.Log.Debugf("Calling template %s[%s] with data %s", name, lang, string(s))
 	var tpBuffer bytes.Buffer
 	if err := config.templateSet[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		return "", err
 	}
 	return tpBuffer.String(), nil
@@ -252,8 +252,8 @@ func wasabibotKeyboards(c *TGConfiguration) error {
 	return nil
 }
 
-func wasabibotTeamKeyboard(gid WASABI.GoogleID) (tgbotapi.ReplyKeyboardMarkup, error) {
-	var ud WASABI.AgentData
+func wasabibotTeamKeyboard(gid wasabi.GoogleID) (tgbotapi.ReplyKeyboardMarkup, error) {
+	var ud wasabi.AgentData
 	if err := gid.GetAgentData(&ud); err != nil {
 		return config.teamKbd, err
 	}
@@ -293,7 +293,7 @@ func wasabibotTeamKeyboard(gid WASABI.GoogleID) (tgbotapi.ReplyKeyboardMarkup, e
 }
 
 // This is where command processing takes place
-func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid WASABI.GoogleID) error {
+func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.GoogleID) error {
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
 		case "start":
@@ -383,16 +383,16 @@ func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid W
 }
 
 // SendMessage is registered with WASABI as a message bus to allow other modules to send messages via Telegram
-func SendMessage(gid WASABI.GoogleID, message string) (bool, error) {
+func SendMessage(gid wasabi.GoogleID, message string) (bool, error) {
 	tgid, err := gid.TelegramID()
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		return false, err
 	}
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
 		err = fmt.Errorf("Telegram ID not found for %s", gid)
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		return false, err
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
@@ -400,64 +400,64 @@ func SendMessage(gid WASABI.GoogleID, message string) (bool, error) {
 	msg.ParseMode = "MarkDown"
 
 	bot.Send(msg)
-	WASABI.Log.Notice("Sent message to:", gid)
+	wasabi.Log.Notice("Sent message to:", gid)
 	return true, nil
 }
 
-func teammatesNear(gid WASABI.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td WASABI.TeamData
+func teammatesNear(gid wasabi.GoogleID, inMsg *tgbotapi.Update) (string, error) {
+	var td wasabi.TeamData
 	var txt = ""
 	maxdistance := 500
 	maxresults := 10
 
 	err := gid.TeammatesNear(maxdistance, maxresults, &td)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return txt, err
 	}
 	txt, err = wasabibotTemplateExecute("Teammates", inMsg.Message.From.LanguageCode, &td)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return txt, err
 	}
 
 	return txt, nil
 }
 
-func targetsNear(gid WASABI.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td WASABI.TeamData
+func targetsNear(gid wasabi.GoogleID, inMsg *tgbotapi.Update) (string, error) {
+	var td wasabi.TeamData
 	var txt = ""
 	maxdistance := 100
 	maxresults := 10
 
 	err := gid.WaypointsNear(maxdistance, maxresults, &td)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return txt, err
 	}
 	txt, err = wasabibotTemplateExecute("Targets", inMsg.Message.From.LanguageCode, &td)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return txt, err
 	}
 
 	return txt, nil
 }
 
-func farmsNear(gid WASABI.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td WASABI.TeamData
+func farmsNear(gid wasabi.GoogleID, inMsg *tgbotapi.Update) (string, error) {
+	var td wasabi.TeamData
 	var txt = ""
 	maxdistance := 100
 	maxresults := 10
 
 	err := gid.WaypointsNear(maxdistance, maxresults, &td)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return txt, err
 	}
 	txt, err = wasabibotTemplateExecute("Farms", inMsg.Message.From.LanguageCode, &td)
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 		return txt, err
 	}
 

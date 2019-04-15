@@ -22,22 +22,22 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
-		WASABI.Log.Notice("empty JSON")
+		wasabi.Log.Notice("empty JSON")
 		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	WASABI.Log.Debug(string(jBlob))
-	err = WASABI.RocksCommunitySync(jRaw)
+	wasabi.Log.Debug(string(jBlob))
+	err = wasabi.RocksCommunitySync(jRaw)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -48,13 +48,13 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := WASABI.TeamID(vars["team"])
+	team := wasabi.TeamID(vars["team"])
 
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
@@ -64,7 +64,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = team.RocksCommunityMemberPull()
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -74,13 +74,13 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := WASABI.TeamID(vars["team"])
+	team := wasabi.TeamID(vars["team"])
 	rc := vars["rockscomm"]
 	rk := vars["rockskey"]
 
@@ -91,7 +91,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.SetRocks(rk, rc)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

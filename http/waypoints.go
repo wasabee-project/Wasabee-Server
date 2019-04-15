@@ -11,12 +11,12 @@ import (
 func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var data WASABI.TeamData
+	var data wasabi.TeamData
 	err = gid.WaypointsNear(50, 10, &data)
 
 	vars := mux.Vars(req)
@@ -31,7 +31,7 @@ func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 
 	// wasabiHTTPSTemplateExecute outputs to res
 	if err := wasabiHTTPSTemplateExecute(res, req, "Waypoints", data); err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

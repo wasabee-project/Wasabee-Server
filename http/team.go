@@ -9,17 +9,17 @@ import (
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
-	var teamList WASABI.TeamData
+	var teamList wasabi.TeamData
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := WASABI.TeamID(vars["team"])
+	team := wasabi.TeamID(vars["team"])
 
 	safe, err := gid.AgentInTeam(team, false)
 	if safe == false {
@@ -39,7 +39,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -48,7 +48,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	name := vars["name"]
 	_, err = gid.NewTeam(name)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -58,13 +58,13 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := WASABI.TeamID(vars["team"])
+	team := wasabi.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
@@ -72,7 +72,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.Delete()
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -82,29 +82,29 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := WASABI.TeamID(vars["team"])
+	team := wasabi.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var teamList WASABI.TeamData
+	var teamList wasabi.TeamData
 	err = team.FetchTeam(&teamList, true)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = wasabiHTTPSTemplateExecute(res, req, "edit", teamList)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -112,13 +112,13 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := WASABI.TeamID(vars["team"])
+	team := wasabi.TeamID(vars["team"])
 	key := vars["key"] // Could be a lockkey, googleID, enlID or agent name, team.Addagent sorts it out for us
 
 	safe, err := gid.OwnsTeam(team)
@@ -130,7 +130,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if key != "" { // prevents a bit of log spam
 		err = team.AddAgent(key)
 		if err != nil {
-			WASABI.Log.Notice(err)
+			wasabi.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -141,14 +141,14 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := WASABI.TeamID(vars["team"])
-	key := WASABI.LocKey(vars["key"])
+	team := wasabi.TeamID(vars["team"])
+	key := wasabi.LocKey(vars["key"])
 	safe, err := gid.OwnsTeam(team)
 	if safe != true {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
@@ -156,7 +156,7 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.RemoveAgent(key)
 	if err != nil {
-		WASABI.Log.Notice(err)
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
