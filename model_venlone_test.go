@@ -9,11 +9,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	err := WASABI.Connect(os.Getenv("DATABASE"))
+	err := wasabi.Connect(os.Getenv("DATABASE"))
 	if err != nil {
-		WASABI.Log.Error(err)
+		wasabi.Log.Error(err)
 	}
-	WASABI.SetVEnlOne(os.Getenv("VENLONE_API_KEY"))
+	wasabi.SetVEnlOne(os.Getenv("VENLONE_API_KEY"))
 
 	// flag.Parse()
 	exitCode := m.Run()
@@ -21,15 +21,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestConfigured(t *testing.T) {
-	b := WASABI.GetvEnlOne()
+	b := wasabi.GetvEnlOne()
 	if b != true {
 		t.Errorf("V API Key not configured")
 	}
 }
 
 func TestVsearch(t *testing.T) {
-	var v WASABI.Vresult
-	gid := WASABI.GoogleID("118281765050946915735")
+	var v wasabi.Vresult
+	gid := wasabi.GoogleID("118281765050946915735")
 
 	err := gid.VSearch(&v)
 	if err != nil {
@@ -46,7 +46,7 @@ func TestVsearch(t *testing.T) {
 }
 
 func TestStatusLocation(t *testing.T) {
-	gid := WASABI.GoogleID("118281765050946915735")
+	gid := wasabi.GoogleID("118281765050946915735")
 
 	lat, lon, err := gid.StatusLocation()
 	if err != nil {
@@ -64,7 +64,7 @@ func TestStatusLocation(t *testing.T) {
 }
 
 func TestGid(t *testing.T) {
-	eid := WASABI.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
+	eid := wasabi.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
 	gid, err := eid.Gid()
 	if err != nil {
 		t.Errorf(err.Error())

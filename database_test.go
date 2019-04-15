@@ -11,14 +11,14 @@ func TestConnect(t *testing.T) {
 	if cs == "" {
 		t.Errorf("DATABASE environment variable unset")
 	}
-	err := WASABI.Connect(cs)
+	err := wasabi.Connect(cs)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
 func TestQuery(t *testing.T) {
-	gid, err := WASABI.SearchAgentName("deviousness")
+	gid, err := wasabi.SearchAgentName("deviousness")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
