@@ -101,8 +101,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	var rocks RocksAgent
-	err = gid.RocksSearch(&rocks)
-	if err != nil {
+	if err = gid.RocksSearch(&rocks); err != nil {
 		Log.Error(err)
 	}
 	if rocks.Agent != "" {
@@ -151,6 +150,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		return false, err
 	}
 
+	// XXX check to see if they are blacklisted in the DB -- if V and .Rocks are down we still don't want to let them in
 	if authError != nil {
 		Log.Notice(authError)
 		return false, authError

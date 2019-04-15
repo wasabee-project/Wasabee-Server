@@ -15,6 +15,14 @@ func TestConnect(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+
+	// assumes a whole host of other things already work
+	// but needed to pass TestQuery on a new install (e.g. Travis-CI)
+	gid := wasabi.GoogleID("118281765050946915735")
+	_, err := gid.InitAgent()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 }
 
 func TestQuery(t *testing.T) {
