@@ -18,6 +18,7 @@ go_import_path: github.com/cloudkucooland/WASABI
 
 before_install:
      - echo "CREATE DATABASE wasabi" | mysql -u root --password="" 
+	 - echo "xmp\nultrastrike\nshield\nsmurf\ntears\n" > eff_large_wordlist.txt
 
 install:
     # - go get golang.org/x/lint/golint
