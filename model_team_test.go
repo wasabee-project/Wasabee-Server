@@ -23,6 +23,16 @@ func TestNewTeam(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
+
+	err = teamID.SetRocks("", "example.com")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	t2, err := wasabi.RocksTeamID("example.com")
+	if t2.String() != teamID.String() {
+		t.Error("rocks community mismatch")
+	}
+
 	var td wasabi.TeamData
 	err = teamID.FetchTeam(&td, true)
 	if err != nil {
@@ -37,6 +47,9 @@ func TestNewTeam(t *testing.T) {
 	}
 	if len(td.Agent) < 1 {
 		t.Error("owner not in team")
+	}
+	if td.RocksComm != "example.com" {
+		t.Error("rocks community mismatch (&td)")
 	}
 
 	err = gid.SetTeamState(teamID, "Off")
@@ -63,6 +76,11 @@ func TestNewTeam(t *testing.T) {
 	//if err == nil {
 	//	t.Error("SetTeamState did not return an error on a bad value")
 	//}
+
+	err = teamID.SendAnnounce("testing")
+	if err != nil {
+		t.Error(err.Error())
+	}
 
 	err = teamID.Delete()
 	if err != nil {

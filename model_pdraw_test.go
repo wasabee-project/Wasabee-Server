@@ -1,17 +1,14 @@
 package wasabi_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/cloudkucooland/WASABI"
-	"testing"
-	"encoding/json"
 	"io/ioutil"
+	"testing"
 )
 
-// TestMain is currently in model_venlone_test.go
-
 func TestOperation(t *testing.T) {
-	// ID":"1aa847732063c58eaa956f365b6c030044c0f1aa","name":"April 2019 Lanes"
 	gid := wasabi.GoogleID("118281765050946915735")
 	content, err := ioutil.ReadFile("testdata/test1.json")
 	if err != nil {
@@ -26,6 +23,7 @@ func TestOperation(t *testing.T) {
 	}
 
 	var op wasabi.Operation
+	// unmarshal j and get this from there, no need to hard-code it
 	op.ID = wasabi.OperationID("1aa847732063c58eaa956f365b6c030044c0f1aa")
 
 	opp := &op
@@ -35,16 +33,23 @@ func TestOperation(t *testing.T) {
 		t.Error(err.Error())
 	}
 
+	if opp.IsOwner(gid) != true {
+		t.Error("wrong owner (*Operation)")
+	}
+	if opp.ID.IsOwner(gid) != true {
+		t.Error("wrong owner (OperationID)")
+	}
+
 	err = opp.Delete()
 	if err != nil {
 		t.Error(err.Error())
 	}
-	
+
 	err = opp.TeamID.Delete()
 	if err != nil {
 		t.Error(err.Error())
 	}
-	
+
 	fmt.Print(string(out))
 	return
 }
