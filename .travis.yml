@@ -2,6 +2,10 @@ language: go
 
 go:
   - "1.11.x"
+  - "master"
+
+git:
+  quiet: true
 
 matrix:
   # Build OK if fails on unstable development versions of Go.
@@ -18,15 +22,14 @@ go_import_path: github.com/cloudkucooland/WASABI
 
 before_install:
      - echo "CREATE DATABASE wasabi" | mysql -u root --password="" 
-	 - echo "xmp\nultrastrike\nshield\nsmurf\ntears\n" > eff_large_wordlist.txt
 
 install:
-    # - go get golang.org/x/lint/golint
     - go get -t -v $(go list ./... | grep -v integration)
 
 script:
-    # - golint -set_exit_status $(go list ./...)
     #- go test -v -race -test.short ./...        # Run tests with the race detector.
     - go test -v
     - go get -v ./...                           # Run Go static analyzer.
-    - go run cmd/wasabi-userupdate/main.go
+    - go run cmd/wasabi-userupdate/main.go		# test command
+	- go build -v ./...
+	- go install -v ./...
