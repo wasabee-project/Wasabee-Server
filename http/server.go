@@ -225,12 +225,12 @@ func StartHTTP(initialConfig Configuration) {
 	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
 	// XXX what do I need in TLSConfig?
 	srv := &http.Server{
-		Handler: r,
-		Addr: config.ListenHTTPS,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout: 15 * time.Second,
+		Handler:           r,
+		Addr:              config.ListenHTTPS,
+		WriteTimeout:      15 * time.Second,
+		ReadTimeout:       15 * time.Second,
 		ReadHeaderTimeout: 2 * time.Second,
-		TLSConfig:	&tls.Config{
+		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 			PreferServerCipherSuites: true,
