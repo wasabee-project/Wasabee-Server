@@ -22,6 +22,13 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
+func TestLoadWordsFile(t *testing.T) {
+	err := wasabi.LoadWordsFile("eff_large_wordlist.txt")
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
+
 func TestConfigured(t *testing.T) {
 	b := wasabi.GetvEnlOne()
 	if b != true {
