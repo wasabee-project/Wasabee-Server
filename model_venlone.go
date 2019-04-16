@@ -24,11 +24,11 @@ var vc vconfig
 type Vresult struct {
 	Status  string `json:"status"`
 	Message string `json:"message,omitmissing"`
-	Data    Vagent `json:"data"`
+	Data    vagent `json:"data"`
 }
 
-// Vagent is set by the V API
-type Vagent struct {
+// vagent is set by the V API
+type vagent struct {
 	EnlID       EnlID  `json:"enlid"`
 	Vlevel      int64  `json:"vlevel"`
 	Vpoints     int64  `json:"vpoints"`
