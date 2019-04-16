@@ -456,6 +456,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 
 	if _, err := db.Exec("UPDATE agentteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
 		Log.Notice(err)
+		return err
 	}
 	return nil
 }

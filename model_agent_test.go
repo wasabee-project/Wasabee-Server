@@ -106,8 +106,8 @@ func TestNewTeam(t *testing.T) {
 	}
 
 	err = gid.SetTeamState(teamID, "Wombat")
-	if err != nil { // if err == nil, fail because this value is junk
-		t.Error(err.Error())
+	if err == nil {
+		t.Error("SetTeamState did not return an error on a bad value")
 	}
 
 	err = teamID.Delete()
