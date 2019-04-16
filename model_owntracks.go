@@ -9,24 +9,27 @@ import (
 	"time"
 )
 
-// WaypointCommand is defined by the OwnTracks JSON format.
+// waypointCommand is defined by the OwnTracks JSON format.
 // It is the top level item in the JSON file when the OwnTracks app sends any waypoint changes
-type WaypointCommand struct {
+// This does not need to be exported.
+type waypointCommand struct {
 	Type      string        `json:"_type"`
 	Action    string        `json:"action"`
-	Waypoints WaypointsList `json:"waypoints"`
+	Waypoints waypointsList `json:"waypoints"`
 }
 
-// WaypointsList is defined by the OwnTracks JSON format.
-// It is always encapsulated in a WaypointCommand and aways contains a list of waypoints.
-type WaypointsList struct {
-	Waypoints []Waypoint `json:"waypoints"`
+// waypointsList is defined by the OwnTracks JSON format.
+// It is always encapsulated in a waypointCommand and aways contains a list of waypoints.
+// This does not need to be exported.
+type waypointsList struct {
+	Waypoints []waypoint `json:"waypoints"`
 	Type      string     `json:"_type"`
 }
 
-// Waypoint is defined by the OwnTracks JSON format.
+// waypoint is defined by the OwnTracks JSON format.
 // It is the datatype which contains the information about a waypoint.
-type Waypoint struct {
+// This does not need to be exported.
+type waypoint struct {
 	Type       string  `json:"_type"`
 	Desc       string  `json:"desc"`
 	Lat        float64 `json:"lat"`
@@ -42,11 +45,12 @@ type Waypoint struct {
 	Distance   float64 `json:"distance,omitempty"`   // WASABI extension
 }
 
-// Location is defined by the OwnTracks JSON format.
+// location is defined by the OwnTracks JSON format.
 // This is what is sent from and to the OwnTracks app to indicate a person's location.
 // Type, Lat, Lon, and ShortName are required, all others are optional.
 // N.B. InRegions is not documented but is sent by the iOS client.
-type Location struct {
+// This does not need to be exported.
+type location struct {
 	Type      string   `json:"_type"`
 	Lat       float64  `json:"lat"`
 	Lon       float64  `json:"lon"`
@@ -63,9 +67,10 @@ type Location struct {
 	InRegions []string `json:"inregions,omitempty"`
 }
 
-// Transition is defined by the OwnTracks JSON format.
+// transition is defined by the OwnTracks JSON format.
 // It is sent when a person enters or leaves a defined Waypoint's radius.
-type Transition struct {
+// Since callers feed us the JSON, this does not need to be exported
+type transition struct {
 	Type      string  `json:"_type"`
 	Event     string  `json:"event"`
 	ID        float64 `json:"wtst"`
@@ -117,7 +122,7 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	}
 	s, _ := json.Marshal(locs)
 
-	var wp WaypointCommand
+	var wp waypointCommand
 	err = gid.otWaypoints(&wp)
 	if err != nil {
 		Log.Error(err)
@@ -142,7 +147,7 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 func (gid GoogleID) OwnTracksWaypoints() (json.RawMessage, error) {
 	j := json.RawMessage("{ }")
 
-	var wp WaypointCommand
+	var wp waypointCommand
 	err := gid.otWaypoints(&wp)
 	if err != nil {
 		Log.Error(err)
@@ -163,13 +168,13 @@ func (gid GoogleID) OwnTracksWaypoints() (json.RawMessage, error) {
 	return j, nil
 }
 
-func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
+func (gid GoogleID) otWaypoints(wp *waypointCommand) error {
 	wp.Type = "cmd"
 	wp.Action = "setWaypoints"
 	wp.Waypoints.Type = "waypoints"
 
-	var ID, lat, lon, radius sql.NullString
-	var tmpWaypoint Waypoint
+	var lat, lon sql.NullString
+	var tmpWaypoint waypoint
 	tmpWaypoint.Type = "waypoint"
 
 	wr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=w, agentteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM agentteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
@@ -179,14 +184,10 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 	}
 	defer wr.Close()
 	for wr.Next() {
-		err := wr.Scan(&ID, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
+		err := wr.Scan(&tmpWaypoint.ID, &tmpWaypoint.TeamID, &lat, &lon, &tmpWaypoint.Radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
 		if err != nil {
 			Log.Error(err)
 			return nil
-		}
-		if ID.Valid {
-			f, _ := strconv.ParseInt(ID.String, 0, 64)
-			tmpWaypoint.ID = f
 		}
 		if lat.Valid {
 			f, _ := strconv.ParseFloat(lat.String, 64)
@@ -195,10 +196,6 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 		if lon.Valid {
 			f, _ := strconv.ParseFloat(lon.String, 64)
 			tmpWaypoint.Lon = f
-		}
-		if radius.Valid {
-			f, _ := strconv.ParseInt(radius.String, 0, 64)
-			tmpWaypoint.Radius = f
 		}
 		tmpWaypoint.Type = "waypoint"
 		tmpWaypoint.Share = true
@@ -210,8 +207,8 @@ func (gid GoogleID) otWaypoints(wp *WaypointCommand) error {
 
 // otWaypoints takes populates a teamlist's waypoints struct
 func (teamID TeamID) otWaypoints(tl *TeamData) error {
-	var ID, lat, lon, radius sql.NullString
-	var tmpWaypoint Waypoint
+	var lat, lon sql.NullString
+	var tmpWaypoint waypoint
 	tmpWaypoint.Type = "waypoint"
 
 	wr, err := db.Query("SELECT ID, teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints WHERE teamID = ?", teamID)
@@ -221,14 +218,10 @@ func (teamID TeamID) otWaypoints(tl *TeamData) error {
 	}
 	defer wr.Close()
 	for wr.Next() {
-		err := wr.Scan(&ID, &tmpWaypoint.TeamID, &lat, &lon, &radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
+		err := wr.Scan(&tmpWaypoint.ID, &tmpWaypoint.TeamID, &lat, &lon, &tmpWaypoint.Radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
 		if err != nil {
 			Log.Error(err)
 			return nil
-		}
-		if ID.Valid {
-			f, _ := strconv.ParseInt(ID.String, 0, 64)
-			tmpWaypoint.ID = f
 		}
 		if lat.Valid {
 			f, _ := strconv.ParseFloat(lat.String, 64)
@@ -237,10 +230,6 @@ func (teamID TeamID) otWaypoints(tl *TeamData) error {
 		if lon.Valid {
 			f, _ := strconv.ParseFloat(lon.String, 64)
 			tmpWaypoint.Lon = f
-		}
-		if radius.Valid {
-			f, _ := strconv.ParseInt(radius.String, 0, 64)
-			tmpWaypoint.Radius = f
 		}
 		tmpWaypoint.Share = true
 		tmpWaypoint.Type = "waypoint"
@@ -252,11 +241,11 @@ func (teamID TeamID) otWaypoints(tl *TeamData) error {
 // OwnTracksTransition is called when an agent enters or leaves a WayPoint's radius
 // currently a stub which only sends a message alerting the agent that they have made the transition
 // future features are still being considered
-func (gid GoogleID) OwnTracksTransition(transition json.RawMessage) (json.RawMessage, error) {
-	var t Transition
+func (gid GoogleID) OwnTracksTransition(jTran json.RawMessage) (json.RawMessage, error) {
+	var t transition
 	j := json.RawMessage("{ }")
 
-	if err := json.Unmarshal(transition, &t); err != nil {
+	if err := json.Unmarshal(jTran, &t); err != nil {
 		Log.Notice(err)
 		return j, err
 	}
@@ -273,7 +262,7 @@ func (gid GoogleID) OwnTracksTransition(transition json.RawMessage) (json.RawMes
 // future features for this are still being considered
 // Should this be a method instead of a function? On what datatype?
 func (gid GoogleID) ownTracksTidy(otdata string) (json.RawMessage, error) {
-	var l Location
+	var l location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
 		Log.Notice(err)
 		return json.RawMessage(otdata), err
@@ -301,7 +290,7 @@ func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
 		return err
 	}
 
-	var l Location
+	var l location
 	if err := json.Unmarshal(json.RawMessage(otdata), &l); err != nil {
 		Log.Notice(err)
 		return err
@@ -335,7 +324,7 @@ func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
 // OwnTracksSetWaypoint is called when a waypoint message is received from the OwnTracks application
 func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
-	var w Waypoint
+	var w waypoint
 	j, _ := gid.OwnTracksWaypoints()
 
 	team, err := gid.PrimaryTeam() // cache this...
@@ -360,7 +349,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 }
 
 // ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the data to the database.
-func ownTracksWriteWaypoint(w Waypoint, team string) error {
+func ownTracksWriteWaypoint(w waypoint, team string) error {
 	_, err := db.Exec("INSERT INTO waypoints (Id, teamID, loc, radius, type, name, expiration) VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14))) "+
 		"ON DUPLICATE KEY UPDATE Id = ?, loc = POINT(?, ?), radius = ?, name = ?",
 		w.ID, team, w.Lon, w.Lat, w.Radius, "OTWaypointFarmAlert", w.Desc, w.ID,
@@ -374,7 +363,7 @@ func ownTracksWriteWaypoint(w Waypoint, team string) error {
 // OwnTracksSetWaypointList is called when a waypoint list is received from the OwnTracks application
 func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
-	var w WaypointsList
+	var w waypointsList
 	j, _ := gid.OwnTracksWaypoints()
 
 	team, err := gid.PrimaryTeam()
