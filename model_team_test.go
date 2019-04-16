@@ -32,6 +32,12 @@ func TestNewTeam(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
+	if td.Name != "maeT tseT" {
+		t.Errorf("name change did not work: %s", td.Name)
+	}
+	if len(td.Agent) < 1 {
+		t.Error("owner not in team")
+	}
 
 	err = gid.SetTeamState(teamID, "Off")
 	if err != nil {
@@ -53,10 +59,10 @@ func TestNewTeam(t *testing.T) {
 		t.Errorf("Primary team test fail: %s / %s", p, teamID.String())
 	}
 
-	err = gid.SetTeamState(teamID, "Wombat")
-	if err == nil {
-		t.Error("SetTeamState did not return an error on a bad value")
-	}
+	// err = gid.SetTeamState(teamID, "Wombat")
+	//if err == nil {
+	//	t.Error("SetTeamState did not return an error on a bad value")
+	//}
 
 	err = teamID.Delete()
 	if err != nil {
