@@ -151,7 +151,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 	if err != nil {
 		Log.Notice(err)
 	}
-	return TeamID(name), err
+	return TeamID(team), err
 }
 
 // Rename sets a new name for a teamID
