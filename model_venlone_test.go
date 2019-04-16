@@ -3,12 +3,14 @@ package wasabi_test
 import (
 	"fmt"
 	"github.com/cloudkucooland/WASABI"
+	"github.com/op/go-logging"
 	"os"
 	"strconv"
 	"testing"
 )
 
 func TestMain(m *testing.M) {
+	wasabi.SetLogLevel(logging.DEBUG)
 	err := wasabi.Connect(os.Getenv("DATABASE"))
 	if err != nil {
 		wasabi.Log.Error(err)
