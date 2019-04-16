@@ -2,7 +2,7 @@ language: go
 
 go:
   - "1.11.x"
-  - "master"
+  - master
 
 git:
   quiet: true
@@ -31,5 +31,3 @@ script:
     - go test -v
     - go get -v ./...                           # Run Go static analyzer.
     - go run cmd/wasabi-userupdate/main.go		# test command
-	- go build -v ./...
-	- go install -v ./...
