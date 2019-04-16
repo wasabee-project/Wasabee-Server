@@ -14,7 +14,7 @@ type TeamData struct {
 	ID        TeamID
 	Agent     []Agent
 	Markers   []Marker
-	Waypoints []Waypoint
+	Waypoints []waypoint
 	RocksComm string
 	RocksKey  string
 }
@@ -378,7 +378,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) error {
 	var lat, lon string
 	var rows *sql.Rows
-	var tmpW Waypoint
+	var tmpW waypoint
 
 	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
 	if err != nil {

@@ -354,7 +354,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 	defer mr.Close()
 
 	var tmpMarker Marker
-	var tmpWaypoint Waypoint
+	var tmpWaypoint waypoint
 	for mr.Next() {
 		err := mr.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.Comment, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
 		if err != nil {
@@ -374,7 +374,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 	return nil
 }
 
-func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
+func (gid GoogleID) pdWaypoints(wc *waypointCommand) error {
 	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM agentteams=t WHERE gid = ? AND state != 'Off')) AND m.portalID = p.ID AND m.opID = p.opID", gid)
 	if err != nil {
 		Log.Error(err)
@@ -382,7 +382,7 @@ func (gid GoogleID) pdWaypoints(wc *WaypointCommand) error {
 	}
 	defer mr.Close()
 	var markerID string
-	var tmpWaypoint Waypoint
+	var tmpWaypoint waypoint
 	for mr.Next() {
 		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
 		if err != nil {
@@ -418,7 +418,7 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 	}
 	defer mr.Close()
 	var markerID string
-	var tmpWaypoint Waypoint
+	var tmpWaypoint waypoint
 	for mr.Next() {
 		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc, &tmpWaypoint.Distance)
 		if err != nil {
