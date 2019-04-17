@@ -1,51 +1,58 @@
-package PhDevHTTP
+package wasabihttps
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 	"net/http"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
-	var teamList PhDevBin.TeamData
+	var teamList wasabi.TeamData
 
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := wasabi.TeamID(vars["team"])
 
-	safe, err := PhDevBin.UserInTeam(id, team, false)
-	if safe {
-		PhDevBin.FetchTeam(team, &teamList, false)
-		data, _ := json.MarshalIndent(teamList, "", "\t")
-		s := string(data)
-		res.Header().Add("Content-Type", "text/json")
-		fmt.Fprintf(res, s)
+	safe, err := gid.AgentInTeam(team, false)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Error(res, "Unauthorized", http.StatusUnauthorized)
+	if !safe {
+		http.Error(res, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	team.FetchTeam(&teamList, false)
+	teamList.RocksComm = ""
+	teamList.RocksKey = ""
+	data, _ := json.MarshalIndent(teamList, "", "\t")
+	s := string(data)
+	res.Header().Add("Content-Type", "text/json")
+	fmt.Fprint(res, s)
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
 	name := vars["name"]
-	_, err = PhDevBin.NewTeam(name, id)
+	_, err = gid.NewTeam(name)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -53,23 +60,28 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
-	if safe != true {
+	team := wasabi.TeamID(vars["team"])
+	safe, err := gid.OwnsTeam(team)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = PhDevBin.DeleteTeam(team)
+	err = team.Delete()
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -77,82 +89,100 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
-	if safe != true {
+	team := wasabi.TeamID(vars["team"])
+	safe, err := gid.OwnsTeam(team)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var teamList PhDevBin.TeamData
-	err = PhDevBin.FetchTeam(team, &teamList, true)
+	var teamList wasabi.TeamData
+	err = team.FetchTeam(&teamList, true)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = config.templateSet.ExecuteTemplate(res, "edit", teamList)
+	err = wasabiHTTPSTemplateExecute(res, req, "edit", teamList)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func addUserToTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
-	key := vars["key"]
+	team := wasabi.TeamID(vars["team"])
+	key := vars["key"] // Could be a lockkey, googleID, enlID or agent name, team.Addagent sorts it out for us
 
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
-	if safe != true {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	err = PhDevBin.AddUserToTeam(team, key)
+	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/team/"+team+"/edit", http.StatusPermanentRedirect)
+	if !safe {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if key != "" { // prevents a bit of log spam
+		err = team.AddAgent(key)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }
 
-func delUserFmTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
-	key := vars["key"]
-	safe, err := PhDevBin.UserOwnsTeam(id, team)
-	if safe != true {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	err = PhDevBin.DelUserFromTeam(team, key)
+	team := wasabi.TeamID(vars["team"])
+	key := wasabi.LocKey(vars["key"])
+	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/team/"+team+"/edit", http.StatusPermanentRedirect)
+	if !safe {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	err = team.RemoveAgent(key)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
 }

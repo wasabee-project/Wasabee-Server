@@ -1,4 +1,4 @@
-package PhDevBin
+package wasabi
 
 import (
 	"database/sql"
@@ -12,10 +12,11 @@ import (
 	"crypto/sha256"
 )
 
+// MaxFilesize is the maximum file size for simple uploads (1MB)
 const MaxFilesize = 1024 * 1024 // 1MB
 
-// Document specifies the content and metadata of a piece of code that is hosted on PhDevBin.
-type Document struct {
+// SimpleDocument specifies the content and metadata of a simple-style (qbin style) draw.
+type SimpleDocument struct {
 	ID         string
 	Content    string
 	Upload     time.Time
@@ -24,7 +25,7 @@ type Document struct {
 }
 
 // Store a document object in the database.
-func Store(document *Document) error {
+func (document *SimpleDocument) Store() error {
 	// Generate a name that doesn't exist yet
 	name, err := GenerateSafeName()
 	if err != nil {
@@ -46,8 +47,6 @@ func Store(document *Document) error {
 		return errors.New("file contains 0x00 bytes")
 	}
 
-	escaped := EscapeHTML(document.Content)
-
 	var expiration interface{}
 	if (document.Expiration != time.Time{}) {
 		expiration = document.Expiration.UTC().Format("2006-01-02 15:04:05")
@@ -58,7 +57,7 @@ func Store(document *Document) error {
 	if err != nil {
 		Log.Errorf("Invalid script parameters: %s", err)
 	}
-	data, err := encrypt([]byte(escaped), key)
+	data, err := encrypt([]byte(document.Content), key)
 	if err != nil {
 		Log.Errorf("AES error: %s", err)
 		return err
@@ -68,7 +67,7 @@ func Store(document *Document) error {
 
 	// Write the document to the database
 	_, err = db.Exec(
-		"INSERT INTO documents (id, content, upload, expiration, views) VALUES (?, ?, ?, ?, 0)",
+		"INSERT INTO document (id, content, upload, expiration, views) VALUES (?, ?, ?, ?, 0)",
 		hex.EncodeToString(databaseID[:]),
 		string(data),
 		document.Upload.UTC().Format("2006-01-02 15:04:05"), // don't use NOW() since this is used in the key...
@@ -81,21 +80,21 @@ func Store(document *Document) error {
 }
 
 // Request a document from the database by its ID.
-func Request(id string) (Document, error) {
-	doc := Document{ID: id}
+func Request(id string) (SimpleDocument, error) {
+	doc := SimpleDocument{ID: id}
 	var views int
 	var upload, expiration sql.NullString
 	databaseID := sha256.Sum256([]byte(id))
-	err := db.QueryRow("SELECT content, upload, expiration, views FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:])).
+	err := db.QueryRow("SELECT content, upload, expiration, views FROM document WHERE id = ?", hex.EncodeToString(databaseID[:])).
 		Scan(&doc.Content, &upload, &expiration, &views)
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
 			Log.Warningf("Error retrieving document: %s", err)
 		}
-		return Document{}, err
+		return SimpleDocument{}, err
 	}
 
-	go db.Exec("UPDATE documents SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
+	go db.Exec("UPDATE document SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
 	doc.Views = views
 
 	doc.Upload, _ = time.Parse("2006-01-02 15:04:05", upload.String)
@@ -103,12 +102,12 @@ func Request(id string) (Document, error) {
 	key, err := scrypt.Key([]byte(id), []byte(doc.Upload.UTC().Format("2006-01-02 15:04:05")), 16384, 8, 1, 24)
 	if err != nil {
 		Log.Errorf("Invalid script parameters: %s", err)
-		return Document{}, err
+		return SimpleDocument{}, err
 	}
 	data, err := decrypt([]byte(doc.Content), key)
 	if err != nil && !(err.Error() == "cipher: message authentication failed" && !strings.Contains(doc.Content, "\000")) {
 		Log.Errorf("AES error: %s", err)
-		return Document{}, err
+		return SimpleDocument{}, err
 	} else if err == nil {
 		doc.Content = string(data)
 	}
@@ -118,21 +117,35 @@ func Request(id string) (Document, error) {
 		if doc.Expiration.Before(time.Unix(0, 1)) {
 			if doc.Views > 0 {
 				// Volatile document
-				_, err = db.Exec("DELETE FROM documents WHERE id = ?", hex.EncodeToString(databaseID[:]))
+				_, err = db.Exec("DELETE FROM document WHERE id = ?", hex.EncodeToString(databaseID[:]))
 				if err != nil {
 					Log.Errorf("Couldn't delete volatile document: %s", err)
 				}
 			}
 		} else {
 			if err != nil {
-				return Document{}, err
+				return SimpleDocument{}, err
 			}
 			if doc.Expiration.Before(time.Now()) {
-				return Document{}, errors.New("the document has expired")
+				return SimpleDocument{}, errors.New("the document has expired")
 			}
 		}
 	}
 
-	doc.Content = StripHTML(doc.Content)
 	return doc, nil
+}
+
+func simpleDocClean() {
+	// do it this way to get RowsAffected
+	stmt, _ := db.Prepare("DELETE FROM document WHERE expiration < CURRENT_TIMESTAMP AND expiration > FROM_UNIXTIME(0)")
+
+	result, err := stmt.Exec()
+	if err != nil {
+		Log.Errorf("Couldn't execute cleanup statement: %s", err)
+	} else {
+		n, err := result.RowsAffected()
+		if err == nil && n > 0 {
+			Log.Debugf("Cleaned up %d documents.", n)
+		}
+	}
 }

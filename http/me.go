@@ -1,4 +1,4 @@
-package PhDevHTTP
+package wasabihttps
 
 import (
 	"encoding/json"
@@ -6,23 +6,23 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudkucooland/PhDevBin"
+	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var ud PhDevBin.UserData
-	err = PhDevBin.GetUserData(id, &ud)
+	var ud wasabi.AgentData
+	err = gid.GetAgentData(&ud)
 	if err != nil {
 		res.Header().Add("Cache-Control", "no-cache")
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -34,27 +34,28 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = config.templateSet.ExecuteTemplate(res, "me", ud)
+	err = wasabiHTTPSTemplateExecute(res, req, "me", ud)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := wasabi.TeamID(vars["team"])
 	state := vars["state"]
 
-	err = PhDevBin.SetUserTeamState(id, team, state)
+	err = gid.SetTeamState(team, state)
 	if err != nil {
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -63,20 +64,20 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := vars["team"]
+	team := wasabi.TeamID(vars["team"])
 
-	// do the work
-	PhDevBin.Log.Notice("remove me from team: " + id + " " + team)
-	err = PhDevBin.RemoveUserFromTeam(id, team)
+	// wasabi.Log.Debug("remove me from team: " + gid.String() + " " + team.String())
+	err = team.RemoveAgent(gid)
 	if err != nil {
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -85,9 +86,9 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -96,8 +97,9 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	name := vars["name"]
 
 	// do the work
-	err = PhDevBin.SetIngressName(id, name)
+	err = gid.SetIngressName(name)
 	if err != nil {
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -106,9 +108,9 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -117,8 +119,9 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	otpw := vars["otpw"]
 
 	// do the work
-	err = PhDevBin.SetOwnTracksPW(id, otpw)
+	err = gid.SetOwnTracksPW(otpw)
 	if err != nil {
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -126,10 +129,28 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }
 
-func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
-	id, err := GetUserID(req)
+func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
 	if err != nil {
-		PhDevBin.Log.Notice(err.Error())
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = gid.ResetLocKey()
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+}
+
+func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -139,10 +160,51 @@ func meSetUserLocationRoute(res http.ResponseWriter, req *http.Request) {
 	lon := vars["lon"]
 
 	// do the work
-	err = PhDevBin.UserLocation(id, lat, lon, "https")
+	err = gid.AgentLocation(lat, lon, "https")
 	if err != nil {
+		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+}
+
+func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// do the work
+	wasabi.Log.Noticef("Agent requested delete: %s", gid.String())
+	err = gid.Delete()
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// XXX delete the session cookie from the browser
+	http.Redirect(res, req, "/", http.StatusPermanentRedirect)
+}
+
+func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	sl := vars["sl"]
+
+	if sl == "On" {
+		gid.StatusLocationEnable()
+	} else {
+		gid.StatusLocationDisable()
 	}
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }

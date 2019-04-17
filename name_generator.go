@@ -1,4 +1,4 @@
-package PhDevBin
+package wasabi
 
 import (
 	"crypto/rand"
@@ -69,28 +69,34 @@ func GenerateName() string {
 	return strings.TrimPrefix(text, "-")
 }
 
-// var safeName *sql.Stmt
-// var errSafeName = errors.New("not initialized")
-
 // GenerateSafeName generates a slug (like GenerateName()) that doesn't exist in the database yet.
 func GenerateSafeName() (string, error) {
-	// if errSafeName != nil {
-	//	return "", errSafeName
-	// }
-
 	name := ""
 	rows := 1
 
 	for rows > 0 {
+		var i, total int
 		name = GenerateName()
 		if name == "" {
 			return "", errors.New("name generation failed")
 		}
 		databaseID := sha256.Sum256([]byte(name))
-		err := safeName.QueryRow(hex.EncodeToString(databaseID[:])).Scan(&rows)
+		err := db.QueryRow("SELECT COUNT(id) FROM document WHERE id = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
 		if err != nil {
 			return "", err
 		}
+		total = i
+		err = db.QueryRow("SELECT COUNT(lockey) FROM agent WHERE lockey = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
+		if err != nil {
+			return "", err
+		}
+		total = total + i
+		err = db.QueryRow("SELECT COUNT(teamID) FROM team WHERE teamID = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
+		if err != nil {
+			return "", err
+		}
+		total = total + i
+		rows = total
 	}
 
 	return name, nil

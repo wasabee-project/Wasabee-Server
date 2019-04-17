@@ -1,41 +1,51 @@
-package PhDevBin
+package wasabi
 
 import (
-	// "database/sql"
 	"errors"
 	"fmt"
-	// "strconv"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	// "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-var tgbot *tgbotapi.User
+var tgbotname string
+var tgbotid int
 var tgrunning bool
 
-func TGSetBot(b *tgbotapi.User) {
-	tgbot = b
+// TelegramID is a user ID from telegram
+type TelegramID int
+
+// TGSetBot is called from the Telegram bot startup to let other services know it is running
+func TGSetBot(botname string, botid int) {
+	tgbotname = botname
+	tgbotid = botid
 	tgrunning = true
 }
 
+// TGGetBotName returns the bot's telegram username
+// used by templates
 func TGGetBotName() (string, error) {
-	if tgrunning == false {
+	if !tgrunning {
 		return "", nil
 	}
-	return tgbot.UserName, nil
+	return tgbotname, nil
 }
 
+// TGGetBotID returns the bot's telegram ID number
+// used by templates
 func TGGetBotID() (int, error) {
-	if tgrunning == false {
+	if !tgrunning {
 		return 0, nil
 	}
-	return tgbot.ID, nil
+	return tgbotid, nil
 }
 
+// TGRunning is used by templates to determine if they should display telegram info
 func TGRunning() (bool, error) {
 	return tgrunning, nil
 }
 
-func TelegramToGid(tgid int) (string, bool, error) {
-	var gid string
+// GidV returns a gid and V verified status for a given Telegram ID #
+func (tgid TelegramID) GidV() (GoogleID, bool, error) {
+	var gid GoogleID
 	var verified bool
 
 	row := db.QueryRow("SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid)
@@ -50,10 +60,27 @@ func TelegramToGid(tgid int) (string, bool, error) {
 	return gid, verified, nil
 }
 
-func TelegramInitUser(ID int, name string, lockey string) error {
+// TelegramID returns a telegram ID number for a gid
+func (gid GoogleID) TelegramID() (TelegramID, error) {
+	var tgid TelegramID
+
+	row := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid)
+	err := row.Scan(&tgid)
+	if err != nil && err.Error() == "sql: no rows in result set" {
+		return 0, nil
+	}
+	if err != nil {
+		Log.Notice(err)
+		return 0, err
+	}
+	return tgid, nil
+}
+
+// TelegramInitAgent establishes a new telegram user in the database and begins the verification process
+func (tgid TelegramID) TelegramInitAgent(name string, lockey LocKey) error {
 	authtoken := GenerateName()
 
-	gid, err := LockeyToGid(lockey)
+	gid, err := lockey.Gid()
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		e := fmt.Sprintf("Location Share Key (%s) is not recognized", lockey)
 		return errors.New(e)
@@ -63,7 +90,7 @@ func TelegramInitUser(ID int, name string, lockey string) error {
 		Log.Notice(err)
 		return err
 	}
-	_, err = db.Exec("INSERT INTO telegram VALUES (?, ?, ?, 0, ?)", ID, name, gid, authtoken)
+	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tgid, name, gid, authtoken)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -72,8 +99,9 @@ func TelegramInitUser(ID int, name string, lockey string) error {
 	return nil
 }
 
-func TelegramInitUser2(ID int, authtoken string) error {
-	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", ID, authtoken)
+// TelegramVerifyUser is the second stage of the verication process
+func (tgid TelegramID) TelegramVerifyUser(authtoken string) error {
+	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", tgid, authtoken)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -85,7 +113,7 @@ func TelegramInitUser2(ID int, authtoken string) error {
 	}
 
 	if i < 1 {
-		return errors.New("Invalid AuthToken")
+		return errors.New("invalid AuthToken")
 	} // trust the primary key prevents i > 1
 
 	return nil

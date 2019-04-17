@@ -1,19 +1,28 @@
-package PhDevBin
+package wasabi
 
-var webroot string
-var httpsrunning bool
-
-// currently only used for template functions
-// called at https startup
-func SetWebroot(w string) {
-	webroot = w
-	tgrunning = true
+// wasabiHTTPConfig stores values from the https server which are used in templates
+// to allow URL creation in other services (e.g. Telegram)
+var wasabiHTTPSConfig struct {
+	webroot string
+	apipath string
 }
 
-// called from templates
+// SetWebroot is called at https startup
+func SetWebroot(w string) {
+	wasabiHTTPSConfig.webroot = w
+}
+
+// GetWebroot is called from templates
 func GetWebroot() (string, error) {
-	if tgrunning == false {
-		return "", nil
-	}
-	return webroot, nil
+	return wasabiHTTPSConfig.webroot, nil
+}
+
+// SetWebAPIPath is called at https startup
+func SetWebAPIPath(a string) {
+	wasabiHTTPSConfig.apipath = a
+}
+
+// GetWebAPIPath is called from templates
+func GetWebAPIPath() (string, error) {
+	return wasabiHTTPSConfig.apipath, nil
 }

@@ -1,4 +1,4 @@
-package PhDevBin
+package wasabi
 
 import (
 	"crypto/aes"

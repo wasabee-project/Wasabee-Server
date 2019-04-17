@@ -1,4 +1,4 @@
-package PhDevBin
+package wasabi
 
 import (
 	"os"
@@ -6,8 +6,8 @@ import (
 	"github.com/op/go-logging"
 )
 
-// Log refers to the main logger instance used by the PhDevBin application.
-var Log = logging.MustGetLogger("example")
+// Log refers to the main logger instance used by the WASABI application.
+var Log = logging.MustGetLogger("WASABI")
 var leveled logging.LeveledBackend
 
 // SetLogLevel changes how much information is printed to Stdout.

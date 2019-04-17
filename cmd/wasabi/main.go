@@ -4,29 +4,32 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudkucooland/PhDevBin"
-	"github.com/cloudkucooland/PhDevBin/Telegram"
-	"github.com/cloudkucooland/PhDevBin/http"
+	"github.com/cloudkucooland/WASABI"
+	"github.com/cloudkucooland/WASABI/Telegram"
+	"github.com/cloudkucooland/WASABI/http"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "database, d", EnvVar: "DATABASE", Value: "phdev:@tcp(localhost)/phdev",
+		Name: "database, d", EnvVar: "DATABASE", Value: "wasabi:GoodPassword@tcp(localhost)/wasabi",
 		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
 	cli.StringFlag{
 		Name: "certs", EnvVar: "CERTDIR", Value: "./certs/",
 		Usage: "Directory where HTTPS certificates are stored."},
 	cli.StringFlag{
-		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://qbin.phtiv.com:8443",
+		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://wasabi.phtiv.com",
 		Usage: "The path under which the application will be reachable from the internet."},
 	cli.StringFlag{
 		Name: "wordlist", EnvVar: "WORD_LIST", Value: "eff_large_wordlist.txt",
 		Usage: "Word list used for random slug generation."},
 	cli.StringFlag{
-		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":8443",
+		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":443",
 		Usage: "HTTPS listen address."},
+	cli.StringFlag{
+		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "wasabi-https.log",
+		Usage: "HTTPS log file."},
 	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
 		Usage: "Location of the frontend files."},
@@ -46,6 +49,12 @@ var flags = []cli.Flag{
 		Name: "venlonekey", EnvVar: "VENLONE_API_KEY", Value: "",
 		Usage: "V.enl.one API Key. It is recommended to pass this parameter as an environment variable"},
 	cli.BoolFlag{
+		Name: "venlonepoller", EnvVar: "VENLONE_POLLER",
+		Usage: "Poll status.enl.one for RAID/JEAH location data."},
+	cli.StringFlag{
+		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
+		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
+	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
 	cli.BoolFlag{
@@ -56,11 +65,18 @@ var flags = []cli.Flag{
 func main() {
 	app := cli.NewApp()
 
-	app.Name = "PhDevBin"
-	app.Version = "0.6.1"
-	app.Usage = "Phtiv-Draw-Tools Server"
+	app.Name = "WASABI"
+	app.Version = "0.6.7"
+	app.Usage = "WASABI Server"
+	app.Authors = []cli.Author{
+		{
+			Name:  "Scot C. Bontrager",
+			Email: "scot@indievisible.org",
+		},
+	}
+	app.Copyright = "© Scot C. Bontrager"
+	app.HelpName = "wasabi"
 	app.Flags = flags
-
 	app.HideHelp = true
 	cli.AppHelpTemplate = strings.Replace(cli.AppHelpTemplate, "GLOBAL OPTIONS:", "OPTIONS:", 1)
 
@@ -76,30 +92,38 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool("debug") {
-		PhDevBin.SetLogLevel(logging.DEBUG)
+		wasabi.SetLogLevel(logging.DEBUG)
 	}
 
 	// Load words
-	err := PhDevBin.LoadWordsFile(c.String("wordlist"))
+	err := wasabi.LoadWordsFile(c.String("wordlist"))
 	if err != nil {
-		PhDevBin.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
+		wasabi.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
 	}
 
 	// Connect to database
-	err = PhDevBin.Connect(c.String("database"))
+	err = wasabi.Connect(c.String("database"))
 	if err != nil {
-		PhDevBin.Log.Errorf("Error connecting to database: %s", err)
+		wasabi.Log.Errorf("Error connecting to database: %s", err)
 		panic(err)
 	}
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		PhDevBin.SetVEnlOne(c.String("venlonekey"))
+		wasabi.SetVEnlOne(c.String("venlonekey"))
+		if c.Bool("venlonepoller") {
+			go wasabi.StatusServerPoller()
+		}
+	}
+
+	// setup Rocks
+	if c.String("enlrockskey") != "" {
+		wasabi.SetEnlRocks(c.String("enlrockskey"))
 	}
 
 	// Serve HTTPS
 	if c.String("https") != "none" {
-		go PhDevHTTP.StartHTTP(PhDevHTTP.Configuration{
+		go wasabihttps.StartHTTP(wasabihttps.Configuration{
 			ListenHTTPS:      c.String("https"),
 			FrontendPath:     c.String("frontend-path"),
 			Root:             c.String("root"),
@@ -107,12 +131,13 @@ func run(c *cli.Context) error {
 			GoogleClientID:   c.String("googleclient"),
 			GoogleSecret:     c.String("googlesecret"),
 			CookieSessionKey: c.String("sessionkey"),
+			Logfile:          c.String("httpslog"),
 		})
 	}
 
 	// Serve Telegram
-	if c.String("tgkey") != "none" {
-		go PhDevTelegram.PhDevBot(PhDevTelegram.TGConfiguration{
+	if c.String("tgkey") != "" {
+		go wasabitelegram.WASABIBot(wasabitelegram.TGConfiguration{
 			APIKey:       c.String("tgkey"),
 			FrontendPath: c.String("frontend-path"),
 		})
