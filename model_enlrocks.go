@@ -218,7 +218,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	}
 
 	apiurl := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
 		return err
