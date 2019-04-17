@@ -171,6 +171,7 @@ func (teamID TeamID) Delete() error {
 	rows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Error(err)
+		return err
 	}
 
 	var gid GoogleID
@@ -191,8 +192,9 @@ func (teamID TeamID) Delete() error {
 	_, err = db.Exec("DELETE FROM team WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
+		return err
 	}
-	return err
+	return nil
 }
 
 // toGid takes anything (for small values of anything) and returns a Gid for it.
