@@ -5,8 +5,8 @@ import (
 )
 
 type messagingConfig struct {
-	inited       bool
-	senders      map[string]func(gid GoogleID, message string) (bool, error)
+	inited  bool
+	senders map[string]func(gid GoogleID, message string) (bool, error)
 }
 
 var mc messagingConfig
