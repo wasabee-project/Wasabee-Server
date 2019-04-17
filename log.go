@@ -16,7 +16,6 @@ func SetLogLevel(level logging.Level) {
 }
 
 func init() {
-
 	backend := logging.NewLogBackend(os.Stdout, "", 0)
 
 	format := logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{shortfunc}: %{level:.4s} %{color:reset} %{message}`)
@@ -25,5 +24,4 @@ func init() {
 	leveled.SetLevel(logging.NOTICE, "")
 
 	logging.SetBackend(leveled)
-
 }

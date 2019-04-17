@@ -110,6 +110,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
+	// these could be parallelized
 	for _, m := range o.Markers {
 		if err = o.insertMarker(&m); err != nil {
 			Log.Error(err)
