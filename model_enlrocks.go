@@ -82,7 +82,6 @@ func (tgid TelegramID) RocksSearch(agent *RocksAgent) error {
 // rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
 func rockssearch(i interface{}, agent *RocksAgent) error {
 	if !rocks.configured {
-		Log.Debug("Rocks API key not configured")
 		return nil
 	}
 
@@ -99,7 +98,15 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 	}
 
 	apiurl := fmt.Sprintf("%s/%s?key=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
-	resp, err := http.Get(apiurl)
+	req, err := http.NewRequest("GET", apiurl, nil)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -124,7 +131,6 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 // It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
 	if !rocks.configured {
-		Log.Debug("Rocks API key not configured")
 		return nil
 	}
 
@@ -200,7 +206,6 @@ func RocksCommunitySync(msg json.RawMessage) error {
 // RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
 func (teamID TeamID) RocksCommunityMemberPull() error {
 	if !rocks.configured {
-		Log.Debug("Rocks API key not configured")
 		return nil
 	}
 
@@ -213,8 +218,15 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	}
 
 	apiurl := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc)
-	// Log.Debug(apiurl)
-	resp, err := http.Get(apiurl)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -285,7 +297,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	}
 
 	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
-	Log.Debug(apiurl)
+	// XXX use NewRequest/client
 	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
 	if err != nil {
 		Log.Error(err)
@@ -298,7 +310,6 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 		return err
 	}
 
-	// Log.Debug(string(body))
 	var rr rocksPushResponse
 	err = json.Unmarshal(body, &rr)
 	if err != nil {
@@ -360,7 +371,6 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 
 func (teamID TeamID) teamToRocksComm() (string, error) {
 	if !rocks.configured {
-		Log.Debug("Rocks API key not configured")
 		return "", nil
 	}
 
