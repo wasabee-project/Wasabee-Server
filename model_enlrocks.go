@@ -52,7 +52,7 @@ var rocks rocksconfig
 func SetEnlRocks(key string) {
 	Log.Debugf("enl.rocks API Key: %s", key)
 	rocks.rocksAPIKey = key
-	rocks.rocksAPIEndpoint = "https://api.dfwenl.rocks/agent"
+	rocks.rocksAPIEndpoint = "https://enlightened.rocks/api/user/status"
 	rocks.commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
 	rocks.configured = true
 }
@@ -97,7 +97,8 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 		searchID = ""
 	}
 
-	apiurl := fmt.Sprintf("%s/%s?key=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
+	apiurl := fmt.Sprintf("%s/%s?apikey=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
+	// Log.Debug(apiurl)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
