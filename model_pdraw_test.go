@@ -21,9 +21,14 @@ func TestOperation(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	var op wasabi.Operation
-	// unmarshal j and get this from there, no need to hard-code it
-	op.ID = wasabi.OperationID("1aa847732063c58eaa956f365b6c030044c0f1aa")
+	var op, in wasabi.Operation
+
+	err = json.Unmarshal(j, &in)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	op.ID = in.ID
 
 	opp := &op
 	opp.Populate(gid)
