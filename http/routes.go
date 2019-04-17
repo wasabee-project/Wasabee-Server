@@ -1,6 +1,7 @@
 package wasabihttps
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"net/http"
 	"path"
 
-	"golang.org/x/oauth2"
+	// "golang.org/x/oauth2"
 
 	"crypto/sha256"
 	"errors"
@@ -227,7 +228,8 @@ func getAgentInfo(state string, code string) ([]byte, error) {
 	if state != config.oauthStateString {
 		return nil, fmt.Errorf("invalid oauth state")
 	}
-	token, err := config.googleOauthConfig.Exchange(oauth2.NoContext, code)
+	// XXX replace TODO with a real context
+	token, err := config.googleOauthConfig.Exchange(context.TODO(), code)
 	if err != nil {
 		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}

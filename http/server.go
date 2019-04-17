@@ -116,7 +116,7 @@ func initializeConfig(initialConfig Configuration) {
 		config.Logfile = "wasabi-https.log"
 	}
 	wasabi.Log.Infof("https logfile: %s", config.Logfile)
-	logfile, err := os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	logfile, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		wasabi.Log.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name
 	lang := "en"
 
 	_, ok := config.templateSet[lang]
-	if ok == false {
+	if !ok {
 		lang = "en" // default to english if the map doesn't exist
 	}
 
@@ -293,7 +293,7 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		id, ok := ses.Values["id"]
-		if ok == false || id == nil {
+		if !ok || id == nil {
 			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
 			ses.Values["loginReq"] = req.URL.String()
 			ses.Save(req, res)
@@ -304,7 +304,7 @@ func authMW(next http.Handler) http.Handler {
 		gid := wasabi.GoogleID(id.(string))
 
 		in, ok := ses.Values["nonce"]
-		if ok != true || in == nil {
+		if !ok || in == nil {
 			wasabi.Log.Error("gid set, but nonce not")
 			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return

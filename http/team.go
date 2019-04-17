@@ -22,8 +22,13 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabi.TeamID(vars["team"])
 
 	safe, err := gid.AgentInTeam(team, false)
-	if safe == false {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
+		http.Error(res, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	team.FetchTeam(&teamList, false)
@@ -32,8 +37,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	data, _ := json.MarshalIndent(teamList, "", "\t")
 	s := string(data)
 	res.Header().Add("Content-Type", "text/json")
-	fmt.Fprintf(res, s)
-	return
+	fmt.Fprint(res, s)
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -66,7 +70,12 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := wasabi.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
-	if safe != true {
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -90,7 +99,12 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := wasabi.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
-	if safe != true {
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -122,7 +136,12 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	key := vars["key"] // Could be a lockkey, googleID, enlID or agent name, team.Addagent sorts it out for us
 
 	safe, err := gid.OwnsTeam(team)
-	if safe != true {
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -150,7 +169,12 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabi.TeamID(vars["team"])
 	key := wasabi.LocKey(vars["key"])
 	safe, err := gid.OwnsTeam(team)
-	if safe != true {
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
