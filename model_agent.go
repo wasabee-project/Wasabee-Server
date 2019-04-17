@@ -71,12 +71,30 @@ type AdOperation struct {
 func (gid GoogleID) InitAgent() (bool, error) {
 	var authError error // delay reporting authorization problems until after INSERT/Vupdate/RocksUpdate
 	var tmpName string
-
+	var err error
 	var vdata Vresult
-	err := gid.VSearch(&vdata)
-	if err != nil {
+	var rocks RocksAgent
+
+	// query both rocks and V at the same time
+	channel := make(chan error)
+	go func() {
+		e := gid.VSearch(&vdata)
+		channel <- e
+	}()
+	go func() {
+		e := gid.RocksSearch(&rocks)
+		channel <- e
+	}()
+
+	// dunno which is coming in first, but know it will only ever be two
+	// there is probably a better way of doing this, but I'm still learning
+	if (<-channel) != nil {
 		Log.Notice(err)
 	}
+	if (<-channel) != nil {
+		Log.Notice(err)
+	}
+
 	if vdata.Data.Agent != "" {
 		err = gid.VUpdate(&vdata)
 		if err != nil {
@@ -100,10 +118,6 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		}
 	}
 
-	var rocks RocksAgent
-	if err = gid.RocksSearch(&rocks); err != nil {
-		Log.Error(err)
-	}
 	if rocks.Agent != "" {
 		err = gid.RocksUpdate(&rocks)
 		if err != nil {
