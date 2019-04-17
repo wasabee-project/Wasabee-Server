@@ -73,8 +73,8 @@ type location struct {
 type transition struct {
 	Type      string  `json:"_type"`
 	Event     string  `json:"event"`
-	ID        float64 `json:"wtst"`
-	TimeStamp float64 `json:"tst"`
+	ID        int64   `json:"wtst"`
+	TimeStamp int64   `json:"tst"`
 	Lat       float64 `json:"lat"`
 	Lon       float64 `json:"lon"`
 	Topic     string  `json:"topic"`
@@ -251,7 +251,7 @@ func (gid GoogleID) OwnTracksTransition(jTran json.RawMessage) (json.RawMessage,
 	}
 
 	// XXX do something here -- or not
-	Log.Debugf("%s transition %s: %s (%f)", gid, t.Event, t.Desc, t.ID)
+	Log.Debugf("%s transition %s: %s (%n)", gid, t.Event, t.Desc, t.ID)
 	// gid.SendMessage(fmt.Sprintf("%s area: %s", t.Event, t.Desc))
 
 	return j, nil
