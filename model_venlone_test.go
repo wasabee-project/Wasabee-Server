@@ -16,7 +16,6 @@ func TestVConfigured(t *testing.T) {
 
 func TestVsearch(t *testing.T) {
 	var v wasabi.Vresult
-	gid := wasabi.GoogleID("118281765050946915735")
 
 	err := gid.VSearch(&v)
 	if err != nil {
@@ -33,8 +32,6 @@ func TestVsearch(t *testing.T) {
 }
 
 func TestStatusLocation(t *testing.T) {
-	gid := wasabi.GoogleID("118281765050946915735")
-
 	lat, lon, err := gid.StatusLocation()
 	if err != nil {
 		t.Errorf(err.Error())
@@ -52,11 +49,11 @@ func TestStatusLocation(t *testing.T) {
 
 func TestGid(t *testing.T) {
 	eid := wasabi.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
-	gid, err := eid.Gid()
+	fgid, err := eid.Gid()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	if gid.String() != "118281765050946915735" {
-		t.Errorf("EnlID(%s) = Gid(%s); expecting Gid(118281765050946915735)", eid.String(), gid.String())
+	if gid.String() != fgid.String() {
+		t.Errorf("EnlID(%s) = Gid(%s); expecting Gid(%s)", eid.String(), fgid.String(), fgid.String())
 	}
 }

@@ -5,10 +5,7 @@ import (
 	"testing"
 )
 
-// TestMain is currently in model_venlone_test.go
-
 func TestInitAgent(t *testing.T) {
-	gid := wasabi.GoogleID("118281765050946915735")
 	_, err := gid.InitAgent()
 	if err != nil {
 		t.Errorf(err.Error())
@@ -32,7 +29,6 @@ func TestInitAgent(t *testing.T) {
 }
 
 func TestSetAgentName(t *testing.T) {
-	gid := wasabi.GoogleID("118281765050946915735")
 	err := gid.SetIngressName("dEvIoUs")
 	if err != nil {
 		t.Errorf(err.Error())

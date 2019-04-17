@@ -5,8 +5,9 @@ import (
 	"testing"
 )
 
+var tids []wasabi.TeamID
+
 func TestNewTeam(t *testing.T) {
-	gid := wasabi.GoogleID("118281765050946915735")
 	teamID, err := gid.NewTeam("Test Team")
 	if err != nil {
 		t.Error(err.Error())
@@ -88,4 +89,24 @@ func TestNewTeam(t *testing.T) {
 	}
 
 	return
+}
+
+func BenchmarkNewTeam(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		teamID, err := gid.NewTeam("Test Team")
+		if err != nil {
+			b.Error(err.Error())
+		}
+		tids = append(tids, teamID)
+	}
+}
+
+func BenchmarkDeleteTeam(b *testing.B) {
+	var err error
+	for _, tid := range tids {
+		err = tid.Delete()
+		if err != nil {
+			b.Error(err.Error())
+		}
+	}
 }

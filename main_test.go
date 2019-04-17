@@ -7,7 +7,11 @@ import (
 	"testing"
 )
 
+var gid wasabi.GoogleID
+
 func TestMain(m *testing.M) {
+	gid = wasabi.GoogleID("118281765050946915735")
+
 	wasabi.SetLogLevel(logging.DEBUG)
 	err := wasabi.Connect(os.Getenv("DATABASE"))
 	if err != nil {

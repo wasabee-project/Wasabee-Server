@@ -9,7 +9,6 @@ import (
 )
 
 func TestOperation(t *testing.T) {
-	gid := wasabi.GoogleID("118281765050946915735")
 	content, err := ioutil.ReadFile("testdata/test1.json")
 	if err != nil {
 		t.Error(err.Error())
