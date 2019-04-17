@@ -23,7 +23,7 @@ func TGSetBot(botname string, botid int) {
 // TGGetBotName returns the bot's telegram username
 // used by templates
 func TGGetBotName() (string, error) {
-	if tgrunning == false {
+	if !tgrunning {
 		return "", nil
 	}
 	return tgbotname, nil
@@ -32,7 +32,7 @@ func TGGetBotName() (string, error) {
 // TGGetBotID returns the bot's telegram ID number
 // used by templates
 func TGGetBotID() (int, error) {
-	if tgrunning == false {
+	if !tgrunning {
 		return 0, nil
 	}
 	return tgbotid, nil
@@ -113,7 +113,7 @@ func (tgid TelegramID) TelegramVerifyUser(authtoken string) error {
 	}
 
 	if i < 1 {
-		return errors.New("Invalid AuthToken")
+		return errors.New("invalid AuthToken")
 	} // trust the primary key prevents i > 1
 
 	return nil

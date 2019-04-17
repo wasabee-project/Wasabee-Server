@@ -22,7 +22,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 
 	gid, auth := ownTracksAuthentication(res, req)
-	if auth == false {
+	if !auth {
 		http.Error(res, "Error verifing authentication", http.StatusUnauthorized)
 		return
 	}
@@ -42,7 +42,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	if string(jBlob) == "" {
 		wasabi.Log.Notice("empty JSON: probably delete waypoint / person request")
 		waypoints, _ := gid.OwnTracksWaypoints()
-		fmt.Fprintf(res, string(waypoints))
+		fmt.Fprint(res, string(waypoints))
 		return
 	}
 
@@ -65,31 +65,31 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
 		// wasabi.Log.Debug(string(s))
-		fmt.Fprintf(res, string(s))
+		fmt.Fprint(res, string(s))
 	case "transition":
 		s, err := gid.OwnTracksTransition(jRaw)
 		if err != nil {
 			wasabi.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
-		fmt.Fprintf(res, string(s))
+		fmt.Fprint(res, string(s))
 	case "waypoints":
 		s, _ := gid.OwnTracksSetWaypointList(jRaw)
-		fmt.Fprintf(res, string(s))
+		fmt.Fprint(res, string(s))
 	case "waypoint":
 		s, _ := gid.OwnTracksSetWaypoint(jRaw)
-		fmt.Fprintf(res, string(s))
+		fmt.Fprint(res, string(s))
 	default:
 		wasabi.Log.Notice("unhandled type: " + t.Type)
 		wasabi.Log.Debug(string(jRaw))
-		fmt.Fprintf(res, "{ }")
+		fmt.Fprint(res, "{ }")
 	}
 }
 
 func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (wasabi.GoogleID, bool) {
 	l, otpw, ok := req.BasicAuth()
 	lockey := wasabi.LocKey(l)
-	if ok == false {
+	if !ok {
 		wasabi.Log.Notice("Unable to decode basic authentication")
 		return "", false
 	}

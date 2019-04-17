@@ -57,8 +57,13 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabi.TeamID(vars["team"])
 
 	safe, err := gid.OwnsTeam(team)
-	if safe != true {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
+		http.Error(res, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -85,8 +90,13 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	rk := vars["rockskey"]
 
 	safe, err := gid.OwnsTeam(team)
-	if safe != true {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
+		http.Error(res, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	err = team.SetRocks(rk, rc)

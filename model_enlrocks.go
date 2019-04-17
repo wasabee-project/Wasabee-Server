@@ -81,7 +81,7 @@ func (tgid TelegramID) RocksSearch(agent *RocksAgent) error {
 
 // rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
 func rockssearch(i interface{}, agent *RocksAgent) error {
-	if rocks.configured == false {
+	if !rocks.configured {
 		Log.Debug("Rocks API key not configured")
 		return nil
 	}
@@ -123,7 +123,7 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 // RocksUpdate updates the database to reflect an agent's current status at enl.rocks.
 // It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
-	if rocks.configured == false {
+	if !rocks.configured {
 		Log.Debug("Rocks API key not configured")
 		return nil
 	}
@@ -199,7 +199,7 @@ func RocksCommunitySync(msg json.RawMessage) error {
 
 // RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
 func (teamID TeamID) RocksCommunityMemberPull() error {
-	if rocks.configured == false {
+	if !rocks.configured {
 		Log.Debug("Rocks API key not configured")
 		return nil
 	}
@@ -304,7 +304,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	if err != nil {
 		Log.Error(err)
 	}
-	if rr.Success != true {
+	if !rr.Success {
 		Log.Error(rr.Error)
 	}
 	return nil
@@ -351,7 +351,7 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		Log.Error(err)
 		return err
 	}
-	if rr.Success != true {
+	if !rr.Success {
 		Log.Error(rr.Error)
 		return errors.New(rr.Error)
 	}
@@ -359,7 +359,7 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 }
 
 func (teamID TeamID) teamToRocksComm() (string, error) {
-	if rocks.configured == false {
+	if !rocks.configured {
 		Log.Debug("Rocks API key not configured")
 		return "", nil
 	}
@@ -370,7 +370,7 @@ func (teamID TeamID) teamToRocksComm() (string, error) {
 		Log.Error(err)
 		return "", err
 	}
-	if rc.Valid == false {
+	if !rc.Valid {
 		return "", nil
 	}
 	return rc.String, nil

@@ -102,7 +102,6 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 	// I think this is now taken care of in the middleware
 	res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
 	res.WriteHeader(200)
-	return
 }
 
 // display the front page
@@ -112,7 +111,6 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	return
 }
 
 // display the privacy policy
@@ -122,7 +120,6 @@ func privacyRoute(res http.ResponseWriter, req *http.Request) {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	return
 }
 
 // this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
@@ -134,13 +131,11 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprintf(res, "Templates reloaded")
-	return
 }
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "404: No light here.", http.StatusNotFound)
-	return
 }
 
 // final step of the oauth cycle
@@ -193,7 +188,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
-	if authorized == false {
+	if !authorized {
 		http.Error(res, "Smurf go away!", http.StatusUnauthorized)
 		return
 	}
@@ -272,7 +267,7 @@ func staticRoute(res http.ResponseWriter, req *http.Request) {
 	doc, ok := vars["doc"]
 
 	// XXX I've never been able to trigger this, can probably remove
-	if ok != true {
+	if !ok {
 		wasabi.Log.Debug("Marty, Doc is not OK")
 		notFoundRoute(res, req)
 		return
@@ -280,7 +275,7 @@ func staticRoute(res http.ResponseWriter, req *http.Request) {
 
 	var cleandoc string
 	dir, ok := vars["dir"]
-	if ok == true {
+	if ok {
 		wasabi.Log.Debugf("static file requested: %s/%s", dir, doc)
 		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
 		cleandoc = path.Join(config.FrontendPath, "static", dir, doc)
@@ -291,5 +286,4 @@ func staticRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	wasabi.Log.Debugf("serving: %s", cleandoc)
 	http.ServeFile(res, req, cleandoc)
-	return
 }

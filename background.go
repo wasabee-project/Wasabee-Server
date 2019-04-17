@@ -42,7 +42,6 @@ func locationClean() {
 			continue
 		}
 	}
-	return
 }
 
 func waypointClean() {
@@ -59,6 +58,4 @@ func waypointClean() {
 		Log.Error(err)
 		return
 	}
-
-	return
 }

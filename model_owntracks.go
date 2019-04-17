@@ -329,7 +329,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 
 	team, err := gid.PrimaryTeam() // cache this...
 	if err != nil || team == "" {
-		e := errors.New("Unable to determine primary team for SetWaypoint")
+		e := errors.New("unable to determine primary team for SetWaypoint")
 		Log.Notice(e)
 		return j, e
 	}
@@ -368,7 +368,7 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 
 	team, err := gid.PrimaryTeam()
 	if err != nil || team == "" {
-		e := errors.New("Unable to determine primary team for SetWaypointList")
+		e := errors.New("unable to determine primary team for SetWaypointList")
 		Log.Notice(e)
 		return j, e
 	}

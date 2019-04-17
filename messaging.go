@@ -7,7 +7,6 @@ import (
 type messagingConfig struct {
 	inited       bool
 	senders      map[string]func(gid GoogleID, message string) (bool, error)
-	frontendPath string
 }
 
 var mc messagingConfig
@@ -22,11 +21,11 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 	// XXX loop through valid, trying until one works
 	ok, err := gid.SendMessageVia(message, bus)
 	if err != nil {
-		Log.Notice("Unable to send message")
+		Log.Notice("unable to send message")
 		return false, err
 	}
-	if ok == false {
-		err = fmt.Errorf("Unable to send message")
+	if !ok {
+		err = fmt.Errorf("unable to send message")
 		return false, err
 	}
 	return true, nil
@@ -35,8 +34,8 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 // SendMessageVia sends a message to the destination on the specified bus
 func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 	_, ok := mc.senders[bus]
-	if ok == false {
-		err := fmt.Errorf("No such messaging bus: [%s]", bus)
+	if !ok {
+		err := fmt.Errorf("no such messaging bus: [%s]", bus)
 		return false, err
 	}
 

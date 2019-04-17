@@ -24,13 +24,17 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 
 	err = wasabi.FetchAgent(id, &agent) // FetchAgent takes gid, lockey, eid ...
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// if the request comes from intel, just return JSON
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
 		data, _ := json.MarshalIndent(agent, "", "\t")
 		s := string(data)
 		res.Header().Add("Content-Type", "text/json")
-		fmt.Fprintf(res, s)
+		fmt.Fprint(res, s)
 		return
 	}
 
@@ -39,5 +43,4 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	return
 }

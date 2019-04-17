@@ -55,5 +55,4 @@ func TestOperation(t *testing.T) {
 	}
 
 	fmt.Print(string(out))
-	return
 }

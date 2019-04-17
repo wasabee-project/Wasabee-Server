@@ -127,7 +127,7 @@ func Request(id string) (SimpleDocument, error) {
 				return SimpleDocument{}, err
 			}
 			if doc.Expiration.Before(time.Now()) {
-				return SimpleDocument{}, errors.New("The document has expired")
+				return SimpleDocument{}, errors.New("the document has expired")
 			}
 		}
 	}

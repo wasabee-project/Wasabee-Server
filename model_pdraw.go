@@ -85,8 +85,8 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	if opgid == gid {
 		authorized = true
 	}
-	if authorized == false {
-		return errors.New("Unauthorized: this operation owned by someone else")
+	if !authorized {
+		return errors.New("unauthorized: this operation owned by someone else")
 	}
 
 	// clear and start from a blank slate
@@ -211,15 +211,15 @@ func (o *Operation) Populate(gid GoogleID) error {
 	}
 	if teamID.Valid {
 		o.TeamID = TeamID(teamID.String)
-		if inteam, _ := gid.AgentInTeam(o.TeamID, false); inteam == true {
+		if inteam, _ := gid.AgentInTeam(o.TeamID, false); inteam {
 			authorized = true
 		}
 	}
 	if gid == o.Gid {
 		authorized = true
 	}
-	if authorized == false {
-		return errors.New("Unauthorized: you are not on a team authorized to see this operation")
+	if !authorized {
+		return errors.New("unauthorized: you are not on a team authorized to see this operation")
 	}
 
 	err = o.PopulatePortals()

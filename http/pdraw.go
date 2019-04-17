@@ -79,7 +79,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, string(s))
+	fmt.Fprint(res, string(s))
 }
 
 func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -98,12 +98,12 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabi.Operation
 	op.ID = wasabi.OperationID(vars["document"])
 
-	if op.ID.IsOwner(gid) == true {
+	if op.ID.IsOwner(gid) {
 		err = fmt.Errorf("(not really) deleting operation %s", op.ID)
 		wasabi.Log.Notice(err)
 		// XXX op.Delete()
 	} else {
-		err = fmt.Errorf("Only the owner can delete an operation")
+		err = fmt.Errorf("only the owner can delete an operation")
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return

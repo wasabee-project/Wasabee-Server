@@ -23,7 +23,7 @@ var vc vconfig
 // Vresult is set by the V API
 type Vresult struct {
 	Status  string `json:"status"`
-	Message string `json:"message,omitmissing"`
+	Message string `json:"message,omitempty"`
 	Data    vagent `json:"data"`
 }
 
@@ -88,8 +88,8 @@ func vsearch(i interface{}, vres *Vresult) error {
 		searchID = ""
 	}
 
-	if vc.configured == false {
-		return errors.New("V API key not configured")
+	if !vc.configured {
+		return errors.New("the V API key not configured")
 	}
 	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, searchID, vc.vAPIKey)
 
@@ -132,8 +132,8 @@ func vsearch(i interface{}, vres *Vresult) error {
 // VUpdate updates the database to reflect an agent's current status at V.
 // It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) VUpdate(vres *Vresult) error {
-	if vc.configured == false {
-		return errors.New("V API key not configured")
+	if !vc.configured {
+		return errors.New("the V API key not configured")
 	}
 
 	if vres.Status == "ok" && vres.Data.Agent != "" {
@@ -160,8 +160,8 @@ type statusResponse struct {
 // StatusLocation attempts to check for location data from status.enl.one.
 // The API documentation is scant, so this does not work.
 func (eid EnlID) StatusLocation() (string, string, error) {
-	if vc.configured == false {
-		return "", "", errors.New("V API key not configured")
+	if !vc.configured {
+		return "", "", errors.New("the V API key not configured")
 	}
 	url := fmt.Sprintf("%s/%s?apikey=%s", vc.statusEndpoint, eid, vc.vAPIKey)
 	req, err := http.NewRequest("GET", url, nil)
@@ -192,7 +192,7 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 		return "", "", err
 	}
 	if stat.Status != 0 {
-		err := fmt.Errorf("Polling %s returned message: %s", eid, stat.Message)
+		err := fmt.Errorf("polling %s returned message: %s", eid, stat.Message)
 		eid.StatusLocationDisable()
 		return "", "", err
 	}
@@ -254,8 +254,8 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 // StatusServerPoller starts up from main and requests any agents who are configured to use RAID/JEAH for location services from the status.enl.one server.
 // It works, but more research is necessary on the settings required on the permissions.
 func StatusServerPoller() {
-	if vc.configured == false {
-		Log.Debug("Not polling status.enl.one")
+	if !vc.configured {
+		Log.Debug("not polling status.enl.one")
 		return
 	}
 
@@ -279,8 +279,8 @@ func StatusServerPoller() {
 				continue
 			}
 			// Log.Debugf("Polling status.enl.one for %s", gid.String)
-			if vid.Valid == false {
-				Log.Info("Agent requested RAID poll, but has not configured V")
+			if !vid.Valid {
+				Log.Info("agent requested RAID poll, but has not configured V")
 				continue
 			}
 			e := EnlID(vid.String)

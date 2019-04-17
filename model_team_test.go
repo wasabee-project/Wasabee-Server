@@ -30,6 +30,9 @@ func TestNewTeam(t *testing.T) {
 		t.Error(err.Error())
 	}
 	t2, err := wasabi.RocksTeamID("example.com")
+	if err != nil {
+		t.Error(err.Error())
+	}
 	if t2.String() != teamID.String() {
 		t.Error("rocks community mismatch")
 	}
@@ -87,8 +90,6 @@ func TestNewTeam(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-
-	return
 }
 
 func BenchmarkNewTeam(b *testing.B) {

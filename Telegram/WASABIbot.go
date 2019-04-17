@@ -89,13 +89,13 @@ func WASABIBot(init TGConfiguration) error {
 		}
 
 		if gid == "" {
-			wasabi.Log.Debugf("Unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
+			wasabi.Log.Debugf("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
 			err = wasabibotNewUserInit(&msg, &update)
 			if err != nil {
 				wasabi.Log.Error(err)
 			}
-		} else if verified == false {
-			wasabi.Log.Debugf("Unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
+		} else if !verified {
+			wasabi.Log.Debugf("unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
 			err = wasabibotNewUserVerify(&msg, &update)
 			if err != nil {
 				wasabi.Log.Error(err)
@@ -147,7 +147,7 @@ func wasabibotNewUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update)
 	} else {
 		authtoken = inMsg.Message.Text
 	}
-	strings.TrimSpace(authtoken)
+	authtoken = strings.TrimSpace(authtoken)
 	tid := wasabi.TelegramID(inMsg.Message.From.ID)
 	err := tid.TelegramVerifyUser(authtoken)
 	if err != nil {
@@ -216,7 +216,7 @@ func wasabibotTemplateExecute(name, lang string, data interface{}) (string, erro
 	}
 
 	_, ok := config.templateSet[lang]
-	if ok == false {
+	if !ok {
 		lang = "en" // default to english if the map doesn't exist
 	}
 
@@ -391,7 +391,7 @@ func SendMessage(gid wasabi.GoogleID, message string) (bool, error) {
 	}
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
-		err = fmt.Errorf("Telegram ID not found for %s", gid)
+		err = fmt.Errorf("TelegramID not found for %s", gid)
 		wasabi.Log.Notice(err)
 		return false, err
 	}

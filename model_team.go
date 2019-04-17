@@ -25,17 +25,17 @@ type Agent struct {
 	Name          string
 	Level         int64
 	EnlID         EnlID
-	Verified      bool            `json:"Vverified,omitmissing"`
+	Verified      bool            `json:"Vverified,omitempty"`
 	Blacklisted   bool            `json:"blacklisted"`
-	RocksVerified bool            `json:"rocks,omitmissing"`
-	Color         string          `json:"color,omitmissing"`
-	State         bool            `json:"state,omitmissing"`
-	LocKey        string          `json:"lockey,omitmissing"`
-	Lat           float64         `json:"lat,omitmissing"`
-	Lon           float64         `json:"lng,omitmissing"`
-	Date          string          `json:"date,omitmissing"`
-	OwnTracks     json.RawMessage `json:"OwnTracks,omitmissing"`
-	Distance      float64         `json:"distance,omitmissing"`
+	RocksVerified bool            `json:"rocks,omitempty"`
+	Color         string          `json:"color,omitempty"`
+	State         bool            `json:"state,omitempty"`
+	LocKey        string          `json:"lockey,omitempty"`
+	Lat           float64         `json:"lat,omitempty"`
+	Lon           float64         `json:"lng,omitempty"`
+	Date          string          `json:"date,omitempty"`
+	OwnTracks     json.RawMessage `json:"OwnTracks,omitempty"`
+	Distance      float64         `json:"distance,omitempty"`
 }
 
 // AgentInTeam checks to see if a agent is in a team and (On|Primary).
@@ -67,7 +67,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 
 	var err error
 	var rows *sql.Rows
-	if fetchAll != true {
+	if fetchAll {
 		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
@@ -208,7 +208,7 @@ func toGid(in interface{}) (GoogleID, error) {
 		lockey := v
 		gid, err = lockey.Gid()
 		if err != nil && err.Error() == "sql: no rows in result set" {
-			err = fmt.Errorf("Unknown lockey: %s", lockey)
+			err = fmt.Errorf("unknown lockey: %s", lockey)
 			Log.Info(err)
 			return "", err
 		}
@@ -218,7 +218,7 @@ func toGid(in interface{}) (GoogleID, error) {
 		eid := v
 		gid, err = eid.Gid()
 		if err != nil && err.Error() == "sql: no rows in result set" {
-			err = fmt.Errorf("Unknown EnlID: %s", eid)
+			err = fmt.Errorf("unknown EnlID: %s", eid)
 			Log.Info(err)
 			return "", err
 		}
@@ -226,7 +226,7 @@ func toGid(in interface{}) (GoogleID, error) {
 		tid := v
 		gid, _, err = tid.GidV()
 		if err != nil && err.Error() == "sql: no rows in result set" {
-			err = fmt.Errorf("Unknown TelegramID: %d", tid)
+			err = fmt.Errorf("unknown TelegramID: %d", tid)
 			Log.Info(err)
 			return "", err
 		}
@@ -258,14 +258,14 @@ func toGid(in interface{}) (GoogleID, error) {
 			} else {
 				gid, _ = SearchAgentName(tmp)
 				if err != nil && err.Error() == "sql: no rows in result set" { // XXX this can't happen any longer
-					err = fmt.Errorf("Unknown agent (XXX impossible route): %s", tmp)
+					err = fmt.Errorf("unknown agent (XXX impossible route): %s", tmp)
 					Log.Info(err)
 					return "", err
 				} else if err != nil {
 					Log.Notice(err)
 					return "", err
 				} else if gid == "" {
-					err = fmt.Errorf("Unknown agent: %s", tmp)
+					err = fmt.Errorf("unknown agent: %s", tmp)
 					Log.Info(err)
 					return "", err
 				}
@@ -501,7 +501,7 @@ func FetchAgent(id string, agent *Agent) error {
 
 	// XXX redundant with previous check?
 	if gid == "" {
-		return fmt.Errorf("Unknown agent (redundant check?): %s", id)
+		return fmt.Errorf("unknown agent (redundant check?): %s", id)
 	}
 
 	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(

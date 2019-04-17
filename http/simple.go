@@ -28,7 +28,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			wasabi.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(res, err.Error())
+			fmt.Fprint(res, err.Error())
 			return
 		}
 		doc.Content = req.PostFormValue("Q")
@@ -38,7 +38,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			wasabi.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(res, err.Error())
+			fmt.Fprint(res, err.Error())
 			return
 		}
 		// Get document
@@ -48,13 +48,13 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			file, _, err := req.FormFile("Q")
 			if err != nil && err.Error() == "http: no such file" {
 				res.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintf(res, "The document can't be empty.\n")
+				fmt.Fprint(res, "The document can't be empty.\n")
 				return
 			}
 			if err != nil {
 				wasabi.Log.Error(err)
 				res.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(res, err.Error())
+				fmt.Fprint(res, err.Error())
 				return
 			}
 
@@ -63,7 +63,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			if err != nil {
 				wasabi.Log.Error(err)
 				res.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(res, err.Error())
+				fmt.Fprint(res, err.Error())
 				return
 			}
 			doc.Content = string(content)
@@ -74,7 +74,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			wasabi.Log.Error(err)
 			res.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(res, err.Error())
+			fmt.Fprint(res, err.Error())
 			return
 		}
 		doc.Content = string(content)
@@ -83,13 +83,13 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	// Check exact filesize
 	if len(doc.Content) > wasabi.MaxFilesize {
 		res.WriteHeader(http.StatusRequestEntityTooLarge)
-		fmt.Fprintf(res, "Maximum document size exceeded.\n")
+		fmt.Fprint(res, "Maximum document size exceeded.\n")
 		return
 	}
 
 	if len(strings.TrimSpace(doc.Content)) < 1 {
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(res, "The document can't be empty (after whitespace removal).\n")
+		fmt.Fprint(res, "The document can't be empty (after whitespace removal).\n")
 		return
 	}
 
@@ -102,7 +102,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	doc.Expiration, err = parseExpiration(exp)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(res, "Invalid expiration.\n")
+		fmt.Fprint(res, "Invalid expiration.\n")
 		return
 	}
 
@@ -110,16 +110,16 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	err = dp.Store()
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(res, "You are trying to upload a binary file, which is not supported.\n")
+		fmt.Fprint(res, "You are trying to upload a binary file, which is not supported.\n")
 		return
 	} else if err != nil {
 		wasabi.Log.Error(err)
 		res.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(res, err.Error())
+		fmt.Fprint(res, err.Error())
 		return
 	}
 
-	fmt.Fprintf(res, config.Root+"/simple/"+doc.ID+"\n")
+	fmt.Fprintf(res, "%s/simple/%s\n", config.Root, doc.ID)
 }
 
 func getRoute(res http.ResponseWriter, req *http.Request) {
@@ -132,7 +132,7 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(res, "%s", doc.Content)
+	fmt.Fprint(res, doc.Content)
 }
 
 // ParseExpiration creates a time.Time object from an expiration string, taking the units m, h, d, w into account.

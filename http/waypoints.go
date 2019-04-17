@@ -18,6 +18,11 @@ func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 
 	var data wasabi.TeamData
 	err = gid.WaypointsNear(50, 10, &data)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	vars := mux.Vars(req)
 	format := vars["f"]
@@ -35,5 +40,4 @@ func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	return
 }

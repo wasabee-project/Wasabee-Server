@@ -86,16 +86,16 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		if tmpName == "" {
 			tmpName = vdata.Data.Agent
 		}
-		if vdata.Data.Quarantine == true {
+		if vdata.Data.Quarantine {
 			authError = fmt.Errorf("%s quarantined at V", vdata.Data.Agent)
 		}
-		if vdata.Data.Flagged == true {
+		if vdata.Data.Flagged {
 			authError = fmt.Errorf("%s flagged at V", vdata.Data.Agent)
 		}
-		if vdata.Data.Blacklisted == true {
+		if vdata.Data.Blacklisted {
 			authError = fmt.Errorf("%s blacklisted at V", vdata.Data.Agent)
 		}
-		if vdata.Data.Banned == true {
+		if vdata.Data.Banned {
 			authError = fmt.Errorf("%s banned at V", vdata.Data.Agent)
 		}
 	}
@@ -113,7 +113,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		if tmpName == "" {
 			tmpName = rocks.Agent
 		}
-		if rocks.Smurf == true {
+		if rocks.Smurf {
 			authError = fmt.Errorf("%s listed as a smurf at enl.rocks", rocks.Agent)
 		}
 	}
@@ -356,11 +356,9 @@ func adOps(gid GoogleID, ud *AgentData) error {
 // OwnTracks data is updated to reflect the change
 // TODO: react based on the location
 func (gid GoogleID) AgentLocation(lat, lon, source string) error {
-	var point string
-
 	// sanity checing on bounds?
 	// YES, store lon,lat -- the ST_ functions expect it this way
-	point = fmt.Sprintf("POINT(%s %s)", lon, lat)
+	point := fmt.Sprintf("POINT(%s %s)", lon, lat)
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?", point, gid); err != nil {
 		Log.Notice(err)
 		return err
