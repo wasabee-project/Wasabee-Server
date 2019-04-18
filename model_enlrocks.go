@@ -44,7 +44,8 @@ type rocksconfig struct {
 	rocksAPIKey      string
 	configured       bool
 	commAPIEndpoint  string
-	rateLimiter		 <-chan time.Time
+	rateLimiter      <-chan time.Time
+	ticker           *time.Ticker
 }
 
 var rocks rocksconfig
@@ -56,7 +57,8 @@ func SetEnlRocks(key string) {
 	rocks.rocksAPIEndpoint = "https://enlightened.rocks/api/user/status"
 	rocks.commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
 
-	rocks.rateLimiter = time.Tick(time.Second / 2) // upper limit of 120 queries per minute
+	rocks.ticker = time.NewTicker(time.Second / 2)
+	rocks.rateLimiter = rocks.ticker.C
 	rocks.configured = true
 }
 

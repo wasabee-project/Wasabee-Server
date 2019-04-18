@@ -88,10 +88,10 @@ func (gid GoogleID) InitAgent() (bool, error) {
 
 	// dunno which is coming in first, but know it will only ever be two
 	// there is probably a better way of doing this, but I'm still learning
-	if err = <- channel; err != nil {
+	if err = <-channel; err != nil {
 		Log.Notice(err)
 	}
-	if err = <- channel; err != nil {
+	if err = <-channel; err != nil {
 		Log.Notice(err)
 	}
 
