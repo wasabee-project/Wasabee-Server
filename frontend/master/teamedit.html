@@ -1,0 +1,71 @@
+{{define "teamedit"}}
+<html lang="en">
+<head>
+<title>Edit Team: {{.Name}}</title>
+{{template "styles"}}
+</head>
+<body>
+{{template "nav"}}
+		<div class="content-sction-a">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="content-section-a">
+<!-- content starts here -->
+<div class="card mb-2">
+<div class="card-header">Team: {{.Name}}</div>
+<div class="card-body"></div>
+<ul class="list-group list-group-flush">
+</li>
+	{{ $x := .ID }}
+	{{ $rc := .RocksComm }}
+	{{range .Agent}}
+        <li class="list-group-item">{{.Name}} ({{.State}}) {{if .EnlID}} <a href="https://v.enl.one/profile/{{.EnlID}}">V Profile</a> {{end}} <br />
+		{{if not $rc}}<a href="/{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a>{{end}}
+		</li>
+	{{end}}
+<li class="list-group-item">
+<form action="/{{WebAPIPath}}/team/{{.ID}}" method="get">
+<input type="text" name="key" />
+<input type="submit" name="add" value="Add agent to team" />
+<small>You can use an Agent name, a GoogleID, a lockey, or an EnlID</small>
+</form>
+</li>
+</ul>
+{{if EnlRocks}}
+<li class="list-group-item">
+<form action="/{{WebAPIPath}}/team/{{.ID}}/rockscfg" method="get">
+Rocks Community Identifier: <input type="text" name="rockscomm" value="{{.RocksComm}}" />
+Rocks Community API Key: <input type="text" name="rockskey" value="{{.RocksKey}}" />
+<input type="submit" name="add" value="configure rocks" />
+<br />
+<small>If you want this team to have its membership populated from an .rocks community, you will need to get the community ID and API key from the community's settings and add them here. Do not do this unless you trust the enl.rocks community.</small>
+</form>
+</li>
+{{if .RocksKey}}
+<li class="list-group-item"><a href="/{{WebAPIPath}}/team/{{.ID}}/rocks">Pull associated enl.rocks community members onto this team</a></li>
+{{end}}
+</ul>
+{{end}}
+</div>
+<!-- content ends here -->				
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- /.container -->
+
+	</div>
+	<!-- /.intro-header -->
+
+{{template "footer"}}
+
+	<!-- jQuery -->
+	<script src="https://phtiv.com/phtivdrawtools/js/jquery.js"></script>
+
+	<!-- Bootstrap Core JavaScript -->
+	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
+</body>
+</html>
+{{end}}

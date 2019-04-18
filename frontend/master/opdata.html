@@ -1,0 +1,80 @@
+{{define "opdata"}}
+<html lang="en">
+<head>
+<title>{{.Name}} Op data</title>
+{{template "styles"}}
+</head>
+<body>
+{{template "nav"}}
+	<div class="content-sction-a">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="content-section-a">
+<!-- content starts here -->
+<div class="card mb-2">
+<div class="card-header">Op data</div>
+<div class="card-body"></div>
+<ul class="list-group list-group-flush">
+<li class="list-group-item">ID: {{.ID}}</li>
+<li class="list-group-item">Name: {{.Name}}</li>
+<li class="list-group-item">Creator: {{.Gid}}</li>
+<li class="list-group-item">Team: {{.TeamID}}</li>
+</ul>
+</div>
+
+<div class="card mb-2">
+<div class="card-header">Portals</div>
+<div class="card-body"></div>
+  <ul class="list-group list-group-flush">
+	{{range .OpPortals}}
+		<li class="list-group-item">{{.Name}} <a href="https://intel.ingress.com/intel?ll={{.Lat}},{{.Lon}}&z=13&pll={{.Lat}},{{.Lon}}">Intel</a></li>
+	{{end}}
+  </ul>
+</div>
+		<!-- content ends here -->				
+						
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- /.container -->
+
+	</div>
+	<!-- /.intro-header -->
+
+{{template "footer"}}
+
+	<script>
+function geoFindMe() {
+  const lat = document.querySelector('#lat');
+  const lon = document.querySelector('#lon');
+
+  function success(position) {
+	lat.value = position.coords.latitude;
+	lon.value = position.coords.longitude;
+  }
+
+  function error() {
+	lat.value = '-0';
+	lon.value = '-0';
+  }
+
+  if (navigator.geolocation) {
+	navigator.geolocation.getCurrentPosition(success, error);
+  }
+
+}
+document.querySelector('#lat').addEventListener('click', geoFindMe);
+document.querySelector('#lon').addEventListener('click', geoFindMe);
+	</script>
+
+	<!-- jQuery -->
+	<script src="https://phtiv.com/phtivdrawtools/js/jquery.js"></script>
+
+	<!-- Bootstrap Core JavaScript -->
+	<script src="https://phtiv.com/phtivdrawtools/js/bootstrap.min.js"></script>
+</body>
+</html>
+{{end}}
