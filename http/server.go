@@ -193,13 +193,6 @@ func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name
 	return nil
 }
 
-// errorScreen outputs directly to the response writer
-// XXX this may not work since http.Error takes a string...
-// XXX maybe replace http.Error calls with this?
-func errorScreen(res http.ResponseWriter, req *http.Request, err error) {
-	_ = wasabiHTTPSTemplateExecute(res, req, "error", err.Error())
-}
-
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.
 func StartHTTP(initialConfig Configuration) {
 	// Configure
@@ -216,14 +209,12 @@ func StartHTTP(initialConfig Configuration) {
 	r.Use(headersMW)
 	r.Use(unrolled.Handler)
 
-	// s.Use(debugMW)
-	// s.Use(headersMW) // seems to be redundant on s.
-	// s.Use(unrolled.Handler) // seems to be redundant on s.
+	// s.Use(headersMW) // redundant.
+	// s.Use(unrolled.Handler) // redundant.
 	s.Use(authMW)
 
 	// Serve
 	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
-	// XXX what do I need in TLSConfig?
 	srv := &http.Server{
 		Handler:           r,
 		Addr:              config.ListenHTTPS,
@@ -247,7 +238,6 @@ func StartHTTP(initialConfig Configuration) {
 	err := srv.ListenAndServeTLS(config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key")
 	if err != nil {
 		wasabi.Log.Errorf("HTTPS server error: %s", err)
-		// XXX maybe not panic, just graceful shutdown?
 		panic(err)
 	}
 }
