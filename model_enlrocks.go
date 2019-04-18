@@ -44,6 +44,7 @@ type rocksconfig struct {
 	rocksAPIKey      string
 	configured       bool
 	commAPIEndpoint  string
+	rateLimiter		 <-chan time.Time
 }
 
 var rocks rocksconfig
@@ -54,6 +55,8 @@ func SetEnlRocks(key string) {
 	rocks.rocksAPIKey = key
 	rocks.rocksAPIEndpoint = "https://enlightened.rocks/api/user/status"
 	rocks.commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
+
+	rocks.rateLimiter = time.Tick(time.Second / 2) // upper limit of 120 queries per minute
 	rocks.configured = true
 }
 
@@ -96,6 +99,8 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 	default:
 		searchID = ""
 	}
+
+	<-rocks.rateLimiter // Go makes this so easy
 
 	apiurl := fmt.Sprintf("%s/%s?apikey=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
 	// Log.Debug(apiurl)
@@ -218,6 +223,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return nil
 	}
 
+	<-rocks.rateLimiter // Go makes this so easy
 	apiurl := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
@@ -297,6 +303,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 		return nil
 	}
 
+	<-rocks.rateLimiter // Go makes this so easy
 	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
 	// XXX use NewRequest/client
 	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
@@ -323,7 +330,6 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 }
 
 // RemoveFromRemoteRocksCommunity removes an agent from a Rocks Community IF that community has API enabled.
-// XXX currently segfaults when looking at the resp.
 func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 	rc, err := teamID.teamToRocksComm()
 	if err != nil {
@@ -333,6 +339,7 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		return nil
 	}
 
+	<-rocks.rateLimiter // Go makes this so easy
 	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
 	Log.Debug(apiurl)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
