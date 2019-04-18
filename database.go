@@ -38,7 +38,6 @@ func Connect(uri string) error {
 }
 
 // setupTables checks for the existence of tables and creates them if needed
-// XXX THIS IS CURRENTLY OUT OF SYNC WITH REALITY
 func setupTables() error {
 	// Create tables
 	var table string
@@ -55,7 +54,7 @@ func setupTables() error {
 	db.QueryRow("SHOW TABLES LIKE 'agent'").Scan(&table)
 	if table == "" {
 		Log.Noticef("Setting up `agent` table...")
-		_, err := db.Exec(`CREATE TABLE agent (gid varchar(32) NOT NULL, iname varchar(64) DEFAULT NULL, level tinyint(4) NOT NULL DEFAULT '1', lockey varchar(64) DEFAULT NULL, OTpassword varchar(64) DEFAULT NULL, VVerified tinyint(1) NOT NULL DEFAULT '0', Vblacklisted tinyint(1) NOT NULL DEFAULT '0', Vid varchar(64) NOT NULL DEFAULT '', RocksVerified tinyint(1) NOT NULL DEFAULT '0', RAID tinyint(1) NOT NULL DEFAULT '0', PRIMARY KEY (gid), UNIQUE KEY lockey (lockey)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+		_, err := db.Exec(`CREATE TABLE agent (gid varchar(32) NOT NULL, iname varchar(64) DEFAULT NULL, level tinyint(4) NOT NULL DEFAULT '1', lockey varchar(64) DEFAULT NULL, OTpassword varchar(64) DEFAULT NULL, VVerified tinyint(1) NOT NULL DEFAULT '0', Vblacklisted tinyint(1) NOT NULL DEFAULT '0', Vid varchar(64) NOT NULL DEFAULT '', RocksVerified tinyint(1) NOT NULL DEFAULT '0', RAID tinyint(1) NOT NULL DEFAULT '0', PRIMARY KEY (gid), UNIQUE KEY iname (iname), UNIQUE KEY lockey (lockey)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 		if err != nil {
 			Log.Error(err)
 		}
