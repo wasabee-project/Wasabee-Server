@@ -76,24 +76,22 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	var rocks RocksAgent
 
 	// query both rocks and V at the same time
-	channel := make(chan error)
+	channel := make(chan error, 2)
 	go func() {
-		e := gid.VSearch(&vdata)
-		channel <- e
+		channel <- gid.VSearch(&vdata)
 	}()
 	go func() {
-		e := gid.RocksSearch(&rocks)
-		channel <- e
+		channel <- gid.RocksSearch(&rocks)
 	}()
 
-	// dunno which is coming in first, but know it will only ever be two
-	// there is probably a better way of doing this, but I'm still learning
+	// XXX there is probably a better way of doing this
 	if err = <-channel; err != nil {
 		Log.Notice(err)
 	}
 	if err = <-channel; err != nil {
 		Log.Notice(err)
 	}
+	close(channel)
 
 	if vdata.Data.Agent != "" {
 		err = gid.VUpdate(&vdata)
@@ -161,6 +159,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		}
 		_ = gid.ownTracksExternalUpdate("0", "0", "reaper")
 	} else if err != nil {
+		Log.Error(err)
 		return false, err
 	}
 
@@ -201,7 +200,6 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 
 // GetAgentData populates a AgentData struct based on the gid
 func (gid GoogleID) GetAgentData(ud *AgentData) error {
-
 	ud.GoogleID = gid
 
 	row := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid)
@@ -387,10 +385,7 @@ func (gid GoogleID) AgentLocation(lat, lon, source string) error {
 		// XXX put it out onto MQTT
 	}
 
-	// XXX check for waypoints in range
-	// XXX check for markers in range
-
-	// XXX send notifications
+	// XXX check for waypoints/markers in range -- spin off into go routine which sends notifications
 
 	return nil
 }
@@ -425,6 +420,9 @@ func (eid EnlID) String() string {
 // RevalidateEveryone -- if the schema changes or another reason causes us to need to pull data from V and rocks, this is a function which does that
 // V had bulk API functions we should use instead. This is good enough, and I hope we don't need it again.
 func RevalidateEveryone() error {
+	channel := make(chan error, 2)
+	defer close(channel)
+
 	rows, err := db.Query("SELECT gid FROM agent")
 	if err != nil {
 		Log.Error(err)
@@ -434,33 +432,33 @@ func RevalidateEveryone() error {
 	var gid GoogleID
 	defer rows.Close()
 	for rows.Next() {
+		if err = rows.Scan(&gid); err != nil {
+			Log.Error(err)
+			continue
+		}
+
 		var v Vresult
 		var r RocksAgent
 
-		err := rows.Scan(&gid)
-		if err != nil {
-			Log.Error(err)
-			continue
+		go func() {
+			channel <- gid.VSearch(&v)
+		}()
+		go func() {
+			channel <- gid.RocksSearch(&r)
+		}()
+		if err = <-channel; err != nil {
+			Log.Notice(err)
 		}
-		err = gid.VSearch(&v)
-		if err != nil {
-			Log.Error(err)
-			continue
+		if err = <-channel; err != nil {
+			Log.Notice(err)
 		}
-		err = gid.VUpdate(&v)
-		if err != nil {
+
+		if err = gid.VUpdate(&v); err != nil {
 			Log.Error(err)
-			continue
 		}
-		err = gid.RocksSearch(&r)
-		if err != nil {
+
+		if err = gid.RocksUpdate(&r); err != nil {
 			Log.Error(err)
-			continue
-		}
-		err = gid.RocksUpdate(&r)
-		if err != nil {
-			Log.Error(err)
-			continue
 		}
 	}
 	return nil

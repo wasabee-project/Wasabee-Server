@@ -76,6 +76,10 @@ func (tgid TelegramID) VSearch(vres *Vresult) error {
 
 // vsearch stands behind the wraper functions and checks a agent at V and populates a Vresult
 func vsearch(i interface{}, vres *Vresult) error {
+	if !vc.configured {
+		return nil
+	}
+
 	var searchID string
 	switch id := i.(type) {
 	case GoogleID:
@@ -88,9 +92,6 @@ func vsearch(i interface{}, vres *Vresult) error {
 		searchID = ""
 	}
 
-	if !vc.configured {
-		return errors.New("the V API key not configured")
-	}
 	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, searchID, vc.vAPIKey)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -120,7 +121,7 @@ func vsearch(i interface{}, vres *Vresult) error {
 		Log.Error(err)
 		return err
 	}
-	if vres.Status != "ok" {
+	if vres.Status != "ok" && vres.Message != "Agent not found" {
 		err = errors.New(vres.Message)
 		Log.Info(err)
 		return err
@@ -133,7 +134,7 @@ func vsearch(i interface{}, vres *Vresult) error {
 // It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func (gid GoogleID) VUpdate(vres *Vresult) error {
 	if !vc.configured {
-		return errors.New("the V API key not configured")
+		return nil
 	}
 
 	if vres.Status == "ok" && vres.Data.Agent != "" {
@@ -158,7 +159,7 @@ type statusResponse struct {
 }
 
 // StatusLocation attempts to check for location data from status.enl.one.
-// The API documentation is scant, so this does not work.
+// The API documentation is scant, so this is provisional -- seems to work.
 func (eid EnlID) StatusLocation() (string, string, error) {
 	if !vc.configured {
 		return "", "", errors.New("the V API key not configured")
@@ -200,7 +201,7 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 }
 
 // StatusLocation attempts to check for location data from status.enl.one.
-// The API documentation is scant, so this does not work.
+// The API documentation is scant, so this is provisional -- seems to work.
 func (gid GoogleID) StatusLocation() (string, string, error) {
 	e, _ := gid.EnlID()
 	lat, lon, err := e.StatusLocation()
@@ -255,7 +256,7 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 // It works, but more research is necessary on the settings required on the permissions.
 func StatusServerPoller() {
 	if !vc.configured {
-		Log.Debug("not polling status.enl.one")
+		Log.Debug("V not configures: not polling status.enl.one")
 		return
 	}
 
