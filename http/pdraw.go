@@ -53,7 +53,6 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(req)
 	id := vars["document"]
 
@@ -73,13 +72,25 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	s, err := json.MarshalIndent(o, "", "\t")
-	if err != nil {
-		wasabi.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+	// JSON if referer is intel.ingress.com
+	if strings.Contains(req.Referer(), "intel.ingress.com") {
+		res.Header().Set("Content-Type", "application/json")
+		s, err := json.MarshalIndent(o, "", "\t")
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprint(res, string(s))
 		return
 	}
-	fmt.Fprint(res, string(s))
+
+	// pretty output for everyone else
+	err = wasabiHTTPSTemplateExecute(res, req, "opdata", o)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
