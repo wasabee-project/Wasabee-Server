@@ -228,8 +228,11 @@ func getAgentInfo(state string, code string) ([]byte, error) {
 	if state != config.oauthStateString {
 		return nil, fmt.Errorf("invalid oauth state")
 	}
-	// XXX replace TODO with a real context
-	token, err := config.googleOauthConfig.Exchange(context.TODO(), code)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2 * time.Second)
+	defer cancel()
+
+	token, err := config.googleOauthConfig.Exchange(ctx, code)
 	if err != nil {
 		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
