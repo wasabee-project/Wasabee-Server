@@ -33,7 +33,9 @@ The "good" stuff/features require agent verifcation. We verify agent information
 
 You are in luck! You can link a team to an exsiting enl.rocks community. Any changes in the community will be reflected in the team.
 
-You can also configure the team to push changes back to your .rocks community as well. Adding works, deleting will _soon_.
+You can also configure the team to push changes back to your .rocks community.
+
+You can configure uni-directional or bi-directional linking, depending on your needs.
 
 ## I use V teams ...
 
