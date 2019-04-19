@@ -29,13 +29,18 @@ func TestInitAgent(t *testing.T) {
 }
 
 func TestSetAgentName(t *testing.T) {
-	err := gid.SetIngressName("dEvIoUs")
+	name, err := gid.IngressName()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	err = gid.SetIngressName("TEST_AGENT_RENAME")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
 	// since populated from V/Rocks, rename is rejected
-	g2, err := wasabi.SearchAgentName("deviousness")
+	g2, err := wasabi.SearchAgentName(name)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -43,7 +48,31 @@ func TestSetAgentName(t *testing.T) {
 		t.Errorf("gid mismatch after rename: %s %s", gid.String(), g2.String())
 	}
 
-	err = gid.SetIngressName("devioiusness")
+	err = gid.SetIngressName(name)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+func TestAgentLocation(t *testing.T) {
+	err := gid.AgentLocation("33.148", "-96.787", "test.go")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+func TestAgentDelete(t *testing.T) {
+	// special case google ID that is not really used
+	ngid := wasabi.GoogleID("104743827901423568948")
+
+	_, err := ngid.InitAgent()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	// add to a team, do some stuff, etc...
+
+	err = ngid.Delete()
 	if err != nil {
 		t.Errorf(err.Error())
 	}

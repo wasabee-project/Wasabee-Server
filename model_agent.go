@@ -490,6 +490,17 @@ func (gid GoogleID) Delete() error {
 		teamID.Delete()
 	}
 
+	teamrows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ?", gid)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	defer teamrows.Close()
+	for teamrows.Next() {
+		teamrows.Scan(&teamID)
+		teamID.RemoveAgent(gid)
+	}
+
 	// brute force delete everyhing else
 	_, err = db.Exec("DELETE FROM agent WHERE gid = ?", gid)
 	if err != nil {
@@ -501,7 +512,6 @@ func (gid GoogleID) Delete() error {
 	_, _ = db.Exec("DELETE FROM otdata WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
-	_, _ = db.Exec("DELETE FROM agentteams WHERE gid = ?", gid)
 
 	return nil
 }

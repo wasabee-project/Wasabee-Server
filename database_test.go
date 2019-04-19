@@ -6,15 +6,16 @@ import (
 )
 
 func TestConnect(t *testing.T) {
+	// now taken care of in main
+}
+
+func TestQuery(t *testing.T) {
 	// assumes a whole host of other things already work
-	// but needed to pass TestQuery on a new install (e.g. Travis-CI)
 	_, err := gid.InitAgent()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-}
 
-func TestQuery(t *testing.T) {
 	fgid, err := wasabi.SearchAgentName("deviousness")
 	if err != nil {
 		t.Errorf(err.Error())
