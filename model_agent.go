@@ -83,15 +83,16 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	go func() {
 		channel <- gid.RocksSearch(&rocks)
 	}()
+	defer close(channel)
 
 	// XXX there is probably a better way of doing this
-	if err = <-channel; err != nil {
-		Log.Notice(err)
+	e1, e2 := <-channel, <-channel
+	if e1 != nil {
+		Log.Notice(e1)
 	}
-	if err = <-channel; err != nil {
-		Log.Notice(err)
+	if e2 != nil {
+		Log.Notice(e2)
 	}
-	close(channel)
 
 	if vdata.Data.Agent != "" {
 		err = gid.VUpdate(&vdata)
