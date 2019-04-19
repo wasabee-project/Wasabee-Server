@@ -65,7 +65,7 @@ Because we like building our own tools.  When we are not smashing blue, and maki
 
 ## But ... opsec, why is the code open?
 
-We believe that having the code open means people looked at it. People will find bugs and hopfully fix them. New features will be added and new ways to solve problems will be shared. ENL have previoulsy completely decompiled/deobfuscated the RESwue client. All the attempts to hide the code was wasted effort. We have little doubt they have seen or heard most of the ENL "secret" tools (People flip sides). Hiding code does not make it secure. API endpoint probing tools exist. Obscurity is not security, it only makes life harder on the tool maintainers, which can actaully make the code less secure because it is harder to audit. 
+We believe that having the code open means people looked at it. People will find bugs and hopfully fix them. New features will be added and new ways to solve problems will be shared. ENL have previoulsy completely decompiled/deobfuscated the RESwue client. All the attempts to hide the code was wasted effort. We have little doubt they have seen or heard of most of the ENL "secret" tools (People flip sides). Hiding code does not make it secure. API endpoint probing tools exist. Obscurity is not security, it only makes life harder on the tool maintainers, which can actaully make the code less secure because it is harder to audit. 
 
 Yes, anyone can run this server software. That does not give everyone access to all the ENL data. You would still need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, and probably needs to be tested that way) without V and rocks support enabled. Do you have moral objections to V? Do you hate the rocks people? That's fine. Run your own instance. Disable the parts you don't like. Keep your data on a private server. You do not have to trust us or them to use these tools. We don't have to trust you to let you use the tools. There is no strategic advantage to be had in secrecy when the other side already has a full toolset available to every agent. 
 
@@ -85,10 +85,10 @@ Opposite answer to the above... When this project started we didn't know Go. We 
 1. Install and configure MySQL or MariaDB
 https://mariadb.com/kb/en/library/where-to-download-mariadb/
 
-1.1 Create a database (suggested: phdev)
+1.1 Create a database (suggested: wasabi)
 https://mariadb.com/kb/en/library/create-database/
 
-1.2 Create a user for that database (suggested: phdev@localhost)
+1.2 Create a user for that database (suggested: wasabi@localhost)
 https://mariadb.com/kb/en/library/create-user/
 
 1.3 GRANT the new user full privileges to that database
@@ -101,16 +101,12 @@ https://golang.org/doc/install
 3. Install git
 https://www.git-scm.com/book/en/v2/Getting-Started-Installing-Git
 
-3.1 Install the various Oauth, MariaDB and Telegram API bindings
+4. Use git to checkout the frontend directory; use go to get wasabi and all dependencies
 ```
-go get -v -u golang.org/x/oauth2/google golang.org/x/crypto/scrypt github.com/urfave/cli github.com/unrolled/logger github.com/op/go-logging github.com/gorilla/sessions github.com/gorilla/mux github.com/go-telegram-bot-api/telegram-bot-api github.com/go-sql-driver/mysql
-```
-
-4. Use git to checkout the frontend and cmd directories
-```
-go get github.com/cloudkucooland/wasabi/cmd/wasabi
 mkdir WASABI ; cd WASABI
 git clone https://github.com/cloudkucooland/WASABI/frontend
+setenv GOPATH ~/go
+go get github.com/cloudkucooland/WASABI
 ```
 
 5. Build the eff_large_wordlist.txt file
@@ -136,18 +132,32 @@ TODO: allow different names and the key to be in $CERT_DIR/keys/ as how most ACM
 https://developers.google.com/identity/protocols/OAuth2
 https://developers.google.com/identity/protocols/OAuth2WebServer
 
-9. Configure your environment
+8.1 Get your V API key (if you want V support)
+8.2 Get your .Rocks API key (if you want .Rocks support)
+8.3 Get your Telegram API key (if you want telegram support)
+
+9. Configure your environment (don't just copy-and-paste this, tweak for your setup!)
 ```
 setenv GOPATH ~/go
-setenv DATABASE "phdev:@tcp(localhost)/phdev"
-setenv ROOT_URL "https://qbin.phtiv.com:8443"
+setenv DATABASE "wasabi:password@tcp(localhost)/wasabi"
+setenv ROOT_URL "https://wasabi.example.com:8443"
+# this is the port to listen on, :8443 is the suggested value
 setenv HTTPS_LISTEN ":8443"
 setenv GOOGLE_CLIENT_ID "--SOMETHING--SOMETHING--SOMETHING--.apps.googleusercontent.com"
 setenv GOOGLE_CLIENT_SECRET "--SOMETHING--SOMETHING--"
+# The session-key is what encrypts the authentication cookie, it can be completely random, but must be 32 characters long
 setenv SESSION_KEY "!-rand0m-32-_char-sTring-blah-xy"
 setenv TELEGRAM_API_KEY "--SOMETHING--"
 setenv VENLONE_API_KEY "--SOMETHING--"
-setenv DEBUG 0
+setenv ENLROCKS_API_KEY "--SOMETHING--"
+# enable DEBUG to see verbose output
+#setenv DEBUG 0
+# enable the poller if you need JEAH/RAID support
+#setenv VENLONE_POLLER 0
+
 ```
 
-10. $GOPATH/bin/wasabi
+10. Start the processes
+```
+$GOPATH/bin/wasabi & ; $GOPATH/bin/wasabi-reaper &
+```
