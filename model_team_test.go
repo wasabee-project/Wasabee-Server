@@ -3,6 +3,7 @@ package wasabi_test
 import (
 	"github.com/cloudkucooland/WASABI"
 	"testing"
+	"fmt"
 )
 
 var tids []wasabi.TeamID
@@ -109,5 +110,31 @@ func BenchmarkDeleteTeam(b *testing.B) {
 		if err != nil {
 			b.Error(err.Error())
 		}
+	}
+}
+
+func TestTeammatesNear(t *testing.T) {
+	var td wasabi.TeamData
+
+	err := gid.TeammatesNear(1000,10, &td)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	for _, v := range td.Agent {
+		fmt.Printf("%s is %fkm away\n", v.Name, v.Distance)
+	}
+}
+
+func TestWaypointsNear(t *testing.T) {
+	var td wasabi.TeamData
+
+	err := gid.WaypointsNear(1000,10, &td)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	for _, v := range td.Waypoints {
+		fmt.Printf("%s is %fkm away\n", v.Desc, v.Distance)
 	}
 }
