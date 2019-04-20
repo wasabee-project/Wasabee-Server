@@ -118,3 +118,8 @@ func (tgid TelegramID) TelegramVerifyUser(authtoken string) error {
 
 	return nil
 }
+
+// String returns a string format of a TelegramID
+func (tgid TelegramID) String() string {
+	return strconv.Itoa(int(tgid))
+}

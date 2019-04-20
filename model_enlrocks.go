@@ -80,8 +80,7 @@ func (eid EnlID) RocksSearch(agent *RocksAgent) error {
 
 // RocksSearch checks a agent at enl.rocks and populates a RocksAgent
 func (tgid TelegramID) RocksSearch(agent *RocksAgent) error {
-	id := strconv.Itoa(int(tgid))
-	return rockssearch(id, agent)
+	return rockssearch(tgid, agent)
 }
 
 // rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
@@ -95,6 +94,8 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 	case GoogleID:
 		searchID = id.String()
 	case EnlID:
+		searchID = id.String()
+	case TelegramID:
 		searchID = id.String()
 	case string:
 		searchID = id
