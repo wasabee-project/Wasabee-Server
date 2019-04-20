@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// TGWebHook is the http route for recieving Telegram updates
+// TGWebHook is the http route for receiving Telegram updates
 func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	var err error
 
