@@ -14,16 +14,25 @@ import (
 
 // TGWebHook is the http route for recieving Telegram updates
 func TGWebHook(res http.ResponseWriter, req *http.Request) {
+	var err error
+
+	if config.APIKey == "" || config.hook == "" {
+		err = fmt.Errorf("the Telegram API is not configured")
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	vars := mux.Vars(req)
 	hook := vars["hook"]
 
 	if hook != config.hook {
-		err := fmt.Errorf("%s is not a valid hook", hook)
+		err = fmt.Errorf("%s is not a valid hook", hook)
+		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json")
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/json" {
 		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
@@ -36,8 +45,9 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if string(jBlob) == "" {
-		wasabi.Log.Notice("empty JSON")
-		http.Error(res, "empty JSON", http.StatusInternalServerError)
+		err = fmt.Errorf("empty JSON")
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	jRaw := json.RawMessage(jBlob)
@@ -50,6 +60,10 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// XXX if update.Update is unset, ignore?
 	config.upChan <- update
+
+	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(res, "{Status: 'OK'}")
 }

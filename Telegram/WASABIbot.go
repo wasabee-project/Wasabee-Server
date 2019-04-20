@@ -61,16 +61,16 @@ func WASABIBot(init TGConfiguration) error {
 	u.Timeout = 60
 
 	webroot, _ := wasabi.GetWebroot()
-	defer bot.RemoveWebhook()
 	config.hook = wasabi.GenerateName()
 	t := fmt.Sprintf("%s/tg/%s", webroot, config.hook)
 	wasabi.Log.Debugf("TG webroot %s", t)
+	defer bot.RemoveWebhook()
 	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
-	config.upChan = make(chan tgbotapi.Update) // bot.ListenForWebhook("/tg") // we need our own bidirectional channel,
+	config.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
 	for update := range config.upChan {
 		err := runUpdate(update)
 		if err != nil {
