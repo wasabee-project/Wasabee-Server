@@ -123,9 +123,8 @@ func initializeConfig(initialConfig Configuration) {
 	unrolled = logger.New(logger.Options{
 		Prefix: "WASABI",
 		Out:    logfile,
-		IgnoredRequestURIs: []string{"/favicon.ico",
-			"/OwnTracks",
-			"/simple",
+		IgnoredRequestURIs: []string{
+			"/favicon.ico",
 			"/apple-touch-icon-precomposed.png",
 			"/apple-touch-icon-120x120-precomposed.png",
 			"/apple-touch-icon-120x120.png",
