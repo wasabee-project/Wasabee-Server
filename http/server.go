@@ -201,19 +201,31 @@ func StartHTTP(initialConfig Configuration) {
 	// Route
 	r := mux.NewRouter()
 
-	api := r.PathPrefix("/").Subrouter()
+	// establish subrouters -- these each have different middleware requirements
+	api := r.PathPrefix("/" + config.apipath).Subrouter()
 	tg := r.PathPrefix("/tg").Subrouter()
+	me := r.PathPrefix("/me").Subrouter()
+	simple := r.PathPrefix("/simple").Subrouter()
+	notauthed := r.PathPrefix("").Subrouter()
 	setupAuthRoutes(api)
 	setupTelegramRoutes(tg)
+	setupMeRoutes(me)
+	setupSimpleRoutes(simple)
 	setupRoutes(r)
+	setupNotauthed(notauthed)
 
+	// r. apply to all
 	// r.Use(debugMW)
 	r.Use(headersMW)
-	r.Use(unrolled.Handler)
+	// r.Use(unrolled.Handler)
 
 	api.Use(authMW)
-
+	api.Use(unrolled.Handler)
+	me.Use(authMW)
+	me.Use(unrolled.Handler)
 	// tg.Use(debugMW)
+	tg.Use(unrolled.Handler)
+	notauthed.Use(unrolled.Handler)
 
 	// Serve
 	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
