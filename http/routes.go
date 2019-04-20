@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"github.com/cloudkucooland/WASABI"
+	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"time"
@@ -47,6 +48,11 @@ func setupRoutes(r *mux.Router) {
 
 	// 404 error page
 	r.PathPrefix("/").HandlerFunc(notFoundRoute)
+}
+
+// implied /tg
+func setupTelegramRoutes(r *mux.Router) {
+	r.HandleFunc("/{hook}", wasabitelegram.TGWebHook).Methods("POST")
 }
 
 func setupAuthRoutes(r *mux.Router) {
@@ -263,7 +269,7 @@ func getAgentID(req *http.Request) (wasabi.GoogleID, error) {
 		return "", err
 	}
 
-	var agentID wasabi.GoogleID = wasabi.GoogleID(ses.Values["id"].(string))
+	var agentID = wasabi.GoogleID(ses.Values["id"].(string))
 	return agentID, nil
 }
 

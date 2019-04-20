@@ -1,9 +1,9 @@
 package wasabi_test
 
 import (
+	"fmt"
 	"github.com/cloudkucooland/WASABI"
 	"testing"
-	"fmt"
 )
 
 var tids []wasabi.TeamID
@@ -116,7 +116,7 @@ func BenchmarkDeleteTeam(b *testing.B) {
 func TestTeammatesNear(t *testing.T) {
 	var td wasabi.TeamData
 
-	err := gid.TeammatesNear(1000,10, &td)
+	err := gid.TeammatesNear(1000, 10, &td)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -129,7 +129,7 @@ func TestTeammatesNear(t *testing.T) {
 func TestWaypointsNear(t *testing.T) {
 	var td wasabi.TeamData
 
-	err := gid.WaypointsNear(1000,10, &td)
+	err := gid.WaypointsNear(1000, 10, &td)
 	if err != nil {
 		t.Error(err.Error())
 	}

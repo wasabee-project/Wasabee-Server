@@ -22,6 +22,8 @@ type TGConfiguration struct {
 	templateSet  map[string]*template.Template
 	teamKbd      tgbotapi.ReplyKeyboardMarkup
 	baseKbd      tgbotapi.ReplyKeyboardMarkup
+	upChan       chan tgbotapi.Update
+	hook         string
 }
 
 var bot *tgbotapi.BotAPI
@@ -58,57 +60,76 @@ func WASABIBot(init TGConfiguration) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	updates, _ := bot.GetUpdatesChan(u)
-	for update := range updates {
-		if update.Message == nil {
-			continue
-		}
-
-		// wasabi.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-		// s, _ := json.MarshalIndent(update.Message, "", "  ")
-		// wasabi.Log.Debug(string(s))
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-		// wasabi.Log.Debug("Language: ", update.Message.From.LanguageCode)
-		defaultReply, err := wasabibotTemplateExecute("default", update.Message.From.LanguageCode, nil)
-		if err != nil {
-			wasabi.Log.Error(err)
-			continue
-		}
-		msg.Text = defaultReply
-		msg.ParseMode = "MarkDown"
-		// s, _ := json.MarshalIndent(msg, "", "  ")
-		// wasabi.Log.Debug(string(s))
-
-		tgid := wasabi.TelegramID(update.Message.From.ID)
-		gid, verified, err := tgid.GidV()
-
-		if err != nil {
-			wasabi.Log.Error(err)
-			continue
-		}
-
-		if gid == "" {
-			wasabi.Log.Debugf("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
-			err = wasabibotNewUserInit(&msg, &update)
-			if err != nil {
-				wasabi.Log.Error(err)
-			}
-		} else if !verified {
-			wasabi.Log.Debugf("unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
-			err = wasabibotNewUserVerify(&msg, &update)
-			if err != nil {
-				wasabi.Log.Error(err)
-			}
-		} else { // verified user, process message
-			if err = wasabibotMessage(&msg, &update, gid); err != nil {
-				wasabi.Log.Error(err)
-			}
-		}
-
-		bot.Send(msg)
-		bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
+	webroot, _ := wasabi.GetWebroot()
+	defer bot.RemoveWebhook()
+	config.hook = wasabi.GenerateName()
+	t := fmt.Sprintf("%s/tg/%s", webroot, config.hook)
+	wasabi.Log.Debugf("TG webroot %s", t)
+	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
 	}
+	config.upChan = make(chan tgbotapi.Update) // bot.ListenForWebhook("/tg") // we need our own bidirectional channel,
+	for update := range config.upChan {
+		err := runUpdate(update)
+		if err != nil {
+			wasabi.Log.Error(err)
+			continue
+		}
+	}
+	return nil
+}
+
+func runUpdate(update tgbotapi.Update) error {
+	if update.Message == nil {
+		return nil
+	}
+
+	// wasabi.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+	// s, _ := json.MarshalIndent(update.Message, "", "  ")
+	// wasabi.Log.Debug(string(s))
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	// wasabi.Log.Debug("Language: ", update.Message.From.LanguageCode)
+	defaultReply, err := wasabibotTemplateExecute("default", update.Message.From.LanguageCode, nil)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	msg.Text = defaultReply
+	msg.ParseMode = "MarkDown"
+	// s, _ := json.MarshalIndent(msg, "", "  ")
+	// wasabi.Log.Debug(string(s))
+
+	tgid := wasabi.TelegramID(update.Message.From.ID)
+	gid, verified, err := tgid.GidV()
+
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+
+	if gid == "" {
+		wasabi.Log.Debugf("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
+		err = wasabibotNewUserInit(&msg, &update)
+		if err != nil {
+			wasabi.Log.Error(err)
+		}
+	} else if !verified {
+		wasabi.Log.Debugf("unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
+		err = wasabibotNewUserVerify(&msg, &update)
+		if err != nil {
+			wasabi.Log.Error(err)
+		}
+	} else { // verified user, process message
+		if err = wasabibotMessage(&msg, &update, gid); err != nil {
+			wasabi.Log.Error(err)
+		}
+	}
+
+	bot.Send(msg)
+	bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
 
 	return nil
 }
