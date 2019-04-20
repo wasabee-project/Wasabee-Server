@@ -18,8 +18,13 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// generic things, spam the logs, so no logging
+// generic things
 func setupRoutes(r *mux.Router) {
+	r.HandleFunc("/junk/{doc}", staticRoute).Methods("GET")
+}
+
+// generic things, want logging
+func setupNotauthed(r *mux.Router) {
 	// XXX gorilla has CORSMethodMiddleware, should we use that instead?
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
@@ -30,12 +35,7 @@ func setupRoutes(r *mux.Router) {
 	// For enl.rocks community -> WASABI team sync
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
 
-	// OwnTracks URL -- basic auth is handled internally
-	r.HandleFunc("/OwnTracks", ownTracksRoute).Methods("POST")
-}
-
-// generic things, want logging
-func setupNotauthed(r *mux.Router) {
+	// raw files
 	r.HandleFunc("/static/{doc}", staticRoute).Methods("GET")
 	r.HandleFunc("/static/{dir}/{doc}", staticRoute).Methods("GET")
 
@@ -47,6 +47,12 @@ func setupNotauthed(r *mux.Router) {
 
 	// 404 error page
 	r.PathPrefix("/").HandlerFunc(notFoundRoute)
+}
+
+// implied /OwnTracks
+func setupOwntracksRoute(r *mux.Router) {
+	// OwnTracks URL -- basic auth is handled internally
+	r.HandleFunc("", ownTracksRoute).Methods("POST")
 }
 
 // implied /simple

@@ -204,14 +204,16 @@ func StartHTTP(initialConfig Configuration) {
 	api := r.PathPrefix("/" + config.apipath).Subrouter()
 	tg := r.PathPrefix("/tg").Subrouter()
 	me := r.PathPrefix("/me").Subrouter()
+	ot := r.PathPrefix("/OwnTracks").Subrouter()
 	simple := r.PathPrefix("/simple").Subrouter()
 	notauthed := r.PathPrefix("").Subrouter()
 	setupAuthRoutes(api)
 	setupTelegramRoutes(tg)
 	setupMeRoutes(me)
 	setupSimpleRoutes(simple)
-	setupRoutes(r)
+	setupOwntracksRoute(ot)
 	setupNotauthed(notauthed)
+	setupRoutes(r)
 
 	// r. apply to all
 	// r.Use(debugMW)
