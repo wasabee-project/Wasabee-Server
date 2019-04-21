@@ -70,6 +70,8 @@ func WASABIBot(init TGConfiguration) error {
 		wasabi.Log.Error(err)
 		return err
 	}
+
+	var i int
 	config.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
 	for update := range config.upChan {
 		err := runUpdate(update)
@@ -77,6 +79,17 @@ func WASABIBot(init TGConfiguration) error {
 			wasabi.Log.Error(err)
 			continue
 		}
+		if (i % 100) == 0 { // every 100 requests, change the endpoint; I'm _not_ paranoid.
+			i = 1
+			config.hook = wasabi.GenerateName()
+			t = fmt.Sprintf("%s/tg/%s", webroot, config.hook)
+			wasabi.Log.Debugf("new TG webroot %s", t)
+			_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
+			if err != nil {
+				wasabi.Log.Error(err)
+			}
+		}
+		i++
 	}
 	return nil
 }
