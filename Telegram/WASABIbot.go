@@ -22,6 +22,7 @@ type TGConfiguration struct {
 	templateSet  map[string]*template.Template
 	teamKbd      tgbotapi.ReplyKeyboardMarkup
 	baseKbd      tgbotapi.ReplyKeyboardMarkup
+	iKbd         tgbotapi.InlineKeyboardMarkup
 	upChan       chan tgbotapi.Update
 	hook         string
 }
@@ -95,16 +96,27 @@ func WASABIBot(init TGConfiguration) error {
 }
 
 func runUpdate(update tgbotapi.Update) error {
+	// s, _ := json.MarshalIndent(update, "", "  ")
+	// wasabi.Log.Debug(string(s))
+
+	var err error
+	if update.CallbackQuery != nil {
+		tgid := wasabi.TelegramID(update.CallbackQuery.From.ID)
+		gid, _, err := tgid.GidV()
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
+		err = wasabibotCallback(&update, gid)
+		return err
+	}
+
+	// callbacks have been processed, it must be a message, right?
 	if update.Message == nil {
 		return nil
 	}
 
-	// wasabi.Log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-	// s, _ := json.MarshalIndent(update.Message, "", "  ")
-	// wasabi.Log.Debug(string(s))
-
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	// wasabi.Log.Debug("Language: ", update.Message.From.LanguageCode)
 	defaultReply, err := wasabibotTemplateExecute("default", update.Message.From.LanguageCode, nil)
 	if err != nil {
 		wasabi.Log.Error(err)
@@ -125,7 +137,7 @@ func runUpdate(update tgbotapi.Update) error {
 	if gid == "" {
 		wasabi.Log.Debugf("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
 		fgid, err := runRocks(tgid)
-		if fgid != "" {
+		if fgid != "" && err == nil {
 			tmp, _ := wasabibotTemplateExecute("InitTwoSuccess", update.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 		} else {
@@ -288,6 +300,13 @@ func wasabibotKeyboards(c *TGConfiguration) error {
 		),
 	)
 
+	c.iKbd = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("a button", "some data goes here"),
+			tgbotapi.NewInlineKeyboardButtonData("a different button", "different data goes here"),
+		),
+	)
+
 	return nil
 }
 
@@ -349,64 +368,7 @@ func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid w
 			msg.ReplyMarkup = config.baseKbd
 		}
 	} else if inMsg.Message.Text != "" {
-		type tStruct struct {
-			State string
-			Team  string
-		}
-		// get first word
-		tokens := strings.Split(inMsg.Message.Text, " ")
-		cmd := tokens[0]
-
-		// get the rest
-		var name string
-		x := len(cmd)
-		if x+1 < len(inMsg.Message.Text) {
-			name = inMsg.Message.Text[x+1:]
-		}
-		switch cmd {
-		case "Home":
-			msg.ReplyMarkup = config.baseKbd
-			msg.Text = "Home"
-		case "Teams":
-			tmp, _ := wasabibotTeamKeyboard(gid)
-			msg.ReplyMarkup = tmp
-			msg.Text = "Teams"
-		case "On:":
-			msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
-				State: "On",
-				Team:  name,
-			})
-			gid.SetTeamStateName(name, "On")
-			msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
-		case "Off:":
-			msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
-				State: "Off",
-				Team:  name,
-			})
-			gid.SetTeamStateName(name, "Off")
-			msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
-		case "Primary:":
-			msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
-				State: "Primary",
-				Team:  name,
-			})
-			gid.SetTeamStateName(name, "Primary")
-			msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
-		case "Teammates":
-			msg.Text, _ = teammatesNear(gid, inMsg)
-			msg.ReplyMarkup = config.baseKbd
-			msg.DisableWebPagePreview = true
-		case "Farms":
-			msg.Text, _ = farmsNear(gid, inMsg)
-			msg.ReplyMarkup = config.baseKbd
-			msg.DisableWebPagePreview = true
-		case "Targets":
-			msg.Text, _ = targetsNear(gid, inMsg)
-			msg.ReplyMarkup = config.baseKbd
-			msg.DisableWebPagePreview = true
-		default:
-			msg.ReplyMarkup = config.baseKbd
-		}
+		wasabibotMessageText(msg, inMsg, gid)
 	}
 
 	if inMsg.Message.Location != nil {
@@ -415,10 +377,94 @@ func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid w
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
 			"Telegram",
 		)
-		msg.ReplyMarkup = config.baseKbd
+		msg.ReplyMarkup = config.iKbd
 		msg.Text = "Location Processed"
 	}
+
 	return nil
+}
+
+// wasabibotCallback is where to determine which callback is called, and what to do with it
+func wasabibotCallback(update *tgbotapi.Update, gid wasabi.GoogleID) error {
+	// XXX this is a stub
+	resp, err := bot.AnswerCallbackQuery(
+		tgbotapi.CallbackConfig{
+			CallbackQueryID:   update.CallbackQuery.ID,
+			Text: "OK",
+			ShowAlert: false,
+			// URL: nil,
+		},
+	)
+
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	if !resp.Ok {
+		wasabi.Log.Error(resp.Description)
+	}
+	return nil
+}
+
+func wasabibotMessageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.GoogleID) {
+	type tStruct struct {
+		State string
+		Team  string
+	}
+	// get first word
+	tokens := strings.Split(inMsg.Message.Text, " ")
+	cmd := tokens[0]
+
+	// get the rest
+	var name string
+	x := len(cmd)
+	if x+1 < len(inMsg.Message.Text) {
+		name = inMsg.Message.Text[x+1:]
+	}
+	switch cmd {
+	case "Home":
+		msg.ReplyMarkup = config.baseKbd
+		msg.Text = "Home"
+	case "Teams":
+		tmp, _ := wasabibotTeamKeyboard(gid)
+		msg.ReplyMarkup = tmp
+		msg.Text = "Teams"
+	case "On:":
+		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
+			State: "On",
+			Team:  name,
+		})
+		gid.SetTeamStateName(name, "On")
+		msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
+	case "Off:":
+		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
+			State: "Off",
+			Team:  name,
+		})
+		gid.SetTeamStateName(name, "Off")
+		msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
+	case "Primary:":
+		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
+			State: "Primary",
+			Team:  name,
+		})
+		gid.SetTeamStateName(name, "Primary")
+		msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
+	case "Teammates":
+		msg.Text, _ = teammatesNear(gid, inMsg)
+		msg.ReplyMarkup = config.baseKbd
+		msg.DisableWebPagePreview = true
+	case "Farms":
+		msg.Text, _ = farmsNear(gid, inMsg)
+		msg.ReplyMarkup = config.baseKbd
+		msg.DisableWebPagePreview = true
+	case "Targets":
+		msg.Text, _ = targetsNear(gid, inMsg)
+		msg.ReplyMarkup = config.baseKbd
+		msg.DisableWebPagePreview = true
+	default:
+		msg.ReplyMarkup = config.baseKbd
+	}
 }
 
 // SendMessage is registered with WASABI as a message bus to allow other modules to send messages via Telegram
@@ -503,6 +549,7 @@ func farmsNear(gid wasabi.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	return txt, nil
 }
 
+// checks rocks based on tgid, Inits agent if found
 func runRocks(tgid wasabi.TelegramID) (wasabi.GoogleID, error) {
 	var agent wasabi.RocksAgent
 

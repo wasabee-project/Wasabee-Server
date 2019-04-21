@@ -61,7 +61,6 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// XXX if update.Update is unset, ignore?
 	config.upChan <- update
 
 	res.Header().Set("Content-Type", "application/json")
