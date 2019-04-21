@@ -71,7 +71,7 @@ func WASABIBot(init TGConfiguration) error {
 		return err
 	}
 
-	var i int
+	i := 1
 	config.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
 	for update := range config.upChan {
 		err := runUpdate(update)
@@ -117,7 +117,6 @@ func runUpdate(update tgbotapi.Update) error {
 
 	tgid := wasabi.TelegramID(update.Message.From.ID)
 	gid, verified, err := tgid.GidV()
-
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
@@ -125,9 +124,15 @@ func runUpdate(update tgbotapi.Update) error {
 
 	if gid == "" {
 		wasabi.Log.Debugf("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
-		err = wasabibotNewUserInit(&msg, &update)
-		if err != nil {
-			wasabi.Log.Error(err)
+		fgid, err := runRocks(tgid)
+		if fgid != "" {
+			tmp, _ := wasabibotTemplateExecute("InitTwoSuccess", update.Message.From.LanguageCode, nil)
+			msg.Text = tmp
+		} else {
+			err = wasabibotNewUserInit(&msg, &update)
+			if err != nil {
+				wasabi.Log.Error(err)
+			}
 		}
 	} else if !verified {
 		wasabi.Log.Debugf("unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
@@ -496,4 +501,23 @@ func farmsNear(gid wasabi.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	}
 
 	return txt, nil
+}
+
+func runRocks(tgid wasabi.TelegramID) (wasabi.GoogleID, error) {
+	var agent wasabi.RocksAgent
+
+	err := tgid.RocksSearch(&agent)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return "", err
+	}
+	if agent.Gid == "" {
+		return "", nil
+	}
+	_, err = (agent.Gid).InitAgent()
+	if err != nil {
+		wasabi.Log.Error(err)
+		return agent.Gid, err
+	}
+	return agent.Gid, nil
 }
