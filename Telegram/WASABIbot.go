@@ -2,7 +2,7 @@ package wasabitelegram
 
 import (
 	"bytes"
-	// "encoding/json"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cloudkucooland/WASABI"
@@ -20,9 +20,7 @@ type TGConfiguration struct {
 	APIKey       string
 	FrontendPath string
 	templateSet  map[string]*template.Template
-	teamKbd      tgbotapi.ReplyKeyboardMarkup
 	baseKbd      tgbotapi.ReplyKeyboardMarkup
-	iKbd         tgbotapi.InlineKeyboardMarkup
 	upChan       chan tgbotapi.Update
 	hook         string
 }
@@ -96,9 +94,6 @@ func WASABIBot(init TGConfiguration) error {
 }
 
 func runUpdate(update tgbotapi.Update) error {
-	// s, _ := json.MarshalIndent(update, "", "  ")
-	// wasabi.Log.Debug(string(s))
-
 	var err error
 	if update.CallbackQuery != nil {
 		tgid := wasabi.TelegramID(update.CallbackQuery.From.ID)
@@ -107,8 +102,14 @@ func runUpdate(update tgbotapi.Update) error {
 			wasabi.Log.Error(err)
 			return err
 		}
-		err = wasabibotCallback(&update, gid)
-		return err
+		msg, err := wasabibotCallback(&update, gid)
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
+		bot.Send(msg)
+		bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID))
+		return nil
 	}
 
 	// callbacks have been processed, it must be a message, right?
@@ -282,12 +283,6 @@ func wasabibotTemplateExecute(name, lang string, data interface{}) (string, erro
 }
 
 func wasabibotKeyboards(c *TGConfiguration) error {
-	c.teamKbd = tgbotapi.NewReplyKeyboard(
-		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton("Home"),
-		),
-	)
-
 	c.baseKbd = tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
@@ -300,53 +295,45 @@ func wasabibotKeyboards(c *TGConfiguration) error {
 		),
 	)
 
-	c.iKbd = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("a button", "some data goes here"),
-			tgbotapi.NewInlineKeyboardButtonData("a different button", "different data goes here"),
-		),
-	)
-
 	return nil
 }
 
-func wasabibotTeamKeyboard(gid wasabi.GoogleID) (tgbotapi.ReplyKeyboardMarkup, error) {
+func wasabibotTeamKeyboard(gid wasabi.GoogleID) (tgbotapi.InlineKeyboardMarkup, error) {
 	var ud wasabi.AgentData
-	if err := gid.GetAgentData(&ud); err != nil {
-		return config.teamKbd, err
+	var rows [][]tgbotapi.InlineKeyboardButton
+
+	if err := gid.GetAgentData(&ud); err == nil {
+		var i int
+		for _, v := range ud.Teams {
+			i++
+			var row []tgbotapi.InlineKeyboardButton
+			var on, off, primary tgbotapi.InlineKeyboardButton
+			if v.State == "Off" {
+				on = tgbotapi.NewInlineKeyboardButtonData("Activate "+v.Name, "team/activate/"+v.ID)
+				row = append(row, on)
+			}
+			if v.State == "On" || v.State == "Primary" {
+				off = tgbotapi.NewInlineKeyboardButtonData("Deactivate "+v.Name, "team/deactivate/"+v.ID)
+				row = append(row, off)
+			}
+			if v.State == "On" {
+				primary = tgbotapi.NewInlineKeyboardButtonData("Make "+v.Name+" Primary", "team/primary/"+v.ID)
+				row = append(row, primary)
+			}
+			rows = append(rows, row)
+
+			if i > 8 { // too many rows and the screen fills up
+				break
+			}
+		}
 	}
-
-	var rows [][]tgbotapi.KeyboardButton
-	var i int
-
-	for _, v := range ud.Teams {
-		i++
-		var on, off, primary tgbotapi.KeyboardButton
-		if v.State != "On" {
-			on = tgbotapi.NewKeyboardButton("On: " + v.Name)
-		}
-		if v.State != "Off" {
-			off = tgbotapi.NewKeyboardButton("Off: " + v.Name)
-		}
-		if v.State != "Primary" {
-			primary = tgbotapi.NewKeyboardButton("Primary: " + v.Name)
-		}
-		q := tgbotapi.NewKeyboardButtonRow(on, off, primary)
-		rows = append(rows, q)
-
-		if i > 8 { // too many rows and the screen fills up
-			break
-		}
-	}
-
-	home := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Home"))
-	rows = append(rows, home)
 
 	// api isn't dynamic-list friendly, roll my own data
-	tmp := tgbotapi.ReplyKeyboardMarkup{
-		Keyboard:       rows,
-		ResizeKeyboard: true,
+	tmp := tgbotapi.InlineKeyboardMarkup{
+		InlineKeyboard: rows,
 	}
+	s, _ := json.Marshal(tmp)
+	wasabi.Log.Debug(string(s))
 	return tmp, nil
 }
 
@@ -362,6 +349,11 @@ func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid w
 			tmp, _ := wasabibotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
+		case "team":
+			tmp, _ := wasabibotTemplateExecute("help", inMsg.Message.From.LanguageCode, nil)
+			msg.Text = tmp
+			tkbd, _ := wasabibotTeamKeyboard(gid)
+			msg.ReplyMarkup = tkbd
 		default:
 			tmp, _ := wasabibotTemplateExecute("default", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
@@ -377,7 +369,6 @@ func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid w
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
 			"Telegram",
 		)
-		msg.ReplyMarkup = config.iKbd
 		msg.Text = "Location Processed"
 	}
 
@@ -385,71 +376,88 @@ func wasabibotMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid w
 }
 
 // wasabibotCallback is where to determine which callback is called, and what to do with it
-func wasabibotCallback(update *tgbotapi.Update, gid wasabi.GoogleID) error {
-	// XXX this is a stub
-	resp, err := bot.AnswerCallbackQuery(
-		tgbotapi.CallbackConfig{
-			CallbackQueryID:   update.CallbackQuery.ID,
-			Text: "OK",
-			ShowAlert: false,
-			// URL: nil,
-		},
-	)
+func wasabibotCallback(update *tgbotapi.Update, gid wasabi.GoogleID) (tgbotapi.MessageConfig, error) {
+	// s, _ := json.MarshalIndent(update.CallbackQuery, "", " " )
+	// wasabi.Log.Debug(string(s))
+
+	var err error
+	var resp tgbotapi.APIResponse
+	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
+	if update.CallbackQuery.Message.Chat.Type != "private" {
+		wasabi.Log.Errorf("Not in private chat: %s", update.CallbackQuery.Message.Chat.Type)
+		return msg, nil
+	}
+	lang := update.CallbackQuery.Message.From.LanguageCode
+
+	command := strings.SplitN(update.CallbackQuery.Data, "/", 3)
+	switch command[0] {
+	case "team":
+		_ = wasabibotCallbackTeam(command[1], command[2], gid, lang, &msg)
+		resp, err = bot.AnswerCallbackQuery(
+			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Team Updated", ShowAlert: false},
+		)
+		tmp, _ := wasabibotTeamKeyboard(gid)
+		msg.ReplyMarkup = tmp
+	default:
+		resp, err = bot.AnswerCallbackQuery(
+			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Unknown Callback"},
+		)
+	}
 
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return msg, err
 	}
 	if !resp.Ok {
 		wasabi.Log.Error(resp.Description)
+	}
+	return msg, nil
+}
+
+func wasabibotCallbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
+	type tStruct struct {
+		State string
+		Team  string
+	}
+
+	t := wasabi.TeamID(team)
+	name, _ := t.Name()
+
+	switch action {
+	case "primary":
+		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", lang, tStruct{
+			State: "Primary",
+			Team:  name,
+		})
+		gid.SetTeamState(t, "Primary")
+	case "activate":
+		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", lang, tStruct{
+			State: "On",
+			Team:  name,
+		})
+		gid.SetTeamState(t, "On")
+	case "deactivate":
+		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", lang, tStruct{
+			State: "Off",
+			Team:  name,
+		})
+		gid.SetTeamState(t, "Off")
+	default:
+		wasabi.Log.Error("Unknown Team command")
 	}
 	return nil
 }
 
 func wasabibotMessageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.GoogleID) {
-	type tStruct struct {
-		State string
-		Team  string
-	}
 	// get first word
 	tokens := strings.Split(inMsg.Message.Text, " ")
 	cmd := tokens[0]
 
-	// get the rest
-	var name string
-	x := len(cmd)
-	if x+1 < len(inMsg.Message.Text) {
-		name = inMsg.Message.Text[x+1:]
-	}
 	switch cmd {
-	case "Home":
-		msg.ReplyMarkup = config.baseKbd
-		msg.Text = "Home"
 	case "Teams":
 		tmp, _ := wasabibotTeamKeyboard(gid)
 		msg.ReplyMarkup = tmp
-		msg.Text = "Teams"
-	case "On:":
-		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
-			State: "On",
-			Team:  name,
-		})
-		gid.SetTeamStateName(name, "On")
-		msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
-	case "Off:":
-		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
-			State: "Off",
-			Team:  name,
-		})
-		gid.SetTeamStateName(name, "Off")
-		msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
-	case "Primary:":
-		msg.Text, _ = wasabibotTemplateExecute("TeamStateChange", inMsg.Message.From.LanguageCode, tStruct{
-			State: "Primary",
-			Team:  name,
-		})
-		gid.SetTeamStateName(name, "Primary")
-		msg.ReplyMarkup, _ = wasabibotTeamKeyboard(gid)
+		msg.Text = "Your Teams"
 	case "Teammates":
 		msg.Text, _ = teammatesNear(gid, inMsg)
 		msg.ReplyMarkup = config.baseKbd

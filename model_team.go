@@ -463,19 +463,6 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 	return nil
 }
 
-// SetTeamStateName -- same as SetTeamState, but takes a team's human name rather than ID
-// XXX BUG: if multiple teams use the same name this will not work
-func (gid GoogleID) SetTeamStateName(teamname string, state string) error {
-	var id TeamID
-	row := db.QueryRow("SELECT teamID FROM team WHERE LOWER(name) LIKE LOWER(?) ORDER BY teamID LIMIT 0,1", teamname)
-	err := row.Scan(&id)
-	if err != nil {
-		Log.Notice(err)
-	}
-
-	return gid.SetTeamState(id, state)
-}
-
 // PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint data is saved
 func (gid GoogleID) PrimaryTeam() (string, error) {
 	var primary string
@@ -519,4 +506,14 @@ func isActive(state string) bool {
 		return true
 	}
 	return false
+}
+
+func (tid TeamID) Name() (string, error) {
+	var name string
+	err := db.QueryRow("SELECT name FROM team WHERE teamID = ?", tid).Scan(&name)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return name, nil
 }

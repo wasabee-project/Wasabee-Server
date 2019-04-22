@@ -35,7 +35,9 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/json" {
-		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
+		err = fmt.Errorf("invalid request (needs to be application/json)")
+		wasabi.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 	jBlob, err := ioutil.ReadAll(req.Body)
@@ -47,7 +49,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON")
 		wasabi.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 	jRaw := json.RawMessage(jBlob)
@@ -63,6 +65,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 
 	config.upChan <- update
 
+	// XXX probably not needed
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(res, "{Status: 'OK'}")
 }
