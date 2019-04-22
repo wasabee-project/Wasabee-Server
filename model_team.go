@@ -511,7 +511,7 @@ func isActive(state string) bool {
 // Name returns a team's friendly name for a TeamID
 func (teamID TeamID) Name() (string, error) {
 	var name string
-	err := db.QueryRow("SELECT name FROM team WHERE teamID = ?", tid).Scan(&name)
+	err := db.QueryRow("SELECT name FROM team WHERE teamID = ?", teamID).Scan(&name)
 	if err != nil {
 		Log.Error(err)
 		return "", err
