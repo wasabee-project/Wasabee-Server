@@ -128,16 +128,24 @@ func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	var owner GoogleID
 
 	err := db.QueryRow("SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
-	// check for err or trust that the calling function will do that?
-	if gid == owner {
-		return true, err
+	if err != nil {
+		return false, err
 	}
-	return false, err
+	if gid == owner {
+		return true, nil
+	}
+	return false, nil
 }
 
 // NewTeam initializes a new team and returns a teamID
 // the creating gid is added and enabled on that team by default
 func (gid GoogleID) NewTeam(name string) (TeamID, error) {
+	var err error
+	if name == "" {
+		err = fmt.Errorf("attempting to create unnamed team")
+		Log.Debug(err)
+		return "", err
+	}
 	team, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
@@ -146,12 +154,14 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm) VALUES (?,?,?,NULL,NULL)", team, gid, name)
 	if err != nil {
 		Log.Notice(err)
+		return "", err
 	}
 	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color) VALUES (?,?,'On','00FF00')", team, gid)
 	if err != nil {
 		Log.Notice(err)
+		return TeamID(team), err
 	}
-	return TeamID(team), err
+	return TeamID(team), nil
 }
 
 // Rename sets a new name for a teamID
