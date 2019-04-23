@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/cloudkucooland/WASABI"
+	"github.com/cloudkucooland/WASABI/GroupMe"
 	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/cloudkucooland/WASABI/http"
-	"github.com/cloudkucooland/WASABI/GroupMe"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
@@ -56,8 +56,11 @@ var flags = []cli.Flag{
 		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
 		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
 	cli.StringFlag{
-		Name: "gmkey", EnvVar: "GROUPME_BOT_ID", Value: "",
-		Usage: "GroupMe key."},
+		Name: "gmbotkey", EnvVar: "GROUPME_ACCESS_TOKEN", Value: "",
+		Usage: "GroupMe Access TOken."},
+	cli.StringFlag{
+		Name: "gmbotid", EnvVar: "GROUPME_BOT_ID", Value: "",
+		Usage: "GroupMe BotID."},
 	cli.StringFlag{
 		Name: "gmgroup", EnvVar: "GROUPME_BOT_GROUP", Value: "",
 		Usage: "GroupMe group."},
@@ -151,11 +154,12 @@ func run(c *cli.Context) error {
 	}
 
 	// Serve Groupme
-	if c.String("gmkey") != "" {
+	if c.String("gmbotkey") != "" {
 		go wasabigm.GMbot(wasabigm.GMConfiguration{
-		    APIKey:	 c.String("gmkey"),
-			GroupID: c.String("gmgroup"),
-			FrontendPath:     c.String("frontend-path"),
+			AccessToken:  c.String("gmbotkey"),
+			BotID:        c.String("gmbotid"),
+			GroupID:      c.String("gmgroup"),
+			FrontendPath: c.String("frontend-path"),
 		})
 	}
 
