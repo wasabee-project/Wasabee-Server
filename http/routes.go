@@ -167,6 +167,12 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
+	i, ok := scanners[req.RemoteAddr]
+	if ok {
+		scanners[req.RemoteAddr] = i + 1
+	} else {
+		scanners[req.RemoteAddr] = 1
+	}
 	http.Error(res, "404: No light here.", http.StatusNotFound)
 }
 

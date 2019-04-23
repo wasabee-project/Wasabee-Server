@@ -45,6 +45,7 @@ type Configuration struct {
 var config Configuration
 var unrolled *logger.Logger
 var logfile *os.File
+var scanners map[string]int64
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
@@ -130,6 +131,7 @@ func initializeConfig(initialConfig Configuration) {
 			"/apple-touch-icon-120x120.png",
 			"/apple-touch-icon.png"},
 	})
+	scanners = make(map[string]int64)
 }
 
 func wasabiHTTPSTemplateConfig() error {
@@ -271,6 +273,12 @@ func headersMW(next http.Handler) http.Handler {
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
 		// untested
 		// res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me")
+
+		i, ok := scanners[req.RemoteAddr]
+		if ok && i > 30 {
+			http.Error(res, "Scanner detected", http.StatusForbidden)
+			return
+		}
 		next.ServeHTTP(res, req)
 	})
 }
