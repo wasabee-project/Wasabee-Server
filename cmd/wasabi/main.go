@@ -7,6 +7,7 @@ import (
 	"github.com/cloudkucooland/WASABI"
 	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/cloudkucooland/WASABI/http"
+	"github.com/cloudkucooland/WASABI/GroupMe"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
@@ -54,6 +55,12 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
 		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
+		Name: "gmkey", EnvVar: "GROUPME_BOT_ID", Value: "",
+		Usage: "GroupMe key."},
+	cli.StringFlag{
+		Name: "gmgroup", EnvVar: "GROUPME_BOT_GROUP", Value: "",
+		Usage: "GroupMe group."},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -140,6 +147,15 @@ func run(c *cli.Context) error {
 		go wasabitelegram.WASABIBot(wasabitelegram.TGConfiguration{
 			APIKey:       c.String("tgkey"),
 			FrontendPath: c.String("frontend-path"),
+		})
+	}
+
+	// Serve Groupme
+	if c.String("gmkey") != "" {
+		go wasabigm.GMbot(wasabigm.GMConfiguration{
+		    APIKey:	 c.String("gmkey"),
+			GroupID: c.String("gmgroup"),
+			FrontendPath:     c.String("frontend-path"),
 		})
 	}
 
