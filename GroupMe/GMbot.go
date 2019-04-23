@@ -38,7 +38,8 @@ type OutboundMessage struct {
 // GMConfiguration is the main configuration data for the GroupMe interface
 // passed to main() pre-loaded with APIKey and FrontendPath set, the rest is built when the bot starts
 type GMConfiguration struct {
-	APIKey       string
+	AccessToken  string
+	BotID        string
 	Name         string
 	GroupID      string
 	APIEndpoint  string
@@ -52,12 +53,19 @@ var config GMConfiguration
 
 // GMbot is called from main() to start the bot.
 func GMbot(init GMConfiguration) error {
-	if init.APIKey == "" {
-		err := errors.New("API Key not set")
+	if init.AccessToken == "" {
+		err := errors.New("access token not set")
 		wasabi.Log.Info(err)
 		return err
 	}
-	config.APIKey = init.APIKey
+	config.AccessToken = init.AccessToken
+
+	if init.BotID == "" {
+		err := errors.New("BotID not set")
+		wasabi.Log.Info(err)
+		return err
+	}
+	config.BotID = init.BotID
 
 	if init.GroupID == "" {
 		err := errors.New("GM GroupID not set")
@@ -84,7 +92,7 @@ func GMbot(init GMConfiguration) error {
 	wasabi.GMSetBot()
 
 	config.hook, _ = setWebHook()
-	config.upChan = make(chan json.RawMessage, 10)
+	config.upChan = make(chan json.RawMessage, 1)
 
 	for update := range config.upChan {
 		err := runUpdate(update)
@@ -113,17 +121,26 @@ func SendMessage(gid wasabi.GoogleID, message string) (bool, error) {
 	return false, nil
 }
 
-type gmCmd struct {
-	Bot struct {
-		Name        string `json:"name"`
-		GroupID     string `json:"group_id"`
-		CallbackURL string `json:"callback_url"`
-	} `json:"bot"`
+type gmBot struct {
+	Name           string `json:"name"`
+	GroupID        string `json:"group_id"`
+	CallbackURL    string `json:"callback_url"`
+	BotID          string `json:"bot_id"`
+	GroupName      string `json:"group_name"`
+	AvatarURL      string `json:"avatar_url"`
+	DMnotification bool   `json:"dm_notification"`
 }
 
+type gmCmd struct {
+	Bot gmBot `json:"bot"`
+}
+
+// {"meta":{"code":201},"response":{"bot":{"name":"WASABI_bot","bot_id":"2226d82f4f2c60e032241f85d7","group_id":"49978027","group_name":"Wasabi test","avatar_url":null,"callback_url":"https://qbin.phtiv.com:8443/gm/pushing-another-2bn2","dm_notification":false}}}
 type gmResponse struct {
-	Response string `json:"response"`
-	Meta     struct {
+	Response struct {
+		Bot gmBot `json:"bot"`
+	} `json:"response"`
+	Meta struct {
 		Code   int64    `json:"code"`
 		Errors []string `json:"errors"`
 	} `json:"meta"`
@@ -134,7 +151,8 @@ func setWebHook() (string, error) {
 
 	// XXX using the proper function races and yeilds ""
 	webroot := "https://qbin.phtiv.com:8443"
-	t := fmt.Sprintf("%s/gm/%s", webroot, wasabi.GenerateName())
+	hook := wasabi.GenerateName()
+	t := fmt.Sprintf("%s/gm/%s", webroot, hook)
 	wasabi.Log.Debugf("setting GM webroot to %s", t)
 	cmd.Bot.CallbackURL = t
 
@@ -144,12 +162,12 @@ func setWebHook() (string, error) {
 	jCmd, err := json.Marshal(cmd)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return "", err
+		return hook, err
 	}
 	wasabi.Log.Debug(string(jCmd))
 	b := bytes.NewBufferString(string(jCmd))
 
-	url := fmt.Sprintf("%s?token=%s", config.APIEndpoint, config.APIKey)
+	url := fmt.Sprintf("%s?token=%s", config.APIEndpoint, config.AccessToken)
 	wasabi.Log.Debug(url)
 
 	req, err := http.NewRequest("POST", url, b)
@@ -157,7 +175,7 @@ func setWebHook() (string, error) {
 
 	if err != nil {
 		wasabi.Log.Error(err)
-		return "", err
+		return hook, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -165,28 +183,28 @@ func setWebHook() (string, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return "", err
+		return hook, err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return "", err
+		return hook, err
 	}
 
 	wasabi.Log.Debug(string(body))
 	var gmRes gmResponse
-	err = json.Unmarshal(body, &gmRes)
+	err = json.Unmarshal(json.RawMessage(body), &gmRes)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return "", err
+		return hook, err
 	}
-	if gmRes.Response == "" || gmRes.Meta.Code > 199 {
+	if gmRes.Meta.Code != 201 {
 		err = fmt.Errorf("%d: %s", gmRes.Meta.Code, gmRes.Meta.Errors[0])
 		wasabi.Log.Error(err)
-		return "", err
+		return hook, err
 	}
 
-	return t, nil
+	return hook, nil
 }
