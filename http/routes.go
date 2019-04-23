@@ -14,6 +14,7 @@ import (
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/cloudkucooland/WASABI/Telegram"
+	"github.com/cloudkucooland/WASABI/GroupMe"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
@@ -66,6 +67,12 @@ func setupSimpleRoutes(r *mux.Router) {
 // implied /tg
 func setupTelegramRoutes(r *mux.Router) {
 	r.HandleFunc("/{hook}", wasabitelegram.TGWebHook).Methods("POST")
+}
+
+// implied /gm
+func setupGMRoutes(r *mux.Router) {
+	r.HandleFunc("", wasabigm.GMWebHook).Methods("POST")
+	r.HandleFunc("/{hook}", wasabigm.GMWebHook).Methods("POST")
 }
 
 // implied /me

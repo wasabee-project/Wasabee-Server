@@ -203,12 +203,15 @@ func StartHTTP(initialConfig Configuration) {
 	// establish subrouters -- these each have different middleware requirements
 	api := r.PathPrefix("/" + config.apipath).Subrouter()
 	tg := r.PathPrefix("/tg").Subrouter()
+	gm := r.PathPrefix("/gm").Subrouter()
 	me := r.PathPrefix("/me").Subrouter()
 	ot := r.PathPrefix("/OwnTracks").Subrouter()
 	simple := r.PathPrefix("/simple").Subrouter()
 	notauthed := r.PathPrefix("").Subrouter()
+
 	setupAuthRoutes(api)
 	setupTelegramRoutes(tg)
+	setupGMRoutes(gm)
 	setupMeRoutes(me)
 	setupSimpleRoutes(simple)
 	setupOwntracksRoute(ot)
@@ -226,6 +229,8 @@ func StartHTTP(initialConfig Configuration) {
 	me.Use(unrolled.Handler)
 	// tg.Use(debugMW)
 	tg.Use(unrolled.Handler)
+	// gm.Use(debugMW)
+	gm.Use(unrolled.Handler)
 	notauthed.Use(unrolled.Handler)
 
 	// Serve
