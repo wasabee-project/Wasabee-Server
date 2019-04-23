@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/cloudkucooland/WASABI"
-	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/cloudkucooland/WASABI/GroupMe"
+	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )

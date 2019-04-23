@@ -29,7 +29,7 @@ type InboundMessage struct {
 	Attachments []map[string]interface{} `json:"attachments"`
 }
 
-// OutbountMessage is what we send
+// OutboundMessage is what we send
 type OutboundMessage struct {
 	ID   string `json:"bot_id"`
 	Text string `json:"text"`
@@ -142,6 +142,10 @@ func setWebHook() (string, error) {
 	cmd.Bot.GroupID = config.GroupID
 
 	jCmd, err := json.Marshal(cmd)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return "", err
+	}
 	wasabi.Log.Debug(string(jCmd))
 	b := bytes.NewBufferString(string(jCmd))
 
