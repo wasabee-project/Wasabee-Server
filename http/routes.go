@@ -71,7 +71,6 @@ func setupTelegramRoutes(r *mux.Router) {
 
 // implied /gm
 func setupGMRoutes(r *mux.Router) {
-	r.HandleFunc("", wasabigm.GMWebHook).Methods("POST")
 	r.HandleFunc("/{hook}", wasabigm.GMWebHook).Methods("POST")
 }
 

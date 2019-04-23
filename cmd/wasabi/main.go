@@ -58,12 +58,6 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "gmbotkey", EnvVar: "GROUPME_ACCESS_TOKEN", Value: "",
 		Usage: "GroupMe Access TOken."},
-	cli.StringFlag{
-		Name: "gmbotid", EnvVar: "GROUPME_BOT_ID", Value: "",
-		Usage: "GroupMe BotID."},
-	cli.StringFlag{
-		Name: "gmgroup", EnvVar: "GROUPME_BOT_GROUP", Value: "",
-		Usage: "GroupMe group."},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -157,8 +151,6 @@ func run(c *cli.Context) error {
 	if c.String("gmbotkey") != "" {
 		go wasabigm.GMbot(wasabigm.GMConfiguration{
 			AccessToken:  c.String("gmbotkey"),
-			BotID:        c.String("gmbotid"),
-			GroupID:      c.String("gmgroup"),
 			FrontendPath: c.String("frontend-path"),
 		})
 	}

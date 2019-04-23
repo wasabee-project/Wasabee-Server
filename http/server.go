@@ -223,6 +223,7 @@ func StartHTTP(initialConfig Configuration) {
 	// r. apply to all
 	// r.Use(debugMW)
 	r.Use(headersMW)
+	r.Use(scannerMW)
 	// r.Use(unrolled.Handler)
 
 	api.Use(authMW)
@@ -273,7 +274,12 @@ func headersMW(next http.Handler) http.Handler {
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
 		// untested
 		// res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me")
+		next.ServeHTTP(res, req)
+	})
+}
 
+func scannerMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		i, ok := scanners[req.RemoteAddr]
 		if ok && i > 30 {
 			http.Error(res, "Scanner detected", http.StatusForbidden)

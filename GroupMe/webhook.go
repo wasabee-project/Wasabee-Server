@@ -14,18 +14,26 @@ import (
 // GMWebHook is the http route for receiving GM updates
 func GMWebHook(res http.ResponseWriter, req *http.Request) {
 	var err error
+	vars := mux.Vars(req)
+	hook := vars["hook"]
 
-	if config.hook == "" {
+	if config.AccessToken == "" {
 		err = fmt.Errorf("the GroupMe API is not configured")
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	hook := vars["hook"]
-
-	if hook != config.hook {
+	var found bool
+	for _, v := range config.bots {
+		tmp := strings.Split(v.CallbackURL, "/")
+		botHook := tmp[len(tmp)-1]
+		if hook == botHook {
+			found = true
+			break
+		}
+	}
+	if !found {
 		err = fmt.Errorf("%s is not a valid hook", hook)
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
