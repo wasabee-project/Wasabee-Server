@@ -72,20 +72,22 @@ func GMbot(init GMConfiguration) error {
 	if config.FrontendPath == "" {
 		config.FrontendPath = "frontend"
 	}
-	_ = templates(config.templateSet)
+	_ = gmTemplates(config.templateSet)
 	// let WASABI know we can process messages
 	_ = wasabi.RegisterMessageBus("GroupMe", SendMessage)
 	// Tell WASABI we are set up
 	wasabi.GMSetBot()
 
-	// config.hook, _ = setWebHook()
 	// setup config.bots
 	err := getBots()
 	if err != nil {
 		return err
 	}
+
+	// the webhook feeds this channel
 	config.upChan = make(chan json.RawMessage, 1)
 
+	// loop and process updates on the channel
 	for update := range config.upChan {
 		err := runUpdate(update)
 		if err != nil {
@@ -97,7 +99,7 @@ func GMbot(init GMConfiguration) error {
 }
 
 func runUpdate(update json.RawMessage) error {
-	wasabi.Log.Debug(string(update))
+	// wasabi.Log.Debug(string(update))
 	var i InboundMessage
 	err := json.Unmarshal(update, &i)
 	if err != nil {
@@ -145,7 +147,7 @@ func getBots() error {
 		return err
 	}
 
-	wasabi.Log.Debug(string(body))
+	// wasabi.Log.Debug(string(body))
 
 	var gmRes gmResponse
 	err = json.Unmarshal(json.RawMessage(body), &gmRes)

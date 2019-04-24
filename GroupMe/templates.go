@@ -10,7 +10,7 @@ import (
 	"text/template"
 )
 
-func templates(t map[string]*template.Template) error {
+func groupmeTemplates(t map[string]*template.Template) error {
 	if config.FrontendPath == "" {
 		err := errors.New("FrontendPath not configured")
 		wasabi.Log.Critical(err)
@@ -59,7 +59,7 @@ func templates(t map[string]*template.Template) error {
 	return nil
 }
 
-func templateExecute(name, lang string, data interface{}) (string, error) {
+func gmTemplateExecute(name, lang string, data interface{}) (string, error) {
 	if lang == "" {
 		lang = "en"
 	}
