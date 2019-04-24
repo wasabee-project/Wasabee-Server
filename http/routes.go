@@ -38,6 +38,7 @@ func setupNotauthed(r *mux.Router) {
 
 	// raw files
 	r.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
+	r.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
 	r.PathPrefix("/static/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
 
 	// Privacy Policy -- not static since we want to offer translations
