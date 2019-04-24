@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"path"
+	// "path"
 	"time"
 
 	"github.com/cloudkucooland/WASABI"
@@ -21,7 +21,7 @@ import (
 
 // generic things
 func setupRoutes(r *mux.Router) {
-	r.HandleFunc("/junk/{doc}", staticRoute).Methods("GET")
+	// r.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 }
 
 // generic things, want logging
@@ -37,10 +37,10 @@ func setupNotauthed(r *mux.Router) {
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
 
 	// raw files
-	r.HandleFunc("/static/{doc}", staticRoute).Methods("GET")
-	r.HandleFunc("/static/{dir}/{doc}", staticRoute).Methods("GET")
+	r.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
+	r.PathPrefix("/static/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
 
-	// Privacy Policy
+	// Privacy Policy -- not static since we want to offer translations
 	r.HandleFunc("/privacy", privacyRoute).Methods("GET")
 
 	// index
@@ -301,30 +301,4 @@ func getAgentID(req *http.Request) (wasabi.GoogleID, error) {
 
 	var agentID = wasabi.GoogleID(ses.Values["id"].(string))
 	return agentID, nil
-}
-
-func staticRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	doc, ok := vars["doc"]
-
-	// XXX I've never been able to trigger this, can probably remove
-	if !ok {
-		wasabi.Log.Debug("Marty, Doc is not OK")
-		notFoundRoute(res, req)
-		return
-	}
-
-	var cleandoc string
-	dir, ok := vars["dir"]
-	if ok {
-		wasabi.Log.Debugf("static file requested: %s/%s", dir, doc)
-		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
-		cleandoc = path.Join(config.FrontendPath, "static", dir, doc)
-	} else {
-		wasabi.Log.Debugf("static file requested: %s", doc)
-		// XXX clean it first : .. is removed by ServeFile, but we should be more paranoid than that
-		cleandoc = path.Join(config.FrontendPath, "static", doc)
-	}
-	wasabi.Log.Debugf("serving: %s", cleandoc)
-	http.ServeFile(res, req, cleandoc)
 }
