@@ -3,6 +3,7 @@ package wasabihttps
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 
@@ -94,7 +95,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	name := vars["name"]
+	name := html.EscapeString(vars["name"])
 
 	// do the work
 	err = gid.SetIngressName(name)

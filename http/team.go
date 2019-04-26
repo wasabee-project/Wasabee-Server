@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
+	"html"
 	"net/http"
 )
 
@@ -49,7 +50,8 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	name := vars["name"]
+	name := html.EscapeString(vars["name"])
+
 	_, err = gid.NewTeam(name)
 	if err != nil {
 		wasabi.Log.Notice(err)
