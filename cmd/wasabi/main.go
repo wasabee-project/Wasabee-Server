@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/cloudkucooland/WASABI/GroupMe"
@@ -70,7 +72,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "WASABI"
-	app.Version = "0.6.7"
+	app.Version = "0.6.8"
 	app.Usage = "WASABI Server"
 	app.Authors = []cli.Author{
 		{
@@ -155,6 +157,17 @@ func run(c *cli.Context) error {
 		})
 	}
 
-	// Sleep
-	select {}
+	// wait for signal to shut down
+	sigch := make(chan os.Signal)
+	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
+	select {
+	case sig := <-sigch:
+		wasabi.Log.Info("Shutdown Requested: ", sig)
+		// deregister TG handler
+		wasabitelegram.Shutdown()
+		// close database connection
+		wasabi.Disconnect()
+		return nil
+	}
+	return nil
 }
