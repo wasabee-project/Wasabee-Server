@@ -37,6 +37,13 @@ func Connect(uri string) error {
 	return nil
 }
 
+func Disconnect() {
+	Log.Debug("Disconnecting from database")
+	if err := db.Close(); err != nil {
+		Log.Error(err)
+	}
+}
+
 // setupTables checks for the existence of tables and creates them if needed
 func setupTables() error {
 	// Create tables

@@ -60,7 +60,7 @@ func WASABIBot(init TGConfiguration) error {
 	config.hook = wasabi.GenerateName()
 	t := fmt.Sprintf("%s/tg/%s", webroot, config.hook)
 	wasabi.Log.Debugf("TG webroot %s", t)
-	defer bot.RemoveWebhook()
+	// defer bot.RemoveWebhook()
 	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 	if err != nil {
 		wasabi.Log.Error(err)
@@ -88,6 +88,12 @@ func WASABIBot(init TGConfiguration) error {
 		i++
 	}
 	return nil
+}
+
+func Shutdown() {
+	wasabi.Log.Infof("Shutting down %s", bot.Self.UserName)
+	bot.RemoveWebhook()
+	bot.StopReceivingUpdates()
 }
 
 func runUpdate(update tgbotapi.Update) error {
