@@ -143,6 +143,8 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "" {
+		// deregister TG handler
+		defer wasabitelegram.Shutdown()
 		go wasabitelegram.WASABIBot(wasabitelegram.TGConfiguration{
 			APIKey:       c.String("tgkey"),
 			FrontendPath: c.String("frontend-path"),
@@ -158,16 +160,13 @@ func run(c *cli.Context) error {
 	}
 
 	// wait for signal to shut down
-	sigch := make(chan os.Signal)
-	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
-	select {
-	case sig := <-sigch:
-		wasabi.Log.Info("Shutdown Requested: ", sig)
-		// deregister TG handler
-		wasabitelegram.Shutdown()
-		// close database connection
-		wasabi.Disconnect()
-		return nil
-	}
+	sigch := make(chan os.Signal, 3)
+	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
+	// loop until signal sent
+	sig := <-sigch
+
+	wasabi.Log.Info("Shutdown Requested: ", sig)
+	// close database connection
+	wasabi.Disconnect()
 	return nil
 }

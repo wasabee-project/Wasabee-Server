@@ -37,6 +37,8 @@ func Connect(uri string) error {
 	return nil
 }
 
+// Disconnect closes the database connection
+// called only at server shutdown
 func Disconnect() {
 	Log.Debug("Disconnecting from database")
 	if err := db.Close(); err != nil {

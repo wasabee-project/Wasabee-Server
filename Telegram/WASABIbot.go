@@ -90,6 +90,8 @@ func WASABIBot(init TGConfiguration) error {
 	return nil
 }
 
+// Shutdown closes all the Telegram connections
+// called only at server shutdown
 func Shutdown() {
 	wasabi.Log.Infof("Shutting down %s", bot.Self.UserName)
 	bot.RemoveWebhook()
@@ -366,6 +368,7 @@ func farmsNear(gid wasabi.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 }
 
 // checks rocks based on tgid, Inits agent if found
+// returns gid, tgfound, error
 func runRocks(tgid wasabi.TelegramID) (wasabi.GoogleID, error) {
 	var agent wasabi.RocksAgent
 
@@ -377,10 +380,17 @@ func runRocks(tgid wasabi.TelegramID) (wasabi.GoogleID, error) {
 	if agent.Gid == "" {
 		return "", nil
 	}
+
+	// add to main tables if necessary
 	_, err = (agent.Gid).InitAgent()
 	if err != nil {
 		wasabi.Log.Error(err)
 		return agent.Gid, err
 	}
+
+	// this adds the agent to the Telegram tables
+	// but InitAgent should have already called this ...
+	(agent.Gid).RocksUpdate(&agent)
+
 	return agent.Gid, nil
 }
