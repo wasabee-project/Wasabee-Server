@@ -175,16 +175,6 @@ func RocksCommunitySync(msg json.RawMessage) error {
 		return err
 	}
 
-	_, err = rc.User.Gid.IngressName()
-	if err != nil && err.Error() == "sql: no rows in result set" {
-		Log.Debugf("Importing previously unknown agent: %s", rc.User.Gid)
-		_, err = rc.User.Gid.InitAgent()
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-	}
-
 	team, err := RocksTeamID(rc.Community)
 	if err != nil {
 		Log.Error(err)
@@ -195,6 +185,16 @@ func RocksCommunitySync(msg json.RawMessage) error {
 	}
 
 	if rc.Action == "onJoin" {
+		_, err = rc.User.Gid.IngressName()
+		if err != nil && err.Error() == "sql: no rows in result set" {
+			Log.Debugf("Importing previously unknown agent: %s", rc.User.Gid)
+			_, err = rc.User.Gid.InitAgent()
+			if err != nil {
+				Log.Error(err)
+				return err
+			}
+		}
+
 		err := team.AddAgent(rc.User.Gid)
 		if err != nil {
 			Log.Error(err)
