@@ -257,6 +257,17 @@ func (gid GoogleID) OwnTracksTransition(jTran json.RawMessage) (json.RawMessage,
 	return j, nil
 }
 
+// LocKey returns a Location Share Key for a GoogleID
+func (gid GoogleID) LocKey() (LocKey, error) {
+	var lockey string
+	err := db.QueryRow("SELECT lockey FROM agent WHERE gid = ?", gid).Scan(&lockey)
+	if err != nil {
+		Log.Error(err)
+		return LocKey(""), err
+	}
+	return LocKey(lockey), nil
+}
+
 // ownTracksTidy parses OwnTracks data (JSON format) and returns a version of that data
 // which has been cleaned and formatted for consistency
 // future features for this are still being considered
@@ -267,8 +278,15 @@ func (gid GoogleID) ownTracksTidy(otdata string) (json.RawMessage, error) {
 		Log.Notice(err)
 		return json.RawMessage(otdata), err
 	}
-
-	// rewrite topic to be owntracks/agent/device-id ?
+	if l.Topic != "" {
+		// rewrite?
+	} else {
+		lockey, err := gid.LocKey()
+		if err != nil {
+			return json.RawMessage(otdata), err
+		}
+		l.Topic = fmt.Sprintf("owntracks/%s/android", lockey)
+	}
 
 	redo, err := json.Marshal(l)
 	if err != nil {
