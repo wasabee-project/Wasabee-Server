@@ -37,7 +37,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	teamList.RocksKey = ""
 	data, _ := json.MarshalIndent(teamList, "", "\t")
 	s := string(data)
-	res.Header().Add("Content-Type", "text/json")
+	res.Header().Add("Content-Type", "application/json; charset=UTF-8")
 	fmt.Fprint(res, s)
 }
 

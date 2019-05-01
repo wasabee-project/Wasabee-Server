@@ -12,7 +12,7 @@ import (
 )
 
 func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
+	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -74,7 +74,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	// JSON if referer is intel.ingress.com
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		res.Header().Set("Content-Type", "application/json")
+		res.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		s, err := json.MarshalIndent(o, "", "\t")
 		if err != nil {
 			wasabi.Log.Notice(err)
@@ -94,7 +94,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
+	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	gid, err := getAgentID(req)
 	if err != nil {

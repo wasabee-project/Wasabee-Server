@@ -19,7 +19,7 @@ type loc struct {
 }
 
 func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
+	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	gid, auth := ownTracksAuthentication(res, req)
 	if !auth {

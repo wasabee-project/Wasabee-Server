@@ -33,7 +33,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
 		data, _ := json.MarshalIndent(agent, "", "\t")
 		s := string(data)
-		res.Header().Add("Content-Type", "text/json")
+		res.Header().Add("Content-Type", "application/json; charset=UTF-8")
 		fmt.Fprint(res, s)
 		return
 	}
