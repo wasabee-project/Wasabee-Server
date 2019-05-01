@@ -45,7 +45,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			// Get file
 			file, _, err := req.FormFile("Q")
 			if err != nil && err.Error() == "http: no such file" {
-				err = fmt.Errorf("The document can't be empty.")
+				err = fmt.Errorf("the document can't be empty")
 				wasabi.Log.Error(err)
 				http.Error(res, err.Error(), http.StatusBadRequest)
 				return
@@ -78,7 +78,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	// Check exact filesize
 	if len(doc.Content) > wasabi.MaxFilesize {
-		err = fmt.Errorf("Maximum document size exceeded")
+		err = fmt.Errorf("maximum document size exceeded")
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusRequestEntityTooLarge)
 		return
