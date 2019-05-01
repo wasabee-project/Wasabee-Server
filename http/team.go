@@ -35,10 +35,14 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team.FetchTeam(&teamList, false)
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
-	data, _ := json.MarshalIndent(teamList, "", "\t")
-	s := string(data)
+	data, err := json.MarshalIndent(teamList, "", "\t")
+	if err != nil {
+		wasabi.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	res.Header().Add("Content-Type", "application/json; charset=UTF-8")
-	fmt.Fprint(res, s)
+	fmt.Fprint(res, string(data))
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -81,8 +85,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = team.Delete()
-	if err != nil {
+	if err = team.Delete(); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -111,15 +114,13 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	var teamList wasabi.TeamData
-	err = team.FetchTeam(&teamList, true)
-	if err != nil {
+	if err = team.FetchTeam(&teamList, true); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = wasabiHTTPSTemplateExecute(res, req, "teamedit", teamList)
-	if err != nil {
+	if err = wasabiHTTPSTemplateExecute(res, req, "teamedit", teamList); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
@@ -149,14 +150,14 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if key != "" { // prevents a bit of log spam
-		err = team.AddAgent(key)
-		if err != nil {
+		if err = team.AddAgent(key); err != nil {
 			wasabi.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
-	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
+	url := fmt.Sprintf("/%s/team/%s/edit", config.apipath, team.String())
+	http.Redirect(res, req, url, http.StatusPermanentRedirect)
 }
 
 func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -180,11 +181,11 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err = team.RemoveAgent(key)
-	if err != nil {
+	if err = team.RemoveAgent(key); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/"+config.apipath+"/team/"+team.String()+"/edit", http.StatusPermanentRedirect)
+	url := fmt.Sprintf("/%s/team/%s/edit", config.apipath, team.String())
+	http.Redirect(res, req, url, http.StatusPermanentRedirect)
 }

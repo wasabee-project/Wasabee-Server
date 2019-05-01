@@ -20,8 +20,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var ud wasabi.AgentData
-	err = gid.GetAgentData(&ud)
-	if err != nil {
+	if err = gid.GetAgentData(&ud); err != nil {
 		res.Header().Add("Cache-Control", "no-cache")
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -35,8 +34,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = wasabiHTTPSTemplateExecute(res, req, "me", ud)
-	if err != nil {
+	if err = wasabiHTTPSTemplateExecute(res, req, "me", ud); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
@@ -54,8 +52,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabi.TeamID(vars["team"])
 	state := vars["state"]
 
-	err = gid.SetTeamState(team, state)
-	if err != nil {
+	if err = gid.SetTeamState(team, state); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -75,9 +72,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := wasabi.TeamID(vars["team"])
 
-	// wasabi.Log.Debug("remove me from team: " + gid.String() + " " + team.String())
-	err = team.RemoveAgent(gid)
-	if err != nil {
+	if err = team.RemoveAgent(gid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -98,8 +93,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	name := html.EscapeString(vars["name"])
 
 	// do the work
-	err = gid.SetIngressName(name)
-	if err != nil {
+	if err = gid.SetIngressName(name); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -120,8 +114,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	otpw := vars["otpw"]
 
 	// do the work
-	err = gid.SetOwnTracksPW(otpw)
-	if err != nil {
+	if err = gid.SetOwnTracksPW(otpw); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -138,8 +131,7 @@ func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = gid.ResetLocKey()
-	if err != nil {
+	if err = gid.ResetLocKey(); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -161,8 +153,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	lon := vars["lon"]
 
 	// do the work
-	err = gid.AgentLocation(lat, lon, "https")
-	if err != nil {
+	if err = gid.AgentLocation(lat, lon, "https"); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -180,8 +171,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	// do the work
 	wasabi.Log.Noticef("Agent requested delete: %s", gid.String())
-	err = gid.Delete()
-	if err != nil {
+	if err = gid.Delete(); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

@@ -42,8 +42,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	jRaw := json.RawMessage(jBlob)
 
 	// wasabi.Log.Debug(string(jBlob))
-	err = wasabi.PDrawInsert(jRaw, gid)
-	if err != nil {
+	if err = wasabi.PDrawInsert(jRaw, gid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -65,8 +64,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	var o wasabi.Operation
 	o.ID = wasabi.OperationID(id)
-	err = o.Populate(gid)
-	if err != nil {
+	if err = o.Populate(gid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -86,8 +84,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// pretty output for everyone else
-	err = wasabiHTTPSTemplateExecute(res, req, "opdata", o)
-	if err != nil {
+	if err = wasabiHTTPSTemplateExecute(res, req, "opdata", o); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}

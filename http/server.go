@@ -221,18 +221,16 @@ func StartHTTP(initialConfig Configuration) {
 	setupRoutes(r)
 
 	// r. apply to all
-	// r.Use(debugMW)
 	r.Use(headersMW)
 	r.Use(scannerMW)
-	// r.Use(unrolled.Handler)
 
 	api.Use(authMW)
 	api.Use(unrolled.Handler)
+
 	me.Use(authMW)
 	me.Use(unrolled.Handler)
-	// tg.Use(debugMW)
+
 	tg.Use(unrolled.Handler)
-	// gm.Use(debugMW)
 	gm.Use(unrolled.Handler)
 	notauthed.Use(unrolled.Handler)
 
@@ -374,7 +372,5 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Save(req, res)
 
 	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
-	// res.Header().Add("Cache-Control", "no-cache")
-	// http.Redirect(res, req, url, http.StatusTemporaryRedirect)
 	http.Redirect(res, req, url, http.StatusFound)
 }

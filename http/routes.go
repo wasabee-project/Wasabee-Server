@@ -191,8 +191,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var m googleData
-	err = json.Unmarshal(content, &m)
-	if err != nil {
+	if err = json.Unmarshal(content, &m); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

@@ -79,8 +79,8 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	case "waypoint":
 		s, _ := gid.OwnTracksSetWaypoint(jRaw)
 		fmt.Fprint(res, string(s))
-	default:
-		wasabi.Log.Notice("unhandled type: " + t.Type)
+	default: // seen "cmd" in the wild
+		wasabi.Log.Noticef("unhandled owntracks t.Type: %s", t.Type)
 		wasabi.Log.Debug(string(jRaw))
 		fmt.Fprint(res, "{ }")
 	}
