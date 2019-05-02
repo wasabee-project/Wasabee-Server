@@ -7,14 +7,19 @@ import (
 
 // BackgroundTasks runs the database cleaning tasks such as expiring waypoints and stale user locations
 func BackgroundTasks(c chan os.Signal) error {
+	Log.Debug("running initial tasks")
+	locationClean()
+	waypointClean()
+	simpleDocClean()
+
 	ticker := time.NewTicker(time.Hour)
 
 	select {
 	case x := <-c:
-		Log.Noticef("Signal Received: %s", x)
+		Log.Noticef("signal received: %s", x)
 		break
 	case <-ticker.C:
-		Log.Debug("Running Background Tasks")
+		Log.Debug("running background tasks")
 		locationClean()
 		waypointClean()
 		simpleDocClean()
