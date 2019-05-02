@@ -25,9 +25,12 @@ before_install:
 
 install:
     - go get -t -v $(go list ./... | grep -v integration)
+    - go get golang.org/x/tools/cmd/cover
+    - go get github.com/mattn/goveralls
 
 script:
     #- go test -v -race -test.short ./...        # Run tests with the race detector.
-    - go test -v
     - go get -v ./...                           # Run Go static analyzer.
+    - go test -v -covermode=count -coverprofile=coverage.out
     - go run cmd/wasabi-userupdate/main.go		# test command
+    - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
