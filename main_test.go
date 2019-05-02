@@ -22,6 +22,7 @@ func TestMain(m *testing.M) {
 
 	// flag.Parse()
 	exitCode := m.Run()
+	wasabi.Disconnect()
 	os.Exit(exitCode)
 }
 
