@@ -70,28 +70,15 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	var opgid GoogleID
-	var teamID TeamID
-	var authorized bool
-	r := db.QueryRow("SELECT gid, teamID FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&opgid, &teamID)
-	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
+	_, teamID, err := pdrawAuthorized(gid, o.ID)
+	if err != nil { // !authorized always sets error
+		Log.Error(err)
 		return err
-	}
-	if err != nil && err == sql.ErrNoRows {
-		authorized = true
-	}
-	if opgid == gid {
-		authorized = true
-	}
-	if !authorized {
-		return errors.New("unauthorized: this operation owned by someone else")
 	}
 
 	// clear and start from a blank slate
 	if err = o.Delete(); err != nil {
-		Log.Notice(err)
+		Log.Error(err)
 		return err
 	}
 
@@ -110,7 +97,6 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	// these could be parallelized
 	for _, m := range o.Markers {
 		if err = o.insertMarker(&m); err != nil {
 			Log.Error(err)
@@ -138,6 +124,27 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		}
 	}
 	return nil
+}
+
+func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
+	var opgid GoogleID
+	var teamID TeamID
+	var authorized bool
+	err := db.QueryRow("SELECT gid, teamID FROM operation WHERE ID = ?", oid).Scan(&opgid, &teamID)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
+		return false, "", err
+	}
+	if err != nil && err == sql.ErrNoRows {
+		authorized = true
+	}
+	if opgid == gid {
+		authorized = true
+	}
+	if !authorized {
+		return false, teamID, errors.New("unauthorized: this operation owned by someone else")
+	}
+	return authorized, teamID, nil
 }
 
 // insertMarkers adds a marker to the database
@@ -186,7 +193,7 @@ func (o *Operation) insertLink(l *Link) error {
 func (o *Operation) Delete() error {
 	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Error(err)
 		return err
 	}
 	// the foreign key constraints should take care of these, but just in case...
@@ -207,7 +214,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 	r := db.QueryRow("SELECT name, gid, color, teamID FROM operation WHERE ID = ?", o.ID)
 	err := r.Scan(&o.Name, &o.Gid, &o.Color, &teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Error(err)
 		return err
 	}
 	if teamID.Valid {

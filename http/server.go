@@ -1,6 +1,7 @@
 package wasabihttps
 
 import (
+	"context"
 	"crypto/tls"
 	"html/template"
 	"io/ioutil"
@@ -40,6 +41,7 @@ type Configuration struct {
 	CookieSessionKey  string
 	templateSet       map[string]*template.Template // allow multiple translations
 	Logfile           string
+	srv               *http.Server
 }
 
 var config Configuration
@@ -235,8 +237,7 @@ func StartHTTP(initialConfig Configuration) {
 	notauthed.Use(unrolled.Handler)
 
 	// Serve
-	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
-	srv := &http.Server{
+	config.srv = &http.Server{
 		Handler:           r,
 		Addr:              config.ListenHTTPS,
 		WriteTimeout:      15 * time.Second,
@@ -256,11 +257,21 @@ func StartHTTP(initialConfig Configuration) {
 			},
 		},
 	}
-	err := srv.ListenAndServeTLS(config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key")
-	if err != nil {
+	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
+	if err := config.srv.ListenAndServeTLS(config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key"); err != nil {
 		wasabi.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
 	}
+}
+
+// Shutdown forces a graceful shutdown of the https server
+func Shutdown() error {
+	wasabi.Log.Info("Shutting down HTTPS server")
+	if err := config.srv.Shutdown(context.Background()); err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	return nil
 }
 
 func headersMW(next http.Handler) http.Handler {

@@ -1,19 +1,25 @@
 package wasabi
 
 import (
+	"os"
 	"time"
 )
 
 // BackgroundTasks runs the database cleaning tasks such as expiring waypoints and stale user locations
-func BackgroundTasks() {
-	for {
+func BackgroundTasks(c chan os.Signal) error {
+	ticker := time.NewTicker(time.Second * 3600)
+
+	select {
+	case x := <-c:
+		Log.Noticef("Signal Received: ", x)
+		break
+	case <-ticker.C:
+		Log.Debug("Running Background Tasks")
 		locationClean()
 		waypointClean()
 		simpleDocClean()
-
-		time.Sleep(3600 * time.Second)
-		Log.Debug("Running Background Tasks")
 	}
+	return nil
 }
 
 func locationClean() {

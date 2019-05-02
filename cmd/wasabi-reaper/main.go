@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/op/go-logging"
@@ -58,12 +60,15 @@ func run(c *cli.Context) error {
 	err := wasabi.Connect(c.String("database"))
 	if err != nil {
 		wasabi.Log.Errorf("Error connecting to database: %s", err)
-		panic(err)
+		return err
 	}
 
-	// Location cleanup, waypoint expiration, etc
-	go wasabi.BackgroundTasks()
+	sigch := make(chan os.Signal, 1)
+	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
 
-	// Sleep
-	select {}
+	// this will loop until an OS signal is sent
+	// Location cleanup, waypoint expiration, etc
+	wasabi.BackgroundTasks(sigch)
+
+	return nil
 }
