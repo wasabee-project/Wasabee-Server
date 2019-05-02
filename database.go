@@ -68,17 +68,15 @@ func setupTables() error {
 		{"waypoints", `CREATE TABLE waypoints (Id bigint(20) NOT NULL, teamID varchar(64) CHARACTER SET latin1 NOT NULL, loc point NOT NULL, radius int(10) unsigned NOT NULL DEFAULT "60", type varchar(32) CHARACTER SET latin1 NOT NULL DEFAULT "target", name varchar(128) CHARACTER SET latin1 DEFAULT NULL, expiration datetime NOT NULL, PRIMARY KEY (Id), KEY teamID (teamID), SPATIAL KEY sp (loc)) ENGINE=Aria DEFAULT CHARSET=utf8mb4 PAGE_CHECKSUM=1`},
 	}
 
-	// Create tables
 	var table string
-
 	for _, v := range t {
 		q := fmt.Sprintf("SHOW TABLES LIKE '%s'", v.tablename)
 		err := db.QueryRow(q).Scan(&table)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			Log.Error(err)
 			continue
 		}
-		if table == "" {
+		if err == sql.ErrNoRows || table == "" {
 			Log.Noticef("Setting up '%s' table...", v.tablename)
 			_, err := db.Exec(v.creation)
 			if err != nil {
