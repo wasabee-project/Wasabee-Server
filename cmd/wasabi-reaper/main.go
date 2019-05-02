@@ -27,7 +27,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "wasabi-reaper"
-	app.Version = "0.0.1"
+	app.Version = "0.3.0"
 	app.Usage = "WASABI Background Process"
 	app.Authors = []cli.Author{
 		{
@@ -64,11 +64,13 @@ func run(c *cli.Context) error {
 	}
 
 	sigch := make(chan os.Signal, 1)
-	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
+	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, os.Interrupt)
 
 	// this will loop until an OS signal is sent
 	// Location cleanup, waypoint expiration, etc
 	wasabi.BackgroundTasks(sigch)
+
+	wasabi.Disconnect()
 
 	return nil
 }
