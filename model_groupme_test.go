@@ -6,7 +6,7 @@ import (
 )
 
 // nothing to do here, just run the code
-func testGM(t *testing.T) {
+func TestGM(t *testing.T) {
 	wasabi.GMSetBot()
 	b, err := wasabi.GMRunning()
 	if err != nil {
