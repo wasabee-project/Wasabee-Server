@@ -6,7 +6,7 @@ import (
 )
 
 // nothing to do here, just run the code
-func testHttps(t *testing.T) {
+func TestHttps(t *testing.T) {
 	wasabi.SetWebroot("testing")
 	b, err := wasabi.GetWebroot()
 	if err != nil {
