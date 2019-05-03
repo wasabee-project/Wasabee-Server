@@ -12,7 +12,7 @@ func BackgroundTasks(c chan os.Signal) {
 	waypointClean()
 	simpleDocClean()
 
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
 	for {
