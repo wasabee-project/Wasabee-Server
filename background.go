@@ -6,27 +6,31 @@ import (
 )
 
 // BackgroundTasks runs the database cleaning tasks such as expiring waypoints and stale user locations
-func BackgroundTasks(c chan os.Signal) error {
+func BackgroundTasks(c chan os.Signal) {
 	Log.Debug("running initial tasks")
 	locationClean()
 	waypointClean()
 	simpleDocClean()
 
-	ticker := time.NewTicker(time.Hour)
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
 
-	select {
-	case x := <-c:
-		Log.Noticef("signal received: %s", x)
-		break
-	case <-ticker.C:
-		Log.Debug("running background tasks")
-		locationClean()
-		waypointClean()
-		simpleDocClean()
+	for {
+		select {
+		case x := <-c:
+			Log.Noticef("signal received: %s", x)
+			return
+		case <-ticker.C:
+			Log.Debugf("running background tasks")
+			locationClean()
+			waypointClean()
+			simpleDocClean()
+		}
 	}
-	return nil
+	return
 }
 
+// move to model_owntracks.go
 func locationClean() {
 	r, err := db.Query("SELECT gid FROM locations WHERE loc != POINTFROMTEXT(?) AND upTime < DATE_SUB(NOW(), INTERVAL 3 HOUR)", "POINT(0 0)")
 	if err != nil {
@@ -55,6 +59,7 @@ func locationClean() {
 	}
 }
 
+// move to model_owntracks.go
 func waypointClean() {
 	// give the clients 3 days to receive the invalid ones and remove them from the list
 	_, err := db.Exec("DELETE FROM waypoints WHERE expiration < DATE_SUB(NOW(), INTERVAL 3 DAY)")
