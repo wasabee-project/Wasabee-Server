@@ -64,6 +64,7 @@ var riscchan chan event
 var config riscConfig
 var scred serviceCreds
 
+// RISCinit sets up the data structures and starts the processing threads
 func RISCinit(certdir string) error {
 	// load config
 	if err := googleRiscDiscovery(); err != nil {
@@ -79,8 +80,9 @@ func RISCinit(certdir string) error {
 
 	// listen for updates on a new thread
 	riscchan = make(chan event, 2)
-	go RISCloop()
+	go readloop()
 
+	wasabi.Log.Debug("init complete")
 	return nil
 }
 
@@ -109,11 +111,11 @@ func riscRegisterWebhook(certdir string) error {
 	wasabi.Log.Debug("setting up webhooks with google")
 	updateWebhook(creds)
 	ticker := time.NewTicker(time.Hour)
-	select {
-	case <-ticker.C:
-		wasabi.Log.Debug("updating webhooks with google")
+	for tick := range ticker.C {
+		wasabi.Log.Debug("updating webhooks with google: ", tick)
 		updateWebhook(creds)
 	}
+	wasabi.Log.Debug("should never make it here")
 	return nil
 }
 
@@ -126,25 +128,25 @@ func updateWebhook(c *google.Credentials) error {
 	token.Set(jwt.IssuedAtKey, t.Format(time.UnixDate))
 	token.Set(jwt.ExpirationKey, t.Add(time.Hour).Format(time.UnixDate))
 
-	buf, err := json.MarshalIndent(token, "", "  ")
-	// wasabi.Log.Debug(buf)
+	buf, err := json.Marshal(token)
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
 
-	pk, err := parseRsaPrivateKeyFromPemStr(scred.PrivateKey)
-	// wasabi.Log.Debug(pk)
+	key, err := parseRsaPrivateKeyFromPemStr(scred.PrivateKey)
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
 
-	// setting a header causes a segfault -- but this won't work without the header
-	// var hdr jws.Headers
-	// hdr.Set("kid", scred.ProjectKeyID)
-	// jwsTok, err := jws.Sign(buf, jwa.RS256, pk, jws.WithHeaders(hdr))
-	jwsTok, err := jws.Sign(buf, jwa.RS256, pk)
+	var hdr jws.Headers = &jws.StandardHeaders{}
+	err = hdr.Set("kid", scred.ProjectKeyID)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	jwsTok, err := jws.Sign(buf, jwa.RS256, key, jws.WithHeaders(hdr))
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
@@ -173,7 +175,7 @@ func updateWebhook(c *google.Credentials) error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	req.Header.Set("Bearer", string(jwsTok))
+	req.Header.Set("Authorization", "Bearer " + string(jwsTok))
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	response, err := client.Do(req)
@@ -182,22 +184,25 @@ func updateWebhook(c *google.Credentials) error {
 		return err
 	}
 	if response.StatusCode >= 300 {
-		wasabi.Log.Debug(response)
+		// wasabi.Log.Debug(response)
+		raw, _ := ioutil.ReadAll(response.Body)
+		wasabi.Log.Debug(string(raw))
 	}
 
 	return nil
 }
 
-func RISCloop() {
+func readloop() {
 	for {
 		e := <-riscchan
 		wasabi.Log.Notice("Pulled from channel: ", e)
 		// XXX process the message
 	}
+	wasabi.Log.Debug("should never make it here")
 }
 
 // This is called from the webhook
-func RISCValidateToken(rawjwt []byte) error {
+func validateToken(rawjwt []byte) error {
 	token, err := jwt.ParseBytes(rawjwt)
 	if err != nil {
 		wasabi.Log.Error(err)

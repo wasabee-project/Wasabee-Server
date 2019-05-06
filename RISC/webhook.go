@@ -9,7 +9,7 @@ import (
 
 // RISCWebHook is the http route for receiving RISC updates
 // pushes the updates into the RISC channel for processing
-func RISCWebHook(res http.ResponseWriter, req *http.Request) {
+func Webhook(res http.ResponseWriter, req *http.Request) {
 	var err error
 
 	wasabi.Log.Debug(req.Header.Get("Content-Type"))
@@ -34,7 +34,7 @@ func RISCWebHook(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
-	if err := RISCValidateToken(raw); err != nil {
+	if err := validateToken(raw); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
