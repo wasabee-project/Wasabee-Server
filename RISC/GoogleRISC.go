@@ -1,21 +1,14 @@
 package risc
 
 import (
-	"bytes"
-	"context"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"golang.org/x/oauth2/google"
 	"io/ioutil"
 	"net/http"
 	"time"
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 )
 
@@ -25,6 +18,8 @@ type riscConfig struct {
 	Methods     []string `json:"delivery_methods_supported"`
 	AddEndpoint string   `json:"add_subject_endpoint"`
 	RemEndpoint string   `json:"remove_subject_endpoint"`
+	running     bool
+	clientemail string
 }
 
 type event struct {
@@ -62,143 +57,40 @@ type serviceCreds struct {
 
 var riscchan chan event
 var config riscConfig
-var scred serviceCreds
 
 // RISCinit sets up the data structures and starts the processing threads
-func RISCinit(certdir string) error {
+func RISCinit(configfile string) error {
 	// load config
 	if err := googleRiscDiscovery(); err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
-	// wasabi.Log.Debug(config)
 
-	if err := riscRegisterWebhook(certdir); err != nil {
+	data, err := ioutil.ReadFile(configfile)
+	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
+	var sc serviceCreds
+	err = json.Unmarshal(data, &sc)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	config.clientemail = sc.ClientEmail
 
-	// listen for updates on a new thread
 	riscchan = make(chan event, 2)
-	go readloop()
 
-	wasabi.Log.Debug("init complete")
-	return nil
-}
+	// start a thread for keeping the connection to google fresh
+	go riscRegisterWebhook(configfile)
 
-func riscRegisterWebhook(certdir string) error {
-	// register the receiver with Google -- get creds for service account
-	ctx := context.Background()
-	data, err := ioutil.ReadFile("certs/risc.json") // XXX do not hardcoded, put it in certs/ with the others
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
-	creds, err := google.CredentialsFromJSON(ctx, data, "https://www.googleapis.com/auth/bigquery")
-	if err != nil {
-		wasabi.Log.Fatal(err)
-		return err
-	}
-	// wasabi.Log.Debug("Creds: ", string(creds.JSON))
-	err = json.Unmarshal(creds.JSON, &scred)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
-	// establish webhook -- these last an hour then need to be updated
-	wasabi.Log.Debug("setting up webhooks with google")
-	updateWebhook(creds)
-	ticker := time.NewTicker(time.Hour)
-	for tick := range ticker.C {
-		wasabi.Log.Debug("updating webhooks with google: ", tick)
-		updateWebhook(creds)
-	}
-	wasabi.Log.Debug("should never make it here")
-	return nil
-}
-
-func updateWebhook(c *google.Credentials) error {
-	t := time.Now()
-	token := jwt.New()
-	token.Set(jwt.AudienceKey, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
-	token.Set(jwt.SubjectKey, scred.ClientEmail)
-	token.Set(jwt.IssuerKey, scred.ClientEmail)
-	token.Set(jwt.IssuedAtKey, t.Format(time.UnixDate))
-	token.Set(jwt.ExpirationKey, t.Add(time.Hour).Format(time.UnixDate))
-
-	buf, err := json.Marshal(token)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
-	key, err := parseRsaPrivateKeyFromPemStr(scred.PrivateKey)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
-	var hdr jws.Headers = &jws.StandardHeaders{}
-	err = hdr.Set("kid", scred.ProjectKeyID)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	jwsTok, err := jws.Sign(buf, jwa.RS256, key, jws.WithHeaders(hdr))
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	wasabi.Log.Debug(string(jwsTok))
-
-	apiurl := "https://risc.googleapis.com/v1beta/stream:update"
-	jmsg := map[string]interface{}{
-		"delivery": map[string]string{
-			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
-			"url":             "https://qbin.phtiv.com:8443/GoogleRISC",
-		},
-		"events_requested": []string{
-			"https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required",
-			"https://schemas.openid.net/secevent/risc/event-type/account-disabled",
-		},
-	}
-	raw, err := json.Marshal(jmsg)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	client := http.Client{}
-	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer " + string(jwsTok))
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-
-	response, err := client.Do(req)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	if response.StatusCode >= 300 {
-		// wasabi.Log.Debug(response)
-		raw, _ := ioutil.ReadAll(response.Body)
-		wasabi.Log.Debug(string(raw))
-	}
-
-	return nil
-}
-
-func readloop() {
-	for {
-		e := <-riscchan
-		wasabi.Log.Notice("Pulled from channel: ", e)
+	wasabi.Log.Debug("Starting listen loop for riscchan")
+	for e := range riscchan {
+		wasabi.Log.Notice("Received: ", e)
 		// XXX process the message
 	}
-	wasabi.Log.Debug("should never make it here")
+
+	return nil
 }
 
 // This is called from the webhook
@@ -208,7 +100,30 @@ func validateToken(rawjwt []byte) error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	wasabi.Log.Debug(token)
+
+	var e event
+	tmp, ok := token.Get("events")
+	if !ok {
+		wasabi.Log.Error(err)
+		return err
+	}
+	wasabi.Log.Debug("parsing event")
+	for k, v := range tmp.(map[string]interface{}) {
+		wasabi.Log.Debug("Event: ", k, v)
+		switch k {
+		case "https://schemas.openid.net/secevent/risc/event-type/verification":
+			wasabi.Log.Debug("processed ping response")
+			return nil
+		default:
+			wasabi.Log.Debug("trying to process type %s", k)
+			e.Type = k
+			x := v.(map[string]interface{})
+			e.Reason = x["reason"].(string)
+			y := x["subject"].(map[string]interface{})
+			e.Issuer = y["iss"].(string)
+			e.Subject = y["sub"].(string)
+		}
+	}
 
 	kid, ok := token.Get("kid")
 	if !ok {
@@ -225,33 +140,14 @@ func validateToken(rawjwt []byte) error {
 		return err
 	}
 
-	err = token.Verify(jwt.WithAudience(scred.ClientEmail), jwt.WithAcceptableSkew(60), jwt.WithVerify(jwa.RS256, key))
+	err = token.Verify(jwt.WithAudience(config.clientemail), jwt.WithAcceptableSkew(60), jwt.WithVerify(jwa.RS256, key))
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
-	wasabi.Log.Debug("verified token")
+	wasabi.Log.Debug("Pushing into channel: ", e)
+	riscchan <- e
 
-	// this was written with the other jwt library, probably needs to be redone
-	var e event
-	tmp, ok := token.Get("events")
-	if !ok {
-		wasabi.Log.Error(err)
-		return err
-	}
-	for k, v := range tmp.(map[string]interface{}) {
-		// wasabi.Log.Debug("Event: ", k, v)
-		e.Type = k
-		x := v.(map[string]interface{})
-		e.Reason = x["reason"].(string)
-		y := x["subject"].(map[string]interface{})
-		e.Issuer = y["iss"].(string)
-		e.Subject = y["sub"].(string)
-
-		wasabi.Log.Debug("Pushing into channel: ", e)
-
-		riscchan <- e
-	}
 	return nil
 }
 
@@ -323,21 +219,4 @@ func googleCerts(kid string) (key, error) {
 
 	err = fmt.Errorf("no matching keys found")
 	return x, err
-}
-
-func parseRsaPrivateKeyFromPemStr(privPEM string) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(privPEM))
-	if block == nil {
-		err := fmt.Errorf("failed to parse PEM block containing the key")
-		wasabi.Log.Error(err)
-		return nil, err
-	}
-
-	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return nil, err
-	}
-
-	return priv.(*rsa.PrivateKey), nil
 }

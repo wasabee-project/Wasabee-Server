@@ -33,7 +33,7 @@ func setupNotauthed(r *mux.Router) {
 	// Google Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
-	r.HandleFunc("/GoogleRISC", risc.RISCWebHook).Methods("POST")
+	r.HandleFunc("/GoogleRISC", risc.Webhook).Methods("POST")
 
 	// For enl.rocks community -> WASABI team sync
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")

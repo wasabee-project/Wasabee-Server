@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"path"
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/cloudkucooland/WASABI/GroupMe"
@@ -142,7 +143,12 @@ func run(c *cli.Context) error {
 		})
 	}
 
-	risc.RISCinit(c.String("certs"))
+	riscPath := path.Join(c.String("certs"), "risc.json")
+	if _, err := os.Stat(riscPath); err != nil {
+		wasabi.Log.Infof("%s does not exist, not enabling RISC", riscPath)
+	} else {
+		go risc.RISCinit(riscPath)
+	}
 
 	// Serve Telegram
 	if c.String("tgkey") != "" {
