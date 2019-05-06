@@ -20,6 +20,7 @@ type riscConfig struct {
 	RemEndpoint string   `json:"remove_subject_endpoint"`
 	running     bool
 	clientemail string
+	keys        keys
 }
 
 type event struct {
@@ -42,6 +43,7 @@ type key struct {
 	Use     string `json:"use"`
 }
 
+// Google probably has a type for this somewhere, maybe x/oauth/Google
 type serviceCreds struct {
 	Type            string `json:"type"`
 	ProjectID       string `json:"project_id"`
@@ -60,12 +62,13 @@ var config riscConfig
 
 // RISCinit sets up the data structures and starts the processing threads
 func RISCinit(configfile string) error {
-	// load config
+	// load config from google
 	if err := googleRiscDiscovery(); err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
 
+	// load service-account info from JSON file
 	data, err := ioutil.ReadFile(configfile)
 	if err != nil {
 		wasabi.Log.Error(err)
@@ -79,15 +82,17 @@ func RISCinit(configfile string) error {
 	}
 	config.clientemail = sc.ClientEmail
 
+	// make a channel to read for events
 	riscchan = make(chan event, 2)
 
-	// start a thread for keeping the connection to google fresh
+	// start a thread for keeping the connection to Google fresh
 	go riscRegisterWebhook(configfile)
 
-	wasabi.Log.Debug("Starting listen loop for riscchan")
 	for e := range riscchan {
 		wasabi.Log.Notice("Received: ", e)
-		// XXX process the message
+		// e.Subject is gid
+		// lock the user out? set local blacklist flag?
+		// just delete them outright (losing team membership and ops?)
 	}
 
 	return nil
@@ -107,13 +112,14 @@ func validateToken(rawjwt []byte) error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	wasabi.Log.Debug("parsing event")
 	for k, v := range tmp.(map[string]interface{}) {
 		wasabi.Log.Debug("Event: ", k, v)
 		switch k {
+		// verification types are not signed, no KID, just respond instantly
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			wasabi.Log.Debug("processed ping response")
 			return nil
+		// XXX this will probably seg-fault, need to write some good test units
 		default:
 			wasabi.Log.Debug("trying to process type %s", k)
 			e.Type = k
@@ -127,14 +133,12 @@ func validateToken(rawjwt []byte) error {
 
 	kid, ok := token.Get("kid")
 	if !ok {
-		err = fmt.Errorf("no Key ID in token")
+		err = fmt.Errorf("no Key ID in JWT")
 		wasabi.Log.Error(err)
 		return err
 	}
 
-	// XXX this gets a new list of keys from Google each time, do we need to do that?
-	// Just start a thread to get them each hour and cache them locally
-	key, err := googleCerts(kid.(string))
+	key, err := googleMatchingKey(kid.(string))
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
@@ -172,7 +176,6 @@ func googleRiscDiscovery() error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	//  wasabi.Log.Debug(string(body))
 	err = json.Unmarshal(body, &config)
 	if err != nil {
 		wasabi.Log.Error(err)
@@ -181,13 +184,12 @@ func googleRiscDiscovery() error {
 	return nil
 }
 
-func googleCerts(kid string) (key, error) {
-	var x key // unset for returning w/ errors
-
+// called hourly to keep them up-to-date
+func googleLoadKeys() error {
 	req, err := http.NewRequest("GET", config.JWKURI, nil)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return x, err
+		return err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -195,28 +197,34 @@ func googleCerts(kid string) (key, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return x, err
+		return err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return x, err
+		return err
 	}
 
-	var k keys
-	err = json.Unmarshal(body, &k)
+	// XXX should probably wrap this in a mutex
+	err = json.Unmarshal(body, &config.keys)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return x, err
+		return err
 	}
+	return nil
+}
 
-	for _, v := range k.Keys {
+func googleMatchingKey(kid string) (key, error) {
+	var x key
+
+	// XXX use mutex from googleLoadKeys
+	for _, v := range config.keys.Keys {
 		if v.KeyID == kid {
 			return v, nil
 		}
 	}
 
-	err = fmt.Errorf("no matching keys found")
+	err := fmt.Errorf("no matching keys found")
 	return x, err
 }

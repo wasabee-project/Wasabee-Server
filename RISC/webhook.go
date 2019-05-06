@@ -61,6 +61,7 @@ func riscRegisterWebhook(configfile string) error {
 
 	wasabi.Log.Notice("setting up RISC webhook with google")
 	updateWebhook(data)
+	googleLoadKeys()
 	config.running = true
 	ping(data)
 
@@ -68,6 +69,7 @@ func riscRegisterWebhook(configfile string) error {
 	for tick := range ticker.C {
 		wasabi.Log.Debug("updating webhook with google: ", tick)
 		updateWebhook(data)
+		googleLoadKeys()
 		ping(data)
 	}
 
