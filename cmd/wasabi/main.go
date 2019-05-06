@@ -3,15 +3,15 @@ package main
 import (
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
-	"path"
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/cloudkucooland/WASABI/GroupMe"
+	"github.com/cloudkucooland/WASABI/RISC"
 	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/cloudkucooland/WASABI/http"
-	"github.com/cloudkucooland/WASABI/RISC"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
