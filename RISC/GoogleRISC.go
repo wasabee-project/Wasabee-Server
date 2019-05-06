@@ -152,16 +152,16 @@ func updateWebhook(c *google.Credentials) error {
 	wasabi.Log.Debug(string(jwsTok))
 
 	apiurl := "https://risc.googleapis.com/v1beta/stream:update"
-	jmsg := map[string]interface{} {
-		"delivery": map[string]string {
+	jmsg := map[string]interface{}{
+		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
-			"url": "https://qbin.phtiv.com:8443/GoogleRISC",
+			"url":             "https://qbin.phtiv.com:8443/GoogleRISC",
 		},
-		"events_requested": []string {
+		"events_requested": []string{
 			"https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required",
 			"https://schemas.openid.net/secevent/risc/event-type/account-disabled",
-			},
-		}
+		},
+	}
 	raw, err := json.Marshal(jmsg)
 	if err != nil {
 		wasabi.Log.Error(err)
