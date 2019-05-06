@@ -15,6 +15,7 @@ import (
 	"github.com/cloudkucooland/WASABI"
 	"github.com/cloudkucooland/WASABI/GroupMe"
 	"github.com/cloudkucooland/WASABI/Telegram"
+	"github.com/cloudkucooland/WASABI/RISC"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
@@ -26,12 +27,13 @@ func setupRoutes(r *mux.Router) {
 
 // generic things, want logging
 func setupNotauthed(r *mux.Router) {
-	// XXX gorilla has CORSMethodMiddleware, should we use that instead?
+	// XXX gorilla has CORSMethodMiddleware, should we use that instead? -- no, very limited functionality at this time
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
+	r.HandleFunc("/GoogleRISC", risc.RISCWebHook).Methods("POST")
 
 	// For enl.rocks community -> WASABI team sync
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")

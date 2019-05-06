@@ -10,6 +10,7 @@ import (
 	"github.com/cloudkucooland/WASABI/GroupMe"
 	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/cloudkucooland/WASABI/http"
+	"github.com/cloudkucooland/WASABI/RISC"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
@@ -140,6 +141,8 @@ func run(c *cli.Context) error {
 			Logfile:          c.String("httpslog"),
 		})
 	}
+
+	risc.RISCinit(c.String("certs"))
 
 	// Serve Telegram
 	if c.String("tgkey") != "" {

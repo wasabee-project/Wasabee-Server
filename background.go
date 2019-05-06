@@ -27,7 +27,6 @@ func BackgroundTasks(c chan os.Signal) {
 			simpleDocClean()
 		}
 	}
-	return
 }
 
 // move to model_owntracks.go
