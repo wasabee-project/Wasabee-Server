@@ -90,10 +90,11 @@ func updateWebhook(data []byte) error {
 	}
 
 	apiurl := "https://risc.googleapis.com/v1beta/stream:update"
+	webroot, _ := wasabi.GetWebroot()
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
-			"url":             "https://qbin.phtiv.com:8443/GoogleRISC", // XXX do not hardcode this!
+			"url":             webroot + "/GoogleRISC",
 		},
 		"events_requested": []string{
 			"https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required",
