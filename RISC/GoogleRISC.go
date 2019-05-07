@@ -9,6 +9,8 @@ import (
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 )
 
@@ -20,7 +22,8 @@ type riscConfig struct {
 	RemEndpoint string   `json:"remove_subject_endpoint"`
 	running     bool
 	clientemail string
-	keys        keys
+	keys        *jwk.Set
+	authdata    []byte
 }
 
 type event struct {
@@ -28,19 +31,6 @@ type event struct {
 	Reason  string
 	Issuer  string
 	Subject string
-}
-
-type keys struct {
-	Keys []key `json:"keys"`
-}
-
-type key struct {
-	KeyID   string `json:"kid"`
-	E       string `json:"e"`
-	KeyType string `json:"kty"`
-	Alg     string `json:"alg"`
-	N       string `json:"n"`
-	Use     string `json:"use"`
 }
 
 // Google probably has a type for this somewhere, maybe x/oauth/Google
@@ -81,12 +71,13 @@ func RISCinit(configfile string) error {
 		return err
 	}
 	config.clientemail = sc.ClientEmail
+	config.authdata = data // Yeah, the consumers need the whole thing as bytes
 
 	// make a channel to read for events
 	riscchan = make(chan event, 2)
 
 	// start a thread for keeping the connection to Google fresh
-	go riscRegisterWebhook(configfile)
+	go riscRegisterWebhook()
 
 	for e := range riscchan {
 		wasabi.Log.Notice("Received: ", e)
@@ -119,9 +110,9 @@ func validateToken(rawjwt []byte) error {
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			wasabi.Log.Debug("processed ping response")
 			return nil
-		// XXX this will probably seg-fault, need to write some good test units
+		// XXX add specific types here as we write tests for them
 		default:
-			wasabi.Log.Debug("trying to process type %s", k)
+			// XXX this is ugly and brittle - use a map parser
 			e.Type = k
 			x := v.(map[string]interface{})
 			e.Reason = x["reason"].(string)
@@ -137,19 +128,34 @@ func validateToken(rawjwt []byte) error {
 		wasabi.Log.Error(err)
 		return err
 	}
-
-	key, err := googleMatchingKey(kid.(string))
+	key := config.keys.LookupKeyID(kid.(string))
+	if len(key) == 0 {
+		err = fmt.Errorf("no matching key")
+		wasabi.Log.Error(err)
+		return err
+	}
+	if len(key) != 1 {
+		err = fmt.Errorf("multiple matching keys found, using only the first")
+		wasabi.Log.Notice(err)
+	}
+	r, err := key[0].Materialize()
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
 
-	err = token.Verify(jwt.WithAudience(config.clientemail), jwt.WithAcceptableSkew(60), jwt.WithVerify(jwa.RS256, key))
+	// this checks iss, iat, aud and others
+	err = token.Verify(jwt.WithAudience(config.clientemail), jwt.WithAcceptableSkew(60), jwt.WithIssuer(config.Issuer), jwt.WithVerify(jwa.RS256, r))
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
-	wasabi.Log.Debug("Pushing into channel: ", e)
+	// this checks the signature
+	_, err = jws.Verify(rawjwt, jwa.RS256, r)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
 	riscchan <- e
 
 	return nil
@@ -184,47 +190,13 @@ func googleRiscDiscovery() error {
 	return nil
 }
 
-// called hourly to keep them up-to-date
+// called hourly to keep the key cache up-to-date
 func googleLoadKeys() error {
-	req, err := http.NewRequest("GET", config.JWKURI, nil)
+	keys, err := jwk.Fetch(config.JWKURI)
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
 	}
-	client := &http.Client{
-		Timeout: 3 * time.Second,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
-	// XXX should probably wrap this in a mutex
-	err = json.Unmarshal(body, &config.keys)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
+	config.keys = keys
 	return nil
-}
-
-func googleMatchingKey(kid string) (key, error) {
-	var x key
-
-	// XXX use mutex from googleLoadKeys
-	for _, v := range config.keys.Keys {
-		if v.KeyID == kid {
-			return v, nil
-		}
-	}
-
-	err := fmt.Errorf("no matching keys found")
-	return x, err
 }

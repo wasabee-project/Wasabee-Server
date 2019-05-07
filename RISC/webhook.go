@@ -52,33 +52,27 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(202)
 }
 
-func riscRegisterWebhook(configfile string) error {
-	data, err := ioutil.ReadFile(configfile)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
+func riscRegisterWebhook() error {
 	wasabi.Log.Notice("setting up RISC webhook with google")
-	updateWebhook(data)
+	updateWebhook()
 	googleLoadKeys()
 	config.running = true
-	ping(data)
+	ping()
 
 	ticker := time.NewTicker(time.Hour)
 	for tick := range ticker.C {
 		wasabi.Log.Debug("updating webhook with google: ", tick)
-		updateWebhook(data)
+		updateWebhook()
 		googleLoadKeys()
-		ping(data)
+		ping()
 	}
 
 	wasabi.Log.Debug("should never make it here")
 	return nil
 }
 
-func updateWebhook(data []byte) error {
-	creds, err := google.JWTAccessTokenSourceFromJSON(data, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+func updateWebhook() error {
+	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
 	if err != nil {
 		wasabi.Log.Fatal(err)
 		return err
@@ -134,8 +128,8 @@ func updateWebhook(data []byte) error {
 	return nil
 }
 
-func ping(data []byte) error {
-	creds, err := google.JWTAccessTokenSourceFromJSON(data, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+func ping() error {
+	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
 	if err != nil {
 		wasabi.Log.Fatal(err)
 		return err
@@ -157,6 +151,53 @@ func ping(data []byte) error {
 	}
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+
+	response, err := client.Do(req)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	if response.StatusCode != 200 {
+		raw, _ := ioutil.ReadAll(response.Body)
+		wasabi.Log.Debug(string(raw))
+	}
+
+	return nil
+}
+
+func addSubject(gid wasabi.GoogleID) error {
+	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+	if err != nil {
+		wasabi.Log.Fatal(err)
+		return err
+	}
+	token, err := creds.Token()
+	if err != nil {
+		wasabi.Log.Fatal(err)
+		return err
+	}
+
+	jmsg := map[string]interface{}{
+		"subject": map[string]string{
+			"subject_type": "iss-sub",
+			"iss":          "https://accounts.google.com/",
+			"sub":          gid.String(),
+		},
+		"verified": true,
+	}
+	raw, err := json.Marshal(jmsg)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return err
+	}
+	client := http.Client{}
+	req, err := http.NewRequest("POST", config.AddEndpoint, bytes.NewBuffer(raw))
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
