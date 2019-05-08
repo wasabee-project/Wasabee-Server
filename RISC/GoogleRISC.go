@@ -119,22 +119,21 @@ func validateToken(rawjwt []byte) error {
 		return err
 	}
 	for k, v := range tmp.(map[string]interface{}) {
-		wasabi.Log.Debug("Event: ", k, v)
-		switch k {
+		e.Type = k
+
 		// verification types are not signed, no KID, just respond instantly
-		case "https://schemas.openid.net/secevent/risc/event-type/verification":
-			wasabi.Log.Debug("processed ping response")
+		if k == "https://schemas.openid.net/secevent/risc/event-type/verification" {
+			wasabi.Log.Debug("received RISC pong")
 			return nil
-		// XXX add specific types here as we write tests for them
-		default:
-			// XXX this is ugly and brittle - use a map parser
-			e.Type = k
-			x := v.(map[string]interface{})
-			e.Reason = x["reason"].(string)
-			y := x["subject"].(map[string]interface{})
-			e.Issuer = y["iss"].(string)
-			e.Subject = y["sub"].(string)
 		}
+		wasabi.Log.Debug("Event: ", k, v)
+
+		// XXX this is ugly and brittle - use a map parser
+		x := v.(map[string]interface{})
+		e.Reason = x["reason"].(string)
+		y := x["subject"].(map[string]interface{})
+		e.Issuer = y["iss"].(string)
+		e.Subject = y["sub"].(string)
 	}
 
 	kid, ok := token.Get("kid")
