@@ -38,7 +38,7 @@ func gmTemplates(t map[string]*template.Template) error {
 	if err != nil {
 		wasabi.Log.Error(err)
 	}
-	wasabi.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
+	wasabi.Log.Info("Including frontend GroupMe templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
 		wasabi.Log.Error(err)

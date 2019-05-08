@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudkucooland/WASABI"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"io/ioutil"
 	"net/http"
@@ -72,14 +73,9 @@ func riscRegisterWebhook() error {
 }
 
 func updateWebhook() error {
-	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+	token, err := getToken()
 	if err != nil {
-		wasabi.Log.Fatal(err)
-		return err
-	}
-	token, err := creds.Token()
-	if err != nil {
-		wasabi.Log.Fatal(err)
+		wasabi.Log.Error(err)
 		return err
 	}
 
@@ -129,20 +125,15 @@ func updateWebhook() error {
 }
 
 func ping() error {
-	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+	token, err := getToken()
 	if err != nil {
-		wasabi.Log.Fatal(err)
-		return err
-	}
-	token, err := creds.Token()
-	if err != nil {
-		wasabi.Log.Fatal(err)
+		wasabi.Log.Error(err)
 		return err
 	}
 
 	apiurl := "https://risc.googleapis.com/v1beta/stream:verify"
 	jmsg := map[string]string{
-		"state": "some random value",
+		"state": wasabi.GenerateName(),
 	}
 	raw, err := json.Marshal(jmsg)
 	if err != nil {
@@ -171,15 +162,12 @@ func ping() error {
 	return nil
 }
 
-func addSubject(gid wasabi.GoogleID) error {
-	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+// AddSubject puts the GID into the list of subjects we are concerned with, Google lists the endpoint, but doesn't do anything with it.
+// It just 404s at the moment
+func AddSubject(gid wasabi.GoogleID) error {
+	token, err := getToken()
 	if err != nil {
-		wasabi.Log.Fatal(err)
-		return err
-	}
-	token, err := creds.Token()
-	if err != nil {
-		wasabi.Log.Fatal(err)
+		wasabi.Log.Error(err)
 		return err
 	}
 
@@ -216,4 +204,13 @@ func addSubject(gid wasabi.GoogleID) error {
 	}
 
 	return nil
+}
+
+func getToken() (*oauth2.Token, error) {
+	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+	if err != nil {
+		wasabi.Log.Fatal(err)
+		return nil, err
+	}
+	return creds.Token()
 }

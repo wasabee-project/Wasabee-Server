@@ -81,9 +81,24 @@ func RISCinit(configfile string) error {
 
 	for e := range riscchan {
 		wasabi.Log.Notice("Received: ", e)
-		// e.Subject is gid
-		// lock the user out? set local blacklist flag?
-		// just delete them outright (losing team membership and ops?)
+		gid := wasabi.GoogleID(e.Subject)
+		switch e.Type {
+		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
+			gid.Lock(e.Reason)
+			gid.Logout(e.Reason)
+		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
+			gid.Unlock(e.Reason)
+		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
+			wasabi.Log.Criticalf("deleting %s because Google RISC said: %s", e.Subject, e.Reason)
+			gid.Logout(e.Reason)
+			gid.Delete()
+		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
+			gid.Logout(e.Reason)
+		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
+			gid.Logout(e.Reason)
+		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
+			gid.Logout(e.Reason)
+		}
 	}
 
 	return nil

@@ -516,3 +516,37 @@ func (gid GoogleID) Delete() error {
 
 	return nil
 }
+
+// Lock disables an account -- called by RISC system
+func (gid GoogleID) Lock(reason string) {
+	// set a local blacklist flag in database
+}
+
+// Unlock enables a disabled account -- called by RISC system
+func (gid GoogleID) Unlock(reason string) {
+	// clear local blacklist flag in database
+}
+
+// Logout sets a temporary logout token - not stored since logout cases are not critical
+// and sessions are refreshed with google hourly
+func (gid GoogleID) Logout(reason string) {
+	Log.Debugf("adding %s to logout list: %s", gid, reason)
+	logoutlist[gid] = true
+}
+
+// CheckLogout looks to see if the user is on the force logout list
+func (gid GoogleID) CheckLogout() bool {
+	logout, ok := logoutlist[gid]
+	if !ok { // not in the list
+		return false
+	}
+	Log.Debugf("clearing %s from logoutlist", gid)
+	logoutlist[gid] = false // now that they've been checked, clear them
+	return logout
+}
+
+var logoutlist map[GoogleID]bool
+
+func init() {
+	logoutlist = make(map[GoogleID]bool)
+}

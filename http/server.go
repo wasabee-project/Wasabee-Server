@@ -336,6 +336,11 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		gid := wasabi.GoogleID(id.(string))
+		if gid.CheckLogout() {
+			wasabi.Log.Notice("Google RISC requested logout")
+			http.Redirect(res, req, redirectURL, http.StatusFound)
+			return
+		}
 
 		in, ok := ses.Values["nonce"]
 		if !ok || in == nil {
