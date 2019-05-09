@@ -30,6 +30,7 @@ type AgentData struct {
 	OwnTracksJSON string
 	RocksVerified bool
 	RAID          bool
+	RISC          bool
 	OwnedTeams    []AdOwnedTeam
 	Teams         []AdTeam
 	Ops           []AdOperation
@@ -142,7 +143,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid, RocksVerified, RAID) VALUES (?,?,?,?,NULL,?,?,?,?,?)",
+		_, err = db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,NULL,?,?,?,?,?,0)",
 			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID, rocks.Verified, 0)
 		if err != nil {
 			Log.Error(err)
@@ -165,7 +166,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	// XXX check to see if they are blacklisted in the DB -- if V and .Rocks are down we still don't want to let them in
-	if authError != nil {
+	if authError != nil || gid.RISC() {
 		Log.Notice(authError)
 		return false, authError
 	}
@@ -189,8 +190,7 @@ func (gid GoogleID) SetIngressName(name string) error {
 func (lockey LocKey) Gid() (GoogleID, error) {
 	var gid GoogleID
 
-	r := db.QueryRow("SELECT gid FROM agent WHERE lockey = ?", lockey)
-	err := r.Scan(&gid)
+	err := db.QueryRow("SELECT gid FROM agent WHERE lockey = ?", lockey).Scan(&gid)
 	if err != nil {
 		Log.Notice(err)
 		return "", err
@@ -203,12 +203,12 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	ud.GoogleID = gid
 
-	row := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid)
 	var ot sql.NullString
-	err := row.Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &ud.OwnTracksJSON)
+	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC, &ud.OwnTracksJSON)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
 		err = fmt.Errorf("unknown GoogleID: [%s] try restarting your browser", gid)
+		gid.Logout("broken cookie")
 		return err
 	}
 	if err != nil {
@@ -315,8 +315,7 @@ func adOwnedTeams(gid GoogleID, ud *AgentData) error {
 
 func adTelegram(gid GoogleID, ud *AgentData) error {
 	var authtoken sql.NullString
-	row := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid)
-	err := row.Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
+	err := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
 	if err != nil && err.Error() == "sql: no rows in result set" {
 		ud.Telegram.ID = 0
 		ud.Telegram.Verified = false
@@ -404,9 +403,7 @@ func (gid GoogleID) ResetLocKey() error {
 // IngressName returns an agent's name for a GoogleID
 func (gid GoogleID) IngressName() (string, error) {
 	var iname string
-	r := db.QueryRow("SELECT iname FROM agent WHERE gid = ?", gid)
-	err := r.Scan(&iname)
-
+	err := db.QueryRow("SELECT iname FROM agent WHERE gid = ?", gid).Scan(&iname)
 	return iname, err
 }
 
@@ -518,13 +515,21 @@ func (gid GoogleID) Delete() error {
 }
 
 // Lock disables an account -- called by RISC system
-func (gid GoogleID) Lock(reason string) {
-	// set a local blacklist flag in database
+func (gid GoogleID) Lock(reason string) error {
+	if _, err := db.Exec("UPDATE agent SET RISC = 1 WHERE gid = ?", gid); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }
 
 // Unlock enables a disabled account -- called by RISC system
-func (gid GoogleID) Unlock(reason string) {
-	// clear local blacklist flag in database
+func (gid GoogleID) Unlock(reason string) error {
+	if _, err := db.Exec("UPDATE agent SET RISC = 0 WHERE gid = ?", gid); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }
 
 // Logout sets a temporary logout token - not stored since logout cases are not critical
@@ -549,4 +554,15 @@ var logoutlist map[GoogleID]bool
 
 func init() {
 	logoutlist = make(map[GoogleID]bool)
+}
+
+// RISC checks to see if the user was marked as compromised by Google
+func (gid GoogleID) RISC() bool {
+	var RISC bool
+
+	err := db.QueryRow("SELECT RISC FROM agent WHERE gid = ?", gid).Scan(&RISC)
+	if err != nil {
+		Log.Notice(err)
+	}
+	return RISC
 }

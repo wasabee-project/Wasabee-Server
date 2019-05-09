@@ -188,7 +188,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Email string          `json:"email"`
 	}
 
-	content, err := getAgentInfo(req.FormValue("state"), req.FormValue("code"))
+	content, tokenStr, err := getAgentInfo(req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
 		wasabi.Log.Notice(err)
 		return
@@ -242,6 +242,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["id"] = m.Gid.String()
 	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
+	ses.Values["google"] = tokenStr
 	ses.Options = &sessions.Options{
 		Path:   "/",
 		MaxAge: 0,
@@ -264,9 +265,9 @@ func calculateNonce(gid wasabi.GoogleID) (string, string) {
 
 // read the result from google at end of oauth session
 // should we save the token in the session cookie for any reason?
-func getAgentInfo(state string, code string) ([]byte, error) {
+func getAgentInfo(state string, code string) ([]byte, string, error) {
 	if state != config.oauthStateString {
-		return nil, fmt.Errorf("invalid oauth state")
+		return nil, "", fmt.Errorf("invalid oauth state")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -274,18 +275,19 @@ func getAgentInfo(state string, code string) ([]byte, error) {
 
 	token, err := config.googleOauthConfig.Exchange(ctx, code)
 	if err != nil {
-		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
+		return nil, "", fmt.Errorf("code exchange failed: %s", err.Error())
 	}
+	tokenStr, _ := json.Marshal(token)
 	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting agent info: %s", err.Error())
+		return nil, "", fmt.Errorf("failed getting agent info: %s", err.Error())
 	}
 	defer response.Body.Close()
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed reading response body: %s", err.Error())
+		return nil, "", fmt.Errorf("failed reading response body: %s", err.Error())
 	}
-	return contents, nil
+	return contents, string(tokenStr), nil
 }
 
 // read the gid from the session cookie and return it
