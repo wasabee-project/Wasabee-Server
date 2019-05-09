@@ -112,65 +112,69 @@ func validateToken(rawjwt []byte) error {
 		return err
 	}
 
-	var e event
+	kid, keyOK := token.Get("kid")
+	// if it is signed, verify it
+	if keyOK {
+		key := config.keys.LookupKeyID(kid.(string))
+		if len(key) == 0 {
+			err = fmt.Errorf("no matching key")
+			wasabi.Log.Error(err)
+			return err
+		}
+		if len(key) != 1 {
+			// pick the first that is RS256?
+			err = fmt.Errorf("multiple matching keys found, using the first")
+			wasabi.Log.Notice(err)
+		}
+		r, err := key[0].Materialize()
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
+
+		// this checks iss, iat, aud and others
+		err = token.Verify(jwt.WithAudience(config.clientemail), jwt.WithAcceptableSkew(60), jwt.WithIssuer(config.Issuer), jwt.WithVerify(jwa.RS256, r))
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
+		// this checks the signature
+		_, err = jws.Verify(rawjwt, jwa.RS256, r)
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
+	}
+
 	tmp, ok := token.Get("events")
 	if !ok {
 		wasabi.Log.Error(err)
 		return err
 	}
+	// I've only ever seen one event per message, but we can easily deal with multiple
 	for k, v := range tmp.(map[string]interface{}) {
+		var e event
 		e.Type = k
 
 		// verification types are not signed, no KID, just respond instantly
 		if k == "https://schemas.openid.net/secevent/risc/event-type/verification" {
 			wasabi.Log.Debug("received RISC pong")
-			return nil
+			e.Reason = "ping requsted"
+			continue
 		}
-		wasabi.Log.Debug("Event: ", k, v)
+		// anything else requires a signature
+		if keyOK {
+			wasabi.Log.Debug("Event: ", k, v)
 
-		// XXX this is ugly and brittle - use a map parser
-		x := v.(map[string]interface{})
-		e.Reason = x["reason"].(string)
-		y := x["subject"].(map[string]interface{})
-		e.Issuer = y["iss"].(string)
-		e.Subject = y["sub"].(string)
+			// XXX this is ugly and brittle - use a map parser
+			x := v.(map[string]interface{})
+			e.Reason = x["reason"].(string)
+			y := x["subject"].(map[string]interface{})
+			e.Issuer = y["iss"].(string)
+			e.Subject = y["sub"].(string)
+		}
+		riscchan <- e
 	}
-
-	kid, ok := token.Get("kid")
-	if !ok {
-		err = fmt.Errorf("no Key ID in JWT")
-		wasabi.Log.Error(err)
-		return err
-	}
-	key := config.keys.LookupKeyID(kid.(string))
-	if len(key) == 0 {
-		err = fmt.Errorf("no matching key")
-		wasabi.Log.Error(err)
-		return err
-	}
-	if len(key) != 1 {
-		err = fmt.Errorf("multiple matching keys found, using only the first")
-		wasabi.Log.Notice(err)
-	}
-	r, err := key[0].Materialize()
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
-	// this checks iss, iat, aud and others
-	err = token.Verify(jwt.WithAudience(config.clientemail), jwt.WithAcceptableSkew(60), jwt.WithIssuer(config.Issuer), jwt.WithVerify(jwa.RS256, r))
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	// this checks the signature
-	_, err = jws.Verify(rawjwt, jwa.RS256, r)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-	riscchan <- e
 
 	return nil
 }

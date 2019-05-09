@@ -179,6 +179,10 @@ func run(c *cli.Context) error {
 	if c.String("https") != "none" {
 		wasabihttps.Shutdown()
 	}
+	if _, err := os.Stat(riscPath); err != nil {
+		risc.DisableWebhook()
+	}
+	
 	// close database connection
 	wasabi.Disconnect()
 	return nil

@@ -67,7 +67,7 @@ func riscRegisterWebhook() {
 		return
 	}
 
-	defer disableWebhook()
+	defer DisableWebhook()
 
 	// if a secevent comes in between establishing the hook and loading the keys?
 	config.running = true
@@ -151,7 +151,8 @@ func updateWebhook() error {
 	return nil
 }
 
-func disableWebhook() error {
+// DisableWebhook tells Google to stop sending messages
+func DisableWebhook() error {
 	wasabi.Log.Info("disabling RISC webhook with Google")
 
 	token, err := getToken()
