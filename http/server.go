@@ -316,7 +316,7 @@ func authMW(next http.Handler) http.Handler {
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
-			ses.Save(req, res)
+			_ = ses.Save(req, res)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -330,7 +330,7 @@ func authMW(next http.Handler) http.Handler {
 		if !ok || id == nil {
 			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
 			ses.Values["loginReq"] = req.URL.String()
-			ses.Save(req, res)
+			_ = ses.Save(req, res)
 			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return
 		}
@@ -355,11 +355,11 @@ func authMW(next http.Handler) http.Handler {
 			if inNonce != pNonce {
 				// wasabi.Log.Debug("Session timed out for", gid.String())
 				ses.Values["nonce"] = "unset"
-				ses.Save(req, res)
+				_ = ses.Save(req, res)
 			} else {
 				// wasabi.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
-				ses.Save(req, res)
+				_ = ses.Save(req, res)
 			}
 		}
 
@@ -385,7 +385,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		ses.Values["loginReq"] = "/me"
 	}
-	ses.Save(req, res)
+	_ = ses.Save(req, res)
 
 	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
 	http.Redirect(res, req, url, http.StatusFound)

@@ -58,7 +58,11 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 
 	switch t.Type {
 	case "location":
-		gid.OwnTracksUpdate(jRaw, t.Lat, t.Lon)
+		err = gid.OwnTracksUpdate(jRaw, t.Lat, t.Lon)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+		}
 		s, err := gid.OwnTracksTeams()
 		if err != nil {
 			wasabi.Log.Notice(err)

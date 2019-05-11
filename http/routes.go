@@ -211,7 +211,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 			Path:   "/",
 			MaxAge: -1, // force delete
 		}
-		ses.Save(req, res)
+		_ = ses.Save(req, res)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -247,7 +247,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Path:   "/",
 		MaxAge: 0,
 	}
-	ses.Save(req, res)
+	_ = ses.Save(req, res)
 	http.Redirect(res, req, location, http.StatusFound)
 }
 

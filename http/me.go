@@ -193,9 +193,9 @@ func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 	sl := vars["sl"]
 
 	if sl == "On" {
-		gid.StatusLocationEnable()
+		_ = gid.StatusLocationEnable()
 	} else {
-		gid.StatusLocationDisable()
+		_ = gid.StatusLocationDisable()
 	}
 	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
 }

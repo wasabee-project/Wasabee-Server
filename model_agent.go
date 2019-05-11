@@ -479,24 +479,36 @@ func (gid GoogleID) Delete() error {
 	var teamID TeamID
 	rows, err := db.Query("SELECT teamID FROM team WHERE owner = ?", gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&teamID)
-		teamID.Delete()
+		err = rows.Scan(&teamID)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		err = teamID.Delete()
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
 	}
 
 	teamrows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ?", gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Error(err)
 		return err
 	}
 	defer teamrows.Close()
 	for teamrows.Next() {
-		teamrows.Scan(&teamID)
-		teamID.RemoveAgent(gid)
+		err := teamrows.Scan(&teamID)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		_ = teamID.RemoveAgent(gid)
 	}
 
 	// brute force delete everyhing else

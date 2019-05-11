@@ -1,6 +1,7 @@
 package wasabitelegram
 
 import (
+	"fmt"
 	// "encoding/json"
 	"github.com/cloudkucooland/WASABI"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -60,11 +61,15 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	// wasabi.Log.Debug(string(s))
 
 	if update.CallbackQuery.Message.Location != nil && update.CallbackQuery.Message.Location.Latitude != 0 {
-		gid.AgentLocation(
+		err = gid.AgentLocation(
 			strconv.FormatFloat(update.CallbackQuery.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(update.CallbackQuery.Message.Location.Longitude, 'f', -1, 64),
 			"Telegram",
 		)
+		if err != nil {
+			wasabi.Log.Error(err)
+			return msg, err
+		}
 		msg.Text = "Location Processed"
 	}
 
@@ -116,7 +121,11 @@ func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tg
 	}
 
 	t := wasabi.TeamID(team)
-	name, _ := t.Name()
+	name, err := t.Name()
+	if err != nil {
+		wasabi.Log.Notice(err)
+		return err
+	}
 
 	switch action {
 	case "primary":
@@ -124,21 +133,34 @@ func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tg
 			State: "Primary",
 			Team:  name,
 		})
-		gid.SetTeamState(t, "Primary")
+		err = gid.SetTeamState(t, "Primary")
+		if err != nil {
+			wasabi.Log.Notice(err)
+		}
 	case "activate":
 		msg.Text, _ = templateExecute("TeamStateChange", lang, tStruct{
 			State: "On",
 			Team:  name,
 		})
-		gid.SetTeamState(t, "On")
+		err = gid.SetTeamState(t, "On")
+		if err != nil {
+			wasabi.Log.Notice(err)
+		}
 	case "deactivate":
 		msg.Text, _ = templateExecute("TeamStateChange", lang, tStruct{
 			State: "Off",
 			Team:  name,
 		})
-		gid.SetTeamState(t, "Off")
+		err = gid.SetTeamState(t, "Off")
+		if err != nil {
+			wasabi.Log.Notice(err)
+		}
 	default:
-		wasabi.Log.Error("Unknown Team command")
+		err = fmt.Errorf("Unknown team state: %s", action)
+		wasabi.Log.Error(err)
+		if err != nil {
+			wasabi.Log.Notice(err)
+		}
 	}
 	return nil
 }

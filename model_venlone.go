@@ -194,7 +194,7 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 	}
 	if stat.Status != 0 {
 		err := fmt.Errorf("polling %s returned message: %s", eid, stat.Message)
-		eid.StatusLocationDisable()
+		_ = eid.StatusLocationDisable()
 		return "", "", err
 	}
 	return stat.Lat, stat.Lon, nil

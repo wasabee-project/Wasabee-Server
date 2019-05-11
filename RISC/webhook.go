@@ -206,10 +206,6 @@ func checkWebhook() error {
 	}
 
 	apiurl := "https://risc.googleapis.com/v1beta/stream"
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
 	client := http.Client{}
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {

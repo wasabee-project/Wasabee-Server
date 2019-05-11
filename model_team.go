@@ -266,7 +266,7 @@ func toGid(in interface{}) (GoogleID, error) {
 				lockey := LocKey(tmp)
 				gid, _ = toGid(lockey)
 			} else {
-				gid, _ = SearchAgentName(tmp)
+				gid, err = SearchAgentName(tmp)
 				if err != nil && err.Error() == "sql: no rows in result set" { // XXX this can't happen any longer
 					err = fmt.Errorf("unknown agent (XXX impossible route): %s", tmp)
 					Log.Info(err)

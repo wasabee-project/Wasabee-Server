@@ -94,7 +94,10 @@ func Request(id string) (SimpleDocument, error) {
 		return SimpleDocument{}, err
 	}
 
-	go db.Exec("UPDATE document SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
+	_, err = db.Exec("UPDATE document SET views = views + 1 WHERE id = ?", hex.EncodeToString(databaseID[:]))
+	if err != nil {
+		Log.Error("unable to update document view count")
+	}
 	doc.Views = views
 
 	doc.Upload, _ = time.Parse("2006-01-02 15:04:05", upload.String)
@@ -119,7 +122,7 @@ func Request(id string) (SimpleDocument, error) {
 				// Volatile document
 				_, err = db.Exec("DELETE FROM document WHERE id = ?", hex.EncodeToString(databaseID[:]))
 				if err != nil {
-					Log.Errorf("Couldn't delete volatile document: %s", err)
+					Log.Errorf("couldn't delete volatile document: %s", err)
 				}
 			}
 		} else {
@@ -141,11 +144,11 @@ func simpleDocClean() {
 
 	result, err := stmt.Exec()
 	if err != nil {
-		Log.Errorf("Couldn't execute cleanup statement: %s", err)
+		Log.Errorf("couldn't execute cleanup statement: %s", err)
 	} else {
 		n, err := result.RowsAffected()
 		if err == nil && n > 0 {
-			Log.Debugf("Cleaned up %d documents.", n)
+			Log.Debugf("cleaned up %d documents", n)
 		}
 	}
 }

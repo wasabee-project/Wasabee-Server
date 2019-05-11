@@ -31,7 +31,11 @@ func TestOperation(t *testing.T) {
 	op.ID = in.ID
 
 	opp := &op
-	opp.Populate(gid)
+	err = opp.Populate(gid)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
 	out, err := json.MarshalIndent(&op, "", "  ")
 	if err != nil {
 		t.Error(err.Error())

@@ -94,7 +94,7 @@ func WASABIBot(init TGConfiguration) error {
 // called only at server shutdown
 func Shutdown() {
 	wasabi.Log.Infof("Shutting down %s", bot.Self.UserName)
-	bot.RemoveWebhook()
+	_, _ = bot.RemoveWebhook()
 	bot.StopReceivingUpdates()
 }
 
@@ -155,7 +155,7 @@ func runUpdate(update tgbotapi.Update) error {
 		}
 
 		bot.Send(msg)
-		bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
+		_, _ = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
 	}
 
 	return nil
@@ -247,14 +247,13 @@ func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.Goo
 	}
 
 	if inMsg.Message.Location != nil {
-		gid.AgentLocation(
+		_ = gid.AgentLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
 			"Telegram",
 		)
 		msg.Text = "Location Processed"
 	}
-
 	return nil
 }
 
@@ -390,7 +389,11 @@ func runRocks(tgid wasabi.TelegramID) (wasabi.GoogleID, error) {
 
 	// this adds the agent to the Telegram tables
 	// but InitAgent should have already called this ...
-	(agent.Gid).RocksUpdate(&agent)
+	err = (agent.Gid).RocksUpdate(&agent)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return agent.Gid, err
+	}
 
 	return agent.Gid, nil
 }

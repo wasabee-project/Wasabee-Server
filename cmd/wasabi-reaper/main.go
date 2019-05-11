@@ -21,6 +21,9 @@ var flags = []cli.Flag{
 	cli.BoolFlag{
 		Name:  "help, h",
 		Usage: "Shows this help, then exits."},
+	cli.StringFlag{
+		Name: "log", EnvVar: "REAPER_LOGFILE", Value: "logs/wasabi-reaper.log",
+		Usage: "output log file."},
 }
 
 func main() {
@@ -43,17 +46,20 @@ func main() {
 
 	app.Action = run
 
-	app.Run(os.Args)
+	_ = app.Run(os.Args)
 }
 
 func run(c *cli.Context) error {
 	if c.Bool("help") {
-		cli.ShowAppHelp(c)
+		_ = cli.ShowAppHelp(c)
 		return nil
 	}
 
 	if c.Bool("debug") {
 		wasabi.SetLogLevel(logging.DEBUG)
+	}
+	if c.String("log") != "" {
+		_ = wasabi.AddFileLog(c.String("log"), logging.INFO)
 	}
 
 	// Connect to database

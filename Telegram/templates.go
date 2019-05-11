@@ -35,9 +35,6 @@ func templates(t map[string]*template.Template) error {
 	}
 	config.templateSet = make(map[string]*template.Template)
 
-	if err != nil {
-		wasabi.Log.Error(err)
-	}
 	wasabi.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {

@@ -30,10 +30,13 @@ var flags = []cli.Flag{
 		Name: "wordlist", EnvVar: "WORD_LIST", Value: "eff_large_wordlist.txt",
 		Usage: "Word list used for random slug generation."},
 	cli.StringFlag{
+		Name: "log", EnvVar: "LOGFILE", Value: "logs/wasabi.log",
+		Usage: "output log file."},
+	cli.StringFlag{
 		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":443",
 		Usage: "HTTPS listen address."},
 	cli.StringFlag{
-		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "wasabi-https.log",
+		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "logs/wasabi-https.log",
 		Usage: "HTTPS log file."},
 	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
@@ -90,17 +93,20 @@ func main() {
 
 	app.Action = run
 
-	app.Run(os.Args)
+	_ = app.Run(os.Args)
 }
 
 func run(c *cli.Context) error {
 	if c.Bool("help") {
-		cli.ShowAppHelp(c)
+		_ = cli.ShowAppHelp(c)
 		return nil
 	}
 
 	if c.Bool("debug") {
 		wasabi.SetLogLevel(logging.DEBUG)
+	}
+	if c.String("log") != "" {
+		_ = wasabi.AddFileLog(c.String("log"), logging.INFO)
 	}
 
 	// Load words
@@ -177,12 +183,12 @@ func run(c *cli.Context) error {
 		wasabitelegram.Shutdown()
 	}
 	if c.String("https") != "none" {
-		wasabihttps.Shutdown()
+		_ = wasabihttps.Shutdown()
 	}
 	if _, err := os.Stat(riscPath); err != nil {
-		risc.DisableWebhook()
+		_ = risc.DisableWebhook()
 	}
-	
+
 	// close database connection
 	wasabi.Disconnect()
 	return nil

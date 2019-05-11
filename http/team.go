@@ -32,7 +32,12 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	team.FetchTeam(&teamList, false)
+	err = team.FetchTeam(&teamList, false)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
 	data, err := json.MarshalIndent(teamList, "", "\t")
