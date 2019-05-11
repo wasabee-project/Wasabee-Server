@@ -186,7 +186,7 @@ func RocksCommunitySync(msg json.RawMessage) error {
 
 	if rc.Action == "onJoin" {
 		_, err = rc.User.Gid.IngressName()
-		if err != nil && err.Error() == NoRows {
+		if err != nil && err == sql.ErrNoRows {
 			Log.Debugf("Importing previously unknown agent: %s", rc.User.Gid)
 			_, err = rc.User.Gid.InitAgent()
 			if err != nil {
@@ -257,7 +257,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 
 	for _, agent := range rr.Members {
 		_, err = agent.IngressName()
-		if err != nil && err.Error() == NoRows {
+		if err != nil && err == sql.ErrNoRows {
 			Log.Debugf("Importing previously unknown agent: %s", agent)
 			_, err = agent.InitAgent() // add agent to system if they don't already exist
 			if err != nil {
@@ -280,7 +280,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 func RocksTeamID(rockscomm string) (TeamID, error) {
 	var t TeamID
 	err := db.QueryRow("SELECT teamID FROM team WHERE rockscomm = ?", rockscomm).Scan(&t)
-	if err != nil && err.Error() == NoRows {
+	if err != nil && err == sql.ErrNoRows {
 		return "", nil
 	}
 	if err != nil {

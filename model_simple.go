@@ -88,7 +88,7 @@ func Request(id string) (SimpleDocument, error) {
 	err := db.QueryRow("SELECT content, upload, expiration, views FROM document WHERE id = ?", hex.EncodeToString(databaseID[:])).
 		Scan(&doc.Content, &upload, &expiration, &views)
 	if err != nil {
-		if err.Error() != NoRows {
+		if err != sql.ErrNoRows {
 			Log.Warningf("Error retrieving document: %s", err)
 		}
 		return SimpleDocument{}, err

@@ -10,8 +10,6 @@ import (
 
 var db *sql.DB
 
-const NoRows = `sql: no rows in result set`
-
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don"t exist yet.
 func Connect(uri string) error {
 	Log.Debugf("Connecting to database at %s", uri)

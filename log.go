@@ -25,6 +25,7 @@ func init() {
 	logging.SetBackend(leveled)
 }
 
+// AddFileLog duplicates the console log to a file
 func AddFileLog(lf string, level logging.Level) error {
 	logfile, err := os.OpenFile(lf, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {

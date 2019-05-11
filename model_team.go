@@ -217,7 +217,7 @@ func toGid(in interface{}) (GoogleID, error) {
 	case LocKey:
 		lockey := v
 		gid, err = lockey.Gid()
-		if err != nil && err.Error() == NoRows {
+		if err != nil && err == sql.ErrNoRows {
 			err = fmt.Errorf("unknown lockey: %s", lockey)
 			Log.Info(err)
 			return "", err
@@ -227,7 +227,7 @@ func toGid(in interface{}) (GoogleID, error) {
 	case EnlID:
 		eid := v
 		gid, err = eid.Gid()
-		if err != nil && err.Error() == NoRows {
+		if err != nil && err == sql.ErrNoRows {
 			err = fmt.Errorf("unknown EnlID: %s", eid)
 			Log.Info(err)
 			return "", err
@@ -235,7 +235,7 @@ func toGid(in interface{}) (GoogleID, error) {
 	case TelegramID:
 		tid := v
 		gid, _, err = tid.GidV()
-		if err != nil && err.Error() == NoRows {
+		if err != nil && err == sql.ErrNoRows {
 			err = fmt.Errorf("unknown TelegramID: %d", tid)
 			Log.Info(err)
 			return "", err
@@ -474,7 +474,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 func (gid GoogleID) PrimaryTeam() (string, error) {
 	var primary string
 	err := db.QueryRow("SELECT teamID FROM agentteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
-	if err != nil && err.Error() == NoRows {
+	if err != nil && err == sql.ErrNoRows {
 		Log.Debug("Primary Team Not Set")
 		return "", nil
 	}
