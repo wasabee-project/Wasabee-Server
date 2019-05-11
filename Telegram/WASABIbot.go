@@ -38,8 +38,8 @@ func WASABIBot(init TGConfiguration) error {
 	if config.FrontendPath == "" {
 		config.FrontendPath = "frontend"
 	}
-	_ = templates(config.templateSet)
-	_ = keyboards(&config)
+	_ = telegramTemplates()
+	keyboards(&config)
 	_ = wasabi.RegisterMessageBus("Telegram", SendMessage)
 
 	var err error
@@ -149,9 +149,7 @@ func runUpdate(update tgbotapi.Update) error {
 				wasabi.Log.Error(err)
 			}
 		} else { // verified user, process message
-			if err = message(&msg, &update, gid); err != nil {
-				wasabi.Log.Error(err)
-			}
+			message(&msg, &update, gid)
 		}
 
 		bot.Send(msg)
@@ -209,7 +207,7 @@ func newUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 	return err
 }
 
-func keyboards(c *TGConfiguration) error {
+func keyboards(c *TGConfiguration) {
 	c.baseKbd = tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
@@ -221,12 +219,10 @@ func keyboards(c *TGConfiguration) error {
 			tgbotapi.NewKeyboardButton("Targets Near Me"),
 		),
 	)
-
-	return nil
 }
 
 // This is where command processing takes place
-func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.GoogleID) error {
+func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.GoogleID) {
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
 		case "start":
@@ -254,7 +250,6 @@ func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.Goo
 		)
 		msg.Text = "Location Processed"
 	}
-	return nil
 }
 
 func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi.GoogleID) {
@@ -264,7 +259,7 @@ func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi
 
 	switch cmd {
 	case "Teams":
-		tmp, _ := teamKeyboard(gid)
+		tmp := teamKeyboard(gid)
 		msg.ReplyMarkup = tmp
 		msg.Text = "Your Teams"
 	case "Teammates":

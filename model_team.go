@@ -217,7 +217,7 @@ func toGid(in interface{}) (GoogleID, error) {
 	case LocKey:
 		lockey := v
 		gid, err = lockey.Gid()
-		if err != nil && err.Error() == "sql: no rows in result set" {
+		if err != nil && err.Error() == NoRows {
 			err = fmt.Errorf("unknown lockey: %s", lockey)
 			Log.Info(err)
 			return "", err
@@ -227,7 +227,7 @@ func toGid(in interface{}) (GoogleID, error) {
 	case EnlID:
 		eid := v
 		gid, err = eid.Gid()
-		if err != nil && err.Error() == "sql: no rows in result set" {
+		if err != nil && err.Error() == NoRows {
 			err = fmt.Errorf("unknown EnlID: %s", eid)
 			Log.Info(err)
 			return "", err
@@ -235,7 +235,7 @@ func toGid(in interface{}) (GoogleID, error) {
 	case TelegramID:
 		tid := v
 		gid, _, err = tid.GidV()
-		if err != nil && err.Error() == "sql: no rows in result set" {
+		if err != nil && err.Error() == NoRows {
 			err = fmt.Errorf("unknown TelegramID: %d", tid)
 			Log.Info(err)
 			return "", err
@@ -267,14 +267,11 @@ func toGid(in interface{}) (GoogleID, error) {
 				gid, _ = toGid(lockey)
 			} else {
 				gid, err = SearchAgentName(tmp)
-				if err != nil && err.Error() == "sql: no rows in result set" { // XXX this can't happen any longer
-					err = fmt.Errorf("unknown agent (XXX impossible route): %s", tmp)
-					Log.Info(err)
-					return "", err
-				} else if err != nil {
+				if err != nil {
 					Log.Notice(err)
 					return "", err
-				} else if gid == "" {
+				}
+				if gid == "" {
 					err = fmt.Errorf("unknown agent: %s", tmp)
 					Log.Info(err)
 					return "", err
@@ -426,7 +423,7 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 		}
 		tmpW.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpW.Lon, _ = strconv.ParseFloat(lon, 64)
-		tmpW.Type = "waypoint"
+		tmpW.Type = wpc
 		tmpW.Share = true
 		td.Waypoints = append(td.Waypoints, tmpW)
 	}
@@ -477,7 +474,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 func (gid GoogleID) PrimaryTeam() (string, error) {
 	var primary string
 	err := db.QueryRow("SELECT teamID FROM agentteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
-	if err != nil && err.Error() == "sql: no rows in result set" {
+	if err != nil && err.Error() == NoRows {
 		Log.Debug("Primary Team Not Set")
 		return "", nil
 	}

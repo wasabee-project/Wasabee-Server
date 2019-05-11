@@ -98,13 +98,13 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	}
 
 	for _, m := range o.Markers {
-		if err = o.insertMarker(&m); err != nil {
+		if err = o.insertMarker(m); err != nil {
 			Log.Error(err)
 			continue
 		}
 	}
 	for _, l := range o.Links {
-		if err = o.insertLink(&l); err != nil {
+		if err = o.insertLink(l); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -118,7 +118,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 
 	// I bet this isn't needed since they should be covered in links and markers... but just in case
 	for _, p := range o.OpPortals {
-		if err = o.insertPortal(&p); err != nil {
+		if err = o.insertPortal(p); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -148,7 +148,7 @@ func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
 }
 
 // insertMarkers adds a marker to the database
-func (o *Operation) insertMarker(m *Marker) error {
+func (o *Operation) insertMarker(m Marker) error {
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, comment) VALUES (?, ?, ?, ?, ?)",
 		m.ID, o.ID, m.PortalID, m.Type, m.Comment)
 	if err != nil {
@@ -159,7 +159,7 @@ func (o *Operation) insertMarker(m *Marker) error {
 }
 
 // insertPortal adds a portal to the database
-func (o *Operation) insertPortal(p *Portal) error {
+func (o *Operation) insertPortal(p Portal) error {
 	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc) VALUES (?, ?, ?, POINT(?, ?))",
 		p.ID, o.ID, p.Name, p.Lon, p.Lat)
 	if err != nil {
@@ -180,7 +180,7 @@ func (o *Operation) insertAnchor(p PortalID) error {
 }
 
 // insertLink adds a link to the database
-func (o *Operation) insertLink(l *Link) error {
+func (o *Operation) insertLink(l Link) error {
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description) VALUES (?, ?, ?, ?, ?)",
 		l.ID, l.From, l.To, o.ID, l.Desc)
 	if err != nil {
@@ -371,7 +371,7 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 		}
 		tl.Markers = append(tl.Markers, tmpMarker)
 
-		tmpWaypoint.Type = "waypoint"
+		tmpWaypoint.Type = wpc
 		tmpWaypoint.MarkerType = tmpMarker.Type.String()
 		tmpWaypoint.TeamID = teamID.String()
 		tmpWaypoint.ID = markerIDwaypointID(tmpMarker.ID)
@@ -397,7 +397,7 @@ func (gid GoogleID) pdWaypoints(wc *waypointCommand) error {
 			Log.Error(err)
 			continue
 		}
-		tmpWaypoint.Type = "waypoint"
+		tmpWaypoint.Type = wpc
 		tmpWaypoint.ID = markerIDwaypointID(markerID)
 		tmpWaypoint.Radius = 150
 		tmpWaypoint.Share = true
@@ -433,7 +433,7 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 			Log.Error(err)
 			continue
 		}
-		tmpWaypoint.Type = "waypoint"
+		tmpWaypoint.Type = wpc
 		tmpWaypoint.ID = markerIDwaypointID(markerID)
 		tmpWaypoint.Radius = 150
 		tmpWaypoint.Share = true

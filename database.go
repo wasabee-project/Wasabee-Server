@@ -10,6 +10,8 @@ import (
 
 var db *sql.DB
 
+const NoRows = `sql: no rows in result set`
+
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don"t exist yet.
 func Connect(uri string) error {
 	Log.Debugf("Connecting to database at %s", uri)
@@ -31,10 +33,7 @@ func Connect(uri string) error {
 	}
 	Log.Infof("Database version: %s", version)
 
-	err = setupTables()
-	if err != nil {
-		Log.Error(err)
-	}
+	setupTables()
 	return nil
 }
 
@@ -48,7 +47,7 @@ func Disconnect() {
 }
 
 // setupTables checks for the existence of tables and creates them if needed
-func setupTables() error {
+func setupTables() {
 	var t = []struct {
 		tablename string
 		creation  string
@@ -84,6 +83,4 @@ func setupTables() error {
 			}
 		}
 	}
-
-	return nil
 }

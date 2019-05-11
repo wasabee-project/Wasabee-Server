@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func teamKeyboard(gid wasabi.GoogleID) (tgbotapi.InlineKeyboardMarkup, error) {
+func teamKeyboard(gid wasabi.GoogleID) tgbotapi.InlineKeyboardMarkup {
 	var ud wasabi.AgentData
 	var rows [][]tgbotapi.InlineKeyboardButton
 
@@ -42,7 +42,7 @@ func teamKeyboard(gid wasabi.GoogleID) (tgbotapi.InlineKeyboardMarkup, error) {
 	tmp := tgbotapi.InlineKeyboardMarkup{
 		InlineKeyboard: rows,
 	}
-	return tmp, nil
+	return tmp
 }
 
 // callback is where to determine which callback is called, and what to do with it
@@ -86,7 +86,7 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Team Updated", ShowAlert: false},
 		)
-		tmp, _ := teamKeyboard(gid)
+		tmp := teamKeyboard(gid)
 		msg.ReplyMarkup = tmp
 	case "operation": // XXX nothing yet
 		_ = callbackOperation(command[1], command[2], gid, lang, &msg)
@@ -156,7 +156,7 @@ func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tg
 			wasabi.Log.Notice(err)
 		}
 	default:
-		err = fmt.Errorf("Unknown team state: %s", action)
+		err = fmt.Errorf("unknown team state: %s", action)
 		wasabi.Log.Error(err)
 		if err != nil {
 			wasabi.Log.Notice(err)

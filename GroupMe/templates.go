@@ -10,7 +10,7 @@ import (
 	"text/template"
 )
 
-func gmTemplates(t map[string]*template.Template) error {
+func gmTemplates() error {
 	if config.FrontendPath == "" {
 		err := errors.New("FrontendPath not configured")
 		wasabi.Log.Critical(err)

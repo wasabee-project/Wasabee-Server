@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const jsonType = `application/json; charset=UTF-8`
+
 // Webhook is the http route for receiving RISC updates
 // pushes the updates into the RISC channel for processing
 func Webhook(res http.ResponseWriter, req *http.Request) {
@@ -136,7 +138,7 @@ func updateWebhook() error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", jsonType)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -182,7 +184,7 @@ func DisableWebhook() error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", jsonType)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -213,7 +215,7 @@ func checkWebhook() error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", jsonType)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -249,7 +251,7 @@ func ping() error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", jsonType)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -298,7 +300,7 @@ func AddSubject(gid wasabi.GoogleID) error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", jsonType)
 
 	response, err := client.Do(req)
 	if err != nil {

@@ -19,7 +19,7 @@ type loc struct {
 }
 
 func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	res.Header().Set("Content-Type", jsonType)
 
 	gid, auth := ownTracksAuthentication(res, req)
 	if !auth {
@@ -28,7 +28,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != "application/json" {
+	if contentType != jsonTypeShort {
 		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
 		return
 	}
@@ -90,6 +90,7 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// convert this to gorilla middleware -- leave res in place even though unused
 func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (wasabi.GoogleID, bool) {
 	l, otpw, ok := req.BasicAuth()
 	lockey := wasabi.LocKey(l)

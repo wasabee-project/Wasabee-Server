@@ -134,7 +134,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 
 	// if the agent doesn't exist, prepopulate everything
 	_, err = gid.IngressName()
-	if err != nil && err.Error() == "sql: no rows in result set" {
+	if err != nil && err.Error() == NoRows {
 		if tmpName == "" {
 			tmpName = "UnverifiedAgent_" + gid.String()[:15]
 		}
@@ -205,7 +205,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 
 	var ot sql.NullString
 	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC, &ud.OwnTracksJSON)
-	if err != nil && err.Error() == "sql: no rows in result set" {
+	if err != nil && err.Error() == NoRows {
 		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
 		err = fmt.Errorf("unknown GoogleID: [%s] try restarting your browser", gid)
 		gid.Logout("broken cookie")
@@ -316,7 +316,7 @@ func adOwnedTeams(gid GoogleID, ud *AgentData) error {
 func adTelegram(gid GoogleID, ud *AgentData) error {
 	var authtoken sql.NullString
 	err := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
-	if err != nil && err.Error() == "sql: no rows in result set" {
+	if err != nil && err.Error() == NoRows {
 		ud.Telegram.ID = 0
 		ud.Telegram.Verified = false
 		ud.Telegram.Authtoken = ""
@@ -466,7 +466,7 @@ func RevalidateEveryone() error {
 func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
 	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(iname) LIKE LOWER(?)", agent).Scan(&gid)
-	if err != nil && err.Error() != "sql: no rows in result set" {
+	if err != nil && err.Error() != NoRows {
 		Log.Notice(err)
 		return "", err
 	}

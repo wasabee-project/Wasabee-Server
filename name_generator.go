@@ -90,12 +90,12 @@ func GenerateSafeName() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		total = total + i
+		total += i
 		err = db.QueryRow("SELECT COUNT(teamID) FROM team WHERE teamID = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
 		if err != nil {
 			return "", err
 		}
-		total = total + i
+		total += i
 		rows = total
 	}
 

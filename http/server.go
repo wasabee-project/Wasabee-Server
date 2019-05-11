@@ -49,6 +49,10 @@ var unrolled *logger.Logger
 var logfile *os.File
 var scanners map[string]int64
 
+const jsonType = `application/json; charset=UTF-8`
+const jsonTypeShort = `application/json`
+const meRoute = `/me`
+
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
 	config = initialConfig
@@ -180,10 +184,10 @@ func wasabiHTTPSTemplateConfig() error {
 
 // wasabiHTTPSTemplateExecute outputs directly to the ResponseWriter
 func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
-	// XXX get the lang from the request
-	// XXX read and parse the request language header
-	lang := "en"
-
+	lang := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Accept-Language")), " ", "", -1), ";")[0][:2]
+	if lang == "" {
+		lang = "en"
+	}
 	_, ok := config.templateSet[lang]
 	if !ok {
 		lang = "en" // default to english if the map doesn't exist
@@ -208,7 +212,7 @@ func StartHTTP(initialConfig Configuration) {
 	api := r.PathPrefix("/" + config.apipath).Subrouter()
 	tg := r.PathPrefix("/tg").Subrouter()
 	gm := r.PathPrefix("/gm").Subrouter()
-	me := r.PathPrefix("/me").Subrouter()
+	me := r.PathPrefix(meRoute).Subrouter()
 	ot := r.PathPrefix("/OwnTracks").Subrouter()
 	simple := r.PathPrefix("/simple").Subrouter()
 	notauthed := r.PathPrefix("").Subrouter()
@@ -322,7 +326,7 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		var redirectURL = "/login"
-		if req.URL.String()[:3] != "/me" {
+		if req.URL.String()[:3] != meRoute {
 			redirectURL = "/login?returnto=" + req.URL.String()
 		}
 
@@ -383,7 +387,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	if ret != "" {
 		ses.Values["loginReq"] = ret
 	} else {
-		ses.Values["loginReq"] = "/me"
+		ses.Values["loginReq"] = meRoute
 	}
 	_ = ses.Save(req, res)
 

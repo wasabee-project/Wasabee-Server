@@ -10,7 +10,7 @@ import (
 	"text/template"
 )
 
-func templates(t map[string]*template.Template) error {
+func telegramTemplates() error {
 	if config.FrontendPath == "" {
 		err := errors.New("FrontendPath not configured")
 		wasabi.Log.Critical(err)
@@ -20,7 +20,8 @@ func templates(t map[string]*template.Template) error {
 	frontendPath, err := filepath.Abs(config.FrontendPath)
 	if err != nil {
 		wasabi.Log.Critical("Frontend path couldn't be resolved.")
-		panic(err)
+		wasabi.Log.Critical(err)
+		return err
 	}
 	config.FrontendPath = frontendPath
 
@@ -38,7 +39,8 @@ func templates(t map[string]*template.Template) error {
 	wasabi.Log.Info("Including frontend telegram templates from: ", config.FrontendPath)
 	files, err := ioutil.ReadDir(config.FrontendPath)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabi.Log.Critical(err)
+		return err
 	}
 
 	for _, f := range files {

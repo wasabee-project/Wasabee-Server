@@ -50,7 +50,7 @@ func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 
 	row := db.QueryRow("SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid)
 	err := row.Scan(&gid, &verified)
-	if err != nil && err.Error() == "sql: no rows in result set" {
+	if err != nil && err.Error() == NoRows {
 		return "", false, nil
 	}
 	if err != nil {
@@ -66,7 +66,7 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 
 	row := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid)
 	err := row.Scan(&tgid)
-	if err != nil && err.Error() == "sql: no rows in result set" {
+	if err != nil && err.Error() == NoRows {
 		return 0, nil
 	}
 	if err != nil {
@@ -81,7 +81,7 @@ func (tgid TelegramID) TelegramInitAgent(name string, lockey LocKey) error {
 	authtoken := GenerateName()
 
 	gid, err := lockey.Gid()
-	if err != nil && err.Error() == "sql: no rows in result set" {
+	if err != nil && err.Error() == NoRows {
 		e := fmt.Sprintf("Location Share Key (%s) is not recognized", lockey)
 		return errors.New(e)
 	}

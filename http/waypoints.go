@@ -29,7 +29,7 @@ func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 
 	if format == "json" {
 		out, _ := json.MarshalIndent(data, "", "\t")
-		res.Header().Add("Content-Type", "application/json; charset=UTF-8")
+		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(out))
 		return
 	}

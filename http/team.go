@@ -46,7 +46,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res.Header().Add("Content-Type", "application/json; charset=UTF-8")
+	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprint(res, string(data))
 }
 

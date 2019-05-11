@@ -12,10 +12,10 @@ import (
 )
 
 func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	res.Header().Set("Content-Type", jsonType)
 
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != "application/json" {
+	if contentType != jsonTypeShort {
 		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
 		return
 	}

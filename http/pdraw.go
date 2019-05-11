@@ -12,7 +12,7 @@ import (
 )
 
 func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -22,7 +22,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != "application/json" {
+	if contentType != jsonTypeShort {
 		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
 		return
 	}
@@ -72,7 +72,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	// JSON if referer is intel.ingress.com
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		res.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		res.Header().Set("Content-Type", jsonType)
 		s, err := json.MarshalIndent(o, "", "\t")
 		if err != nil {
 			wasabi.Log.Notice(err)
@@ -91,7 +91,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {

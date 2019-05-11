@@ -84,6 +84,8 @@ type transition struct {
 	Desc      string  `json:"desc"`
 }
 
+const wpc = "waypoint"
+
 // OwnTracksUpdate simply stores incoming OwnTracks data into the database
 func (gid GoogleID) OwnTracksUpdate(otdata json.RawMessage, lat, lon float64) error {
 	clean, _ := gid.ownTracksTidy(string(otdata))
@@ -175,7 +177,7 @@ func (gid GoogleID) otWaypoints(wp *waypointCommand) error {
 
 	var lat, lon sql.NullString
 	var tmpWaypoint waypoint
-	tmpWaypoint.Type = "waypoint"
+	tmpWaypoint.Type = wpc
 
 	wr, err := db.Query("SELECT Id, w.teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints=w, agentteams=ut WHERE ut.teamID = w.teamID AND ut.teamID IN (SELECT teamID FROM agentteams WHERE ut.gid = ? AND ut.state != 'Off')", gid)
 	if err != nil {
@@ -197,7 +199,7 @@ func (gid GoogleID) otWaypoints(wp *waypointCommand) error {
 			f, _ := strconv.ParseFloat(lon.String, 64)
 			tmpWaypoint.Lon = f
 		}
-		tmpWaypoint.Type = "waypoint"
+		tmpWaypoint.Type = wpc
 		tmpWaypoint.Share = true
 		wp.Waypoints.Waypoints = append(wp.Waypoints.Waypoints, tmpWaypoint)
 	}
@@ -209,7 +211,7 @@ func (gid GoogleID) otWaypoints(wp *waypointCommand) error {
 func (teamID TeamID) otWaypoints(tl *TeamData) error {
 	var lat, lon sql.NullString
 	var tmpWaypoint waypoint
-	tmpWaypoint.Type = "waypoint"
+	tmpWaypoint.Type = wpc
 
 	wr, err := db.Query("SELECT ID, teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints WHERE teamID = ?", teamID)
 	if err != nil {
@@ -232,7 +234,7 @@ func (teamID TeamID) otWaypoints(tl *TeamData) error {
 			tmpWaypoint.Lon = f
 		}
 		tmpWaypoint.Share = true
-		tmpWaypoint.Type = "waypoint"
+		tmpWaypoint.Type = wpc
 		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
 	}
 	return nil

@@ -72,7 +72,7 @@ func GMbot(init GMConfiguration) error {
 	if config.FrontendPath == "" {
 		config.FrontendPath = "frontend"
 	}
-	_ = gmTemplates(config.templateSet)
+	_ = gmTemplates()
 	// let WASABI know we can process messages
 	_ = wasabi.RegisterMessageBus("GroupMe", SendMessage)
 	// Tell WASABI we are set up
