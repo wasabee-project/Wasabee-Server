@@ -184,9 +184,12 @@ func wasabiHTTPSTemplateConfig() error {
 
 // wasabiHTTPSTemplateExecute outputs directly to the ResponseWriter
 func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
-	lang := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Accept-Language")), " ", "", -1), ";")[0][:2]
-	if lang == "" {
+	var lang string
+	tmp := req.Header.Get("Accept-Language")
+	if tmp == "" {
 		lang = "en"
+	} else {
+		lang = strings.ToLower(tmp)[:2]
 	}
 	_, ok := config.templateSet[lang]
 	if !ok {
@@ -281,7 +284,7 @@ func Shutdown() error {
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Add("Server", "WASABI")
-		res.Header().Add("X-Content-Type", "nosniff") // We're not a CDN.
+		// res.Header().Add("X-Content-Type-Options", "nosniff") 
 		res.Header().Add("X-Frame-Options", "deny")
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
