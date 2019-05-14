@@ -51,24 +51,24 @@ var riscchan chan event
 var config riscConfig
 
 // RISCinit sets up the data structures and starts the processing threads
-func RISCinit(configfile string) error {
+func RISCinit(configfile string) {
 	// load config from google
 	if err := googleRiscDiscovery(); err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 
 	// load service-account info from JSON file
 	data, err := ioutil.ReadFile(configfile)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 	var sc serviceCreds
 	err = json.Unmarshal(data, &sc)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 	config.clientemail = sc.ClientEmail
 	config.authdata = data // Yeah, the consumers need the whole thing as bytes
@@ -76,9 +76,13 @@ func RISCinit(configfile string) error {
 	// make a channel to read for events
 	riscchan = make(chan event, 2)
 
+	r := wasabi.Subrouter("/GoogleRISC")
+	r.HandleFunc("", Webhook).Methods("POST")
+
 	// start a thread for keeping the connection to Google fresh
 	go riscRegisterWebhook()
 
+	// this loops on the channel messsages
 	for e := range riscchan {
 		wasabi.Log.Notice("Received: ", e)
 		gid := wasabi.GoogleID(e.Subject)
@@ -100,8 +104,6 @@ func RISCinit(configfile string) error {
 			gid.Logout(e.Reason)
 		}
 	}
-
-	return nil
 }
 
 // This is called from the webhook

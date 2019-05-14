@@ -25,12 +25,14 @@ type TGConfiguration struct {
 var bot *tgbotapi.BotAPI
 var config TGConfiguration
 
+const hookpath = "/tg"
+
 // WASABIBot is called from main() to start the bot.
-func WASABIBot(init TGConfiguration) error {
+func WASABIBot(init TGConfiguration) {
 	if init.APIKey == "" {
-		err := errors.New("API Key not set")
+		err := errors.New("the Telegram API Key not set")
 		wasabi.Log.Info(err)
-		return err
+		return
 	}
 	config.APIKey = init.APIKey
 
@@ -40,16 +42,20 @@ func WASABIBot(init TGConfiguration) error {
 	}
 	_ = telegramTemplates()
 	keyboards(&config)
+
+	config.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
+	webhook := wasabi.Subrouter(hookpath)
+	webhook.HandleFunc("/{hook}", TGWebHook).Methods("POST")
+
 	_ = wasabi.RegisterMessageBus("Telegram", SendMessage)
 
-	var err error
-	bot, err = tgbotapi.NewBotAPI(config.APIKey)
+	bot, err := tgbotapi.NewBotAPI(config.APIKey)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 
-	bot.Debug = false
+	bot.Debug = true
 	wasabi.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
 	wasabi.TGSetBot(bot.Self.UserName, bot.Self.ID)
 
@@ -58,27 +64,24 @@ func WASABIBot(init TGConfiguration) error {
 
 	webroot, _ := wasabi.GetWebroot()
 	config.hook = wasabi.GenerateName()
-	t := fmt.Sprintf("%s/tg/%s", webroot, config.hook)
+	t := fmt.Sprintf("%s%s/%s", webroot, hookpath, config.hook)
 	wasabi.Log.Debugf("TG webroot %s", t)
-	// defer bot.RemoveWebhook()
 	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 
 	i := 1
-	config.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
 	for update := range config.upChan {
-		err := runUpdate(update)
-		if err != nil {
+		if err = runUpdate(update); err != nil {
 			wasabi.Log.Error(err)
 			continue
 		}
 		if (i % 100) == 0 { // every 100 requests, change the endpoint; I'm _not_ paranoid.
 			i = 1
 			config.hook = wasabi.GenerateName()
-			t = fmt.Sprintf("%s/tg/%s", webroot, config.hook)
+			t = fmt.Sprintf("%s%s/%s", webroot, hookpath, config.hook)
 			wasabi.Log.Debugf("new TG webroot %s", t)
 			_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 			if err != nil {
@@ -87,13 +90,12 @@ func WASABIBot(init TGConfiguration) error {
 		}
 		i++
 	}
-	return nil
 }
 
 // Shutdown closes all the Telegram connections
 // called only at server shutdown
 func Shutdown() {
-	wasabi.Log.Infof("Shutting down %s", bot.Self.UserName)
+	wasabi.Log.Info("Shutting down tgbot")
 	_, _ = bot.RemoveWebhook()
 	bot.StopReceivingUpdates()
 }
@@ -105,8 +107,16 @@ func runUpdate(update tgbotapi.Update) error {
 			wasabi.Log.Error(err)
 			return err
 		}
-		bot.Send(msg)
-		bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID))
+		_, err = bot.Send(msg)
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
+		_, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID))
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
 		return nil
 	}
 
@@ -120,8 +130,6 @@ func runUpdate(update tgbotapi.Update) error {
 		}
 		msg.Text = defaultReply
 		msg.ParseMode = "MarkDown"
-		// s, _ := json.MarshalIndent(msg, "", "  ")
-		// wasabi.Log.Debug(string(s))
 
 		tgid := wasabi.TelegramID(update.Message.From.ID)
 		gid, verified, err := tgid.GidV()
@@ -152,8 +160,16 @@ func runUpdate(update tgbotapi.Update) error {
 			message(&msg, &update, gid)
 		}
 
-		bot.Send(msg)
-		_, _ = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
+		_, err = bot.Send(msg)
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
+		_, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
+		if err != nil {
+			wasabi.Log.Error(err)
+			return err
+		}
 	}
 
 	return nil
@@ -283,21 +299,25 @@ func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi
 func SendMessage(gid wasabi.GoogleID, message string) (bool, error) {
 	tgid, err := gid.TelegramID()
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabi.Log.Error(err)
 		return false, err
 	}
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
 		err = fmt.Errorf("TelegramID not found for %s", gid)
-		wasabi.Log.Notice(err)
+		wasabi.Log.Info(err)
 		return false, err
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
 	msg.Text = message
 	msg.ParseMode = "MarkDown"
 
-	bot.Send(msg)
-	wasabi.Log.Notice("Sent message to:", gid)
+	_, err = bot.Send(msg)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return false, err
+	}
+	wasabi.Log.Info("Sent message to:", gid)
 	return true, nil
 }
 

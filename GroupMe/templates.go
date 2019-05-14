@@ -46,9 +46,15 @@ func gmTemplates() error {
 		if f.IsDir() && len(lang) == 2 {
 			config.templateSet[lang] = template.New("").Funcs(funcMap) // one funcMap for all languages
 			// load the masters
-			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.gm")
+			_, err = config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.gm")
+			if err != nil {
+				wasabi.Log.Error(err)
+			}
 			// overwrite with language specific
-			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.gm")
+			_, err = config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.gm")
+			if err != nil {
+				wasabi.Log.Error(err)
+			}
 			wasabi.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}
 	}

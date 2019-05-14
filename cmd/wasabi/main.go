@@ -14,6 +14,8 @@ import (
 	"github.com/cloudkucooland/WASABI/http"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
+
+	// "runtime/pprof"
 )
 
 var flags = []cli.Flag{
@@ -77,7 +79,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "WASABI"
-	app.Version = "0.6.8"
+	app.Version = "0.6.9"
 	app.Usage = "WASABI Server"
 	app.Authors = []cli.Author{
 		{
@@ -92,6 +94,10 @@ func main() {
 	cli.AppHelpTemplate = strings.Replace(cli.AppHelpTemplate, "GLOBAL OPTIONS:", "OPTIONS:", 1)
 
 	app.Action = run
+
+	// f, _ := os.Create("logs/profile")
+	// pprof.StartCPUProfile(f)
+	// defer pprof.StopCPUProfile()
 
 	_ = app.Run(os.Args)
 }
@@ -151,7 +157,7 @@ func run(c *cli.Context) error {
 
 	riscPath := path.Join(c.String("certs"), "risc.json")
 	if _, err := os.Stat(riscPath); err != nil {
-		wasabi.Log.Infof("%s does not exist, not enabling RISC", riscPath)
+		wasabi.Log.Noticef("%s does not exist, not enabling RISC", riscPath)
 	} else {
 		go risc.RISCinit(riscPath)
 	}
@@ -175,18 +181,19 @@ func run(c *cli.Context) error {
 	// wait for signal to shut down
 	sigch := make(chan os.Signal, 3)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
+
 	// loop until signal sent
 	sig := <-sigch
 
 	wasabi.Log.Info("Shutdown Requested: ", sig)
+	if _, err := os.Stat(riscPath); err == nil {
+		risc.DisableWebhook()
+	}
 	if c.String("tgkey") != "" {
 		wasabitelegram.Shutdown()
 	}
 	if c.String("https") != "none" {
 		_ = wasabihttps.Shutdown()
-	}
-	if _, err := os.Stat(riscPath); err != nil {
-		_ = risc.DisableWebhook()
 	}
 
 	// close database connection

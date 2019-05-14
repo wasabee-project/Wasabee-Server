@@ -9,13 +9,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	// "path"
 	"time"
 
 	"github.com/cloudkucooland/WASABI"
-	"github.com/cloudkucooland/WASABI/GroupMe"
-	"github.com/cloudkucooland/WASABI/RISC"
-	"github.com/cloudkucooland/WASABI/Telegram"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
@@ -27,13 +23,12 @@ func setupRoutes(r *mux.Router) {
 
 // generic things, want logging
 func setupNotauthed(r *mux.Router) {
-	// XXX gorilla has CORSMethodMiddleware, should we use that instead? -- no, very limited functionality at this time
+	// XXX gorilla has CORSMethodMiddleware, should we use that instead?
 	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff
 	r.HandleFunc("/login", googleRoute).Methods("GET")
 	r.HandleFunc("/callback", callbackRoute).Methods("GET")
-	r.HandleFunc("/GoogleRISC", risc.Webhook).Methods("POST")
 
 	// For enl.rocks community -> WASABI team sync
 	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
@@ -52,7 +47,8 @@ func setupNotauthed(r *mux.Router) {
 	r.HandleFunc("/", frontRoute).Methods("GET")
 
 	// 404 error page
-	r.PathPrefix("/").HandlerFunc(notFoundRoute)
+	r.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+	// r.PathPrefix("/").HandlerFunc(notFoundRoute)
 }
 
 // implied /OwnTracks
@@ -67,16 +63,6 @@ func setupSimpleRoutes(r *mux.Router) {
 	// Simple -- the old-style, encrypted, unauthenticated/authorized documents
 	r.HandleFunc("", uploadRoute).Methods("POST")
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
-}
-
-// implied /tg
-func setupTelegramRoutes(r *mux.Router) {
-	r.HandleFunc("/{hook}", wasabitelegram.TGWebHook).Methods("POST")
-}
-
-// implied /gm
-func setupGMRoutes(r *mux.Router) {
-	r.HandleFunc("/{hook}", wasabigm.GMWebHook).Methods("POST")
 }
 
 // implied /me
@@ -131,6 +117,8 @@ func setupAuthRoutes(r *mux.Router) {
 
 	// server control functions
 	r.HandleFunc("/templates/refresh", templateUpdateRoute).Methods("GET") // trigger the server refresh of the template files
+
+	r.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 }
 
 // probably useless now, but need to test before committing a removal
@@ -171,13 +159,24 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
-	i, ok := scanners[req.RemoteAddr]
+	i, ok := config.scanners[req.RemoteAddr]
 	if ok {
-		scanners[req.RemoteAddr] = i + 1
+		config.scanners[req.RemoteAddr] = i + 1
 	} else {
-		scanners[req.RemoteAddr] = 1
+		config.scanners[req.RemoteAddr] = 1
 	}
 	http.Error(res, "404: No light here.", http.StatusNotFound)
+}
+
+// called when a resource/endpoint is not found
+func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
+	i, ok := config.scanners[req.RemoteAddr]
+	if ok {
+		config.scanners[req.RemoteAddr] = i + 1
+	} else {
+		config.scanners[req.RemoteAddr] = 1
+	}
+	http.Error(res, `{status: "Not Found"}`, http.StatusNotFound)
 }
 
 // final step of the oauth cycle

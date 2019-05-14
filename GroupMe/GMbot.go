@@ -59,11 +59,11 @@ type gmBotcfg struct {
 var config GMConfiguration
 
 // GMbot is called from main() to start the bot.
-func GMbot(init GMConfiguration) error {
+func GMbot(init GMConfiguration) {
 	if init.AccessToken == "" {
 		err := errors.New("access token not set")
 		wasabi.Log.Info(err)
-		return err
+		return
 	}
 	config.AccessToken = init.AccessToken
 
@@ -73,29 +73,33 @@ func GMbot(init GMConfiguration) error {
 		config.FrontendPath = "frontend"
 	}
 	_ = gmTemplates()
+
+	// the webhook feeds this channel
+	config.upChan = make(chan json.RawMessage, 1)
+
+	gm := wasabi.Subrouter("/gm")
+	gm.HandleFunc("/{hook}", GMWebHook).Methods("POST")
+
 	// let WASABI know we can process messages
 	_ = wasabi.RegisterMessageBus("GroupMe", SendMessage)
+
 	// Tell WASABI we are set up
 	wasabi.GMSetBot()
 
 	// setup config.bots
 	err := getBots()
 	if err != nil {
-		return err
+		return
 	}
-
-	// the webhook feeds this channel
-	config.upChan = make(chan json.RawMessage, 1)
 
 	// loop and process updates on the channel
 	for update := range config.upChan {
-		err := runUpdate(update)
+		err = runUpdate(update)
 		if err != nil {
 			wasabi.Log.Error(err)
 			continue
 		}
 	}
-	return nil
 }
 
 func runUpdate(update json.RawMessage) error {
@@ -125,7 +129,7 @@ type gmResponse struct {
 
 func getBots() error {
 	url := fmt.Sprintf("%s/bots?token=%s", config.APIEndpoint, config.AccessToken)
-	wasabi.Log.Debugf("Getting list of GroupMe bogs from: %s", url)
+	wasabi.Log.Debugf("Getting list of GroupMe bots from: %s", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		wasabi.Log.Error(err)

@@ -81,8 +81,8 @@ func riscRegisterWebhook() {
 	}
 
 	ticker := time.NewTicker(time.Hour)
-	for tick := range ticker.C {
-		wasabi.Log.Debug("updating RISC webhook with Google: ", tick)
+	for range ticker.C {
+		// wasabi.Log.Debug("updating RISC webhook with Google: ", tick)
 		err = googleLoadKeys()
 		if err != nil {
 			wasabi.Log.Error(err)
@@ -154,13 +154,13 @@ func updateWebhook() error {
 }
 
 // DisableWebhook tells Google to stop sending messages
-func DisableWebhook() error {
+func DisableWebhook() {
 	wasabi.Log.Info("disabling RISC webhook with Google")
 
 	token, err := getToken()
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 
 	apiurl := "https://risc.googleapis.com/v1beta/stream:update"
@@ -175,13 +175,13 @@ func DisableWebhook() error {
 	raw, err := json.Marshal(jmsg)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	req.Header.Set("Content-Type", jsonType)
@@ -189,15 +189,13 @@ func DisableWebhook() error {
 	response, err := client.Do(req)
 	if err != nil {
 		wasabi.Log.Error(err)
-		return err
+		return
 	}
 	if response.StatusCode != 200 {
 		raw, _ = ioutil.ReadAll(response.Body)
 		wasabi.Log.Notice(string(raw))
 	}
 	config.running = false
-
-	return nil
 }
 
 func checkWebhook() error {

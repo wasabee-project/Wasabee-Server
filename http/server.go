@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,8 +15,9 @@ import (
 	"golang.org/x/oauth2/google"
 
 	"github.com/cloudkucooland/WASABI"
-	"github.com/gorilla/mux"
+	// "github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
 )
 
@@ -42,12 +42,12 @@ type Configuration struct {
 	templateSet       map[string]*template.Template // allow multiple translations
 	Logfile           string
 	srv               *http.Server
+	logfileHandle	  *os.File
+	unrolled	  *logger.Logger
+	scanners	  map[string]int64
 }
 
 var config Configuration
-var unrolled *logger.Logger
-var logfile *os.File
-var scanners map[string]int64
 
 const jsonType = `application/json; charset=UTF-8`
 const jsonTypeShort = `application/json`
@@ -123,13 +123,13 @@ func initializeConfig(initialConfig Configuration) {
 		config.Logfile = "wasabi-https.log"
 	}
 	wasabi.Log.Infof("https logfile: %s", config.Logfile)
-	logfile, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	config.logfileHandle, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		wasabi.Log.Fatal(err)
 	}
-	unrolled = logger.New(logger.Options{
+	config.unrolled = logger.New(logger.Options{
 		Prefix: "WASABI",
-		Out:    logfile,
+		Out:    config.logfileHandle,
 		IgnoredRequestURIs: []string{
 			"/favicon.ico",
 			"/apple-touch-icon-precomposed.png",
@@ -137,7 +137,7 @@ func initializeConfig(initialConfig Configuration) {
 			"/apple-touch-icon-120x120.png",
 			"/apple-touch-icon.png"},
 	})
-	scanners = make(map[string]int64)
+	config.scanners = make(map[string]int64)
 }
 
 func wasabiHTTPSTemplateConfig() error {
@@ -173,9 +173,15 @@ func wasabiHTTPSTemplateConfig() error {
 		if f.IsDir() && len(lang) == 2 {
 			config.templateSet[lang] = template.New("").Funcs(funcMap) // one funcMap for all languages
 			// load the masters
-			config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.html")
+			_, err = config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.html")
+			if err != nil {
+				wasabi.Log.Error(err)
+			}
 			// overwrite with language specific
-			config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.html")
+			_, err = config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.html")
+			if err != nil {
+				wasabi.Log.Error(err)
+			}
 			wasabi.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
 		}
 	}
@@ -209,20 +215,18 @@ func StartHTTP(initialConfig Configuration) {
 	initializeConfig(initialConfig)
 
 	// Route
-	r := mux.NewRouter()
+	r := wasabi.NewRouter()
 
 	// establish subrouters -- these each have different middleware requirements
-	api := r.PathPrefix("/" + config.apipath).Subrouter()
-	tg := r.PathPrefix("/tg").Subrouter()
-	gm := r.PathPrefix("/gm").Subrouter()
-	me := r.PathPrefix(meRoute).Subrouter()
-	ot := r.PathPrefix("/OwnTracks").Subrouter()
-	simple := r.PathPrefix("/simple").Subrouter()
-	notauthed := r.PathPrefix("").Subrouter()
+	api := wasabi.Subrouter("/" + config.apipath)
+
+	me := wasabi.Subrouter(meRoute)
+	ot := wasabi.Subrouter("/OwnTracks")
+	simple := wasabi.Subrouter("/simple")
+	notauthed := wasabi.Subrouter("")
 
 	setupAuthRoutes(api)
-	setupTelegramRoutes(tg)
-	setupGMRoutes(gm)
+
 	setupMeRoutes(me)
 	setupSimpleRoutes(simple)
 	setupOwntracksRoute(ot)
@@ -234,14 +238,15 @@ func StartHTTP(initialConfig Configuration) {
 	r.Use(scannerMW)
 
 	api.Use(authMW)
-	api.Use(unrolled.Handler)
+	api.Use(config.unrolled.Handler)
 
 	me.Use(authMW)
-	me.Use(unrolled.Handler)
+	me.Use(config.unrolled.Handler)
 
-	tg.Use(unrolled.Handler)
-	gm.Use(unrolled.Handler)
-	notauthed.Use(unrolled.Handler)
+	// move to proper modules
+	// tg.Use(config.unrolled.Handler)
+	// gm.Use(config.unrolled.Handler)
+	notauthed.Use(config.unrolled.Handler)
 
 	// Serve
 	config.srv = &http.Server{
@@ -284,7 +289,7 @@ func Shutdown() error {
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Add("Server", "WASABI")
-		// res.Header().Add("X-Content-Type-Options", "nosniff") 
+		// res.Header().Add("X-Content-Type-Options", "nosniff")
 		res.Header().Add("X-Frame-Options", "deny")
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
@@ -297,19 +302,11 @@ func headersMW(next http.Handler) http.Handler {
 
 func scannerMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		i, ok := scanners[req.RemoteAddr]
+		i, ok := config.scanners[req.RemoteAddr]
 		if ok && i > 30 {
 			http.Error(res, "Scanner detected", http.StatusForbidden)
 			return
 		}
-		next.ServeHTTP(res, req)
-	})
-}
-
-func debugMW(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		dump, _ := httputil.DumpRequest(req, false)
-		wasabi.Log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
 }
@@ -344,8 +341,8 @@ func authMW(next http.Handler) http.Handler {
 
 		gid := wasabi.GoogleID(id.(string))
 		if gid.CheckLogout() {
-			wasabi.Log.Notice("Google RISC requested logout")
-			http.Redirect(res, req, redirectURL, http.StatusFound)
+			wasabi.Log.Notice("requested logout")
+			http.Redirect(res, req, "/", http.StatusFound)
 			return
 		}
 
