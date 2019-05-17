@@ -67,7 +67,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -95,7 +95,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {

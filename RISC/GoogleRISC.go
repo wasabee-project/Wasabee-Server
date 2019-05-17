@@ -50,6 +50,8 @@ type serviceCreds struct {
 var riscchan chan event
 var config riscConfig
 
+const riscHook = "/GoogleRISC"
+
 // RISCinit sets up the data structures and starts the processing threads
 func RISCinit(configfile string) {
 	// load config from google
@@ -76,8 +78,9 @@ func RISCinit(configfile string) {
 	// make a channel to read for events
 	riscchan = make(chan event, 2)
 
-	r := wasabi.Subrouter("/GoogleRISC")
-	r.HandleFunc("", Webhook).Methods("POST")
+	risc := wasabi.Subrouter(riscHook)
+	risc.HandleFunc("", Webhook).Methods("POST")
+	risc.HandleFunc("", WebhookStatus).Methods("GET")
 
 	// start a thread for keeping the connection to Google fresh
 	go riscRegisterWebhook()

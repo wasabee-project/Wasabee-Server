@@ -13,11 +13,11 @@ var wasabiHTTPSConfig struct {
 }
 
 // NewRouter creates the HTTPS router
-func NewRouter() (* mux.Router) {
-	Log.Notice("Establishing main HTTPS router")
+func NewRouter() *mux.Router {
+	Log.Debug("Establishing main HTTPS router")
 
 	if wasabiHTTPSConfig.router != nil {
-		Log.Critical("already exited")
+		Log.Info("main HTTPS router already exists")
 		return wasabiHTTPSConfig.router
 	}
 
@@ -26,13 +26,16 @@ func NewRouter() (* mux.Router) {
 }
 
 // Subrouter creates a Gorilla subroute with a prefix
-func Subrouter(prefix string) (* mux.Router) {
-	Log.Noticef("Establishing HTTPS router for %s", prefix)
+func Subrouter(prefix string) *mux.Router {
+	Log.Debugf("Establishing HTTPS subrouter for %s", prefix)
 	if wasabiHTTPSConfig.router == nil {
 		NewRouter()
 	}
 
-	return wasabiHTTPSConfig.router.PathPrefix(prefix).Subrouter()
+	sr := wasabiHTTPSConfig.router.PathPrefix(prefix).Subrouter()
+	// sr := wasabiHTTPSConfig.router.Path(prefix).Subrouter()
+
+	return sr
 }
 
 // SetWebroot is called at https startup

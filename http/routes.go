@@ -16,45 +16,79 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// generic things
-func setupRoutes(r *mux.Router) {
-	// r.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
-}
+func setupRouter() *mux.Router {
+	// Main Router
+	router := wasabi.NewRouter()
 
-// generic things, want logging
-func setupNotauthed(r *mux.Router) {
-	// XXX gorilla has CORSMethodMiddleware, should we use that instead?
-	r.Methods("OPTIONS").HandlerFunc(optionsRoute)
-
-	// Google Oauth2 stuff
-	r.HandleFunc("/login", googleRoute).Methods("GET")
-	r.HandleFunc("/callback", callbackRoute).Methods("GET")
-
-	// For enl.rocks community -> WASABI team sync
-	r.HandleFunc("/rocks", rocksCommunityRoute).Methods("POST")
-
-	// raw files
-	r.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
-	r.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
-	r.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
-	r.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
-	r.PathPrefix("/static/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
-
-	// Privacy Policy -- not static since we want to offer translations
-	r.HandleFunc("/privacy", privacyRoute).Methods("GET")
-
-	// index
-	r.HandleFunc("/", frontRoute).Methods("GET")
+	// apply to all
+	router.Use(headersMW)
+	router.Use(scannerMW)
+	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// 404 error page
-	r.NotFoundHandler = http.HandlerFunc(notFoundRoute)
-	// r.PathPrefix("/").HandlerFunc(notFoundRoute)
-}
+	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
-// implied /OwnTracks
-func setupOwntracksRoute(r *mux.Router) {
-	// OwnTracks URL -- basic auth is handled internally
-	r.HandleFunc("", ownTracksRoute).Methods("POST")
+	// establish subrouters -- these each have different middleware requirements
+	// if we want to disable logging on /simple, these need to be on a subrouter
+	notauthed := wasabi.Subrouter("")
+	// Google Oauth2 stuff
+	notauthed.HandleFunc(login, googleRoute).Methods("GET")
+	notauthed.HandleFunc(callback, callbackRoute).Methods("GET")
+	// common files that live under /static
+	notauthed.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
+	notauthed.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
+	notauthed.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
+	notauthed.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
+	notauthed.HandleFunc("/privacy", privacyRoute).Methods("GET")
+	notauthed.HandleFunc("/", frontRoute).Methods("GET")
+	notauthed.Use(config.unrolled.Handler)
+	notauthed.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+
+	// /api/v1/... route
+	api := wasabi.Subrouter("/" + config.apipath)
+	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
+	setupAuthRoutes(api)
+	api.Use(authMW)
+	api.Use(config.unrolled.Handler)
+	api.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+
+	// /me route
+	me := wasabi.Subrouter(me)
+	me.Methods("OPTIONS").HandlerFunc(optionsRoute)
+	me.HandleFunc("", meShowRoute).Methods("GET")
+	me.Use(authMW)
+	me.Use(config.unrolled.Handler)
+	me.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+
+	// /OwnTracks route
+	ot := wasabi.Subrouter("/OwnTracks")
+	ot.HandleFunc("", ownTracksRoute).Methods("POST")
+	// does own auth
+	// no need to log
+	ot.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+
+	// /rocks route
+	rocks := wasabi.Subrouter("/rocks")
+	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
+	// internal API-key based auth
+	rocks.Use(config.unrolled.Handler)
+	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+
+	// /simple route
+	simple := wasabi.Subrouter("/simple")
+	setupSimpleRoutes(simple)
+	// no auth
+	// no log
+	simple.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+
+	// /static files
+	static := wasabi.Subrouter("/static")
+	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
+	// no auth
+	static.Use(config.unrolled.Handler)
+	static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+
+	return router
 }
 
 // implied /simple
@@ -63,13 +97,6 @@ func setupSimpleRoutes(r *mux.Router) {
 	// Simple -- the old-style, encrypted, unauthenticated/authorized documents
 	r.HandleFunc("", uploadRoute).Methods("POST")
 	r.HandleFunc("/{document}", getRoute).Methods("GET")
-}
-
-// implied /me
-func setupMeRoutes(r *mux.Router) {
-	// This block requires authentication
-	// agent info (all HTML except /me which gives JSON for intel.ingrss.com
-	r.HandleFunc("", meShowRoute).Methods("GET") // show my stats (agent name/teams)
 }
 
 // implied /api/v1
@@ -215,12 +242,12 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	location := "/me?a=0"
+	location := me + "?a=0"
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		// wasabi.Log.Debug("deep-link redirecting to", rr)
-		if rr[:3] == "/me" || rr[:6] == "/login" { // leave /me check in place
-			location = "/me?postlogin=1"
+		if rr[:len(me)] == me || rr[:len(login)] == login { // leave /me check in place
+			location = me + "?postlogin=1"
 		} else {
 			location = rr
 		}

@@ -58,7 +58,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -78,7 +78,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
@@ -99,7 +99,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
@@ -120,7 +120,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
@@ -137,7 +137,7 @@ func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
@@ -158,7 +158,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -197,5 +197,5 @@ func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		_ = gid.StatusLocationDisable()
 	}
-	http.Redirect(res, req, "/me", http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }

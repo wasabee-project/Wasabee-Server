@@ -55,6 +55,17 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(202)
 }
 
+func WebhookStatus(res http.ResponseWriter, req *http.Request) {
+	err := checkWebhook()
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, "Running")
+
+}
+
 func riscRegisterWebhook() {
 	wasabi.Log.Notice("establishing RISC webhook with Google")
 	err := googleLoadKeys()
@@ -79,6 +90,7 @@ func riscRegisterWebhook() {
 		wasabi.Log.Error(err)
 		return
 	}
+	// checkWebhook()
 
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
@@ -113,7 +125,7 @@ func updateWebhook() error {
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
-			"url":             webroot + "/GoogleRISC",
+			"url":             webroot + riscHook,
 		},
 		"events_requested": []string{
 			"https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required",
@@ -168,7 +180,7 @@ func DisableWebhook() {
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
-			"url":             webroot + "/GoogleRISC",
+			"url":             webroot + riscHook,
 		},
 		"status": "disabled",
 	}

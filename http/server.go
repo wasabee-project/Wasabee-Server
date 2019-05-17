@@ -42,16 +42,18 @@ type Configuration struct {
 	templateSet       map[string]*template.Template // allow multiple translations
 	Logfile           string
 	srv               *http.Server
-	logfileHandle	  *os.File
-	unrolled	  *logger.Logger
-	scanners	  map[string]int64
+	logfileHandle     *os.File
+	unrolled          *logger.Logger
+	scanners          map[string]int64
 }
 
 var config Configuration
 
-const jsonType = `application/json; charset=UTF-8`
-const jsonTypeShort = `application/json`
-const meRoute = `/me`
+const jsonType = "application/json; charset=UTF-8"
+const jsonTypeShort = "application/json"
+const me = "/me"
+const login = "/login"
+const callback = "/callback"
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
@@ -85,7 +87,7 @@ func initializeConfig(initialConfig Configuration) {
 	}
 
 	config.googleOauthConfig = &oauth2.Config{
-		RedirectURL:  config.Root + "/callback",
+		RedirectURL:  config.Root + callback,
 		ClientID:     config.GoogleClientID,
 		ClientSecret: config.GoogleSecret,
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
@@ -100,7 +102,7 @@ func initializeConfig(initialConfig Configuration) {
 		wasabi.Log.Error("SESSION_KEY unset: logins will fail")
 	} else {
 		key := config.CookieSessionKey
-		wasabi.Log.Debugf("Session Key: " + key)
+		wasabi.Log.Debugf("Session Key: %s", key)
 		config.store = sessions.NewCookieStore([]byte(key))
 		config.sessionName = "WASABI"
 	}
@@ -211,46 +213,15 @@ func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.
 func StartHTTP(initialConfig Configuration) {
-	// Configure
+	// take the incoming config, add defaults
 	initializeConfig(initialConfig)
 
-	// Route
-	r := wasabi.NewRouter()
+	// setup the main router an built-in subrouters
+	router := setupRouter()
 
-	// establish subrouters -- these each have different middleware requirements
-	api := wasabi.Subrouter("/" + config.apipath)
-
-	me := wasabi.Subrouter(meRoute)
-	ot := wasabi.Subrouter("/OwnTracks")
-	simple := wasabi.Subrouter("/simple")
-	notauthed := wasabi.Subrouter("")
-
-	setupAuthRoutes(api)
-
-	setupMeRoutes(me)
-	setupSimpleRoutes(simple)
-	setupOwntracksRoute(ot)
-	setupNotauthed(notauthed)
-	setupRoutes(r)
-
-	// r. apply to all
-	r.Use(headersMW)
-	r.Use(scannerMW)
-
-	api.Use(authMW)
-	api.Use(config.unrolled.Handler)
-
-	me.Use(authMW)
-	me.Use(config.unrolled.Handler)
-
-	// move to proper modules
-	// tg.Use(config.unrolled.Handler)
-	// gm.Use(config.unrolled.Handler)
-	notauthed.Use(config.unrolled.Handler)
-
-	// Serve
+	// serve
 	config.srv = &http.Server{
-		Handler:           r,
+		Handler:           router,
 		Addr:              config.ListenHTTPS,
 		WriteTimeout:      15 * time.Second,
 		ReadTimeout:       15 * time.Second,
@@ -325,9 +296,9 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		var redirectURL = "/login"
-		if req.URL.String()[:3] != meRoute {
-			redirectURL = "/login?returnto=" + req.URL.String()
+		var redirectURL = login
+		if req.URL.String()[:len(me)] != me {
+			redirectURL = login + "?returnto=" + req.URL.String()
 		}
 
 		id, ok := ses.Values["id"]
@@ -387,7 +358,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	if ret != "" {
 		ses.Values["loginReq"] = ret
 	} else {
-		ses.Values["loginReq"] = meRoute
+		ses.Values["loginReq"] = me
 	}
 	_ = ses.Save(req, res)
 

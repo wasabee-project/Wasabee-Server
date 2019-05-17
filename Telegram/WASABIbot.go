@@ -49,7 +49,8 @@ func WASABIBot(init TGConfiguration) {
 
 	_ = wasabi.RegisterMessageBus("Telegram", SendMessage)
 
-	bot, err := tgbotapi.NewBotAPI(config.APIKey)
+	var err error
+	bot, err = tgbotapi.NewBotAPI(config.APIKey)
 	if err != nil {
 		wasabi.Log.Error(err)
 		return
@@ -74,6 +75,7 @@ func WASABIBot(init TGConfiguration) {
 
 	i := 1
 	for update := range config.upChan {
+		// wasabi.Log.Debugf("running update: %s", update)
 		if err = runUpdate(update); err != nil {
 			wasabi.Log.Error(err)
 			continue
