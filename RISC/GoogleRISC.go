@@ -163,13 +163,13 @@ func validateToken(rawjwt []byte) error {
 
 		// verification types are not signed, no KID, just respond instantly
 		if k == "https://schemas.openid.net/secevent/risc/event-type/verification" {
-			wasabi.Log.Debug("received RISC pong")
+			// wasabi.Log.Debug("received RISC pong")
 			e.Reason = "ping requsted"
 			continue
 		}
 		// anything else requires a signature
 		if keyOK {
-			wasabi.Log.Debug("Event: ", k, v)
+			wasabi.Log.Critical("RISC event: ", k, v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})

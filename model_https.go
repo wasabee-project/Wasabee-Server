@@ -2,7 +2,10 @@ package wasabi
 
 import (
 	"github.com/gorilla/mux"
+	"sync"
 )
+
+var once sync.Once
 
 // wasabiHTTPConfig stores values from the https server which are used in templates
 // to allow URL creation in other services (e.g. Telegram)
@@ -14,14 +17,11 @@ var wasabiHTTPSConfig struct {
 
 // NewRouter creates the HTTPS router
 func NewRouter() *mux.Router {
-	Log.Debug("Establishing main HTTPS router")
-
-	if wasabiHTTPSConfig.router != nil {
-		Log.Info("main HTTPS router already exists")
-		return wasabiHTTPSConfig.router
-	}
-
-	wasabiHTTPSConfig.router = mux.NewRouter()
+	// http://marcio.io/2015/07/singleton-pattern-in-go/
+	once.Do(func() {
+		Log.Info("Establishing main HTTPS router")
+		wasabiHTTPSConfig.router = mux.NewRouter()
+	})
 	return wasabiHTTPSConfig.router
 }
 
@@ -33,8 +33,6 @@ func Subrouter(prefix string) *mux.Router {
 	}
 
 	sr := wasabiHTTPSConfig.router.PathPrefix(prefix).Subrouter()
-	// sr := wasabiHTTPSConfig.router.Path(prefix).Subrouter()
-
 	return sr
 }
 

@@ -5,6 +5,13 @@ import (
 	"fmt"
 )
 
+// logoutlist is used by the RISC system
+var logoutlist map[GoogleID]bool
+
+func init() {
+	logoutlist = make(map[GoogleID]bool)
+}
+
 // GoogleID is the primary location for interfacing with the agent type
 type GoogleID string
 
@@ -86,7 +93,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}()
 	defer close(channel)
 
-	// XXX there is probably a better way of doing this
+	// would be better to start processing when either returned rather than waiting for both to be done, still better than serial calls
 	e1, e2 := <-channel, <-channel
 	if e1 != nil {
 		Log.Notice(e1)
@@ -165,7 +172,6 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		return false, err
 	}
 
-	// XXX check to see if they are blacklisted in the DB -- if V and .Rocks are down we still don't want to let them in
 	if authError != nil || gid.RISC() {
 		Log.Notice(authError)
 		return false, authError
@@ -390,7 +396,7 @@ func (gid GoogleID) AgentLocation(lat, lon, source string) error {
 	return nil
 }
 
-// ResetLocKey updates the database with a new OwnTracks password for a given agent
+// ResetLocKey updates the database with a new OwnTracks ID for a given agent
 func (gid GoogleID) ResetLocKey() error {
 	newlockey, _ := GenerateSafeName()
 	_, err := db.Exec("UPDATE agent SET lockey = ? WHERE gid = ?", newlockey, gid)
@@ -544,7 +550,7 @@ func (gid GoogleID) Unlock(reason string) error {
 	return nil
 }
 
-// Logout sets a temporary logout token - not stored since logout cases are not critical
+// Logout sets a temporary logout token - not stored in DB since logout cases are not critical
 // and sessions are refreshed with google hourly
 func (gid GoogleID) Logout(reason string) {
 	Log.Debugf("adding %s to logout list: %s", gid, reason)
@@ -560,12 +566,6 @@ func (gid GoogleID) CheckLogout() bool {
 	Log.Debugf("clearing %s from logoutlist", gid)
 	logoutlist[gid] = false // now that they've been checked, clear them
 	return logout
-}
-
-var logoutlist map[GoogleID]bool
-
-func init() {
-	logoutlist = make(map[GoogleID]bool)
 }
 
 // RISC checks to see if the user was marked as compromised by Google

@@ -298,6 +298,8 @@ func StatusServerPoller() {
 				continue
 			}
 		}
+		// XXX use a time.Ticker instead? 
+		// SCB: https://github.com/golang/go/issues/27707 -- sleep is fine for now
 		time.Sleep(300 * time.Second)
 	}
 }

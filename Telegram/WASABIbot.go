@@ -56,7 +56,7 @@ func WASABIBot(init TGConfiguration) {
 		return
 	}
 
-	bot.Debug = true
+	// bot.Debug = true
 	wasabi.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
 	wasabi.TGSetBot(bot.Self.UserName, bot.Self.ID)
 

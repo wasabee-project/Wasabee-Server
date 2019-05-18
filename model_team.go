@@ -210,6 +210,7 @@ func (teamID TeamID) Delete() error {
 // toGid takes anything (for small values of anything) and returns a Gid for it.
 // depends on EnlID.Gid(), LocKey.Gid(), TelegramID.Gid(), and SearchAgentName.
 // If you pass in a string, it will see if it looks like a gid, eid, lockey, or agent name and try that.
+// XXX Move to model_agent.go
 func toGid(in interface{}) (GoogleID, error) {
 	var gid GoogleID
 	var err error
@@ -491,11 +492,6 @@ func FetchAgent(id string, agent *Agent) error {
 	if err != nil {
 		Log.Error(err)
 		return err
-	}
-
-	// XXX redundant with previous check?
-	if gid == "" {
-		return fmt.Errorf("unknown agent (redundant check?): %s", id)
 	}
 
 	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(

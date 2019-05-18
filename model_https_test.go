@@ -24,3 +24,19 @@ func TestHttps(t *testing.T) {
 		t.Errorf("set/get web api path mismatch")
 	}
 }
+
+func TestRouter(t *testing.T) {
+	r := wasabi.NewRouter()
+	s := wasabi.NewRouter()
+
+	// there should only ever be one top router
+	if r != s {
+		t.Errorf("multiple top routers created")
+	}
+
+	x := wasabi.Subrouter("/X")
+	y := wasabi.Subrouter("/Y")
+	if x == y {
+		t.Errorf("subrouters stepped on each other")
+	}
+}

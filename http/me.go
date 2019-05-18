@@ -21,7 +21,6 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 
 	var ud wasabi.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
-		res.Header().Add("Cache-Control", "no-cache")
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -34,6 +33,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// wasabiHTTPSTemplateExecute runs the "me" template and outputs directly to the res
 	if err = wasabiHTTPSTemplateExecute(res, req, "me", ud); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

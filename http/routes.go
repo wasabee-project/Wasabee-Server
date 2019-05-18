@@ -35,6 +35,7 @@ func setupRouter() *mux.Router {
 	notauthed.HandleFunc(login, googleRoute).Methods("GET")
 	notauthed.HandleFunc(callback, callbackRoute).Methods("GET")
 	// common files that live under /static
+	// XXX look into https://blog.golang.org/h2push for these
 	notauthed.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 	notauthed.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
 	notauthed.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
