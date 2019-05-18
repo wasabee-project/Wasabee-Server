@@ -13,7 +13,9 @@ import (
 	"time"
 )
 
-const jsonType = `application/json; charset=UTF-8`
+const jsonType = "application/json; charset=UTF-8"
+const apiBase = "https://risc.googleapis.com/v1beta/"
+const jwtService = "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService"
 
 // Webhook is the http route for receiving RISC updates
 // pushes the updates into the RISC channel for processing
@@ -52,7 +54,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
-	res.WriteHeader(202)
+	res.WriteHeader(http.StatusAccepted)
 }
 
 func WebhookStatus(res http.ResponseWriter, req *http.Request) {
@@ -62,7 +64,7 @@ func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, "Running")
+	fmt.Fprint(res, "RISC listener service is Running")
 
 }
 
@@ -120,7 +122,7 @@ func updateWebhook() error {
 		return err
 	}
 
-	apiurl := "https://risc.googleapis.com/v1beta/stream:update"
+	apiurl := apiBase + "stream:update"
 	webroot, _ := wasabi.GetWebroot()
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
@@ -157,7 +159,7 @@ func updateWebhook() error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
 		wasabi.Log.Notice(string(raw))
 	}
@@ -175,7 +177,7 @@ func DisableWebhook() {
 		return
 	}
 
-	apiurl := "https://risc.googleapis.com/v1beta/stream:update"
+	apiurl := apiBase + "stream:update"
 	webroot, _ := wasabi.GetWebroot()
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
@@ -203,7 +205,7 @@ func DisableWebhook() {
 		wasabi.Log.Error(err)
 		return
 	}
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		raw, _ = ioutil.ReadAll(response.Body)
 		wasabi.Log.Notice(string(raw))
 	}
@@ -217,7 +219,7 @@ func checkWebhook() error {
 		return err
 	}
 
-	apiurl := "https://risc.googleapis.com/v1beta/stream"
+	apiurl := apiBase + "stream"
 	client := http.Client{}
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
@@ -245,7 +247,7 @@ func ping() error {
 		return err
 	}
 
-	apiurl := "https://risc.googleapis.com/v1beta/stream:verify"
+	apiurl := apiBase + "stream:verify"
 	jmsg := map[string]string{
 		"state": wasabi.GenerateName(),
 	}
@@ -268,7 +270,7 @@ func ping() error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
 		wasabi.Log.Debug(string(raw))
 	}
@@ -317,7 +319,7 @@ func AddSubject(gid wasabi.GoogleID) error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
 		wasabi.Log.Debug(string(raw))
 	}
@@ -326,7 +328,7 @@ func AddSubject(gid wasabi.GoogleID) error {
 }
 
 func getToken() (*oauth2.Token, error) {
-	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, "https://risc.googleapis.com/google.identity.risc.v1beta.RiscManagementService")
+	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, jwtService) 
 	if err != nil {
 		wasabi.Log.Fatal(err)
 		return nil, err

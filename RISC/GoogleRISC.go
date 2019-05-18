@@ -51,6 +51,7 @@ var riscchan chan event
 var config riscConfig
 
 const riscHook = "/GoogleRISC"
+const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configuration"
 
 // RISCinit sets up the data structures and starts the processing threads
 func RISCinit(configfile string) {
@@ -185,8 +186,7 @@ func validateToken(rawjwt []byte) error {
 }
 
 func googleRiscDiscovery() error {
-	discovery := "https://accounts.google.com/.well-known/risc-configuration"
-	req, err := http.NewRequest("GET", discovery, nil)
+	req, err := http.NewRequest("GET", googleDiscoveryURL, nil)
 	if err != nil {
 		wasabi.Log.Error(err)
 		return err
