@@ -57,6 +57,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusAccepted)
 }
 
+// WebhookStatus exposes the running RISC status to the HTTP process
 func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 	err := checkWebhook()
 	if err != nil {
@@ -328,7 +329,7 @@ func AddSubject(gid wasabi.GoogleID) error {
 }
 
 func getToken() (*oauth2.Token, error) {
-	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, jwtService) 
+	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, jwtService)
 	if err != nil {
 		wasabi.Log.Fatal(err)
 		return nil, err
