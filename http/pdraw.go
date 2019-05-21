@@ -124,7 +124,12 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	if op.ID.IsOwner(gid) {
 		err = fmt.Errorf("deleting operation %s", op.ID)
 		wasabi.Log.Notice(err)
-		op.Delete()
+		err := op.Delete()
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
 	} else {
 		err = fmt.Errorf("only the owner can delete an operation")
 		wasabi.Log.Notice(err)
