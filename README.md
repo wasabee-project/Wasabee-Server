@@ -5,6 +5,8 @@
 [![Build Status](https://travis-ci.com/cloudkucooland/WASABI.svg?branch=master)](https://travis-ci.com/cloudkucooland/WASABI)
 [![Coverage Status](https://coveralls.io/repos/github/cloudkucooland/WASABI/badge.svg?branch=master)](https://coveralls.io/github/cloudkucooland/WASABI?branch=master)
 
+[IITC Plugin](https://github.com/pcaddict08/Wasabee-IITC)
+
 # WASABI
 ### The Server-Side component for WASABI and related Ingress tools for Enlightened Agents.
 

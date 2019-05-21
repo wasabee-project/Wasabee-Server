@@ -265,6 +265,7 @@ func headersMW(next http.Handler) http.Handler {
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
+		res.Header().Add("Access-Control-Allow-Headers", "Content-Type")
 		// untested
 		// res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me")
 		next.ServeHTTP(res, req)

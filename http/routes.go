@@ -35,11 +35,11 @@ func setupRouter() *mux.Router {
 	notauthed.HandleFunc(login, googleRoute).Methods("GET")
 	notauthed.HandleFunc(callback, callbackRoute).Methods("GET")
 	// common files that live under /static
-	// XXX look into https://blog.golang.org/h2push for these
 	notauthed.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 	notauthed.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
 	notauthed.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
 	notauthed.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
+	// do not make these static -- they should be translated via the templates system
 	notauthed.HandleFunc("/privacy", privacyRoute).Methods("GET")
 	notauthed.HandleFunc("/", frontRoute).Methods("GET")
 	notauthed.Use(config.unrolled.Handler)
@@ -106,9 +106,11 @@ func setupAuthRoutes(r *mux.Router) {
 	// Draw -- new-style, parsed, not-encrypted, authenticated, authorized, more-functional
 	r.HandleFunc("/draw", pDrawUploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}", pDrawGetRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}", pDrawGetRoute).Methods("HEAD") // XXX make this better
 	r.HandleFunc("/draw/{document}", pDrawDeleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}/delete", pDrawDeleteRoute).Methods("GET")
-	// r.HandleFunc("/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
+	r.HandleFunc("/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
+	r.HandleFunc("/draw/{document}/chgrp", pDrawChgrpRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/draw/{document}", updateDrawRoute).Methods("PUT")
 
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                 // set my display name /me?name=deviousness

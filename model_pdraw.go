@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 )
@@ -124,6 +125,23 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		}
 	}
 	return nil
+}
+
+// PDrawUpdate - probably redundant as long as the id does not change?
+func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
+	var o Operation
+	if err := json.Unmarshal(op, &o); err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	if id != string(o.ID) {
+		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
+		Log.Error(err)
+		return err
+	}
+
+	return PDrawInsert(op, gid)
 }
 
 func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
@@ -464,6 +482,51 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID
 func (o *Operation) IsOwner(gid GoogleID) bool {
 	return o.ID.IsOwner(gid)
+}
+
+// Chown changes an operation's owner
+func (opID OperationID) Chown(gid GoogleID, to interface{}) error {
+	if !opID.IsOwner(gid) {
+		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
+		Log.Error(err)
+		return err
+	}
+
+	togid, err := toGid(to)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	_, err = db.Exec("UPDATE operation SET gid = ? WHERE ID = ?", togid, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+// Chgrp changes an operation's team -- because UNIX libc function names are cool, yo
+func (opID OperationID) Chgrp(gid GoogleID, to TeamID) error {
+	if !opID.IsOwner(gid) {
+		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
+		Log.Error(err)
+		return err
+	}
+
+	// check to see if the team really exists
+	if _, err := to.Name(); err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	_, err := db.Exec("UPDATE operation SET teamID = ? WHERE ID = ?", to, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }
 
 // String returns the string version of a PortalID

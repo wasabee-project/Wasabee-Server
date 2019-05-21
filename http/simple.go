@@ -134,12 +134,6 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, doc.Content)
 }
 
-func updateDrawRoute(res http.ResponseWriter, req *http.Request) {
-	err := fmt.Errorf("not finished")
-	wasabi.Log.Error(err)
-	http.Error(res, err.Error(), http.StatusInternalServerError)
-}
-
 // ParseExpiration creates a time.Time object from an expiration string, taking the units m, h, d, w into account.
 func parseExpiration(expiration string) (time.Time, error) {
 	expiration = strings.ToLower(strings.TrimSpace(expiration))
