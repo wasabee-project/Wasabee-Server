@@ -46,7 +46,7 @@ func setupRouter() *mux.Router {
 	notauthed.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
 	// /api/v1/... route
-	api := wasabi.Subrouter("/" + config.apipath)
+	api := wasabi.Subrouter(apipath)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	setupAuthRoutes(api)
 	api.Use(authMW)
@@ -111,7 +111,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/delete", pDrawDeleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/draw/{document}/chgrp", pDrawChgrpRoute).Methods("GET").Queries("to", "{to}")
-	r.HandleFunc("/draw/{document}", updateDrawRoute).Methods("PUT")
+	r.HandleFunc("/draw/{document}", pDrawUpdateRoute).Methods("PUT")
 
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                 // set my display name /me?name=deviousness
 	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                 // set my OwnTracks Password (cleartext, yes, but SSL is required)
@@ -129,11 +129,11 @@ func setupAuthRoutes(r *mux.Router) {
 	// r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")	// send a message to a agent
 
 	// teams
-	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")                                              // create a new team
-	r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}")                                              // invite agent to team (owner)
-	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                                                             // return the location of every agent/target on team (team member/owner)
-	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                                                                       // remove the team completely (owner)
-	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET")                                                                   // remove the team completely (owner)
+	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
+	r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}") // invite agent to team (owner)
+	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every agent/target on team (team member/owner)
+	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
+	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                                                                       // GUI to do basic edit (owner)
 	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
 	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community

@@ -98,6 +98,41 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
 
+func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	team := wasabi.TeamID(vars["team"])
+	safe, err := gid.OwnsTeam(team)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	to, ok := vars["to"]
+	if !ok { // this should not happen unless the router gets misconfigured
+		err = fmt.Errorf("to unset")
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = team.Chown(to); err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+}
+
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -161,7 +196,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	url := fmt.Sprintf("/%s/team/%s/edit", config.apipath, team.String())
+	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
 	http.Redirect(res, req, url, http.StatusPermanentRedirect)
 }
 
@@ -191,6 +226,6 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	url := fmt.Sprintf("/%s/team/%s/edit", config.apipath, team.String())
+	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
 	http.Redirect(res, req, url, http.StatusPermanentRedirect)
 }

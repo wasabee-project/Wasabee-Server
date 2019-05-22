@@ -30,6 +30,7 @@ type Operation struct {
 	Links     []Link      `json:"links"`
 	Markers   []Marker    `json:"markers"`
 	TeamID    TeamID      `json:"teamid"` // not set in IITC Plugin yet
+	Modified  string      `json:"modified"`
 }
 
 // Portal is defined by the PhtivDraw IITC plugin.
@@ -92,7 +93,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	}
 
 	// start the insert process
-	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, teamID) VALUES (?, ?, ?, ?, ?)", o.ID, o.Name, gid, o.Color, teamID.String())
+	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified) VALUES (?, ?, ?, ?, ?, NOW())", o.ID, o.Name, gid, o.Color, teamID.String())
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -229,8 +230,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 	// permission check and populate Operation top level
 	var teamID sql.NullString
-	r := db.QueryRow("SELECT name, gid, color, teamID FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &teamID)
+	r := db.QueryRow("SELECT name, gid, color, teamID, modified FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &teamID, &o.Modified)
 	if err != nil {
 		Log.Error(err)
 		return err

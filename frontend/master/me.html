@@ -19,7 +19,7 @@
 <li class="list-group-item">Location Share Key: {{.LocationKey}}
 <br/>
 <small>This is the information you will need to give to your operator to be invited on to the op team. Once you are invited onto the team, you will need to enable the team (below). You can disable a team at any time.</small>
-<small><a href="/{{WebAPIPath}}/me?newlockey=y">Request a new LocKey</a> (because Frank didn't like his)
+<small><a href="{{WebAPIPath}}/me?newlockey=y">Request a new LocKey</a> (because Frank didn't like his)
 </li>
 <li class="list-group-item">Display Name: {{.IngressName}}
 <br/>
@@ -34,7 +34,7 @@
 {{else}}
 <li class="list-group-item"><a href="https://v.enl.one/">V Status:</a> Not Verified</li>
 <li class="list-group-item">
-<form action="/{{WebAPIPath}}/me" method="get">
+<form action="{{WebAPIPath}}/me" method="get">
 <input type="text" name="name" />
 <input type="submit" name="update" value="update display name" />
 </form>
@@ -46,7 +46,7 @@
 <small>.Rocks verification typically only takes place in relationship to anomolies. Lack of verification does not mean you don't have a .rocks account, it just means you've not been verified at an anomoly event</small>
 </li>
 {{end}}
-<li class="list-group-item"><a href="/{{WebAPIPath}}/waypoints/me">Waypoints/Markers Near Me</a></li>
+<li class="list-group-item"><a href="{{WebAPIPath}}/waypoints/me">Waypoints/Markers Near Me</a></li>
 </div>
 
 <div class="card mb-2">
@@ -69,7 +69,7 @@
 {{end}}
 </li>
 <li class="list-group-item">
-<form action="/{{WebAPIPath}}/me" method="get">
+<form action="{{WebAPIPath}}/me" method="get">
 <input type="text" name="otpw" />
 <input type="submit" name="update" value="update OT Password" />
 </form>
@@ -115,19 +115,19 @@
 	{{range .Teams}}
 		<li class="list-group-item">{{.Name}} ({{.State}})  
 {{if eq .State "Off"}}
-			[ <a href="/{{WebAPIPath}}/me/{{.ID}}?state=On">On</a> ]
+			[ <a href="{{WebAPIPath}}/me/{{.ID}}?state=On">On</a> ]
 {{else}}
     {{if eq .State "Primary"}}
-			[ <a href="/{{WebAPIPath}}/me/{{.ID}}?state=Off">Off</a> ]
+			[ <a href="{{WebAPIPath}}/me/{{.ID}}?state=Off">Off</a> ]
     {{else}}
-			[ <a href="/{{WebAPIPath}}/me/{{.ID}}?state=Off">Off</a> |
-			<a href="/{{WebAPIPath}}/me/{{.ID}}?state=Primary">Primary</a> ]
+			[ <a href="{{WebAPIPath}}/me/{{.ID}}?state=Off">Off</a> |
+			<a href="{{WebAPIPath}}/me/{{.ID}}?state=Primary">Primary</a> ]
     {{end}}
 {{end}}
 {{if .RocksComm}}
 			[ <a href="https://enlightened.rocks/comm/{{.RocksComm}}">This team is managed at enlightened.rocks</a> ]
 {{else}}
-			[ <a href="/{{WebAPIPath}}/me/{{.ID}}/delete">Remove Me</a> ]
+			[ <a href="{{WebAPIPath}}/me/{{.ID}}/delete">Remove Me</a> ]
 {{end}}
 		</li>
 	{{end}}
@@ -156,13 +156,13 @@
   <ul class="list-group list-group-flush">
 {{range .OwnedTeams}}
     <li class="list-group-item">
-	<h5 class="card-subheading"><a href="/{{WebAPIPath}}/team/{{.ID}}">{{.Name}}</a></h5>
-	<a href="/{{WebAPIPath}}/team/{{.ID}}/edit" class="card-link">Edit</a>
-	<a href="/{{WebAPIPath}}/team/{{.ID}}/delete" class="card-link">Delete</a>
+	<h5 class="card-subheading"><a href="{{WebAPIPath}}/team/{{.ID}}">{{.Name}}</a></h5>
+	<a href="{{WebAPIPath}}/team/{{.ID}}/edit" class="card-link">Edit</a>
+	<a href="{{WebAPIPath}}/team/{{.ID}}/delete" class="card-link">Delete</a>
 	</li>
 {{end}}
   <li class="list-group-item">
-    <form action="/{{WebAPIPath}}/team/new" method="get">
+    <form action="{{WebAPIPath}}/team/new" method="get">
     <input type="text" name="name" />
     <input type="submit" name="update" value="new team" />
     </form>
@@ -174,7 +174,7 @@
   <div class="card-header">Manual Location Set</div>
   <div class="card-body">
 		<li class="list-group-item">
-<form action="/{{WebAPIPath}}/me" method="get">
+<form action="{{WebAPIPath}}/me" method="get">
 Lat: <input type="text" name="lat" value="0" id="lat" />
 Lon: <input type="text" name="lon" value="0" id="lon" />
 <input type="submit" name="location" value="set location" />

@@ -30,7 +30,6 @@ type Configuration struct {
 	Root              string
 	path              string
 	domain            string
-	apipath           string
 	oauthStateString  string
 	CertDir           string
 	GoogleClientID    string
@@ -54,15 +53,13 @@ const jsonTypeShort = "application/json"
 const me = "/me"
 const login = "/login"
 const callback = "/callback"
+const apipath = "/api/v1"
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
 	config = initialConfig
 
 	config.Root = strings.TrimSuffix(config.Root, "/")
-
-	// this can be hardcoded for now
-	config.apipath = "api/v1"
 
 	// Extract "path" fron "root"
 	rootParts := strings.SplitAfterN(config.Root, "/", 4) // https://example.org/[grab this part]
@@ -77,7 +74,7 @@ func initializeConfig(initialConfig Configuration) {
 
 	// used for templates
 	wasabi.SetWebroot(config.Root)
-	wasabi.SetWebAPIPath(config.apipath)
+	wasabi.SetWebAPIPath(apipath)
 
 	if config.GoogleClientID == "" {
 		wasabi.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
@@ -260,14 +257,11 @@ func Shutdown() error {
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Add("Server", "WASABI")
-		// res.Header().Add("X-Content-Type-Options", "nosniff")
 		res.Header().Add("X-Frame-Options", "deny")
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
-		res.Header().Add("Access-Control-Allow-Headers", "Content-Type")
-		// untested
-		// res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me")
+		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept")
 		next.ServeHTTP(res, req)
 	})
 }

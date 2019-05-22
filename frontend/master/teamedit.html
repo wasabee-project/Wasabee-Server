@@ -21,11 +21,11 @@
 	{{ $rc := .RocksComm }}
 	{{range .Agent}}
         <li class="list-group-item">{{.Name}} ({{.State}}) {{if .EnlID}} <a href="https://v.enl.one/profile/{{.EnlID}}">V Profile</a> {{end}} <br />
-		{{if not $rc}}<a href="/{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a>{{end}}
+		{{if not $rc}}<a href="{{WebAPIPath}}/team/{{printf "%s" $x}}/{{.LocKey}}/delete">Remove from team</a>{{end}}
 		</li>
 	{{end}}
 <li class="list-group-item">
-<form action="/{{WebAPIPath}}/team/{{.ID}}" method="get">
+<form action="{{WebAPIPath}}/team/{{.ID}}" method="get">
 <input type="text" name="key" />
 <input type="submit" name="add" value="Add agent to team" />
 <small>You can use an Agent name, a GoogleID, a lockey, or an EnlID</small>
@@ -34,7 +34,7 @@
 </ul>
 {{if EnlRocks}}
 <li class="list-group-item">
-<form action="/{{WebAPIPath}}/team/{{.ID}}/rockscfg" method="get">
+<form action="{{WebAPIPath}}/team/{{.ID}}/rockscfg" method="get">
 Rocks Community Identifier: <input type="text" name="rockscomm" value="{{.RocksComm}}" />
 Rocks Community API Key: <input type="text" name="rockskey" value="{{.RocksKey}}" />
 <input type="submit" name="add" value="configure rocks" />
@@ -43,10 +43,16 @@ Rocks Community API Key: <input type="text" name="rockskey" value="{{.RocksKey}}
 </form>
 </li>
 {{if .RocksKey}}
-<li class="list-group-item"><a href="/{{WebAPIPath}}/team/{{.ID}}/rocks">Pull associated enl.rocks community members onto this team</a></li>
+<li class="list-group-item"><a href="{{WebAPIPath}}/team/{{.ID}}/rocks">Pull associated enl.rocks community members onto this team</a></li>
 {{end}}
 </ul>
 {{end}}
+<li class="list-group-item">
+<form action="{{WebAPIPath}}/team/{{.ID}}/chown">
+New Ownership: <input type="text" name="to" />
+<input type="submit" name="chown" value="Change Ownership" />
+</form>
+</li>
 </div>
 <!-- content ends here -->				
 					</div>

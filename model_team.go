@@ -332,6 +332,23 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 	return nil
 }
 
+// Chown changes a team's ownership
+// caller must verify permissions
+func (teamID TeamID) Chown(to interface{}) error {
+	gid, err := toGid(to)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	_, err = db.Exec("UPDATE team SET owner = ? WHERE teamID = ?", gid, teamID)
+	if err != nil {
+		Log.Notice(err)
+		return (err)
+	}
+	return nil
+}
+
 // ClearPrimaryTeam sets any team marked as primary to "On" for a agent
 func (gid GoogleID) ClearPrimaryTeam() error {
 	_, err := db.Exec("UPDATE agentteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)

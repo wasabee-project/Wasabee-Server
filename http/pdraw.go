@@ -56,18 +56,6 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
-	ims := req.Header.Get("If-Modified-Since")
-	if ims != "" {
-		d, err := time.Parse(time.RFC1123, ims)
-		if err != nil {
-			wasabi.Log.Error(err)
-		} else {
-			wasabi.Log.Debug("if-modified-since: %s", d)
-			// XXX we need to store a last update value on the operation
-			// return 200/302 if newer/not
-		}
-	}
-
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabi.Log.Notice(err)
@@ -75,13 +63,39 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// XXX if HEAD skip the rest and just return 200/302
-
 	var o wasabi.Operation
 	o.ID = wasabi.OperationID(id)
 	if err = o.Populate(gid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	var newer bool
+	ims := req.Header.Get("If-Modified-Since")
+	if ims != "" {
+		// XXX use http.ParseTime?
+		d, err := time.Parse(time.RFC1123, ims)
+		if err != nil {
+			wasabi.Log.Error(err)
+		} else {
+			wasabi.Log.Debug("if-modified-since: %s", d)
+			m, err := time.Parse("2006-01-02 15:04:05", o.Modified)
+			if err != nil {
+				wasabi.Log.Error(err)
+			} else {
+				if d.Before(m) {
+					newer = true
+				}
+			}
+		}
+	}
+
+	method := req.Header.Get("Method")
+	if newer && method == "HEAD" {
+		wasabi.Log.Debug("HEAD with 302")
+		res.Header().Set("Content-Type", "")          // disable the default output
+		http.Redirect(res, req, "", http.StatusFound) // XXX redirect to nothing?
 		return
 	}
 
@@ -145,7 +159,7 @@ func jsonError(e error) string {
 	return string(s)
 }
 
-func updateDrawRoute(res http.ResponseWriter, req *http.Request) {
+func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
