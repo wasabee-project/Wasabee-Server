@@ -1,8 +1,9 @@
 package wasabi
 
 import (
-	"github.com/gorilla/mux"
 	"sync"
+
+	"github.com/gorilla/mux"
 )
 
 var once sync.Once

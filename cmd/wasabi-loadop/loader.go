@@ -17,6 +17,7 @@ func importop(gid, opfile string) error {
 		return err
 	}
 
+	// #nosec
 	content, err := ioutil.ReadFile(opfile)
 	if err != nil {
 		wasabi.Log.Error(err)

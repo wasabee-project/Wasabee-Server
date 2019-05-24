@@ -83,10 +83,8 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 			m, err := time.Parse("2006-01-02 15:04:05", o.Modified)
 			if err != nil {
 				wasabi.Log.Error(err)
-			} else {
-				if d.Before(m) {
-					newer = true
-				}
+			} else if d.Before(m) {
+				newer = true
 			}
 		}
 	}

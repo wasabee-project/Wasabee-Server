@@ -122,6 +122,7 @@ func initializeConfig(initialConfig Configuration) {
 		config.Logfile = "wasabi-https.log"
 	}
 	wasabi.Log.Infof("https logfile: %s", config.Logfile)
+	// #nosec
 	config.logfileHandle, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		wasabi.Log.Fatal(err)

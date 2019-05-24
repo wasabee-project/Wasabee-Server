@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/time/rate"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // RocksCommunityNotice is sent from a community when an agent is added or removed
@@ -220,7 +221,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return nil
 	}
 
-	rc, err := teamID.RocksComm()
+	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
 	}
@@ -309,7 +310,7 @@ type rocksPushResponse struct {
 
 // AddToRemoteRocksCommunity adds an agent to a community at .rocks IF that community has API enabled.
 func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
-	rc, err := teamID.RocksComm()
+	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
 	}
@@ -326,6 +327,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 
 	// XXX use NewRequest/client
 	apiurl := fmt.Sprintf("%s%s?key=%s", commAPIEndpoint, gid, rc)
+	// #nosec
 	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
 	if err != nil {
 		Log.Error(err)
@@ -351,7 +353,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 
 // RemoveFromRemoteRocksCommunity removes an agent from a Rocks Community IF that community has API enabled.
 func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
-	rc, err := teamID.RocksComm()
+	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
 	}
@@ -403,7 +405,8 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 	return nil
 }
 
-func (teamID TeamID) RocksComm() (string, error) {
+// rocksComm returns a rocks key for a TeamID
+func (teamID TeamID) rocksComm() (string, error) {
 	if !rocks.configured {
 		return "", nil
 	}

@@ -217,7 +217,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Email string          `json:"email"`
 	}
 
-	content, tokenStr, err := getAgentInfo(req.FormValue("state"), req.FormValue("code"), req.Context())
+	content, tokenStr, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
 		wasabi.Log.Notice(err)
 		return
@@ -294,7 +294,7 @@ func calculateNonce(gid wasabi.GoogleID) (string, string) {
 
 // read the result from google at end of oauth session
 // should we save the token in the session cookie for any reason?
-func getAgentInfo(state string, code string, rctx context.Context) ([]byte, string, error) {
+func getAgentInfo(rctx context.Context, state string, code string) ([]byte, string, error) {
 	if state != config.oauthStateString {
 		return nil, "", fmt.Errorf("invalid oauth state")
 	}

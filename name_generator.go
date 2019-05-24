@@ -3,7 +3,6 @@ package wasabi
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	// "database/sql"
 	"encoding/hex"
 	"errors"
 	"io/ioutil"

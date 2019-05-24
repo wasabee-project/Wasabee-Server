@@ -1,15 +1,15 @@
 package wasabigm
 
 import (
-	// "bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
 	"io/ioutil"
 	"net/http"
 	"text/template"
 	"time"
+
+	"github.com/cloudkucooland/WASABI"
 )
 
 // InboundMessage is what we receive from GM

@@ -2,12 +2,12 @@ package wasabigm
 
 import (
 	"bytes"
-	// "encoding/json"
 	"errors"
-	"github.com/cloudkucooland/WASABI"
 	"io/ioutil"
 	"path/filepath"
 	"text/template"
+
+	"github.com/cloudkucooland/WASABI"
 )
 
 func gmTemplates() error {
