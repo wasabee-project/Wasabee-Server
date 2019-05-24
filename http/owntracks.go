@@ -33,12 +33,14 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	if string(jBlob) == "" {
 		wasabi.Log.Notice("empty JSON: probably delete waypoint / person request")
 		waypoints, _ := gid.OwnTracksWaypoints()
