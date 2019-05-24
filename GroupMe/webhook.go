@@ -4,11 +4,12 @@ import (
 	// "errors"
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	wasabi "github.com/cloudkucooland/WASABI"
+	"github.com/gorilla/mux"
 )
 
 // GMWebHook is the http route for receiving GM updates

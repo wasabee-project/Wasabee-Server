@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/cloudkucooland/WASABI"
+	wasabi "github.com/cloudkucooland/WASABI"
 )
 
 func gmTemplates() error {

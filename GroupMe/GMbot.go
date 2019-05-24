@@ -9,7 +9,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/cloudkucooland/WASABI"
+	wasabi "github.com/cloudkucooland/WASABI"
 )
 
 // InboundMessage is what we receive from GM
