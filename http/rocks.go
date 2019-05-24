@@ -20,7 +20,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	defer req.Body.Close()
+	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		wasabi.Log.Notice(err)

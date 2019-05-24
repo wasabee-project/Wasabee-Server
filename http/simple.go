@@ -57,7 +57,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			}
 
 			// Read document
-			defer file.Close()
+			// defer file.Close()
 			content, err := ioutil.ReadAll(file)
 			if err != nil {
 				wasabi.Log.Error(err)
@@ -68,7 +68,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	} else { // PUT or POST with non-form
 		// Read document
-		defer req.Body.Close()
+		// defer req.Body.Close()
 		content, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			wasabi.Log.Error(err)
