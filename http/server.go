@@ -158,6 +158,7 @@ func wasabiHTTPSTemplateConfig() error {
 		"WebAPIPath":   wasabi.GetWebAPIPath,
 		"VEnlOne":      wasabi.GetvEnlOne,
 		"EnlRocks":     wasabi.GetEnlRocks,
+		"TeamMenu":     wasabi.TeamMenu,
 	}
 
 	wasabi.Log.Info("Including frontend templates from: ", config.FrontendPath)

@@ -30,6 +30,7 @@ func randomWord(array []string, try int, err error) string {
 
 // LoadWordsFile imports the word definition file used for names.
 func LoadWordsFile(filename string) error {
+	// #nosec
 	content, err := ioutil.ReadFile(filename)
 	if err == nil {
 		source := strings.Split(string(content), "\n")

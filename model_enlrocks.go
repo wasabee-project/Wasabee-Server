@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/time/rate"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
-	"golang.org/x/time/rate"
 )
 
 // RocksCommunityNotice is sent from a community when an agent is added or removed
@@ -41,12 +41,13 @@ type RocksAgent struct {
 }
 
 type rocksconfig struct {
-	rocksAPIEndpoint string
-	rocksAPIKey      string
-	configured       bool
-	commAPIEndpoint  string
-	limiter		*rate.Limiter
+	rocksAPIKey string
+	configured  bool
+	limiter     *rate.Limiter
 }
+
+const commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
+const rocksAPIEndpoint = "https://enlightened.rocks/api/user/status/"
 
 var rocks rocksconfig
 
@@ -54,8 +55,6 @@ var rocks rocksconfig
 func SetEnlRocks(key string) {
 	Log.Debugf("enl.rocks API Key: %s", key)
 	rocks.rocksAPIKey = key
-	rocks.rocksAPIEndpoint = "https://enlightened.rocks/api/user/status"
-	rocks.commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
 
 	rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
 	rocks.configured = true
@@ -101,16 +100,15 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 	default:
 		searchID = ""
 	}
-	
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
 		Log.Notice(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s/%s?apikey=%s", rocks.rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
-	// Log.Debug(apiurl)
+	apiurl := fmt.Sprintf("%s%s?apikey=%s", rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
@@ -230,14 +228,14 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
 		Log.Notice(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s?key=%s", rocks.commAPIEndpoint, rc)
+	apiurl := fmt.Sprintf("%s?key=%s", commAPIEndpoint, rc)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
@@ -269,8 +267,6 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	for _, agent := range rr.Members {
 		_, err = agent.IngressName()
 		if err != nil && err == sql.ErrNoRows {
-			// XXX bypass the rate limiter by pushing into rocks.rateLimiter 
-			// rocks.rateLimiter<- skipper // nope, read only channel
 			Log.Debugf("Importing previously unknown agent: %s", agent)
 			_, err = agent.InitAgent() // add agent to system if they don't already exist
 			if err != nil {
@@ -321,15 +317,15 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
 		Log.Notice(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
 	// XXX use NewRequest/client
+	apiurl := fmt.Sprintf("%s%s?key=%s", commAPIEndpoint, gid, rc)
 	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
 	if err != nil {
 		Log.Error(err)
@@ -363,14 +359,14 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
 		Log.Notice(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.commAPIEndpoint, gid, rc)
+	apiurl := fmt.Sprintf("%s%s?key=%s", commAPIEndpoint, gid, rc)
 	Log.Debug(apiurl)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
 	if err != nil {

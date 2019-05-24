@@ -1,9 +1,11 @@
 package wasabi
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"strconv"
 	"strings"
 )
@@ -302,10 +304,9 @@ func (teamID TeamID) AddAgent(in interface{}) error {
 		return err
 	}
 
-	err = gid.AddToRemoteRocksCommunity(teamID)
-	if err != nil {
+	if err = gid.AddToRemoteRocksCommunity(teamID); err != nil {
 		Log.Notice(err)
-		// return (err)
+		// return err
 	}
 	return nil
 }
@@ -321,13 +322,12 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 	_, err = db.Exec("DELETE FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
-		return (err)
+		return err
 	}
 
-	err = gid.RemoveFromRemoteRocksCommunity(teamID)
-	if err != nil {
+	if err = gid.RemoveFromRemoteRocksCommunity(teamID); err != nil {
 		Log.Notice(err)
-		// return (err)
+		// return err
 	}
 	return nil
 }
@@ -537,4 +537,36 @@ func (teamID TeamID) Name() (string, error) {
 		return "", err
 	}
 	return name, nil
+}
+
+// TeamList is used for templates
+// {{TeamMenu .Gid .TeamID}}
+func TeamMenu(gid GoogleID, teamID TeamID) (template.HTML, error) {
+	rows, err := db.Query("SELECT t.name, t.teamID FROM agentteams=x, team=t WHERE x.gid = ? AND x.teamID = t.teamID", gid)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	defer rows.Close()
+
+	var b bytes.Buffer
+	var name string
+	var tid TeamID
+
+	b.WriteString(`<select name="team">`)
+	for rows.Next() {
+		err := rows.Scan(&name, &tid)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		if tid == teamID {
+			b.WriteString(fmt.Sprintf("<option value=\"%s\" default=\"default\">%s</option>", tid, name))
+		} else {
+			b.WriteString(fmt.Sprintf("<option value=\"%s\">%s</option>", tid, name))
+		}
+	}
+	b.WriteString(`</select>`)
+	return template.HTML(b.String()), nil
 }

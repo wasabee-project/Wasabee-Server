@@ -62,6 +62,7 @@ func RISCinit(configfile string) {
 	}
 
 	// load service-account info from JSON file
+	// #nosec
 	data, err := ioutil.ReadFile(configfile)
 	if err != nil {
 		wasabi.Log.Error(err)
