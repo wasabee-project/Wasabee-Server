@@ -388,7 +388,7 @@ func farmsNear(gid wasabi.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 func runRocks(tgid wasabi.TelegramID) (wasabi.GoogleID, error) {
 	var agent wasabi.RocksAgent
 
-	err := tgid.RocksSearch(&agent)
+	err := wasabi.RocksSearch(tgid, &agent)
 	if err != nil {
 		wasabi.Log.Error(err)
 		return "", err
@@ -406,7 +406,7 @@ func runRocks(tgid wasabi.TelegramID) (wasabi.GoogleID, error) {
 
 	// this adds the agent to the Telegram tables
 	// but InitAgent should have already called this ...
-	err = (agent.Gid).RocksUpdate(&agent)
+	err = wasabi.RocksUpdate(agent.Gid, &agent)
 	if err != nil {
 		wasabi.Log.Error(err)
 		return agent.Gid, err

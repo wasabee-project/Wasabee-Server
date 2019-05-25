@@ -92,10 +92,10 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	// query both rocks and V at the same time
 	channel := make(chan error, 2)
 	go func() {
-		channel <- gid.VSearch(&vdata)
+		channel <- VSearch(gid, &vdata)
 	}()
 	go func() {
-		channel <- gid.RocksSearch(&rocks)
+		channel <- RocksSearch(gid, &rocks)
 	}()
 	defer close(channel)
 
@@ -132,7 +132,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	if rocks.Agent != "" {
-		err = gid.RocksUpdate(&rocks)
+		err = RocksUpdate(gid, &rocks)
 		if err != nil {
 			Log.Notice(err)
 			return false, err
@@ -456,10 +456,10 @@ func RevalidateEveryone() error {
 		var r RocksAgent
 
 		go func() {
-			channel <- gid.VSearch(&v)
+			channel <- VSearch(gid, &v)
 		}()
 		go func() {
-			channel <- gid.RocksSearch(&r)
+			channel <- RocksSearch(gid, &r)
 		}()
 		if err = <-channel; err != nil {
 			Log.Notice(err)
@@ -472,7 +472,7 @@ func RevalidateEveryone() error {
 			Log.Error(err)
 		}
 
-		if err = gid.RocksUpdate(&r); err != nil {
+		if err = RocksUpdate(gid, &r); err != nil {
 			Log.Error(err)
 		}
 	}

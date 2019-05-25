@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -58,38 +57,13 @@ func GetvEnlOne() bool {
 }
 
 // VSearch checks a agent at V and populates a Vresult
-// gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
-func (gid GoogleID) VSearch(vres *Vresult) error {
-	return vsearch(gid, vres)
-}
-
-// VSearch checks a agent at V and populates a Vresult
-func (eid EnlID) VSearch(vres *Vresult) error {
-	return vsearch(eid, vres)
-}
-
-// VSearch checks a agent at V and populates a Vresult
-func (tgid TelegramID) VSearch(vres *Vresult) error {
-	id := strconv.Itoa(int(tgid))
-	return vsearch(id, vres)
-}
-
-// vsearch stands behind the wraper functions and checks a agent at V and populates a Vresult
-func vsearch(i interface{}, vres *Vresult) error {
+func VSearch(id AgentID, vres *Vresult) error {
 	if !vc.configured {
 		return nil
 	}
-
-	var searchID string
-	switch id := i.(type) {
-	case GoogleID:
-		searchID = id.String()
-	case EnlID:
-		searchID = id.String()
-	case string:
-		searchID = id
-	default:
-		searchID = ""
+	searchID := id.String()
+	if searchID == "" {
+		return fmt.Errorf("empty search value")
 	}
 
 	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, searchID, vc.vAPIKey)

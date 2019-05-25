@@ -67,39 +67,19 @@ func GetEnlRocks() bool {
 }
 
 // RocksSearch checks a agent at enl.rocks and populates a RocksAgent
-// gid can be GoogleID, TelegramID or ENL-ID so this should be interface{} instead of GoogleID
-func (gid GoogleID) RocksSearch(agent *RocksAgent) error {
-	return rockssearch(gid, agent)
-}
-
-// RocksSearch checks a agent at enl.rocks and populates a RocksAgent
-func (eid EnlID) RocksSearch(agent *RocksAgent) error {
-	return rockssearch(eid, agent)
-}
-
-// RocksSearch checks a agent at enl.rocks and populates a RocksAgent
-func (tgid TelegramID) RocksSearch(agent *RocksAgent) error {
-	return rockssearch(tgid, agent)
-}
-
-// rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
-func rockssearch(i interface{}, agent *RocksAgent) error {
+func RocksSearch(id AgentID, agent *RocksAgent) error {
 	if !rocks.configured {
 		return nil
 	}
 
-	var searchID string
-	switch id := i.(type) {
-	case GoogleID:
-		searchID = id.String()
-	case EnlID:
-		searchID = id.String()
-	case TelegramID:
-		searchID = id.String()
-	case string:
-		searchID = id
-	default:
-		searchID = ""
+	searchID := id.String()
+	return rockssearch(searchID, agent)
+}
+
+// rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
+func rockssearch(searchID string, agent *RocksAgent) error {
+	if !rocks.configured {
+		return nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -141,8 +121,13 @@ func rockssearch(i interface{}, agent *RocksAgent) error {
 
 // RocksUpdate updates the database to reflect an agent's current status at enl.rocks.
 // It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
-func (gid GoogleID) RocksUpdate(agent *RocksAgent) error {
+func RocksUpdate(id AgentID, agent *RocksAgent) error {
 	if !rocks.configured {
+		return nil
+	}
+	gid, err := id.Gid()
+	if err != nil {
+		Log.Error(err)
 		return nil
 	}
 
