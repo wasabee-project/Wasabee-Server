@@ -4,11 +4,12 @@ import (
 	// "encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/cloudkucooland/WASABI"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 // TGConfiguration is the main configuration data for the Telegram interface
@@ -16,6 +17,7 @@ import (
 type TGConfiguration struct {
 	APIKey       string
 	FrontendPath string
+	HookPath     string
 	templateSet  map[string]*template.Template
 	baseKbd      tgbotapi.ReplyKeyboardMarkup
 	upChan       chan tgbotapi.Update
@@ -24,8 +26,6 @@ type TGConfiguration struct {
 
 var bot *tgbotapi.BotAPI
 var config TGConfiguration
-
-const hookpath = "/tg"
 
 // WASABIBot is called from main() to start the bot.
 func WASABIBot(init TGConfiguration) {
@@ -43,8 +43,13 @@ func WASABIBot(init TGConfiguration) {
 	_ = telegramTemplates()
 	keyboards(&config)
 
+	config.HookPath = init.HookPath
+	if config.HookPath == "" {
+		config.HookPath = "/tg"
+	}
+
 	config.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
-	webhook := wasabi.Subrouter(hookpath)
+	webhook := wasabi.Subrouter(config.HookPath)
 	webhook.HandleFunc("/{hook}", TGWebHook).Methods("POST")
 
 	_ = wasabi.RegisterMessageBus("Telegram", SendMessage)
@@ -65,7 +70,7 @@ func WASABIBot(init TGConfiguration) {
 
 	webroot, _ := wasabi.GetWebroot()
 	config.hook = wasabi.GenerateName()
-	t := fmt.Sprintf("%s%s/%s", webroot, hookpath, config.hook)
+	t := fmt.Sprintf("%s%s/%s", webroot, config.HookPath, config.hook)
 	wasabi.Log.Debugf("TG webroot %s", t)
 	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 	if err != nil {
@@ -83,7 +88,7 @@ func WASABIBot(init TGConfiguration) {
 		if (i % 100) == 0 { // every 100 requests, change the endpoint; I'm _not_ paranoid.
 			i = 1
 			config.hook = wasabi.GenerateName()
-			t = fmt.Sprintf("%s%s/%s", webroot, hookpath, config.hook)
+			t = fmt.Sprintf("%s%s/%s", webroot, config.HookPath, config.hook)
 			wasabi.Log.Debugf("new TG webroot %s", t)
 			_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 			if err != nil {
@@ -189,7 +194,7 @@ func newUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 	}
 
 	tid := wasabi.TelegramID(inMsg.Message.From.ID)
-	err := tid.TelegramInitAgent(inMsg.Message.From.UserName, lockey)
+	err := tid.InitAgent(inMsg.Message.From.UserName, lockey)
 	if err != nil {
 		wasabi.Log.Error(err)
 		tmp, _ := templateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
@@ -213,7 +218,7 @@ func newUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 	}
 	authtoken = strings.TrimSpace(authtoken)
 	tid := wasabi.TelegramID(inMsg.Message.From.ID)
-	err := tid.TelegramVerifyUser(authtoken)
+	err := tid.VerifyAgent(authtoken)
 	if err != nil {
 		wasabi.Log.Error(err)
 		tmp, _ := templateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
