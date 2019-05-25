@@ -44,7 +44,7 @@ func TGRunning() (bool, error) {
 	return tgrunning, nil
 }
 
-// GidV returns a gid and V verified status for a given Telegram ID #
+// GidV returns a GoogleID and V verified status for a given Telegram ID #
 func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 	var gid GoogleID
 	var verified bool
@@ -59,6 +59,18 @@ func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 		return "", false, err
 	}
 	return gid, verified, nil
+}
+
+// Gid returns a verified GoogleID for a Telegram ID
+func (tgid TelegramID) Gid() (GoogleID, error) {
+	gid, v, err := tgid.GidV()
+	if err != nil {
+		return "", err
+	}
+	if !v {
+		return "", fmt.Errorf("Unverified")	
+	}
+	return gid, nil
 }
 
 // TelegramID returns a telegram ID number for a gid
