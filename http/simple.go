@@ -12,13 +12,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const maxFilesize = 1024 * 1024
+
 func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	var err error
 	doc := wasabi.SimpleDocument{}
 	exp := "14d"
 
 	// Parse form and get content
-	req.Body = http.MaxBytesReader(res, req.Body, wasabi.MaxFilesize+1024) // MaxFilesize + 1KB metadata
+	req.Body = http.MaxBytesReader(res, req.Body, maxFilesize+1024) // maxFilesize + 1KB metadata
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 
 	// Get the document, however the request is formatted
@@ -33,7 +35,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		doc.Content = req.PostFormValue("Q")
 	} else if req.Method == "POST" && contentType == "multipart/form-data" {
 		// Parse form
-		err = req.ParseMultipartForm(wasabi.MaxFilesize + 1024)
+		err = req.ParseMultipartForm(maxFilesize + 1024)
 		if err != nil {
 			wasabi.Log.Error(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -79,7 +81,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check exact filesize
-	if len(doc.Content) > wasabi.MaxFilesize {
+	if len(doc.Content) > maxFilesize {
 		err = fmt.Errorf("maximum document size exceeded")
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusRequestEntityTooLarge)

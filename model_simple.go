@@ -12,9 +12,6 @@ import (
 	"crypto/sha256"
 )
 
-// MaxFilesize is the maximum file size for simple uploads (1MB)
-const MaxFilesize = 1024 * 1024 // 1MB
-
 // SimpleDocument specifies the content and metadata of a simple-style (qbin style) draw.
 type SimpleDocument struct {
 	ID         string
