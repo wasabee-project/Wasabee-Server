@@ -17,7 +17,7 @@ func TestVConfigured(t *testing.T) {
 func TestVsearch(t *testing.T) {
 	var v wasabi.Vresult
 
-	err := gid.VSearch(&v)
+	err := wasabi.VSearch(gid, &v)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
