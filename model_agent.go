@@ -76,7 +76,7 @@ type AdOperation struct {
 
 // AgentID is anything that can be converted to a GoogleID or a string
 type AgentID interface {
-	Gid() (GoogleID, error)	
+	Gid() (GoogleID, error)
 	fmt.Stringer
 }
 

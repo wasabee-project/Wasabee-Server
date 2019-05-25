@@ -50,8 +50,7 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var resp tgbotapi.APIResponse
 	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
 	lang := update.CallbackQuery.Message.From.LanguageCode
-	tgid := wasabi.TelegramID(update.CallbackQuery.From.ID)
-	gid, _, err := tgid.GidV() // can they be not verified?
+	gid, err := wasabi.TelegramID(update.CallbackQuery.From.ID).Gid()
 	if err != nil {
 		wasabi.Log.Error(err)
 		return msg, err

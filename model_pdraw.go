@@ -486,14 +486,14 @@ func (o *Operation) IsOwner(gid GoogleID) bool {
 }
 
 // Chown changes an operation's owner
-func (opID OperationID) Chown(gid GoogleID, to interface{}) error {
+func (opID OperationID) Chown(gid GoogleID, to string) error {
 	if !opID.IsOwner(gid) {
 		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
 		Log.Error(err)
 		return err
 	}
 
-	togid, err := toGid(to)
+	togid, err := ToGid(to)
 	if err != nil {
 		Log.Error(err)
 		return err

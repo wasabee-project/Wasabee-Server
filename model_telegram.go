@@ -68,7 +68,7 @@ func (tgid TelegramID) Gid() (GoogleID, error) {
 		return "", err
 	}
 	if !v {
-		return "", fmt.Errorf("Unverified")	
+		return "", fmt.Errorf("Unverified")
 	}
 	return gid, nil
 }

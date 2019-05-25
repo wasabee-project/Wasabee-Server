@@ -23,7 +23,12 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	err = wasabi.FetchAgent(id, &agent) // FetchAgent takes gid, lockey, eid ...
+	togid, err := wasabi.ToGid(id)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = wasabi.FetchAgent(togid, &agent)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

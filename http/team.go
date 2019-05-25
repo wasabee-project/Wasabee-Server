@@ -125,7 +125,13 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err = team.Chown(to); err != nil {
+	togid, err := wasabi.ToGid(to)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = team.Chown(togid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -176,7 +182,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := wasabi.TeamID(vars["team"])
-	key := vars["key"] // Could be a lockkey, googleID, enlID or agent name, team.Addagent sorts it out for us
+	key := vars["key"]
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
@@ -190,7 +196,13 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if key != "" { // prevents a bit of log spam
-		if err = team.AddAgent(key); err != nil {
+		togid, err := wasabi.ToGid(key)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err = team.AddAgent(togid); err != nil {
 			wasabi.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -221,7 +233,13 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if err = team.RemoveAgent(key); err != nil {
+	togid, err := key.Gid()
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = team.RemoveAgent(togid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

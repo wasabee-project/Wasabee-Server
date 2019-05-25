@@ -209,91 +209,45 @@ func (teamID TeamID) Delete() error {
 	return nil
 }
 
-// toGid takes anything (for small values of anything) and returns a Gid for it.
-// depends on EnlID.Gid(), LocKey.Gid(), TelegramID.Gid(), and SearchAgentName.
-// If you pass in a string, it will see if it looks like a gid, eid, lockey, or agent name and try that.
-// XXX Move to model_agent.go
-func toGid(in interface{}) (GoogleID, error) {
+// ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like (GoogleID, EnlID, LocKey) otherwise it defaults to  agent name
+func ToGid(in string) (GoogleID, error) {
 	var gid GoogleID
 	var err error
-	switch v := in.(type) {
-	case LocKey:
-		lockey := v
-		gid, err = lockey.Gid()
-		if err != nil && err == sql.ErrNoRows {
-			err = fmt.Errorf("unknown lockey: %s", lockey)
-			Log.Info(err)
-			return "", err
+	switch len(in) { // length gives us a guess, presence of a - makes us certain
+	case 0:
+		err = fmt.Errorf("empty agent request")
+	case 40:
+		if strings.IndexByte(in, '-') != -1 {
+			gid, err = LocKey(in).Gid()
+		} else {
+			gid, err = EnlID(in).Gid()
 		}
-	case GoogleID:
-		gid = v
-	case EnlID:
-		eid := v
-		gid, err = eid.Gid()
-		if err != nil && err == sql.ErrNoRows {
-			err = fmt.Errorf("unknown EnlID: %s", eid)
-			Log.Info(err)
-			return "", err
-		}
-	case TelegramID:
-		tid := v
-		gid, _, err = tid.GidV()
-		if err != nil && err == sql.ErrNoRows {
-			err = fmt.Errorf("unknown TelegramID: %d", tid)
-			Log.Info(err)
-			return "", err
+	case 21:
+		if strings.IndexByte(in, '-') != -1 {
+			gid, err = LocKey(in).Gid()
+		} else {
+			gid = GoogleID(in) // Looks like it already is a GoogleID
 		}
 	default:
-		tmp := v.(string)
-		if tmp == "" { // no need to look if it is empty
-			return "", nil
-		}
-		switch len(tmp) { // length gives us a guess, presence of a - makes us certain
-		case 40:
-			if strings.IndexByte(tmp, '-') != -1 {
-				lockey := LocKey(tmp)
-				gid, _ = toGid(lockey) // recurse and try again
-			} else {
-				eid := EnlID(tmp)   // Looks like an EnlID
-				gid, _ = toGid(eid) // recurse and try again
-			}
-		case 21:
-			if strings.IndexByte(tmp, '-') != -1 {
-				lockey := LocKey(tmp)
-				gid, _ = toGid(lockey) // recurse and try again
-			} else {
-				gid = GoogleID(tmp) // Looks like it already is a GoogleID
-			}
-		default:
-			if strings.IndexByte(tmp, '-') != -1 {
-				lockey := LocKey(tmp)
-				gid, _ = toGid(lockey)
-			} else {
-				gid, err = SearchAgentName(tmp)
-				if err != nil {
-					Log.Notice(err)
-					return "", err
-				}
-				if gid == "" {
-					err = fmt.Errorf("unknown agent: %s", tmp)
-					Log.Info(err)
-					return "", err
-				}
-			}
+		if strings.IndexByte(in, '-') != -1 {
+			gid, err = LocKey(in).Gid()
+		} else {
+			gid, err = SearchAgentName(in)
 		}
 	}
-	return gid, nil
+	if err == nil && gid == "" {
+		err = fmt.Errorf("unknown agent: %s", in)
+	}
+	if err != nil {
+		Log.Info(err, in)
+	}
+	return gid, err
 }
 
-// AddAgent adds a agent (identified by LocKey, EnlID or GoogleID) to a team
-func (teamID TeamID) AddAgent(in interface{}) error {
-	gid, err := toGid(in)
+// AddAgent adds a agent to a team
+func (teamID TeamID) AddAgent(in AgentID) error {
+	gid, err := in.Gid()
 	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if gid == "" {
-		err = fmt.Errorf("unable to identify agent to add")
 		Log.Error(err)
 		return err
 	}
@@ -312,8 +266,8 @@ func (teamID TeamID) AddAgent(in interface{}) error {
 }
 
 // RemoveAgent removes a agent (identified by location share key, GoogleID, agent name, or EnlID) from a team.
-func (teamID TeamID) RemoveAgent(in interface{}) error {
-	gid, err := toGid(in)
+func (teamID TeamID) RemoveAgent(in AgentID) error {
+	gid, err := in.Gid()
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -334,8 +288,8 @@ func (teamID TeamID) RemoveAgent(in interface{}) error {
 
 // Chown changes a team's ownership
 // caller must verify permissions
-func (teamID TeamID) Chown(to interface{}) error {
-	gid, err := toGid(to)
+func (teamID TeamID) Chown(to AgentID) error {
+	gid, err := to.Gid()
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -504,8 +458,8 @@ func (gid GoogleID) PrimaryTeam() (string, error) {
 }
 
 // FetchAgent populates the minimal Agent struct with data anyone can see
-func FetchAgent(id string, agent *Agent) error {
-	gid, err := toGid(id)
+func FetchAgent(id AgentID, agent *Agent) error {
+	gid, err := id.Gid()
 	if err != nil {
 		Log.Error(err)
 		return err
