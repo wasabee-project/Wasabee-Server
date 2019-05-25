@@ -74,6 +74,12 @@ type AdOperation struct {
 	TeamName string
 }
 
+// AgentID is anything that can be converted to a GoogleID or a string
+type AgentID interface {
+	Gid() (GoogleID, error)	
+	fmt.Stringer
+}
+
 // InitAgent is called from Oauth callback to set up a agent for the first time.
 // It also checks and updates V and enl.rocks data. It returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked at V or enl.rocks.
 func (gid GoogleID) InitAgent() (bool, error) {
@@ -202,6 +208,11 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 		return "", err
 	}
 
+	return gid, nil
+}
+
+// Gid just satisifes the AgentID funciton
+func (gid GoogleID) Gid() (GoogleID, error) {
 	return gid, nil
 }
 
