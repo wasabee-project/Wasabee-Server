@@ -3,7 +3,6 @@ package wasabi
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	// need a comment here to make lint happy
 	_ "github.com/go-sql-driver/mysql"
@@ -14,20 +13,15 @@ var db *sql.DB
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don"t exist yet.
 func Connect(uri string) error {
 	Log.Debugf("Connecting to database at %s", uri)
-	result, err := try(func() (interface{}, error) {
-		return sql.Open("mysql", uri)
-	}, 10, time.Second) // Wait up to 10 seconds for the database
+	result, err := sql.Open("mysql", uri)
 	if err != nil {
 		return err
 	}
-	db = result.(*sql.DB)
+	db = result
 
 	// Print database version
 	var version string
-	_, err = try(func() (interface{}, error) {
-		return nil, db.QueryRow("SELECT VERSION()").Scan(&version)
-	}, 10, time.Second) // Wait up to 10 seconds for the database
-	if err != nil {
+	if err := db.QueryRow("SELECT VERSION()").Scan(&version); err != nil {
 		return err
 	}
 	Log.Infof("Database version: %s", version)
@@ -67,16 +61,23 @@ func setupTables() {
 	}
 
 	var table string
+
+	tx, err := db.Begin()
+	if err != nil {
+		Log.Error(err)
+		panic(err)
+	}
+	defer tx.Commit()
 	for _, v := range t {
 		q := fmt.Sprintf("SHOW TABLES LIKE '%s'", v.tablename)
-		err := db.QueryRow(q).Scan(&table)
+		err := tx.QueryRow(q).Scan(&table)
 		if err != nil && err != sql.ErrNoRows {
 			Log.Error(err)
 			continue
 		}
 		if err == sql.ErrNoRows || table == "" {
 			Log.Noticef("Setting up '%s' table...", v.tablename)
-			_, err := db.Exec(v.creation)
+			_, err := tx.Exec(v.creation)
 			if err != nil {
 				Log.Error(err)
 			}
