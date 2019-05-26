@@ -61,26 +61,28 @@ func setupTables() {
 	}
 
 	var table string
-
+	// use a tranaction to AVOID concurrency in this logic
+	// it is possible for these to go in out-of-order and fk problems to show up under rare circumstances
 	tx, err := db.Begin()
 	if err != nil {
 		Log.Error(err)
 		panic(err)
 	}
-	defer tx.Commit()
+	defer tx.Rollback()
 	for _, v := range t {
 		q := fmt.Sprintf("SHOW TABLES LIKE '%s'", v.tablename)
-		err := tx.QueryRow(q).Scan(&table)
+		err = tx.QueryRow(q).Scan(&table)
 		if err != nil && err != sql.ErrNoRows {
 			Log.Error(err)
 			continue
 		}
 		if err == sql.ErrNoRows || table == "" {
 			Log.Noticef("Setting up '%s' table...", v.tablename)
-			_, err := tx.Exec(v.creation)
+			_, err = tx.Exec(v.creation)
 			if err != nil {
 				Log.Error(err)
 			}
 		}
 	}
+	tx.Commit() // the defer'd rollback will not have anything to rollback...
 }
