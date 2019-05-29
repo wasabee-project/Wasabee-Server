@@ -54,7 +54,7 @@ const riscHook = "/GoogleRISC"
 const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configuration"
 
 // RISCinit sets up the data structures and starts the processing threads
-func RISCinit(configfile string) {
+func RISC(configfile string) {
 	// load config from google
 	if err := googleRiscDiscovery(); err != nil {
 		wasabi.Log.Error(err)
@@ -78,7 +78,7 @@ func RISCinit(configfile string) {
 	config.authdata = data // Yeah, the consumers need the whole thing as bytes
 
 	// make a channel to read for events
-	riscchan = make(chan event, 2)
+	riscchan = make(chan event, 1)
 
 	risc := wasabi.Subrouter(riscHook)
 	risc.HandleFunc("", Webhook).Methods("POST")
@@ -89,24 +89,32 @@ func RISCinit(configfile string) {
 
 	// this loops on the channel messsages
 	for e := range riscchan {
-		wasabi.Log.Notice("Received: ", e)
 		gid := wasabi.GoogleID(e.Subject)
 		switch e.Type {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
+			wasabi.Log.Criticalf("locking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			_ = gid.Lock(e.Reason)
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
+			wasabi.Log.Criticalf("unlocking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			_ = gid.Unlock(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
-			wasabi.Log.Criticalf("deleting %s because Google RISC said: %s", e.Subject, e.Reason)
+			wasabi.Log.Criticalf("deleting %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			gid.Logout(e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
+			wasabi.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
+			wasabi.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
+			wasabi.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.Logout(e.Reason)
+		case "https://schemas.openid.net/secevent/risc/event-type/verification":
+			// no need to do anything
+		default:
+			wasabi.Log.Noticef("Unknown event %s (%s)", e.Type, e.Reason)
 		}
 	}
 }
@@ -158,20 +166,18 @@ func validateToken(rawjwt []byte) error {
 		wasabi.Log.Error(err)
 		return err
 	}
-	// I've only ever seen one event per message, but we can easily deal with multiple
+
+	// multiple events per message are possible
 	for k, v := range tmp.(map[string]interface{}) {
 		var e event
 		e.Type = k
 
 		// verification types are not signed, no KID, just respond instantly
 		if k == "https://schemas.openid.net/secevent/risc/event-type/verification" {
-			// wasabi.Log.Debug("received RISC pong")
 			e.Reason = "ping requsted"
-			continue
-		}
-		// anything else requires a signature
-		if keyOK {
-			wasabi.Log.Critical("RISC event: ", k, v)
+			riscchan <- e
+		} else if keyOK {
+			wasabi.Log.Criticalf("verified RISC event: (%s) %s", k, v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
@@ -179,10 +185,11 @@ func validateToken(rawjwt []byte) error {
 			y := x["subject"].(map[string]interface{})
 			e.Issuer = y["iss"].(string)
 			e.Subject = y["sub"].(string)
+			riscchan <- e
+		} else {
+			wasabi.Log.Noticef("non-ping, non-verified request: (%s) %s", k, v)
 		}
-		riscchan <- e
 	}
-
 	return nil
 }
 

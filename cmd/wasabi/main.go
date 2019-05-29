@@ -158,7 +158,7 @@ func run(c *cli.Context) error {
 	if _, err := os.Stat(riscPath); err != nil {
 		wasabi.Log.Noticef("%s does not exist, not enabling RISC", riscPath)
 	} else {
-		go risc.RISCinit(riscPath)
+		go risc.RISC(riscPath)
 	}
 
 	// Serve Telegram

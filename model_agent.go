@@ -211,7 +211,7 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 	return gid, nil
 }
 
-// Gid just satisifes the AgentID funciton
+// Gid just satisfies the AgentID function
 func (gid GoogleID) Gid() (GoogleID, error) {
 	return gid, nil
 }
@@ -545,6 +545,12 @@ func (gid GoogleID) Delete() error {
 
 // Lock disables an account -- called by RISC system
 func (gid GoogleID) Lock(reason string) error {
+	if gid == "" {
+		err := fmt.Errorf("gid unset")
+		Log.Error(err)
+		return err
+	}
+
 	if _, err := db.Exec("UPDATE agent SET RISC = 1 WHERE gid = ?", gid); err != nil {
 		Log.Error(err)
 		return err
@@ -554,6 +560,12 @@ func (gid GoogleID) Lock(reason string) error {
 
 // Unlock enables a disabled account -- called by RISC system
 func (gid GoogleID) Unlock(reason string) error {
+	if gid == "" {
+		err := fmt.Errorf("gid unset")
+		Log.Error(err)
+		return err
+	}
+
 	if _, err := db.Exec("UPDATE agent SET RISC = 0 WHERE gid = ?", gid); err != nil {
 		Log.Error(err)
 		return err
@@ -564,6 +576,12 @@ func (gid GoogleID) Unlock(reason string) error {
 // Logout sets a temporary logout token - not stored in DB since logout cases are not critical
 // and sessions are refreshed with google hourly
 func (gid GoogleID) Logout(reason string) {
+	if gid == "" {
+		err := fmt.Errorf("gid unset")
+		Log.Error(err)
+		// return err
+	}
+
 	Log.Debugf("adding %s to logout list: %s", gid, reason)
 	logoutlist[gid] = true
 }
