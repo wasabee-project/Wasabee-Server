@@ -64,8 +64,11 @@ var flags = []cli.Flag{
 		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
 		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
 	cli.StringFlag{
+		Name: "enliokey", EnvVar: "ENLIO_API_KEY", Value: "",
+		Usage: "enl.io API token. It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
 		Name: "gmbotkey", EnvVar: "GROUPME_ACCESS_TOKEN", Value: "",
-		Usage: "GroupMe Access TOken."},
+		Usage: "GroupMe Access Token."},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -138,6 +141,11 @@ func run(c *cli.Context) error {
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
 		wasabi.SetEnlRocks(c.String("enlrockskey"))
+	}
+
+	// setup enl.io 
+	if c.String("enliokey") != "" {
+		wasabi.SetENLIO(c.String("enliokey"))
 	}
 
 	// Serve HTTPS

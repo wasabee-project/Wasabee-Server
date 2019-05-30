@@ -89,7 +89,7 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 	return tgid, nil
 }
 
-// TelegramInitAgent establishes a new telegram user in the database and begins the verification process
+// InitAgent establishes a new telegram user in the database and begins the verification process
 func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 	authtoken := GenerateName()
 
@@ -112,7 +112,7 @@ func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 	return nil
 }
 
-// TelegramVerifyUser is the second stage of the verication process
+// VerifyAgent is the second stage of the verication process
 func (tgid TelegramID) VerifyAgent(authtoken string) error {
 	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", tgid, authtoken)
 	if err != nil {

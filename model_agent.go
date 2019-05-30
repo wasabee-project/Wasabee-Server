@@ -149,6 +149,11 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	_, err = gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
 		if tmpName == "" {
+			// use enlio only for agent name, only if .rocks and V fail
+			tmpName, _ = gid.enlioQuery()
+		}
+
+		if tmpName == "" {
 			tmpName = "UnverifiedAgent_" + gid.String()[:15]
 		}
 		lockey, err := GenerateSafeName()
