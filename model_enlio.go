@@ -37,7 +37,6 @@ func (gid GoogleID) enlioQuery() (string, error) {
 	}
 
 	url := fmt.Sprintf("%s&id=%s&token=%s", enlioAPI, gid, enlioConfig.apikey)
-	Log.Debug(url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		Log.Error(err)
@@ -57,6 +56,12 @@ func (gid GoogleID) enlioQuery() (string, error) {
 		Log.Error(err)
 		return "", err
 	}
+
+	// rather than giving an error, they just return an empty file
+	if len(body) == 0 {
+		return "", nil
+	}
+
 	var n enlioResult
 	err = json.Unmarshal(body, &n)
 	if err != nil {
@@ -64,6 +69,7 @@ func (gid GoogleID) enlioQuery() (string, error) {
 		return "", err
 	}
 	if n.Name == "<PRIVATE>" {
+		Log.Debugf("%s marked <PRIVATE>", gid)
 		return "", nil
 	}
 

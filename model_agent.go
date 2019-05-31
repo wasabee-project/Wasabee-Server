@@ -480,6 +480,15 @@ func RevalidateEveryone() error {
 		if err = RocksUpdate(gid, &r); err != nil {
 			Log.Error(err)
 		}
+
+		/* easy way to test the enl.io query
+		rocksname, err := gid.enlioQuery()
+		if err != nil {
+			// Log.Error(err)
+		} else {
+			Log.Debugf("found %s for %s at enl.io", rocksname, gid)
+		} */
+
 	}
 	return nil
 }
