@@ -21,7 +21,7 @@ func BackgroundTasks(c chan os.Signal) {
 			Log.Noticef("signal received: %s", x)
 			return
 		case <-ticker.C:
-			Log.Debugf("running background tasks")
+			// Log.Debugf("running background tasks")
 			locationClean()
 			waypointClean()
 			simpleDocClean()
