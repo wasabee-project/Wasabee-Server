@@ -53,7 +53,7 @@ var config riscConfig
 const riscHook = "/GoogleRISC"
 const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configuration"
 
-// RISCinit sets up the data structures and starts the processing threads
+// RISC sets up the data structures and starts the processing threads
 func RISC(configfile string) {
 	// load config from google
 	if err := googleRiscDiscovery(); err != nil {
