@@ -267,3 +267,56 @@ func pDrawChgrpRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
+
+func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["document"]
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var o wasabi.Operation
+	o.ID = wasabi.OperationID(id)
+	if err = o.Populate(gid); err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	url := "https://intel.ingress.com/intel/?z=13&ll="
+
+	type latlon struct {
+		lat string
+		lon string
+	}
+
+	var portals = make(map[wasabi.PortalID]latlon)
+
+	for _, p := range o.OpPortals {
+		var l latlon
+		l.lat = p.Lat
+		l.lon = p.Lon
+		portals[p.ID] = l
+	}
+
+	var notfirst bool
+	for _, l := range o.Links {
+		x := portals[l.From]
+		if notfirst {
+			url += "_"
+		} else {
+			url += x.lat + "," + x.lon + "&pls="
+			notfirst = true
+		}
+		url += x.lat + "," + x.lon + ","
+		y := portals[l.To]
+		url += y.lat + "," + y.lon
+	}
+
+	// wasabi.Log.Debugf("redirecting to :%s", url)
+	http.Redirect(res, req, url, http.StatusFound)
+}

@@ -111,6 +111,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/delete", pDrawDeleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/draw/{document}/chgrp", pDrawChgrpRoute).Methods("GET").Queries("to", "{to}")
+	r.HandleFunc("/draw/{document}/stock", pDrawStockRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", pDrawUpdateRoute).Methods("PUT")
 
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                 // set my display name /me?name=deviousness
