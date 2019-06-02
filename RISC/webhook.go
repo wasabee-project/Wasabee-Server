@@ -162,7 +162,7 @@ func updateWebhook() error {
 	}
 	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
-		wasabi.Log.Notice(string(raw))
+		wasabi.Log.Error(string(raw))
 	}
 
 	return nil
@@ -208,7 +208,7 @@ func DisableWebhook() {
 	}
 	if response.StatusCode != http.StatusOK {
 		raw, _ = ioutil.ReadAll(response.Body)
-		wasabi.Log.Notice(string(raw))
+		wasabi.Log.Error(string(raw))
 	}
 	config.running = false
 }
@@ -273,7 +273,7 @@ func ping() error {
 	}
 	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
-		wasabi.Log.Debug(string(raw))
+		wasabi.Log.Error(string(raw))
 	}
 
 	return nil
@@ -322,7 +322,7 @@ func AddSubject(gid wasabi.GoogleID) error {
 	}
 	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
-		wasabi.Log.Debug(string(raw))
+		wasabi.Log.Error(string(raw))
 	}
 
 	return nil
