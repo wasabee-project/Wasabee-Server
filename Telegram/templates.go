@@ -2,6 +2,7 @@ package wasabitelegram
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/cloudkucooland/WASABI"
 )
@@ -14,6 +15,11 @@ func templateExecute(name, lang string, data interface{}) (string, error) {
 	_, ok := config.TemplateSet[lang]
 	if !ok {
 		lang = "en" // default to english if the map doesn't exist
+		_, ok = config.TemplateSet[lang]
+		if !ok {
+			err := fmt.Errorf("invalid template set (no English)")
+			return "", err
+		}
 	}
 
 	var tpBuffer bytes.Buffer

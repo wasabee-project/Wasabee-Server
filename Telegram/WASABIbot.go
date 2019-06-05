@@ -2,7 +2,6 @@ package wasabitelegram
 
 import (
 	// "encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"strconv"
@@ -29,11 +28,18 @@ var config TGConfiguration
 // WASABIBot is called from main() to start the bot.
 func WASABIBot(init TGConfiguration) {
 	if init.APIKey == "" {
-		err := errors.New("the Telegram API Key not set")
+		err := fmt.Errorf("the Telegram API Key not set")
 		wasabi.Log.Info(err)
 		return
 	}
 	config.APIKey = init.APIKey
+
+	if init.TemplateSet == nil {
+		err := fmt.Errorf("the UI templates are not loaded, not starting Telegram bot")
+		wasabi.Log.Error(err)
+		return
+	}
+	config.TemplateSet = init.TemplateSet
 
 	keyboards(&config)
 
