@@ -112,7 +112,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// pretty output for everyone else
-	if err = wasabiHTTPSTemplateExecute(res, req, "opdata", o); err != nil {
+	if err = templateExecute(res, req, "opdata", o); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}

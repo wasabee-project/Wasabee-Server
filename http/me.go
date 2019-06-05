@@ -33,8 +33,8 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// wasabiHTTPSTemplateExecute runs the "me" template and outputs directly to the res
-	if err = wasabiHTTPSTemplateExecute(res, req, "me", ud); err != nil {
+	// templateExecute runs the "me" template and outputs directly to the res
+	if err = templateExecute(res, req, "me", ud); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}

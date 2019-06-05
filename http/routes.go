@@ -162,7 +162,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	err := wasabiHTTPSTemplateExecute(res, req, "index", nil)
+	err := templateExecute(res, req, "index", nil)
 	if err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -171,7 +171,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the privacy policy
 func privacyRoute(res http.ResponseWriter, req *http.Request) {
-	err := wasabiHTTPSTemplateExecute(res, req, "privacy", nil)
+	err := templateExecute(res, req, "privacy", nil)
 	if err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

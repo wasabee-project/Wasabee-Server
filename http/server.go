@@ -112,11 +112,10 @@ func initializeConfig(initialConfig Configuration) {
 	certdir, err := filepath.Abs(config.CertDir)
 	config.CertDir = certdir
 	if err != nil {
-		wasabi.Log.Critical("Certificate path could not be resolved.")
+		wasabi.Log.Critical("certificate path could not be resolved.")
 		panic(err)
 	}
 	wasabi.Log.Debugf("Certificate Directory: " + config.CertDir)
-	// config.TemplateSet, _ = wasabi.TemplateConfig() // moved to main and passed in
 
 	if config.Logfile == "" {
 		config.Logfile = "wasabi-https.log"
@@ -140,8 +139,8 @@ func initializeConfig(initialConfig Configuration) {
 	config.scanners = make(map[string]int64)
 }
 
-// wasabiHTTPSTemplateExecute outputs directly to the ResponseWriter
-func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
+// templateExecute outputs directly to the ResponseWriter
+func templateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
 	var lang string
 	tmp := req.Header.Get("Accept-Language")
 	if tmp == "" {

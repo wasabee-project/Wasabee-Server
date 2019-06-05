@@ -34,8 +34,8 @@ func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// wasabiHTTPSTemplateExecute outputs to res
-	if err := wasabiHTTPSTemplateExecute(res, req, "Waypoints", data); err != nil {
+	// templateExecute outputs to res
+	if err := templateExecute(res, req, "Waypoints", data); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

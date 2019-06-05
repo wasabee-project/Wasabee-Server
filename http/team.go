@@ -166,7 +166,7 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = wasabiHTTPSTemplateExecute(res, req, "teamedit", teamList); err != nil {
+	if err = templateExecute(res, req, "teamedit", teamList); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}

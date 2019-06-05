@@ -43,7 +43,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// TemplateExecute prints directly to the result writer
-	if err := wasabiHTTPSTemplateExecute(res, req, "agent", agent); err != nil {
+	if err := templateExecute(res, req, "agent", agent); err != nil {
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
