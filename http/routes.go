@@ -108,7 +108,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", pDrawGetRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", pDrawGetRoute).Methods("HEAD") // XXX make this better
 	r.HandleFunc("/draw/{document}", pDrawDeleteRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{document}/delete", pDrawDeleteRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/delete", pDrawDeleteRoute).Methods("GET", "DELETE")
 	r.HandleFunc("/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/draw/{document}/chgrp", pDrawChgrpRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/draw/{document}/stock", pDrawStockRoute).Methods("GET")
@@ -134,11 +134,12 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}") // invite agent to team (owner)
 	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every agent/target on team (team member/owner)
 	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
+	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE")            // remove the team completely (owner)
 	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                                                                       // GUI to do basic edit (owner)
 	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
 	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
-	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET")                                                                // invite agent to team (owner)
+	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")                                                        // invite agent to team (owner)
 	// r.HandleFunc("/team/{team}/{key}", setAgentTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
 	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET") // remove agent from team (owner)
 	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")     // remove agent from team (owner)
@@ -179,7 +180,8 @@ func privacyRoute(res http.ResponseWriter, req *http.Request) {
 
 // this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
 func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
-	err := wasabiHTTPSTemplateConfig()
+	var err error
+	config.TemplateSet, err = wasabi.TemplateConfig(config.FrontendPath) // XXX KLUDGE FOR NOW -- this does not update the other protocols
 	if err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

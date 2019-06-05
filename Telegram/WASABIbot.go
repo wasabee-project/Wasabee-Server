@@ -4,24 +4,23 @@ import (
 	// "encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/cloudkucooland/WASABI"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 // TGConfiguration is the main configuration data for the Telegram interface
-// passed to main() pre-loaded with APIKey and FrontendPath set, the rest is built when the bot starts
+// passed to main() pre-loaded with APIKey and TemplateSet set, the rest is built when the bot starts
 type TGConfiguration struct {
-	APIKey       string
-	FrontendPath string
-	HookPath     string
-	templateSet  map[string]*template.Template
-	baseKbd      tgbotapi.ReplyKeyboardMarkup
-	upChan       chan tgbotapi.Update
-	hook         string
+	APIKey      string
+	HookPath    string
+	TemplateSet map[string]*template.Template
+	baseKbd     tgbotapi.ReplyKeyboardMarkup
+	upChan      chan tgbotapi.Update
+	hook        string
 }
 
 var bot *tgbotapi.BotAPI
@@ -36,11 +35,6 @@ func WASABIBot(init TGConfiguration) {
 	}
 	config.APIKey = init.APIKey
 
-	config.FrontendPath = init.FrontendPath
-	if config.FrontendPath == "" {
-		config.FrontendPath = "frontend"
-	}
-	_ = telegramTemplates()
 	keyboards(&config)
 
 	config.HookPath = init.HookPath

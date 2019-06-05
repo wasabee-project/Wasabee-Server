@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
-	"text/template"
 	"time"
 
 	wasabi "github.com/cloudkucooland/WASABI"
@@ -36,14 +36,13 @@ type OutboundMessage struct {
 }
 
 // GMConfiguration is the main configuration data for the GroupMe interface
-// passed to main() pre-loaded with APIKey and FrontendPath set, the rest is built when the bot starts
+// passed to main() pre-loaded with APIKey and TemplateSet, the rest is built when the bot starts
 type GMConfiguration struct {
-	AccessToken  string
-	APIEndpoint  string
-	FrontendPath string
-	templateSet  map[string]*template.Template
-	upChan       chan json.RawMessage
-	bots         []gmBotcfg
+	AccessToken string
+	APIEndpoint string
+	TemplateSet map[string]*template.Template
+	upChan      chan json.RawMessage
+	bots        []gmBotcfg
 }
 
 type gmBotcfg struct {
@@ -68,11 +67,7 @@ func GMbot(init GMConfiguration) {
 	config.AccessToken = init.AccessToken
 
 	config.APIEndpoint = "https://api.groupme.com/v3"
-	config.FrontendPath = init.FrontendPath
-	if config.FrontendPath == "" {
-		config.FrontendPath = "frontend"
-	}
-	_ = gmTemplates()
+	// XXX check to make sure the templates are good?
 
 	// the webhook feeds this channel
 	config.upChan = make(chan json.RawMessage, 1)

@@ -123,6 +123,12 @@ func run(c *cli.Context) error {
 		wasabi.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
 	}
 
+	ts, err := wasabi.TemplateConfig(c.String("frontend-path"))
+	if err != nil {
+		wasabi.Log.Errorf("unable to load frontend templates from %s; shutting down", c.String("frontend-path"))
+		panic(err)
+	}
+
 	// Connect to database
 	err = wasabi.Connect(c.String("database"))
 	if err != nil {
@@ -143,7 +149,7 @@ func run(c *cli.Context) error {
 		wasabi.SetEnlRocks(c.String("enlrockskey"))
 	}
 
-	// setup enl.io 
+	// setup enl.io
 	if c.String("enliokey") != "" {
 		wasabi.SetENLIO(c.String("enliokey"))
 	}
@@ -159,6 +165,7 @@ func run(c *cli.Context) error {
 			GoogleSecret:     c.String("googlesecret"),
 			CookieSessionKey: c.String("sessionkey"),
 			Logfile:          c.String("httpslog"),
+			TemplateSet:      ts,
 		})
 	}
 
@@ -172,16 +179,17 @@ func run(c *cli.Context) error {
 	// Serve Telegram
 	if c.String("tgkey") != "" {
 		go wasabitelegram.WASABIBot(wasabitelegram.TGConfiguration{
-			APIKey:       c.String("tgkey"),
-			FrontendPath: c.String("frontend-path"),
+			APIKey:      c.String("tgkey"),
+			HookPath:    "/tg",
+			TemplateSet: ts,
 		})
 	}
 
 	// Serve Groupme
 	if c.String("gmbotkey") != "" {
 		go wasabigm.GMbot(wasabigm.GMConfiguration{
-			AccessToken:  c.String("gmbotkey"),
-			FrontendPath: c.String("frontend-path"),
+			AccessToken: c.String("gmbotkey"),
+			TemplateSet: ts,
 		})
 	}
 

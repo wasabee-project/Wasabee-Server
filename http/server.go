@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"html/template"
-	"io/ioutil"
+	// "io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,7 +38,7 @@ type Configuration struct {
 	store             *sessions.CookieStore
 	sessionName       string
 	CookieSessionKey  string
-	templateSet       map[string]*template.Template // allow multiple translations
+	TemplateSet       map[string]*template.Template // allow multiple translations
 	Logfile           string
 	srv               *http.Server
 	logfileHandle     *os.File
@@ -116,7 +116,7 @@ func initializeConfig(initialConfig Configuration) {
 		panic(err)
 	}
 	wasabi.Log.Debugf("Certificate Directory: " + config.CertDir)
-	_ = wasabiHTTPSTemplateConfig()
+	// config.TemplateSet, _ = wasabi.TemplateConfig() // moved to main and passed in
 
 	if config.Logfile == "" {
 		config.Logfile = "wasabi-https.log"
@@ -140,55 +140,6 @@ func initializeConfig(initialConfig Configuration) {
 	config.scanners = make(map[string]int64)
 }
 
-func wasabiHTTPSTemplateConfig() error {
-	// Transform frontendPath to an absolute path
-	frontendPath, err := filepath.Abs(config.FrontendPath)
-	if err != nil {
-		wasabi.Log.Critical("Frontend path could not be resolved.")
-		panic(err)
-	}
-	config.FrontendPath = frontendPath
-	config.templateSet = make(map[string]*template.Template)
-
-	wasabi.Log.Debugf("Loading Template function map")
-	funcMap := template.FuncMap{
-		"TGGetBotName": wasabi.TGGetBotName,
-		"TGGetBotID":   wasabi.TGGetBotID,
-		"TGRunning":    wasabi.TGRunning,
-		"Webroot":      wasabi.GetWebroot,
-		"WebAPIPath":   wasabi.GetWebAPIPath,
-		"VEnlOne":      wasabi.GetvEnlOne,
-		"EnlRocks":     wasabi.GetEnlRocks,
-		"TeamMenu":     wasabi.TeamMenu,
-	}
-
-	wasabi.Log.Info("Including frontend templates from: ", config.FrontendPath)
-	files, err := ioutil.ReadDir(config.FrontendPath)
-	if err != nil {
-		wasabi.Log.Error(err)
-		return err
-	}
-
-	for _, f := range files {
-		lang := f.Name()
-		if f.IsDir() && len(lang) == 2 {
-			config.templateSet[lang] = template.New("").Funcs(funcMap) // one funcMap for all languages
-			// load the masters
-			_, err = config.templateSet[lang].ParseGlob(config.FrontendPath + "/master/*.html")
-			if err != nil {
-				wasabi.Log.Error(err)
-			}
-			// overwrite with language specific
-			_, err = config.templateSet[lang].ParseGlob(config.FrontendPath + "/" + lang + "/*.html")
-			if err != nil {
-				wasabi.Log.Error(err)
-			}
-			wasabi.Log.Debugf("Templates for lang [%s] %s", lang, config.templateSet[lang].DefinedTemplates())
-		}
-	}
-	return nil
-}
-
 // wasabiHTTPSTemplateExecute outputs directly to the ResponseWriter
 func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
 	var lang string
@@ -198,12 +149,12 @@ func wasabiHTTPSTemplateExecute(res http.ResponseWriter, req *http.Request, name
 	} else {
 		lang = strings.ToLower(tmp)[:2]
 	}
-	_, ok := config.templateSet[lang]
+	_, ok := config.TemplateSet[lang]
 	if !ok {
 		lang = "en" // default to english if the map doesn't exist
 	}
 
-	if err := config.templateSet[lang].ExecuteTemplate(res, name, data); err != nil {
+	if err := config.TemplateSet[lang].ExecuteTemplate(res, name, data); err != nil {
 		wasabi.Log.Notice(err)
 		return err
 	}
