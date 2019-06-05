@@ -123,6 +123,7 @@ func run(c *cli.Context) error {
 		wasabi.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
 	}
 
+	// load the UI templates
 	ts, err := wasabi.TemplateConfig(c.String("frontend-path"))
 	if err != nil {
 		wasabi.Log.Errorf("unable to load frontend templates from %s; shutting down", c.String("frontend-path"))
@@ -204,7 +205,7 @@ func run(c *cli.Context) error {
 	if _, err := os.Stat(riscPath); err == nil {
 		risc.DisableWebhook()
 	}
-	if c.String("tgkey") != "" {
+	if r, _ := wasabi.TGRunning(); r {
 		wasabitelegram.Shutdown()
 	}
 	if c.String("https") != "none" {
