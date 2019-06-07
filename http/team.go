@@ -247,3 +247,38 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
 	http.Redirect(res, req, url, http.StatusPermanentRedirect)
 }
+
+func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	team := wasabi.TeamID(vars["team"])
+	safe, err := gid.OwnsTeam(team)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !safe {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	message := req.FormValue("m")
+	if message == "" {
+		message = "This is a toast notification"
+	}
+	err = team.SendAnnounce(message)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.Header().Add("Content-Type", jsonType)
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}

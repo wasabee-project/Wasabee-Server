@@ -126,8 +126,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                 // remove me from team
 
 	// other agents
-	r.HandleFunc("/agent/{id}", agentProfileRoute).Methods("GET") // "profile" page, such as it is
-	// r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")	// send a message to a agent
+	r.HandleFunc("/agent/{id}", agentProfileRoute).Methods("GET")          // "profile" page, such as it is
+	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST") // send a message to a agent
 
 	// teams
 	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
@@ -139,6 +139,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                                                                       // GUI to do basic edit (owner)
 	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
 	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
+	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")                                                              // broadcast a message to the team
 	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")                                                        // invite agent to team (owner)
 	// r.HandleFunc("/team/{team}/{key}", setAgentTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
 	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET") // remove agent from team (owner)
