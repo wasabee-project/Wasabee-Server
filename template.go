@@ -3,9 +3,14 @@ package wasabi
 import (
 	"html/template"
 	"io/ioutil"
+	"path"
 	"path/filepath"
 )
 
+// TemplateConfig should be called once from main to establish the templates.
+// Individual subsystems should provide their own execution function since requirements will vary
+// XXX TODO: establish a way of refreshing/reloading that doesn't leak
+//
 func TemplateConfig(frontendPath string) (map[string]*template.Template, error) {
 	// Transform frontendPath to an absolute path
 	fp, err := filepath.Abs(frontendPath)
@@ -26,6 +31,7 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 		"VEnlOne":      GetvEnlOne,
 		"EnlRocks":     GetEnlRocks,
 		"TeamMenu":     TeamMenu,
+		"OpUserMenu":   OpUserMenu,
 	}
 
 	Log.Info("Including frontend templates from: ", fp)
@@ -40,12 +46,14 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 		if f.IsDir() && len(lang) == 2 {
 			templateSet[lang] = template.New("").Funcs(funcMap) // one funcMap for all languages
 			// load the masters
-			_, err = templateSet[lang].ParseGlob(fp + "/master/*")
+			masterpath := path.Join(fp, "master", "*")
+			_, err = templateSet[lang].ParseGlob(masterpath)
 			if err != nil {
 				Log.Error(err)
 			}
 			// overwrite with language specific
-			_, err = templateSet[lang].ParseGlob(fp + "/" + lang + "/*")
+			langpath := path.Join(fp, lang, "*")
+			_, err = templateSet[lang].ParseGlob(langpath)
 			if err != nil {
 				Log.Error(err)
 			}
