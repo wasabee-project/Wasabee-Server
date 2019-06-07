@@ -170,8 +170,8 @@ func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
 
 // insertMarkers adds a marker to the database
 func (o *Operation) insertMarker(m Marker) error {
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, comment) VALUES (?, ?, ?, ?, ?)",
-		m.ID, o.ID, m.PortalID, m.Type, m.Comment)
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment) VALUES (?, ?, ?, ?, ?, ?)",
+		m.ID, o.ID, m.PortalID, m.Type, m.AssignedTo, m.Comment)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -302,19 +302,24 @@ func (o *Operation) PopulatePortals() error {
 // PopulateMarkers fills in the Markers list for the Operation. No authorization takes place.
 func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
-	var comment sql.NullString
+	var gid, comment sql.NullString
 
-	rows, err := db.Query("SELECT ID, PortalID, type, comment FROM marker WHERE opID = ?", o.ID)
+	rows, err := db.Query("SELECT ID, PortalID, type, gid, comment FROM marker WHERE opID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &comment)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &gid, &comment)
 		if err != nil {
 			Log.Error(err)
 			continue
+		}
+		if gid.Valid {
+			tmpMarker.AssignedTo = GoogleID(gid.String)
+		} else {
+			tmpMarker.Comment = ""
 		}
 		if comment.Valid {
 			tmpMarker.Comment = comment.String
@@ -554,7 +559,7 @@ func markerIDwaypointID(markerID string) int64 {
 	return i
 }
 
-// Used in html templates to draw the menus to assign targets/links
+// OpUserMenu is used in html templates to draw the menus to assign targets/links
 func OpUserMenu(currentGid GoogleID, teamID TeamID) (template.HTML, error) {
 	rows, err := db.Query("SELECT a.iname, a.gid FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid", teamID)
 	if err != nil {

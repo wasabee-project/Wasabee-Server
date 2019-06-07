@@ -119,7 +119,13 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	if err = templateExecute(res, req, "opdata", friendly); err != nil {
+
+	template := "opinfo"
+	if gid == o.Gid {
+		template = "opdata"
+	}
+
+	if err = templateExecute(res, req, template, friendly); err != nil {
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
@@ -331,6 +337,7 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 type pdrawFriendly struct {
 	ID       wasabi.OperationID
 	Name     string
+	Gid      wasabi.GoogleID
 	Agent    string
 	Color    string
 	Modified string
@@ -377,6 +384,7 @@ func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
 	friendly.Name = op.Name
 	friendly.Color = op.Color
 	friendly.Modified = op.Modified
+	friendly.Gid = op.Gid
 
 	friendly.Agent, err = op.Gid.IngressName()
 	if err != nil {
@@ -409,6 +417,7 @@ func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
 	for _, m := range op.Markers {
 		var fm friendlyMarker
 		fm.ID = m.ID
+		fm.AssignedToID = m.AssignedTo
 		fm.Type = m.Type
 		fm.Comment = m.Comment
 		fm.Portal = portals[m.PortalID].Name
