@@ -494,7 +494,7 @@ func (teamID TeamID) Name() (string, error) {
 }
 
 // TeamMenu is used for html templates {{TeamMenu .Gid .TeamID}} .Gid is the user's GoogleID, TeamID is the current Op's teamID (for setting selected)
-func TeamMenu(gid GoogleID, teamID TeamID) (template.HTML, error) {
+func TeamMenu(gid GoogleID, teamID string) (template.HTML, error) {
 	rows, err := db.Query("SELECT t.name, t.teamID FROM agentteams=x, team=t WHERE x.gid = ? AND x.teamID = t.teamID", gid)
 	if err != nil {
 		Log.Error(err)
@@ -505,7 +505,7 @@ func TeamMenu(gid GoogleID, teamID TeamID) (template.HTML, error) {
 
 	var b bytes.Buffer
 	var name string
-	var tid TeamID
+	var tid string
 
 	_, _ = b.WriteString(`<select name="team">`)
 	for rows.Next() {

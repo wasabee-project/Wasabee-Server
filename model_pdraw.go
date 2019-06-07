@@ -1,10 +1,12 @@
 package wasabi
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"sort"
 	"strconv"
 )
@@ -200,8 +202,8 @@ func (o *Operation) insertAnchor(p PortalID) error {
 
 // insertLink adds a link to the database
 func (o *Operation) insertLink(l Link) error {
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description) VALUES (?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, o.ID, l.Desc)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		l.ID, l.From, l.To, o.ID, l.Desc, l.AssignedTo, l.ThrowOrder)
 	if err != nil {
 		Log.Error(err)
 	}
@@ -327,16 +329,16 @@ func (o *Operation) PopulateMarkers() error {
 // PopulateLinks fills in the Links list for the Operation. No authorization takes place.
 func (o *Operation) PopulateLinks() error {
 	var tmpLink Link
-	var description sql.NullString
+	var description, gid sql.NullString
 
-	rows, err := db.Query("SELECT ID, fromPortalID, toPortalID, description FROM link WHERE opID = ?", o.ID)
+	rows, err := db.Query("SELECT ID, fromPortalID, toPortalID, description, gid, throworder FROM link WHERE opID = ? ORDER BY throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -345,6 +347,11 @@ func (o *Operation) PopulateLinks() error {
 			tmpLink.Desc = description.String
 		} else {
 			tmpLink.Desc = ""
+		}
+		if gid.Valid {
+			tmpLink.AssignedTo = GoogleID(gid.String)
+		} else {
+			tmpLink.AssignedTo = ""
 		}
 		o.Links = append(o.Links, tmpLink)
 	}
@@ -545,4 +552,37 @@ func (m MarkerType) String() string {
 func markerIDwaypointID(markerID string) int64 {
 	i, _ := strconv.ParseInt("0x"+markerID[:6], 0, 64)
 	return i
+}
+
+// Used in html templates to draw the menus to assign targets/links
+func OpUserMenu(currentGid GoogleID, teamID TeamID) (template.HTML, error) {
+	rows, err := db.Query("SELECT a.iname, a.gid FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid", teamID)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	defer rows.Close()
+
+	var b bytes.Buffer
+	var iname string
+	var gid string
+
+	_, _ = b.WriteString(`<select name="agent">`)
+	_, _ = b.WriteString(`<option value="">-- unassigned--</option>`)
+	for rows.Next() {
+		err := rows.Scan(&iname, &gid)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		if gid == string(currentGid) {
+			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\" selected=\"selected\">%s</option>", gid, iname))
+		} else {
+			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\">%s</option>", gid, iname))
+		}
+	}
+	_, _ = b.WriteString(`</select>`)
+	// #nosec
+	return template.HTML(b.String()), nil
 }

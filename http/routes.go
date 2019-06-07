@@ -110,7 +110,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", pDrawDeleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}/delete", pDrawDeleteRoute).Methods("GET", "DELETE")
 	r.HandleFunc("/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
-	r.HandleFunc("/draw/{document}/chgrp", pDrawChgrpRoute).Methods("GET").Queries("to", "{to}")
+	r.HandleFunc("/draw/{document}/chgrp", pDrawChgrpRoute).Methods("GET").Queries("team", "{team}")
 	r.HandleFunc("/draw/{document}/stock", pDrawStockRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}", pDrawUpdateRoute).Methods("PUT")
 

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,8 +114,13 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// pretty output for everyone else
-	if err = templateExecute(res, req, "opdata", o); err != nil {
-		wasabi.Log.Notice(err)
+	friendly, err := pDrawFriendlyNames(&o)
+	if err != nil {
+		wasabi.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
+	if err = templateExecute(res, req, "opdata", friendly); err != nil {
+		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -239,7 +246,7 @@ func pDrawChgrpRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	vars := mux.Vars(req)
-	to := wasabi.TeamID(vars["to"])
+	to := wasabi.TeamID(vars["team"])
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -319,4 +326,136 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 
 	// wasabi.Log.Debugf("redirecting to :%s", url)
 	http.Redirect(res, req, url, http.StatusFound)
+}
+
+type pdrawFriendly struct {
+	ID       wasabi.OperationID
+	Name     string
+	Agent    string
+	Color    string
+	Modified string
+	TeamID   wasabi.TeamID
+	Team     string
+	Links    []friendlyLink
+	Markers  []friendlyMarker
+	Keys     []friendlyKeys
+}
+
+type friendlyLink struct {
+	ID           string
+	From         string
+	To           string
+	Desc         string
+	AssignedTo   string
+	AssignedToID wasabi.GoogleID
+	ThrowOrder   float64
+	Distance     float64
+}
+
+type friendlyMarker struct {
+	ID           string
+	Portal       string
+	Type         wasabi.MarkerType
+	Comment      string
+	AssignedTo   string
+	AssignedToID wasabi.GoogleID
+}
+
+type friendlyKeys struct {
+	ID       wasabi.PortalID
+	Portal   string
+	Required int
+	OnHand   int
+}
+
+// takes a populated op and returns a friendly named version
+func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
+	var err error
+	var friendly pdrawFriendly
+	friendly.ID = op.ID
+	friendly.TeamID = op.TeamID
+	friendly.Name = op.Name
+	friendly.Color = op.Color
+	friendly.Modified = op.Modified
+
+	friendly.Agent, err = op.Gid.IngressName()
+	if err != nil {
+		return friendly, err
+	}
+	friendly.Team, err = op.TeamID.Name()
+	if err != nil {
+		return friendly, err
+	}
+
+	var portals = make(map[wasabi.PortalID]wasabi.Portal)
+
+	for _, p := range op.OpPortals {
+		portals[p.ID] = p
+	}
+
+	for _, l := range op.Links {
+		var fl friendlyLink
+		fl.ID = l.ID
+		fl.Desc = l.Desc
+		fl.ThrowOrder = l.ThrowOrder
+		fl.From = portals[l.From].Name
+		fl.To = portals[l.To].Name
+		fl.AssignedTo, _ = l.AssignedTo.IngressName()
+		fl.AssignedToID = l.AssignedTo
+		fl.Distance = lldistance(portals[l.From].Lat, portals[l.From].Lon, portals[l.To].Lat, portals[l.To].Lon)
+		friendly.Links = append(friendly.Links, fl)
+	}
+
+	for _, m := range op.Markers {
+		var fm friendlyMarker
+		fm.ID = m.ID
+		fm.Type = m.Type
+		fm.Comment = m.Comment
+		fm.Portal = portals[m.PortalID].Name
+		fm.AssignedTo, _ = m.AssignedTo.IngressName()
+		friendly.Markers = append(friendly.Markers, fm)
+	}
+
+	var keys = make(map[wasabi.PortalID]friendlyKeys)
+	for _, l := range op.Links {
+		_, ok := keys[l.To]
+		if !ok {
+			keys[l.To] = friendlyKeys{
+				ID:       l.To,
+				Portal:   portals[l.To].Name,
+				Required: 1,
+				OnHand:   0,
+			}
+		} else {
+			tmp := keys[l.To]
+			tmp.Required++
+			keys[l.To] = tmp
+		}
+	}
+	for _, f := range keys {
+		friendly.Keys = append(friendly.Keys, f)
+	}
+
+	return friendly, nil
+}
+
+func lldistance(startLat, startLon, endLat, endLon string) float64 {
+	sl, _ := strconv.ParseFloat(startLat, 64)
+	startrl := math.Pi * sl / 180.0
+	el, _ := strconv.ParseFloat(endLat, 64)
+	endrl := math.Pi * el / 180.0
+
+	t, _ := strconv.ParseFloat(startLon, 64)
+	th, _ := strconv.ParseFloat(endLon, 64)
+	rt := math.Pi * (t - th) / 180.0
+
+	dist := math.Sin(startrl)*math.Sin(endrl) + math.Cos(startrl)*math.Cos(endrl)*math.Cos(rt)
+	if dist > 1 {
+		dist = 1
+	}
+
+	dist = math.Acos(dist)
+	dist = dist * 180 / math.Pi
+	dist = dist * 60 * 1.1515 * 1.609344
+	return math.RoundToEven(dist)
 }
