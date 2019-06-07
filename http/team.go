@@ -273,7 +273,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if message == "" {
 		message = "This is a toast notification"
 	}
-	err = team.SendAnnounce(message)
+	err = team.SendAnnounce(gid, message)
 	if err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

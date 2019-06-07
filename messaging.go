@@ -7,7 +7,14 @@ import (
 type messagingConfig struct {
 	inited  bool
 	senders map[string]func(gid GoogleID, message string) (bool, error)
+	// busses map[string]MessageBus
 }
+
+/*
+type MessageBus interface {
+	SendMessage(gid GoogleID, message string) (bool, error)
+}
+*/
 
 var mc messagingConfig
 
@@ -63,17 +70,43 @@ func (gid GoogleID) CanSendTo(to GoogleID) bool {
 	if count < 1 {
 		return false
 	}
-
+	toname, _ := to.IngressName()
+	fmname, _ := gid.IngressName()
+	Log.Debugf("authorized message from %s to %s", fmname, toname)
 	return true
 }
 
 // SendAnnounce sends a message to everyone on the team, determining what is the best route per agent
-func (teamID TeamID) SendAnnounce(message string) error {
-	// for each agent on the team
-	// determine which messaging protocols are enabled for gid
-	// pick optimal
+func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
+	if x, _ := sender.OwnsTeam(teamID); !x {
+		err := fmt.Errorf("permission denied: %s sending to team %s", sender, teamID)
+		Log.Error(err)
+		return err
+	}
 
-	// ok, err := SendMessage(gid, message)
+	rows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ? AND state != 'Off'", teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	var gid GoogleID
+	for rows.Next() {
+		err := rows.Scan(&gid)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		ok, err := gid.SendMessage(message)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if !ok {
+			Log.Debugf("unable to send to %s", gid)
+		}
+	}
+
 	return nil
 }
 
