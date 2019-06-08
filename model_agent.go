@@ -196,6 +196,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 func (gid GoogleID) SetIngressName(name string) error {
 	// if VVerified or RocksVerified: ignore name changes -- let the V/Rocks functions take care of that
 	// XXX doesn't take care of the case where they are in .rocks but not verified
+	Log.Critical("%s changed agent name to %s", gid, name)
 	_, err := db.Exec("UPDATE agent SET iname = ? WHERE gid = ? AND VVerified = 0 AND RocksVerified = 0", name, gid)
 	if err != nil {
 		Log.Notice(err)
@@ -269,7 +270,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 }
 
 func adTeams(gid GoogleID, ud *AgentData) error {
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID", gid)
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -301,7 +302,7 @@ func adTeams(gid GoogleID, ud *AgentData) error {
 
 func adOwnedTeams(gid GoogleID, ud *AgentData) error {
 	var ownedTeam AdOwnedTeam
-	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ?", gid)
+	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ? ORDER BY name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -369,7 +370,7 @@ func adOps(gid GoogleID, ud *AgentData) error {
 		ud.OwnedOps = append(ud.OwnedOps, op)
 	}
 
-	row2, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state IN ('On', 'Primary')", gid)
+	row2, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state IN ('On', 'Primary') ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
