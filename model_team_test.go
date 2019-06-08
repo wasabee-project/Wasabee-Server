@@ -82,10 +82,10 @@ func TestNewTeam(t *testing.T) {
 	//	t.Error("SetTeamState did not return an error on a bad value")
 	//}
 
-	err = teamID.SendAnnounce(gid, "testing")
-	if err != nil {
-		t.Error(err.Error())
-	}
+	// err = teamID.SendAnnounce(gid, "testing")
+	// if err != nil {
+	//	t.Error(err.Error())
+	//}
 
 	err = teamID.Delete()
 	if err != nil {

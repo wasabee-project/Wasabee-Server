@@ -561,7 +561,7 @@ func markerIDwaypointID(markerID string) int64 {
 
 // OpUserMenu is used in html templates to draw the menus to assign targets/links
 func OpUserMenu(currentGid GoogleID, teamID TeamID) (template.HTML, error) {
-	rows, err := db.Query("SELECT a.iname, a.gid FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid", teamID)
+	rows, err := db.Query("SELECT a.iname, a.gid FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid ORDER BY a.iname", teamID)
 	if err != nil {
 		Log.Error(err)
 		return "", err
@@ -592,8 +592,9 @@ func OpUserMenu(currentGid GoogleID, teamID TeamID) (template.HTML, error) {
 	return template.HTML(b.String()), nil
 }
 
-func (o OperationID) AssignLink(linkID string, gid GoogleID) error {
-	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", gid, linkID, o)
+// AssignLink assigns a link to an agent, sending them a message that they have an assignment
+func (opID OperationID) AssignLink(linkID string, gid GoogleID) error {
+	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", gid, linkID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -611,8 +612,9 @@ func (o OperationID) AssignLink(linkID string, gid GoogleID) error {
 	return nil
 }
 
-func (o OperationID) LinkDescription(linkID, desc string) error {
-	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", desc, linkID, o)
+// LinkDescription updates the description for a link
+func (opID OperationID) LinkDescription(linkID, desc string) error {
+	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", desc, linkID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -620,8 +622,9 @@ func (o OperationID) LinkDescription(linkID, desc string) error {
 	return nil
 }
 
-func (o OperationID) AssignMarker(markerID string, gid GoogleID) error {
-	_, err := db.Exec("UPDATE marker SET gid = ? WHERE ID = ? AND opID = ?", gid, markerID, o)
+// AssignMarker assigns a marker to an agent, sending them a message
+func (opID OperationID) AssignMarker(markerID string, gid GoogleID) error {
+	_, err := db.Exec("UPDATE marker SET gid = ? WHERE ID = ? AND opID = ?", gid, markerID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -637,8 +640,9 @@ func (o OperationID) AssignMarker(markerID string, gid GoogleID) error {
 	return nil
 }
 
-func (o OperationID) MarkerComment(markerID, comment string) error {
-	_, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", comment, markerID, o)
+// MarkerComment updates the comment on a marker
+func (opID OperationID) MarkerComment(markerID, comment string) error {
+	_, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", comment, markerID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -646,8 +650,9 @@ func (o OperationID) MarkerComment(markerID, comment string) error {
 	return nil
 }
 
-func (o OperationID) PortalComment(portalID PortalID, comment string) error {
-	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", comment, portalID, o)
+// PortalComment updates the comment on a portal
+func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
+	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", comment, portalID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
