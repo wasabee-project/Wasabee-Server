@@ -350,7 +350,9 @@ type pdrawFriendly struct {
 type friendlyLink struct {
 	ID           string
 	From         string
+	FromID       wasabi.PortalID
 	To           string
+	ToID         wasabi.PortalID
 	Desc         string
 	AssignedTo   string
 	AssignedToID wasabi.GoogleID
@@ -361,6 +363,7 @@ type friendlyLink struct {
 type friendlyMarker struct {
 	ID           string
 	Portal       string
+	PortalID     wasabi.PortalID
 	Type         wasabi.MarkerType
 	Comment      string
 	AssignedTo   string
@@ -406,7 +409,9 @@ func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
 		fl.Desc = l.Desc
 		fl.ThrowOrder = l.ThrowOrder
 		fl.From = portals[l.From].Name
+		fl.FromID = l.From
 		fl.To = portals[l.To].Name
+		fl.ToID = l.To
 		fl.AssignedTo, _ = l.AssignedTo.IngressName()
 		fl.AssignedToID = l.AssignedTo
 		fl.Distance = lldistance(portals[l.From].Lat, portals[l.From].Lon, portals[l.To].Lat, portals[l.To].Lon)
@@ -419,6 +424,7 @@ func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
 		fm.AssignedToID = m.AssignedTo
 		fm.Type = m.Type
 		fm.Comment = m.Comment
+		fm.PortalID = m.PortalID
 		fm.Portal = portals[m.PortalID].Name
 		fm.AssignedTo, _ = m.AssignedTo.IngressName()
 		friendly.Markers = append(friendly.Markers, fm)
@@ -631,4 +637,61 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabi.Operation
+	op.ID = wasabi.OperationID(vars["document"])
+
+	if op.ID.IsOwner(gid) {
+		portalID := wasabi.PortalID(vars["portal"])
+		hardness := req.FormValue("hardness")
+		err := op.ID.PortalComment(portalID, hardness)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner set portal hardness")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+	portalID := wasabi.PortalID(vars["portal"])
+	portal, err := opID.PortalDetails(portalID, gid)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = templateExecute(res, req, "portaldata", portal); err != nil {
+		wasabi.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
 }

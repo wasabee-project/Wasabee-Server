@@ -324,7 +324,8 @@ func SendMessage(gid wasabi.GoogleID, message string) (bool, error) {
 		wasabi.Log.Error(err)
 		return false, err
 	}
-	wasabi.Log.Info("Sent message to:", gid)
+
+	wasabi.Log.Infof("sent message to: %s", gid)
 	return true, nil
 }
 

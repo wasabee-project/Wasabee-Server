@@ -31,7 +31,7 @@ type Operation struct {
 	Anchors   []PortalID  `json:"anchors"`
 	Links     []Link      `json:"links"`
 	Markers   []Marker    `json:"markers"`
-	TeamID    TeamID      `json:"teamid"` // not set in IITC Plugin yet
+	TeamID    TeamID      `json:"teamid"`
 	Modified  string      `json:"modified"`
 }
 
@@ -41,8 +41,8 @@ type Portal struct {
 	Name     string   `json:"name"`
 	Lat      string   `json:"lat"` // passing these as strings saves me parsing them
 	Lon      string   `json:"lng"`
-	Comment  string   `json:"comment"`  // currently not in database, need schema change
-	Hardness string   `json:"hardness"` // currently not in database, need schema change
+	Comment  string   `json:"comment"`
+	Hardness string   `json:"hardness"` // string for now, enum in the future
 }
 
 // Link is defined by the PhtivDraw IITC plugin.
@@ -181,8 +181,8 @@ func (o *Operation) insertMarker(m Marker) error {
 
 // insertPortal adds a portal to the database
 func (o *Operation) insertPortal(p Portal) error {
-	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc) VALUES (?, ?, ?, POINT(?, ?))",
-		p.ID, o.ID, p.Name, p.Lon, p.Lat)
+	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
+		p.ID, o.ID, p.Name, p.Lon, p.Lat, p.Comment, p.Hardness)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -282,18 +282,31 @@ func (o *Operation) Populate(gid GoogleID) error {
 func (o *Operation) PopulatePortals() error {
 	var tmpPortal Portal
 
-	rows, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon FROM portal WHERE opID = ? ORDER BY name", o.ID)
+	var comment, hardness sql.NullString
+
+	rows, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? ORDER BY name", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpPortal.ID, &tmpPortal.Name, &tmpPortal.Lat, &tmpPortal.Lon)
+		err := rows.Scan(&tmpPortal.ID, &tmpPortal.Name, &tmpPortal.Lat, &tmpPortal.Lon, &comment, &hardness)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
+		if comment.Valid {
+			tmpPortal.Comment = comment.String
+		} else {
+			tmpPortal.Comment = ""
+		}
+		if hardness.Valid {
+			tmpPortal.Hardness = hardness.String
+		} else {
+			tmpPortal.Hardness = ""
+		}
+
 		o.OpPortals = append(o.OpPortals, tmpPortal)
 	}
 	return nil
@@ -650,6 +663,16 @@ func (opID OperationID) MarkerComment(markerID, comment string) error {
 	return nil
 }
 
+// PortalHardness updates the comment on a portal
+func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error {
+	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", hardness, portalID, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
 // PortalComment updates the comment on a portal
 func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
 	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", comment, portalID, opID)
@@ -658,4 +681,45 @@ func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
 		return err
 	}
 	return nil
+}
+
+// PortalDetails returns information about the portal
+func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, error) {
+	var p Portal
+	p.ID = portalID
+
+	// XXX break this out into its own function, re-audit this file, I don't think operation.teamID can be NULL now
+	var teamID sql.NullString
+	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
+	if err != nil {
+		Log.Error(err)
+		return p, err
+	}
+	var inteam bool
+	if teamID.Valid {
+		inteam, err = gid.AgentInTeam(TeamID(teamID.String), false)
+		if err != nil {
+			Log.Error(err)
+			return p, err
+		}
+	}
+	if !inteam {
+		err := fmt.Errorf("unauthorized: you are not on a team authorized to see this operation")
+		Log.Error(err)
+		return p, err
+	}
+
+	var comment, hardness sql.NullString
+	err = db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", opID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
+	if err != nil {
+		Log.Error(err)
+		return p, err
+	}
+	if comment.Valid {
+		p.Comment = comment.String
+	}
+	if hardness.Valid {
+		p.Hardness = hardness.String
+	}
+	return p, nil
 }
