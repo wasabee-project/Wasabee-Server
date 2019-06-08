@@ -103,53 +103,69 @@ func setupSimpleRoutes(r *mux.Router) {
 // implied /api/v1
 func setupAuthRoutes(r *mux.Router) {
 	// This block requires authentication
-	// Draw -- new-style, parsed, not-encrypted, authenticated, authorized, more-functional
 	r.HandleFunc("/draw", pDrawUploadRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}", pDrawGetRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}", pDrawGetRoute).Methods("HEAD") // XXX make this better
+	r.HandleFunc("/draw/{document}", pDrawGetRoute).Methods("GET", "HEAD")
 	r.HandleFunc("/draw/{document}", pDrawDeleteRoute).Methods("DELETE")
+	r.HandleFunc("/draw/{document}", pDrawUpdateRoute).Methods("PUT")
 	r.HandleFunc("/draw/{document}/delete", pDrawDeleteRoute).Methods("GET", "DELETE")
 	r.HandleFunc("/draw/{document}/chown", pDrawChownRoute).Methods("GET").Queries("to", "{to}")
 	r.HandleFunc("/draw/{document}/chgrp", pDrawChgrpRoute).Methods("GET").Queries("team", "{team}")
 	r.HandleFunc("/draw/{document}/stock", pDrawStockRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}", pDrawUpdateRoute).Methods("PUT")
+	r.HandleFunc("/draw/{document}/link/{link}/assign", pDrawLinkAssignRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/link/{link}/desc", pDrawLinkDescRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/marker/{marker}/assign", pDrawMarkerAssignRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/marker/{marker}/comment", pDrawMarkerCommentRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/portal/{portal}/comment", pDrawPortalCommentRoute).Methods("POST")
 
-	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")                 // set my display name /me?name=deviousness
-	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")                 // set my OwnTracks Password (cleartext, yes, but SSL is required)
-	r.HandleFunc("/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")                    // request a new lockey
-	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}") // manual location post
-	r.HandleFunc("/me", meShowRoute).Methods("GET")                                                     // -- do not use, just here for safety
-	r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET")                                            // purge all info for a agent
-	r.HandleFunc("/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")      // toggle RAID/JEAH polling
-	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")            // /api/v1/me/wonky-team-1234?state={Off|On|Primary}
-	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")                                     // remove me from team
-	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                 // remove me from team
+	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")
+	// set my OwnTracks Password (cleartext, yes, but SSL is required)
+	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")
+	// request a new lockey
+	r.HandleFunc("/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")
+	// manual location post
+	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
+	// -- do not use, just here for safety
+	r.HandleFunc("/me", meShowRoute).Methods("GET")
+	// r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
+	// toggle RAID/JEAH polling
+	r.HandleFunc("/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")
+	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
+	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
+	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
 
 	// other agents
-	r.HandleFunc("/agent/{id}", agentProfileRoute).Methods("GET")          // "profile" page, such as it is
-	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST") // send a message to a agent
+	// "profile" page, such as it is
+	r.HandleFunc("/agent/{id}", agentProfileRoute).Methods("GET")
+	// send a message to a agent
+	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")
 
 	// teams
-	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create a new team
-	r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}") // invite agent to team (owner)
-	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")                                // return the location of every agent/target on team (team member/owner)
-	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")                          // remove the team completely (owner)
-	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE")            // remove the team completely (owner)
+	// create a new team
+	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")
+	r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}")
+	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")
+	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")
+	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE")
 	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}")
-	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")                                                                       // GUI to do basic edit (owner)
-	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
-	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
-	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")                                                              // broadcast a message to the team
-	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")                                                        // invite agent to team (owner)
-	// r.HandleFunc("/team/{team}/{key}", setAgentTeamColorRoute).Methods("GET").Queries("color", "{color}") // set agent color on this team (owner)
-	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET") // remove agent from team (owner)
-	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")     // remove agent from team (owner)
+	// GUI to do basic edit (owner)
+	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")
+	// (re)import the team from rocks
+	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")
+	// configure team link to enl.rocks community
+	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}")
+	// broadcast a message to the team
+	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")
+	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")
+	// r.HandleFunc("/team/{team}/{key}", setAgentTeamColorRoute).Methods("GET").Queries("color", "{color}")
+	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")
+	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")
 
 	// waypoints
-	r.HandleFunc("/waypoints/me", waypointsNearMeRoute).Methods("GET") // show OT waypoints & Operation markers near agent (html/json)
+	r.HandleFunc("/waypoints/me", waypointsNearMeRoute).Methods("GET")
 
 	// server control functions
-	r.HandleFunc("/templates/refresh", templateUpdateRoute).Methods("GET") // trigger the server refresh of the template files
+	// trigger the server refresh of the template files
+	r.HandleFunc("/templates/refresh", templateUpdateRoute).Methods("GET")
 
 	r.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 }

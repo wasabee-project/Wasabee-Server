@@ -591,3 +591,66 @@ func OpUserMenu(currentGid GoogleID, teamID TeamID) (template.HTML, error) {
 	// #nosec
 	return template.HTML(b.String()), nil
 }
+
+func (o OperationID) AssignLink(linkID string, gid GoogleID) error {
+	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", gid, linkID, o)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// XXX get message from template
+	if string(gid) != "" {
+		_, err = gid.SendMessage("You have been assigned a link... better message coming eventually; something nice with a link to the op, maybe a flower.")
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o OperationID) LinkDescription(linkID, desc string) error {
+	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", desc, linkID, o)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (o OperationID) AssignMarker(markerID string, gid GoogleID) error {
+	_, err := db.Exec("UPDATE marker SET gid = ? WHERE ID = ? AND opID = ?", gid, markerID, o)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// XXX get message from template
+	_, err = gid.SendMessage("You have been assigned a target... better message coming eventually")
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (o OperationID) MarkerComment(markerID, comment string) error {
+	_, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", comment, markerID, o)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (o OperationID) PortalComment(portalID PortalID, comment string) error {
+	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", comment, portalID, o)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}

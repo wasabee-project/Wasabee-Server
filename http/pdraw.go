@@ -167,8 +167,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func jsonError(e error) string {
-	s, _ := json.MarshalIndent(e, "", "\t")
-	return string(s)
+	return fmt.Sprintf("{ \"status\": \"error\", \"error\": \"%s\" }", e.Error())
 }
 
 func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
@@ -467,4 +466,169 @@ func lldistance(startLat, startLon, endLat, endLon string) float64 {
 	dist = dist * 180 / math.Pi
 	dist = dist * 60 * 1.1515 * 1.609344
 	return math.RoundToEven(dist)
+}
+
+func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabi.Operation
+	op.ID = wasabi.OperationID(vars["document"])
+
+	if op.ID.IsOwner(gid) {
+		link := vars["link"]
+		agent := wasabi.GoogleID(req.FormValue("agent"))
+		err := op.ID.AssignLink(link, agent)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner can assign agents")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabi.Operation
+	op.ID = wasabi.OperationID(vars["document"])
+
+	if op.ID.IsOwner(gid) {
+		link := vars["link"]
+		desc := req.FormValue("desc")
+		err := op.ID.LinkDescription(link, desc)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner can set link descriptions")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabi.Operation
+	op.ID = wasabi.OperationID(vars["document"])
+
+	if op.ID.IsOwner(gid) {
+		marker := vars["marker"]
+		agent := wasabi.GoogleID(req.FormValue("agent"))
+		err := op.ID.AssignMarker(marker, agent)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner can assign targets")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabi.Operation
+	op.ID = wasabi.OperationID(vars["document"])
+
+	if op.ID.IsOwner(gid) {
+		marker := vars["marker"]
+		comment := req.FormValue("comment")
+		err := op.ID.MarkerComment(marker, comment)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner set marker comments")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabi.Operation
+	op.ID = wasabi.OperationID(vars["document"])
+
+	if op.ID.IsOwner(gid) {
+		portalID := wasabi.PortalID(vars["portal"])
+		comment := req.FormValue("comment")
+		err := op.ID.PortalComment(portalID, comment)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner set portal comments")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
