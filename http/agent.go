@@ -13,7 +13,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	var agent wasabi.Agent
 
 	// must be authenticated
-	_, err := getAgentID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -33,6 +33,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	agent.CanSendTo = gid.CanSendTo(togid)
 
 	// if the request comes from intel, just return JSON
 	if strings.Contains(req.Referer(), "intel.ingress.com") {

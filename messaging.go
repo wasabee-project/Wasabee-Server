@@ -70,9 +70,6 @@ func (gid GoogleID) CanSendTo(to GoogleID) bool {
 	if count < 1 {
 		return false
 	}
-	toname, _ := to.IngressName()
-	fmname, _ := gid.IngressName()
-	Log.Debugf("authorized message from %s to %s", fmname, toname)
 	return true
 }
 
@@ -93,6 +90,9 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 	var gid GoogleID
 	for rows.Next() {
 		err := rows.Scan(&gid)
+		if !sender.CanSendTo(gid) {
+			continue
+		}
 		if err != nil {
 			Log.Error(err)
 			return err

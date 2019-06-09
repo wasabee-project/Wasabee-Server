@@ -130,6 +130,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me", meShowRoute).Methods("GET")
 	// r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
 	// toggle RAID/JEAH polling
+	r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")
+	r.HandleFunc("/me/operations", meOperationsRoute).Methods("GET")
 	r.HandleFunc("/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")

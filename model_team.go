@@ -38,6 +38,7 @@ type Agent struct {
 	Date          string          `json:"date,omitempty"`
 	OwnTracks     json.RawMessage `json:"OwnTracks,omitempty"`
 	Distance      float64         `json:"distance,omitempty"`
+	CanSendTo     bool            `json:"cansendto,omitempty"`
 }
 
 // AgentInTeam checks to see if a agent is in a team and (On|Primary).
