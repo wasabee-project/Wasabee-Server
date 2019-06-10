@@ -48,6 +48,7 @@ type AgentData struct {
 		Verified  bool
 		Authtoken string
 	}
+	Assignments []Assignment
 }
 
 // AdOwnedTeam is a sub-struct of AgentData
@@ -78,6 +79,12 @@ type AdOperation struct {
 type AgentID interface {
 	Gid() (GoogleID, error)
 	fmt.Stringer
+}
+
+type Assignment struct {
+	OpID          OperationID
+	OperationName string
+	Type          string
 }
 
 // InitAgent is called from Oauth callback to set up a agent for the first time.
@@ -242,28 +249,28 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		ud.OwnTracksPW = ot.String
 	}
 
-	err = adTeams(gid, ud)
-	if err != nil {
+	if err = adTeams(gid, ud); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	err = adOwnedTeams(gid, ud)
-	if err != nil {
+	if err = adOwnedTeams(gid, ud); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	err = adTelegram(gid, ud)
-	if err != nil {
+	if err = adTelegram(gid, ud); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	err = adOps(gid, ud)
-	if err != nil {
+	if err = adOps(gid, ud); err != nil {
 		Log.Error(err)
 		return err
+	}
+
+	if err = adAssignments(gid, ud); err != nil {
+		Log.Error(err)
 	}
 
 	return nil
@@ -384,6 +391,44 @@ func adOps(gid GoogleID, ud *AgentData) error {
 		}
 		ud.Ops = append(ud.Ops, op)
 	}
+	return nil
+}
+
+func adAssignments(gid GoogleID, ud *AgentData) error {
+	var a Assignment
+
+	a.Type = "Marker"
+	row, err := db.Query("SELECT DISTINCT o.Name, o.ID FROM marker=m, operation=o WHERE m.gid = ? AND m.opID = o.ID ORDER BY o.Name", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer row.Close()
+	for row.Next() {
+		err := row.Scan(&a.OperationName, &a.OpID)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		ud.Assignments = append(ud.Assignments, a)
+	}
+
+	a.Type = "Link"
+	row2, err := db.Query("SELECT DISTINCT o.Name, o.ID FROM link=l, operation=o WHERE l.gid = ? AND l.opID = o.ID ORDER BY o.Name", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer row2.Close()
+	for row2.Next() {
+		err := row2.Scan(&a.OperationName, &a.OpID)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		ud.Assignments = append(ud.Assignments, a)
+	}
+
 	return nil
 }
 

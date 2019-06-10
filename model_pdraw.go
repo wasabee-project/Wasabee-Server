@@ -18,6 +18,12 @@ type OperationID string
 // PortalID wrapper to ensure type safety
 type PortalID string
 
+// LinkID wrapper to ensure type safety
+type LinkID string
+
+// MarkerID wrapper to ensure type safety
+type MarkerID string
+
 // MarkerType will be an enum once we figure out the full list
 type MarkerType string
 
@@ -34,6 +40,7 @@ type Operation struct {
 	Markers   []Marker    `json:"markers"`
 	TeamID    TeamID      `json:"teamid"`
 	Modified  string      `json:"modified"`
+	Keys      []KeyOnHand `json:"keysonhand"`
 }
 
 // Portal is defined by the PhtivDraw IITC plugin.
@@ -48,7 +55,7 @@ type Portal struct {
 
 // Link is defined by the PhtivDraw IITC plugin.
 type Link struct {
-	ID         string   `json:"ID"`
+	ID         LinkID   `json:"ID"`
 	From       PortalID `json:"fromPortalId"`
 	To         PortalID `json:"toPortalId"`
 	Desc       string   `json:"description"`
@@ -58,11 +65,18 @@ type Link struct {
 
 // Marker is defined by the PhtivDraw IITC plugin.
 type Marker struct {
-	ID         string     `json:"ID"`
+	ID         MarkerID   `json:"ID"`
 	PortalID   PortalID   `json:"portalId"`
 	Type       MarkerType `json:"type"`
 	Comment    string     `json:"comment"`
 	AssignedTo GoogleID   `json:"assignedTo"` // currently not in database, need schema change
+}
+
+// KeyOnHand describes the already in possesion for the op
+type KeyOnHand struct {
+	ID     PortalID `json:"portalId"`
+	Gid    GoogleID `json:"gid"`
+	Onhand int32    `json:"onhand"`
 }
 
 // PDrawInsert parses a raw op sent from the IITC plugin and stores it in the database
@@ -124,6 +138,13 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	// I bet this isn't needed since they should be covered in links and markers... but just in case
 	for _, p := range o.OpPortals {
 		if err = o.insertPortal(p); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
+	for _, k := range o.Keys {
+		if err = o.insertKey(k); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -211,6 +232,16 @@ func (o *Operation) insertLink(l Link) error {
 	return nil
 }
 
+// insertKey adds a user keycount to the database
+func (o *Operation) insertKey(k KeyOnHand) error {
+	_, err := db.Exec("INSERT INTO opkey (opID, portalID, gid, onhand) VALUES (?, ?, ?, ?)",
+		o.ID, k.ID, k.Gid, k.Onhand)
+	if err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
 // Delete removes an operation and all associated data
 func (o *Operation) Delete() error {
 	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
@@ -223,6 +254,7 @@ func (o *Operation) Delete() error {
 	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
 	return nil
 }
 
@@ -252,26 +284,27 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return errors.New("unauthorized: you are not on a team authorized to see this operation")
 	}
 
-	err = o.PopulatePortals()
-	if err != nil {
+	if err = o.PopulatePortals(); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	err = o.PopulateMarkers()
-	if err != nil {
+	if err = o.PopulateMarkers(); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	err = o.PopulateLinks()
-	if err != nil {
+	if err = o.PopulateLinks(); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	err = o.PopulateAnchors()
-	if err != nil {
+	if err = o.PopulateAnchors(); err != nil {
+		Log.Notice(err)
+		return err
+	}
+
+	if err = o.PopulateKeys(); err != nil {
 		Log.Notice(err)
 		return err
 	}
@@ -397,6 +430,26 @@ func (o *Operation) PopulateAnchors() error {
 	return nil
 }
 
+// PopulateKeys fills in the Keys on hand list for the Operation. No authorization takes place.
+func (o *Operation) PopulateKeys() error {
+	var k KeyOnHand
+	rows, err := db.Query("SELECT portalID, gid, onhand FROM opkeys WHERE opID = ?", o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&k.ID, &k.Gid, &k.Onhand)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		o.Keys = append(o.Keys, k)
+	}
+	return nil
+}
+
 // this is still very early -- dunno what the client is going to want
 func (teamID TeamID) pdMarkers(tl *TeamData) error {
 	mr, err := db.Query("SELECT m.ID, m.portalID, m.type, m.comment, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID = ?) AND m.portalID = p.ID AND m.opID = p.opID", teamID)
@@ -434,7 +487,7 @@ func (gid GoogleID) pdWaypoints(wc *waypointCommand) error {
 		return err
 	}
 	defer mr.Close()
-	var markerID string
+	var markerID MarkerID
 	var tmpWaypoint waypoint
 	for mr.Next() {
 		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
@@ -470,7 +523,7 @@ func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData)
 		return err
 	}
 	defer mr.Close()
-	var markerID string
+	var markerID MarkerID
 	var tmpWaypoint waypoint
 	for mr.Next() {
 		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc, &tmpWaypoint.Distance)
@@ -566,15 +619,29 @@ func (m MarkerType) String() string {
 	return string(m)
 }
 
+// String returns the string version of a MarkerID
+func (m MarkerID) String() string {
+	return string(m)
+}
+
+// String returns the string version of a LinkID
+func (l LinkID) String() string {
+	return string(l)
+}
+
 // markerIDwaypointID converts (hackishly) a markerID to a waypointID
 // this could be a lot smarter, but we need a deterministic conversion and this works for now
-func markerIDwaypointID(markerID string) int64 {
-	i, _ := strconv.ParseInt("0x"+markerID[:6], 0, 64)
+func markerIDwaypointID(markerID MarkerID) int64 {
+	i, _ := strconv.ParseInt("0x"+string(markerID[:6]), 0, 64)
 	return i
 }
 
+type objectID interface {
+	fmt.Stringer
+}
+
 // OpUserMenu is used in html templates to draw the menus to assign targets/links
-func OpUserMenu(currentGid GoogleID, teamID TeamID, linkID, function string) (template.HTML, error) {
+func OpUserMenu(currentGid GoogleID, teamID TeamID, objID objectID, function string) (template.HTML, error) {
 	rows, err := db.Query("SELECT a.iname, a.gid FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid ORDER BY a.iname", teamID)
 	if err != nil {
 		Log.Error(err)
@@ -587,7 +654,7 @@ func OpUserMenu(currentGid GoogleID, teamID TeamID, linkID, function string) (te
 	var iname string
 	var gid string
 
-	_, _ = b.WriteString(`<select name="agent" onchange="` + function + `('` + linkID + `', this);">`)
+	_, _ = b.WriteString(`<select name="agent" onchange="` + function + `('` + objID.String() + `', this);">`)
 	_, _ = b.WriteString(`<option value="">-- unassigned--</option>`)
 	for rows.Next() {
 		err := rows.Scan(&iname, &gid)
@@ -607,7 +674,7 @@ func OpUserMenu(currentGid GoogleID, teamID TeamID, linkID, function string) (te
 }
 
 // AssignLink assigns a link to an agent, sending them a message that they have an assignment
-func (opID OperationID) AssignLink(linkID string, gid GoogleID) error {
+func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", gid, linkID, opID)
 	if err != nil {
 		Log.Error(err)
@@ -627,7 +694,7 @@ func (opID OperationID) AssignLink(linkID string, gid GoogleID) error {
 }
 
 // LinkDescription updates the description for a link
-func (opID OperationID) LinkDescription(linkID, desc string) error {
+func (opID OperationID) LinkDescription(linkID LinkID, desc string) error {
 	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", desc, linkID, opID)
 	if err != nil {
 		Log.Error(err)
@@ -637,7 +704,7 @@ func (opID OperationID) LinkDescription(linkID, desc string) error {
 }
 
 // AssignMarker assigns a marker to an agent, sending them a message
-func (opID OperationID) AssignMarker(markerID string, gid GoogleID) error {
+func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 	_, err := db.Exec("UPDATE marker SET gid = ? WHERE ID = ? AND opID = ?", gid, markerID, opID)
 	if err != nil {
 		Log.Error(err)
@@ -655,7 +722,7 @@ func (opID OperationID) AssignMarker(markerID string, gid GoogleID) error {
 }
 
 // MarkerComment updates the comment on a marker
-func (opID OperationID) MarkerComment(markerID, comment string) error {
+func (opID OperationID) MarkerComment(markerID MarkerID, comment string) error {
 	_, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", comment, markerID, opID)
 	if err != nil {
 		Log.Error(err)
