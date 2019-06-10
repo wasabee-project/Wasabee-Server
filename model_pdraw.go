@@ -573,7 +573,7 @@ func markerIDwaypointID(markerID string) int64 {
 }
 
 // OpUserMenu is used in html templates to draw the menus to assign targets/links
-func OpUserMenu(currentGid GoogleID, teamID TeamID) (template.HTML, error) {
+func OpUserMenu(currentGid GoogleID, teamID TeamID, linkID, function string) (template.HTML, error) {
 	rows, err := db.Query("SELECT a.iname, a.gid FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid ORDER BY a.iname", teamID)
 	if err != nil {
 		Log.Error(err)
@@ -586,7 +586,7 @@ func OpUserMenu(currentGid GoogleID, teamID TeamID) (template.HTML, error) {
 	var iname string
 	var gid string
 
-	_, _ = b.WriteString(`<select name="agent">`)
+	_, _ = b.WriteString(`<select name="agent" onchange="` + function + `('` + linkID + `', this);">`)
 	_, _ = b.WriteString(`<option value="">-- unassigned--</option>`)
 	for rows.Next() {
 		err := rows.Scan(&iname, &gid)
@@ -713,7 +713,7 @@ func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, 
 	err = db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", opID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
 	if err != nil {
 		Log.Error(err)
-		return p, err
+	return p, err
 	}
 	if comment.Valid {
 		p.Comment = comment.String
