@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // OperationID wrapper to ensure type safety
@@ -713,7 +714,7 @@ func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, 
 	err = db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", opID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
 	if err != nil {
 		Log.Error(err)
-	return p, err
+		return p, err
 	}
 	if comment.Valid {
 		p.Comment = comment.String
@@ -722,4 +723,28 @@ func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, 
 		p.Hardness = hardness.String
 	}
 	return p, nil
+}
+
+func (opID OperationID) PortalOrder(order string, gid GoogleID) error {
+	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
+
+	stmt, err := db.Prepare("UPDATE link SET throworder = ? WHERE opID = ? AND ID = ?")
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	pos := 1
+	links := strings.Split(order, ",")
+	for i := range links {
+		if links[i] == "000" { // the header, could be anyplace in the order if the user was being silly
+			continue
+		}
+		if _, err := stmt.Exec(pos, opID, links[i]); err != nil {
+			Log.Error(err)
+			continue
+		}
+		pos++
+	}
+	return nil
 }

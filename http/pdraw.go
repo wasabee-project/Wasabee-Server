@@ -695,3 +695,32 @@ func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
+
+func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+	if opID.IsOwner(gid) {
+		order := req.FormValue("order")
+		opID.PortalOrder(order, gid)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner set portal order")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
