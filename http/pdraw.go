@@ -348,7 +348,7 @@ type pdrawFriendly struct {
 }
 
 type friendlyLink struct {
-	ID           string
+	ID           wasabi.LinkID
 	From         string
 	FromID       wasabi.PortalID
 	To           string
@@ -361,7 +361,7 @@ type friendlyLink struct {
 }
 
 type friendlyMarker struct {
-	ID           string
+	ID           wasabi.MarkerID
 	Portal       string
 	PortalID     wasabi.PortalID
 	Type         wasabi.MarkerType
@@ -374,7 +374,7 @@ type friendlyKeys struct {
 	ID       wasabi.PortalID
 	Portal   string
 	Required int
-	OnHand   int
+	OnHand   []wasabi.KeyOnHand
 }
 
 // takes a populated op and returns a friendly named version
@@ -438,7 +438,6 @@ func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
 				ID:       l.To,
 				Portal:   portals[l.To].Name,
 				Required: 1,
-				OnHand:   0,
 			}
 		} else {
 			tmp := keys[l.To]
@@ -490,7 +489,7 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	op.ID = wasabi.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		link := vars["link"]
+		link := wasabi.LinkID(vars["link"])
 		agent := wasabi.GoogleID(req.FormValue("agent"))
 		err := op.ID.AssignLink(link, agent)
 		if err != nil {
@@ -523,7 +522,7 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	op.ID = wasabi.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		link := vars["link"]
+		link := wasabi.LinkID(vars["link"])
 		desc := req.FormValue("desc")
 		err := op.ID.LinkDescription(link, desc)
 		if err != nil {
@@ -556,7 +555,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	op.ID = wasabi.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		marker := vars["marker"]
+		marker := wasabi.MarkerID(vars["marker"])
 		agent := wasabi.GoogleID(req.FormValue("agent"))
 		err := op.ID.AssignMarker(marker, agent)
 		if err != nil {
@@ -589,7 +588,7 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	op.ID = wasabi.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		marker := vars["marker"]
+		marker := wasabi.MarkerID(vars["marker"])
 		comment := req.FormValue("comment")
 		err := op.ID.MarkerComment(marker, comment)
 		if err != nil {
