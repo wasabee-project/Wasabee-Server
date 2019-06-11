@@ -78,7 +78,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
-			"AND x.state IN ('On', 'Primary') ORDER BY x.state DESC u.iname", teamID)
+			"AND x.state IN ('On', 'Primary') ORDER BY x.state DESC, u.iname", teamID)
 	}
 	if err != nil {
 		Log.Error(err)

@@ -204,7 +204,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 func (gid GoogleID) SetIngressName(name string) error {
 	// if VVerified or RocksVerified: ignore name changes -- let the V/Rocks functions take care of that
 	// XXX doesn't take care of the case where they are in .rocks but not verified
-	Log.Critical("%s changed agent name to %s", gid, name)
+	Log.Criticalf("%s changed agent name to %s", gid, name)
 	_, err := db.Exec("UPDATE agent SET iname = ? WHERE gid = ? AND VVerified = 0 AND RocksVerified = 0", name, gid)
 	if err != nil {
 		Log.Notice(err)
