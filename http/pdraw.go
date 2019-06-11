@@ -114,7 +114,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// pretty output for everyone else
-	friendly, err := pDrawFriendlyNames(&o)
+	friendly, err := pDrawFriendlyNames(&o, gid)
 	if err != nil {
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -371,14 +371,16 @@ type friendlyMarker struct {
 }
 
 type friendlyKeys struct {
-	ID       wasabi.PortalID
-	Portal   string
-	Required int
-	OnHand   []wasabi.KeyOnHand
+	ID         wasabi.PortalID
+	Portal     string
+	Required   int32
+	Onhand     int32
+	IHave      int32
+	OnhandList []wasabi.KeyOnHand
 }
 
 // takes a populated op and returns a friendly named version
-func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
+func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendly, error) {
 	var err error
 	var friendly pdrawFriendly
 	friendly.ID = op.ID
@@ -434,10 +436,24 @@ func pDrawFriendlyNames(op *wasabi.Operation) (pdrawFriendly, error) {
 	for _, l := range op.Links {
 		_, ok := keys[l.To]
 		if !ok {
+			var onhandtmp, ihave int32
+			var tmplist []wasabi.KeyOnHand
+			for _, km := range op.Keys {
+				if km.ID == l.To {
+					onhandtmp += km.Onhand
+					tmplist = append(tmplist, km)
+					if gid == km.Gid {
+						ihave = km.Onhand
+					}
+				}
+			}
 			keys[l.To] = friendlyKeys{
-				ID:       l.To,
-				Portal:   portals[l.To].Name,
-				Required: 1,
+				ID:         l.To,
+				Portal:     portals[l.To].Name,
+				Required:   1,
+				Onhand:     onhandtmp,
+				OnhandList: tmplist,
+				IHave:      ihave,
 			}
 		} else {
 			tmp := keys[l.To]
@@ -708,7 +724,7 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	opID := wasabi.OperationID(vars["document"])
 	if opID.IsOwner(gid) {
 		order := req.FormValue("order")
-		opID.PortalOrder(order, gid)
+		err = opID.PortalOrder(order, gid)
 		if err != nil {
 			wasabi.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -718,6 +734,32 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 		err = fmt.Errorf("only the owner set portal order")
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+	portalID := wasabi.PortalID(vars["portal"])
+	onhand, err := strconv.Atoi(req.FormValue("onhand"))
+	if err != nil { // user supplied non-numeric value
+		onhand = 0
+	}
+	err = opID.KeyOnHand(gid, portalID, int32(onhand))
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 

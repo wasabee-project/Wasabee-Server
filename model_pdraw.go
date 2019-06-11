@@ -234,8 +234,8 @@ func (o *Operation) insertLink(l Link) error {
 
 // insertKey adds a user keycount to the database
 func (o *Operation) insertKey(k KeyOnHand) error {
-	_, err := db.Exec("INSERT INTO opkey (opID, portalID, gid, onhand) VALUES (?, ?, ?, ?)",
-		o.ID, k.ID, k.Gid, k.Onhand)
+	_, err := db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?",
+		o.ID, k.ID, k.Gid, k.Onhand, k.Onhand)
 	if err != nil {
 		Log.Error(err)
 	}
@@ -792,6 +792,7 @@ func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, 
 	return p, nil
 }
 
+// PortalOrder changes the order of the throws for an operation
 func (opID OperationID) PortalOrder(order string, gid GoogleID) error {
 	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
 
@@ -812,6 +813,22 @@ func (opID OperationID) PortalOrder(order string, gid GoogleID) error {
 			continue
 		}
 		pos++
+	}
+	return nil
+}
+
+// KeyOnHand updates a user's key-count for linking
+func (opID OperationID) KeyOnHand(gid GoogleID, portalID PortalID, count int32) error {
+	var o Operation
+	o.ID = opID
+	k := KeyOnHand{
+		ID:     portalID,
+		Gid:    gid,
+		Onhand: count,
+	}
+	if err := o.insertKey(k); err != nil {
+		Log.Error(err)
+		return err
 	}
 	return nil
 }

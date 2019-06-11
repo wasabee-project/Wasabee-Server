@@ -118,6 +118,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", pDrawMarkerCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", pDrawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", pDrawPortalHardnessRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", pDrawPortalKeysRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}", pDrawPortalRoute).Methods("GET")
 
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")

@@ -81,6 +81,7 @@ type AgentID interface {
 	fmt.Stringer
 }
 
+// Assignment is used for assigning targets
 type Assignment struct {
 	OpID          OperationID
 	OperationName string
