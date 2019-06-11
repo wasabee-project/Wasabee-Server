@@ -672,7 +672,7 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	if op.ID.IsOwner(gid) {
 		portalID := wasabi.PortalID(vars["portal"])
 		hardness := req.FormValue("hardness")
-		err := op.ID.PortalComment(portalID, hardness)
+		err := op.ID.PortalHardness(portalID, hardness)
 		if err != nil {
 			wasabi.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -688,6 +688,17 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
+	var friendlyPortal struct {
+		ID       wasabi.PortalID
+		OpID     wasabi.OperationID
+		OpOwner  bool
+		Name     string
+		Lat      string
+		Lon      string
+		Comment  string
+		Hardness string
+	}
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabi.Log.Notice(err)
@@ -699,13 +710,22 @@ func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
 	opID := wasabi.OperationID(vars["document"])
 	portalID := wasabi.PortalID(vars["portal"])
 	portal, err := opID.PortalDetails(portalID, gid)
+	friendlyPortal.ID = portal.ID
+	friendlyPortal.OpID = opID
+	friendlyPortal.OpOwner = opID.IsOwner(gid)
+	friendlyPortal.Name = portal.Name
+	friendlyPortal.Lat = portal.Lat
+	friendlyPortal.Lon = portal.Lon
+	friendlyPortal.Comment = portal.Comment
+	friendlyPortal.Hardness = portal.Hardness
+
 	if err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if err = templateExecute(res, req, "portaldata", portal); err != nil {
+	if err = templateExecute(res, req, "portaldata", friendlyPortal); err != nil {
 		wasabi.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
@@ -754,6 +774,9 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	portalID := wasabi.PortalID(vars["portal"])
 	onhand, err := strconv.Atoi(req.FormValue("onhand"))
 	if err != nil { // user supplied non-numeric value
+		onhand = 0
+	}
+	if onhand < 0 { // @Robely42 .... sigh
 		onhand = 0
 	}
 	err = opID.KeyOnHand(gid, portalID, int32(onhand))
