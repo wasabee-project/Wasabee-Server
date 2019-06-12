@@ -41,9 +41,6 @@ func TestOperation(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	if opp.IsOwner(gid) != true {
-		t.Error("wrong owner (*Operation)")
-	}
 	if opp.ID.IsOwner(gid) != true {
 		t.Error("wrong owner (OperationID)")
 	}

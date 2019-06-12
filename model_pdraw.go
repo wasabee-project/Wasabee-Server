@@ -264,18 +264,14 @@ func (o *Operation) Populate(gid GoogleID) error {
 	var authorized bool
 
 	// permission check and populate Operation top level
-	var teamID sql.NullString
 	r := db.QueryRow("SELECT name, gid, color, teamID, modified FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &teamID, &o.Modified)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.TeamID, &o.Modified)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if teamID.Valid {
-		o.TeamID = TeamID(teamID.String)
-		if inteam, _ := gid.AgentInTeam(o.TeamID, false); inteam {
-			authorized = true
-		}
+	if inteam, _ := gid.AgentInTeam(o.TeamID, false); inteam {
+		authorized = true
 	}
 	if gid == o.Gid {
 		authorized = true
@@ -559,11 +555,6 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 	return true
 }
 
-// IsOwner returns a bool value determining if the operation is owned by the specified googleID
-func (o *Operation) IsOwner(gid GoogleID) bool {
-	return o.ID.IsOwner(gid)
-}
-
 // Chown changes an operation's owner
 func (opID OperationID) Chown(gid GoogleID, to string) error {
 	if !opID.IsOwner(gid) {
@@ -755,21 +746,18 @@ func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
 func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, error) {
 	var p Portal
 	p.ID = portalID
+	var teamID TeamID
 
-	// XXX break this out into its own function, re-audit this file, I don't think operation.teamID can be NULL now
-	var teamID sql.NullString
 	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
 	if err != nil {
 		Log.Error(err)
 		return p, err
 	}
 	var inteam bool
-	if teamID.Valid {
-		inteam, err = gid.AgentInTeam(TeamID(teamID.String), false)
-		if err != nil {
-			Log.Error(err)
-			return p, err
-		}
+	inteam, err = gid.AgentInTeam(teamID, false)
+	if err != nil {
+		Log.Error(err)
+		return p, err
 	}
 	if !inteam {
 		err := fmt.Errorf("unauthorized: you are not on a team authorized to see this operation")
@@ -813,6 +801,17 @@ func (opID OperationID) PortalOrder(order string, gid GoogleID) error {
 			continue
 		}
 		pos++
+	}
+	return nil
+}
+
+// SetInfo changes the description of an operation
+func (opID OperationID) SetInfo(info string, gid GoogleID) error {
+	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
+	_, err := db.Exec("UPDATE operation SET comment = ? WHERE ID = ?", info, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
 	return nil
 }

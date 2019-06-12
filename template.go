@@ -21,7 +21,6 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 
 	templateSet := make(map[string]*template.Template)
 
-	Log.Debugf("Loading Template function map")
 	funcMap := template.FuncMap{
 		"TGGetBotName": TGGetBotName,
 		"TGGetBotID":   TGGetBotID,
