@@ -340,11 +340,13 @@ type pdrawFriendly struct {
 	Agent    string
 	Color    string
 	Modified string
+	Comment  string
 	TeamID   wasabi.TeamID
 	Team     string
 	Links    []friendlyLink
 	Markers  []friendlyMarker
 	Keys     []friendlyKeys
+	Capsules []friendlyKeys
 }
 
 type friendlyLink struct {
@@ -376,7 +378,14 @@ type friendlyKeys struct {
 	Required   int32
 	Onhand     int32
 	IHave      int32
-	OnhandList []wasabi.KeyOnHand
+	OnhandList []friendlyKeyOnHand
+}
+
+type friendlyKeyOnHand struct {
+	ID     wasabi.PortalID
+	Gid    wasabi.GoogleID
+	Agent  string
+	Onhand int32
 }
 
 // takes a populated op and returns a friendly named version
@@ -388,6 +397,7 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 	friendly.Name = op.Name
 	friendly.Color = op.Color
 	friendly.Modified = op.Modified
+	friendly.Comment = op.Comment
 	friendly.Gid = op.Gid
 
 	friendly.Agent, err = op.Gid.IngressName()
@@ -437,11 +447,16 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 		_, ok := keys[l.To]
 		if !ok {
 			var onhandtmp, ihave int32
-			var tmplist []wasabi.KeyOnHand
+			var tmplist []friendlyKeyOnHand
 			for _, km := range op.Keys {
 				if km.ID == l.To {
 					onhandtmp += km.Onhand
-					tmplist = append(tmplist, km)
+					var tmpfkoh friendlyKeyOnHand
+					tmpfkoh.ID = km.ID
+					tmpfkoh.Gid = km.Gid
+					tmpfkoh.Onhand = km.Onhand
+					tmpfkoh.Agent, _ = km.Gid.IngressName()
+					tmplist = append(tmplist, tmpfkoh)
 					if gid == km.Gid {
 						ihave = km.Onhand
 					}
@@ -463,6 +478,45 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 	}
 	for _, f := range keys {
 		friendly.Keys = append(friendly.Keys, f)
+	}
+
+	// XXX brain shot need to rethink this later -- use friendlyKeysOnHand
+	var capsules = make(map[wasabi.GoogleID]friendlyKeys)
+	for _, l := range op.Links {
+		_, ok := capsules[l.AssignedTo]
+		if !ok {
+			var onhandtmp, ihave int32
+			var tmplist []friendlyKeyOnHand
+			for _, km := range op.Keys {
+				if km.ID == l.To {
+					onhandtmp += km.Onhand
+					var tmpfkoh friendlyKeyOnHand
+					tmpfkoh.ID = km.ID
+					tmpfkoh.Gid = km.Gid
+					tmpfkoh.Onhand = km.Onhand
+					tmpfkoh.Agent, _ = km.Gid.IngressName()
+					tmplist = append(tmplist, tmpfkoh)
+					if gid == km.Gid {
+						ihave = km.Onhand
+					}
+				}
+			}
+			capsules[l.AssignedTo] = friendlyKeys{
+				ID:         l.To,
+				Portal:     portals[l.To].Name,
+				Required:   1,
+				Onhand:     onhandtmp,
+				OnhandList: tmplist,
+				IHave:      ihave,
+			}
+		} else {
+			tmp := capsules[l.AssignedTo]
+			tmp.Required++
+			capsules[l.AssignedTo] = tmp
+		}
+	}
+	for _, f := range capsules {
+		friendly.Capsules = append(friendly.Capsules, f)
 	}
 
 	return friendly, nil
@@ -752,6 +806,35 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		err = fmt.Errorf("only the owner set portal order")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+	if opID.IsOwner(gid) {
+		info := req.FormValue("info")
+		err = opID.SetInfo(info, gid)
+		if err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the owner set operation info")
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return

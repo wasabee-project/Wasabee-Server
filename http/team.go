@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"html"
 	"net/http"
+	"strings"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -40,14 +41,21 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
-	data, err := json.MarshalIndent(teamList, "", "\t")
-	if err != nil {
-		wasabi.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+	if strings.Contains(req.Referer(), "intel.ingress.com") {
+		data, err := json.MarshalIndent(teamList, "", "\t")
+		if err != nil {
+			wasabi.Log.Error(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		res.Header().Add("Content-Type", jsonType)
+		fmt.Fprint(res, string(data))
+	} else {
+		if err = templateExecute(res, req, "team", teamList); err != nil {
+			wasabi.Log.Notice(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+		}
 	}
-	res.Header().Add("Content-Type", jsonType)
-	fmt.Fprint(res, string(data))
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {

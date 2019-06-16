@@ -32,7 +32,6 @@ type Agent struct {
 	RocksVerified bool            `json:"rocks,omitempty"`
 	Color         string          `json:"color,omitempty"`
 	State         bool            `json:"state,omitempty"`
-	LocKey        string          `json:"lockey,omitempty"`
 	Lat           float64         `json:"lat,omitempty"`
 	Lon           float64         `json:"lng,omitempty"`
 	Date          string          `json:"date,omitempty"`
@@ -71,11 +70,11 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	var err error
 	var rows *sql.Rows
 	if fetchAll {
-		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
+		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ORDER BY x.state DESC, u.iname", teamID)
 	} else {
-		rows, err = db.Query("SELECT u.gid, u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
+		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
 			"AND x.state IN ('On', 'Primary') ORDER BY x.state DESC, u.iname", teamID)
@@ -87,7 +86,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.LocKey, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.EnlID)
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.EnlID)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -210,7 +209,8 @@ func (teamID TeamID) Delete() error {
 	return nil
 }
 
-// ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like (GoogleID, EnlID, LocKey) otherwise it defaults to  agent name
+// ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like (GoogleID, EnlID, LocKey) otherwise it defaults to agent name
+// XXX move to model_agent.go
 func ToGid(in string) (GoogleID, error) {
 	var gid GoogleID
 	var err error
@@ -328,7 +328,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	// Log.Debug("Teammates Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
 	// no ST_Distance_Sphere in MariaDB yet...
-	rows, err = db.Query("SELECT DISTINCT u.iname, u.lockey, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
+	rows, err = db.Query("SELECT DISTINCT u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
 		"FROM agentteams=x, agent=u, locations=l, otdata=o "+
 		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state IN ('On', 'Primary')) "+
@@ -341,7 +341,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpU.Name, &tmpU.LocKey, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
+		err := rows.Scan(&tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
 		if err != nil {
 			Log.Error(err)
 			return err

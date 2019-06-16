@@ -101,6 +101,11 @@ func ownTracksAuthentication(res http.ResponseWriter, req *http.Request) (wasabi
 		return "", false
 	}
 
+	if lockey == "" {
+		wasabi.Log.Noticef("OwnTracks username not set")
+		return "", false
+	}
+
 	gid, err := lockey.VerifyOwnTracksPW(otpw)
 	if err != nil {
 		wasabi.Log.Notice(err)

@@ -124,20 +124,22 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 	}
 	s, _ := json.Marshal(locs)
 
-	var wp waypointCommand
-	err = gid.otWaypoints(&wp)
-	if err != nil {
-		Log.Error(err)
-		return s, err
-	}
+	/*
+		var wp waypointCommand
+		err = gid.otWaypoints(&wp)
+		if err != nil {
+			Log.Error(err)
+			return s, err
+		}
 
-	err = gid.pdWaypoints(&wp)
-	if err != nil {
-		Log.Error(err)
-		return s, err
-	}
-	wps, _ := json.Marshal(wp)
-	locs = append(locs, wps)
+		err = gid.pdWaypoints(&wp)
+		if err != nil {
+			Log.Error(err)
+			return s, err
+		}
+		wps, _ := json.Marshal(wp)
+		locs = append(locs, wps)
+	*/
 
 	s, _ = json.Marshal(locs)
 	// Log.Debug(string(s))

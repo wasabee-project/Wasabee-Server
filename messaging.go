@@ -104,6 +104,7 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 		}
 		if !ok {
 			Log.Debugf("unable to send to %s", gid)
+			// do not stop
 		}
 	}
 

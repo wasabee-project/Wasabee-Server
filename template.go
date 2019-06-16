@@ -1,11 +1,15 @@
 package wasabi
 
 import (
+	"bytes"
 	"html/template"
 	"io/ioutil"
 	"path"
 	"path/filepath"
 )
+
+// XXX this is a kludge
+var ts map[string]*template.Template
 
 // TemplateConfig should be called once from main to establish the templates.
 // Individual subsystems should provide their own execution function since requirements will vary
@@ -59,5 +63,20 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 			Log.Debugf("Templates for lang [%s] %s", lang, templateSet[lang].DefinedTemplates())
 		}
 	}
+	ts = templateSet
 	return templateSet, nil
+}
+
+// Execute Template formats a message for the user. TBD: langauge preference.
+// Wherever possible, use the message subsystem's templates rather than this (?)
+func (gid GoogleID) ExecuteTemplate(name string, data interface{}) (string, error) {
+	// XXX lookup agent's language setting
+	lang := "en"
+
+	var tpBuffer bytes.Buffer
+	if err := ts[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
+		Log.Notice(err)
+		return "", err
+	}
+	return tpBuffer.String(), nil
 }

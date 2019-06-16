@@ -40,6 +40,7 @@ type Operation struct {
 	Markers   []Marker    `json:"markers"`
 	TeamID    TeamID      `json:"teamid"`
 	Modified  string      `json:"modified"`
+	Comment   string      `json:"comment"`
 	Keys      []KeyOnHand `json:"keysonhand"`
 }
 
@@ -228,6 +229,7 @@ func (o *Operation) insertLink(l Link) error {
 		l.ID, l.From, l.To, o.ID, l.Desc, l.AssignedTo, l.ThrowOrder)
 	if err != nil {
 		Log.Error(err)
+		return err
 	}
 	return nil
 }
@@ -238,6 +240,7 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 		o.ID, k.ID, k.Gid, k.Onhand, k.Onhand)
 	if err != nil {
 		Log.Error(err)
+		return err
 	}
 	return nil
 }
@@ -263,9 +266,10 @@ func (o *Operation) Delete() error {
 func (o *Operation) Populate(gid GoogleID) error {
 	var authorized bool
 
+	var comment sql.NullString
 	// permission check and populate Operation top level
-	r := db.QueryRow("SELECT name, gid, color, teamID, modified FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.TeamID, &o.Modified)
+	r := db.QueryRow("SELECT name, gid, color, teamID, modified, comment FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.TeamID, &o.Modified, &comment)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -278,6 +282,10 @@ func (o *Operation) Populate(gid GoogleID) error {
 	}
 	if !authorized {
 		return errors.New("unauthorized: you are not on a team authorized to see this operation")
+	}
+
+	if comment.Valid {
+		o.Comment = comment.String
 	}
 
 	if err = o.PopulatePortals(); err != nil {
@@ -347,6 +355,7 @@ func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
 	var gid, comment sql.NullString
 
+	// XXX join with portals table, get name and order by name, don't expose it in this json -- will make the friendly in the https module easier
 	rows, err := db.Query("SELECT ID, PortalID, type, gid, comment FROM marker WHERE opID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
@@ -672,12 +681,25 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 		return err
 	}
 
-	// XXX get message from template
+	link := struct {
+		OpID   OperationID
+		LinkID LinkID
+	}{
+		OpID:   opID,
+		LinkID: linkID,
+	}
+
+	msg, err := gid.ExecuteTemplate("assignLink", link)
+	if err != nil {
+		Log.Error(err)
+		msg = fmt.Sprintf("assigned a marker for op %s", opID)
+		// do not report send errors up the chain, just log
+	}
 	if string(gid) != "" {
-		_, err = gid.SendMessage("You have been assigned a link... better message coming eventually; something nice with a link to the op, maybe a flower.")
+		_, err = gid.SendMessage(msg)
 		if err != nil {
 			Log.Error(err)
-			return err
+			// do not report send errors up the chain, just log
 		}
 	}
 
@@ -702,11 +724,24 @@ func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 		return err
 	}
 
-	// XXX get message from template
-	_, err = gid.SendMessage("You have been assigned a target... better message coming eventually")
+	marker := struct {
+		OpID     OperationID
+		MarkerID MarkerID
+	}{
+		OpID:     opID,
+		MarkerID: markerID,
+	}
+
+	msg, err := gid.ExecuteTemplate("assignMarker", marker)
 	if err != nil {
 		Log.Error(err)
-		return err
+		msg = fmt.Sprintf("assigned a marker for op %s", opID)
+		// do not report send errors up the chain, just log
+	}
+	_, err = gid.SendMessage(msg)
+	if err != nil {
+		Log.Errorf("%s %s %s", gid, err, msg)
+		// do not report send errors up the chain, just log
 	}
 
 	return nil
