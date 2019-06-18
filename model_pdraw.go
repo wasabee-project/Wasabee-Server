@@ -89,6 +89,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
+	// Log.Debugf("inserting %s", o.ID)
 
 	_, teamID, err := pdrawAuthorized(gid, o.ID)
 	if err != nil { // !authorized always sets error
@@ -111,7 +112,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	}
 
 	// start the insert process
-	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified) VALUES (?, ?, ?, ?, ?, NOW())", o.ID, o.Name, gid, o.Color, teamID.String())
+	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), o.Comment)
 	if err != nil {
 		Log.Error(err)
 		return err

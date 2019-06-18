@@ -230,7 +230,12 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	team := wasabi.TeamID(vars["team"])
-	key := wasabi.LocKey(vars["key"])
+	togid, err := wasabi.ToGid(vars["key"])
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabi.Log.Notice(err)
@@ -239,12 +244,6 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	togid, err := key.Gid()
-	if err != nil {
-		wasabi.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if err = team.RemoveAgent(togid); err != nil {

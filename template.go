@@ -67,7 +67,7 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 	return templateSet, nil
 }
 
-// Execute Template formats a message for the user. TBD: langauge preference.
+// ExecuteTemplate formats a message for the user. TBD: langauge preference.
 // Wherever possible, use the message subsystem's templates rather than this (?)
 func (gid GoogleID) ExecuteTemplate(name string, data interface{}) (string, error) {
 	// XXX lookup agent's language setting

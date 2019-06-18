@@ -668,3 +668,25 @@ func (gid GoogleID) RISC() bool {
 	}
 	return RISC
 }
+
+// UpdatePicture sets/updates the agent's google picture URL
+func (gid GoogleID) UpdatePicture(picurl string) error {
+	if _, err := db.Exec("REPLACE INTO agentextras (gid, picurl) VALUES (?,?) ", gid, picurl); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// GetPicture returns the agent's Google Picture URL
+func (gid GoogleID) GetPicture() string {
+	var url string
+
+	err := db.QueryRow("SELECT picurl FROM agentextras WHERE gid = ?", gid).Scan(&url)
+	if err != nil {
+		Log.Info(err)
+		return "/static/mstile-150x150.png"
+	}
+
+	return url
+}

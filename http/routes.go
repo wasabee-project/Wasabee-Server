@@ -143,6 +143,7 @@ func setupAuthRoutes(r *mux.Router) {
 	// other agents
 	// "profile" page, such as it is
 	r.HandleFunc("/agent/{id}", agentProfileRoute).Methods("GET")
+	r.HandleFunc("/agent/{id}/image", agentPictureRoute).Methods("GET")
 	// send a message to a agent
 	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")
 
@@ -242,6 +243,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Gid   wasabi.GoogleID `json:"id"`
 		Name  string          `json:"name"`
 		Email string          `json:"email"`
+		Pic   string          `json:"picture"`
 	}
 
 	content, tokenStr, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
@@ -249,6 +251,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		wasabi.Log.Notice(err)
 		return
 	}
+	wasabi.Log.Debug(string(content))
 
 	var m googleData
 	if err = json.Unmarshal(content, &m); err != nil {
@@ -295,6 +298,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	m.Gid.UpdatePicture(m.Pic)
+
 	ses.Values["id"] = m.Gid.String()
 	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
@@ -326,7 +331,7 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, stri
 		return nil, "", fmt.Errorf("invalid oauth state")
 	}
 
-	ctx, cancel := context.WithTimeout(rctx, 2*time.Second)
+	ctx, cancel := context.WithTimeout(rctx, 5*time.Second)
 	defer cancel()
 
 	token, err := config.googleOauthConfig.Exchange(ctx, code)

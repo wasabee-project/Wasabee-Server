@@ -60,6 +60,7 @@ func setupTables() {
 		{"waypoints", `CREATE TABLE waypoints (Id bigint(20) NOT NULL, teamID varchar(64) CHARACTER SET latin1 NOT NULL, loc point NOT NULL, radius int(10) unsigned NOT NULL DEFAULT "60", type varchar(32) CHARACTER SET latin1 NOT NULL DEFAULT "target", name varchar(128) CHARACTER SET latin1 DEFAULT NULL, expiration datetime NOT NULL, PRIMARY KEY (Id), KEY teamID (teamID), SPATIAL KEY sp (loc)) ENGINE=Aria DEFAULT CHARSET=utf8mb4 PAGE_CHECKSUM=1`},
 		{"messagelog", `CREATE TABLE messagelog (timestamp datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32) NOT NULL, message text NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"opkeys", `CREATE TABLE opkeys ( opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, gid varchar(32) NOT NULL, onhand int(11) NOT NULL DEFAULT '0', UNIQUE KEY key_unique (opID,portalID,gid), KEY fk_operation_id_keys (opID), CONSTRAINT fk_operation_id_keys FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
+		{"agentextras", `CREATE TABLE agentextras (gid varchar(32) NOT NULL, picurl TEXT, UNIQUE KEY gid (gid), CONSTRAINT fk_extra_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 	}
 
 	var table string

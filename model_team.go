@@ -236,6 +236,9 @@ func ToGid(in string) (GoogleID, error) {
 			gid, err = SearchAgentName(in)
 		}
 	}
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("unknown agent: %s", in)
+	}
 	if err == nil && gid == "" {
 		err = fmt.Errorf("unknown agent: %s", in)
 	}

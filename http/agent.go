@@ -88,3 +88,23 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
+
+func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
+	_, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	id := vars["id"]
+	togid, err := wasabi.ToGid(id)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	url := togid.GetPicture()
+	http.Redirect(res, req, url, http.StatusPermanentRedirect)
+}

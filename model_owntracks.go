@@ -122,9 +122,9 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 			locs = append(locs, json.RawMessage(tmp.String))
 		}
 	}
-	s, _ := json.Marshal(locs)
 
-	/*
+	/*	This causes android owntracks to crash, doesn't add anything on iOS
+		s, _ := json.Marshal(locs)
 		var wp waypointCommand
 		err = gid.otWaypoints(&wp)
 		if err != nil {
@@ -141,7 +141,7 @@ func (gid GoogleID) OwnTracksTeams() (json.RawMessage, error) {
 		locs = append(locs, wps)
 	*/
 
-	s, _ = json.Marshal(locs)
+	s, _ := json.Marshal(locs)
 	// Log.Debug(string(s))
 	return s, nil
 }
