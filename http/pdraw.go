@@ -45,14 +45,23 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	jRaw := json.RawMessage(jBlob)
-	wasabi.Log.Debugf("sent json:", string(jRaw))
+	// wasabi.Log.Debugf("sent json: %s", string(jRaw))
 	if err = wasabi.PDrawInsert(jRaw, gid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprintf(res, `{ "status": "ok" }`)
+	// the IITC plugin wants the full /me data on draw POST
+	var ad wasabi.AgentData
+	if err = gid.GetAgentData(&ad); err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	data, _ := json.Marshal(ad)
+	fmt.Fprint(res, string(data))
 }
 
 func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {

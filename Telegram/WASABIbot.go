@@ -127,7 +127,7 @@ func runUpdate(update tgbotapi.Update) error {
 		return nil
 	}
 
-	if update.Message != nil {
+	if update.Message != nil && update.Message.Chat.Type == "private" {
 		// XXX move more of this into message() ?
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		defaultReply, err := templateExecute("default", update.Message.From.LanguageCode, nil)
@@ -235,6 +235,7 @@ func keyboards(c *TGConfiguration) {
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
 			tgbotapi.NewKeyboardButton("Teams"),
+			tgbotapi.NewKeyboardButton("Assignments"),
 		),
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("Teammates Near Me"),
@@ -281,6 +282,10 @@ func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi
 	cmd := tokens[0]
 
 	switch cmd {
+	case "Assignments":
+		msg.Text = "coming soon"
+		msg.ReplyMarkup = config.baseKbd
+		msg.DisableWebPagePreview = true
 	case "Teams":
 		tmp := teamKeyboard(gid)
 		msg.ReplyMarkup = tmp
