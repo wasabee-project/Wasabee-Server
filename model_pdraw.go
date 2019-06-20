@@ -98,7 +98,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 	}
 
 	// clear and start from a blank slate
-	if err = o.Delete(); err != nil {
+	if err = o.Delete(gid, true); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -247,8 +247,14 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 }
 
 // Delete removes an operation and all associated data
-func (o *Operation) Delete() error {
-	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
+func (o *Operation) Delete(gid GoogleID, leaveteam bool) error {
+	_, teamID, err := pdrawAuthorized(gid, o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -259,6 +265,26 @@ func (o *Operation) Delete() error {
 	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
+
+	var c int
+	err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ?", teamID).Scan(&c)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	owns, err := gid.OwnsTeam(teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if leaveteam == false && c < 1 && owns {
+		Log.Debug("deleting team %s because this was the last op in it", teamID)
+		err = teamID.Delete()
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 

@@ -251,7 +251,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		wasabi.Log.Notice(err)
 		return
 	}
-	wasabi.Log.Debug(string(content))
+	// wasabi.Log.Debug(string(content))
 
 	var m googleData
 	if err = json.Unmarshal(content, &m); err != nil {
