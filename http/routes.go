@@ -298,7 +298,12 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	m.Gid.UpdatePicture(m.Pic)
+	err = m.Gid.UpdatePicture(m.Pic)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	ses.Values["id"] = m.Gid.String()
 	nonce, _ := calculateNonce(m.Gid)

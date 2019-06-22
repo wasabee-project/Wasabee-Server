@@ -97,13 +97,7 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	// clear and start from a blank slate
-	if err = o.Delete(gid, true); err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	// create a new team if one did not already exist
+	// create a new team if one did not already exist -- and one should never exist on Insert
 	if teamID.String() == "" {
 		teamID, err = gid.NewTeam(o.Name)
 		if err != nil {
@@ -111,8 +105,16 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		}
 	}
 
+	if err = pDrawOpWorker(o, gid, teamID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func pDrawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	// start the insert process
-	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), o.Comment)
+	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), o.Comment)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -168,7 +170,19 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	return PDrawInsert(op, gid)
+	_, teamID, err := pdrawAuthorized(gid, o.ID)
+	if err != nil { // !authorized always sets error
+		Log.Error(err)
+		return err
+	}
+
+	// clear and start from a blank slate - leave the team intact
+	if err = o.Delete(gid, true); err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return pDrawOpWorker(o, gid, teamID)
 }
 
 func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
@@ -266,23 +280,25 @@ func (o *Operation) Delete(gid GoogleID, leaveteam bool) error {
 	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
 
-	var c int
-	err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ?", teamID).Scan(&c)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	owns, err := gid.OwnsTeam(teamID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if leaveteam == false && c < 1 && owns {
-		Log.Debug("deleting team %s because this was the last op in it", teamID)
-		err = teamID.Delete()
+	if teamID.String() != "" {
+		var c int
+		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ?", teamID).Scan(&c)
 		if err != nil {
 			Log.Error(err)
-			return err
+			c = 0
+		}
+		owns, err := gid.OwnsTeam(teamID)
+		if err != nil {
+			Log.Error(err)
+			return nil
+		}
+		if !leaveteam && c < 1 && owns {
+			Log.Debug("deleting team %s because this was the last op in it", teamID)
+			err = teamID.Delete()
+			if err != nil {
+				Log.Error(err)
+				return err
+			}
 		}
 	}
 	return nil

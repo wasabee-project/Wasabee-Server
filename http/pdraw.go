@@ -160,6 +160,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabi.Operation
 	op.ID = wasabi.OperationID(vars["document"])
 
+	// op.Delete checks ownership, do we need this check?
 	if op.ID.IsOwner(gid) {
 		err = fmt.Errorf("deleting operation %s", op.ID)
 		wasabi.Log.Notice(err)
@@ -218,7 +219,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 	jRaw := json.RawMessage(jBlob)
 
-	wasabi.Log.Debug(string(jBlob))
+	// wasabi.Log.Debug(string(jBlob))
 	if err = wasabi.PDrawUpdate(id, jRaw, gid); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -359,7 +360,7 @@ type pdrawFriendly struct {
 	Links    []friendlyLink
 	Markers  []friendlyMarker
 	Keys     []friendlyKeys
-	Capsules []friendlyKeys
+	Capsules []capsuleEntry
 }
 
 type friendlyLink struct {
@@ -399,6 +400,14 @@ type friendlyKeyOnHand struct {
 	Gid    wasabi.GoogleID
 	Agent  string
 	Onhand int32
+}
+
+type capsuleEntry struct {
+	Gid      wasabi.GoogleID
+	Agent    string
+	ID       wasabi.PortalID
+	Portal   string
+	Required int32
 }
 
 // takes a populated op and returns a friendly named version
@@ -493,44 +502,43 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 		friendly.Keys = append(friendly.Keys, f)
 	}
 
-	// XXX brain shot need to rethink this later -- use friendlyKeysOnHand
-	var capsules = make(map[wasabi.GoogleID]friendlyKeys)
+	var capsules = make(map[wasabi.GoogleID]map[wasabi.PortalID]capsuleEntry)
 	for _, l := range op.Links {
-		_, ok := capsules[l.AssignedTo]
-		if !ok {
-			var onhandtmp, ihave int32
-			var tmplist []friendlyKeyOnHand
-			for _, km := range op.Keys {
-				if km.ID == l.To {
-					onhandtmp += km.Onhand
-					var tmpfkoh friendlyKeyOnHand
-					tmpfkoh.ID = km.ID
-					tmpfkoh.Gid = km.Gid
-					tmpfkoh.Onhand = km.Onhand
-					tmpfkoh.Agent, _ = km.Gid.IngressName()
-					tmplist = append(tmplist, tmpfkoh)
-					if gid == km.Gid {
-						ihave = km.Onhand
+		if l.AssignedTo != "" {
+			if _, ok := capsules[l.AssignedTo]; ok {
+				if _, ok := capsules[l.AssignedTo][l.To]; ok {
+					tmp := capsules[l.AssignedTo][l.To]
+					tmp.Required++
+					capsules[l.AssignedTo][l.To] = tmp
+				} else {
+					capsules[l.AssignedTo][l.To] = capsuleEntry{
+						Required: 1,
 					}
 				}
+			} else {
+				capsules[l.AssignedTo] = make(map[wasabi.PortalID]capsuleEntry)
+				capsules[l.AssignedTo][l.To] = capsuleEntry{
+					Required: 1,
+				}
 			}
-			capsules[l.AssignedTo] = friendlyKeys{
-				ID:         l.To,
-				Portal:     portals[l.To].Name,
-				Required:   1,
-				Onhand:     onhandtmp,
-				OnhandList: tmplist,
-				IHave:      ihave,
-			}
-		} else {
-			tmp := capsules[l.AssignedTo]
-			tmp.Required++
-			capsules[l.AssignedTo] = tmp
 		}
 	}
-	for _, f := range capsules {
-		friendly.Capsules = append(friendly.Capsules, f)
+	// now take capsules and do something with it
+	var caps []capsuleEntry
+	for agentID, entry := range capsules {
+		for portalID, x := range entry {
+			i, _ := agentID.IngressName()
+			tmp := capsuleEntry{
+				Gid:      agentID,
+				Agent:    i,
+				ID:       portalID,
+				Portal:   portals[portalID].Name,
+				Required: x.Required,
+			}
+			caps = append(caps, tmp)
+		}
 	}
+	friendly.Capsules = caps
 
 	return friendly, nil
 }
