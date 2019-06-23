@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -464,6 +465,10 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 		friendly.Markers = append(friendly.Markers, fm)
 	}
 
+	sort.Slice(friendly.Markers[:], func(i, j int) bool {
+		return friendly.Markers[i].Portal < friendly.Markers[j].Portal
+	})
+
 	var keys = make(map[wasabi.PortalID]friendlyKeys)
 	for _, l := range op.Links {
 		_, ok := keys[l.To]
@@ -501,6 +506,9 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 	for _, f := range keys {
 		friendly.Keys = append(friendly.Keys, f)
 	}
+	sort.Slice(friendly.Keys[:], func(i, j int) bool {
+		return friendly.Keys[i].Portal < friendly.Keys[j].Portal
+	})
 
 	var capsules = make(map[wasabi.GoogleID]map[wasabi.PortalID]capsuleEntry)
 	for _, l := range op.Links {
@@ -523,6 +531,7 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 			}
 		}
 	}
+
 	// now take capsules and do something with it
 	var caps []capsuleEntry
 	for agentID, entry := range capsules {
@@ -538,6 +547,12 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 			caps = append(caps, tmp)
 		}
 	}
+
+	// XXX should also sort by portal name w/in each agent
+	sort.Slice(caps[:], func(i, j int) bool {
+		return caps[i].Agent < caps[j].Agent
+	})
+
 	friendly.Capsules = caps
 
 	return friendly, nil
