@@ -61,7 +61,7 @@ func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 
 // CanSendTo checks to see if a message is permitted to be sent between these users
 func (gid GoogleID) CanSendTo(to GoogleID) bool {
-	// sender must own at least one team on which the reciever is enabled
+	// sender must own at least one team on which the receiver is enabled
 	var count int
 	if err := db.QueryRow("SELECT COUNT(x.gid) FROM agentteams=x, team=t WHERE t.teamID = x.teamID AND t.owner = ? AND x.state != 'Off' AND x.gid = ?", gid, to).Scan(&count); err != nil {
 		Log.Error(err)

@@ -73,7 +73,7 @@ type Marker struct {
 	AssignedTo GoogleID   `json:"assignedTo"` // currently not in database, need schema change
 }
 
-// KeyOnHand describes the already in possesion for the op
+// KeyOnHand describes the already in possession for the op
 type KeyOnHand struct {
 	ID     PortalID `json:"portalId"`
 	Gid    GoogleID `json:"gid"`
