@@ -7,13 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"time"
-
 	"github.com/cloudkucooland/WASABI"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"io/ioutil"
+	"net/http"
+	"strings"
+	"time"
 )
 
 func setupRouter() *mux.Router {
@@ -23,6 +23,7 @@ func setupRouter() *mux.Router {
 	// apply to all
 	router.Use(headersMW)
 	router.Use(scannerMW)
+	// router.Use(debugMW)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// 404 error page
@@ -31,9 +32,10 @@ func setupRouter() *mux.Router {
 	// establish subrouters -- these each have different middleware requirements
 	// if we want to disable logging on /simple, these need to be on a subrouter
 	notauthed := wasabi.Subrouter("")
-	// Google Oauth2 stuff
+	// Google Oauth2 stuff (constants defined in server.go)
 	notauthed.HandleFunc(login, googleRoute).Methods("GET")
 	notauthed.HandleFunc(callback, callbackRoute).Methods("GET")
+	notauthed.HandleFunc(aptoken, apTokenRoute).Methods("POST")
 	// common files that live under /static
 	notauthed.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 	notauthed.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
@@ -113,10 +115,14 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/stock", pDrawStockRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/order", pDrawOrderRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/info", pDrawInfoRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/stat", pDrawStatRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/myroute", pDrawMyRouteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/assign", pDrawLinkAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/desc", pDrawLinkDescRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/assign", pDrawMarkerAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", pDrawMarkerCommentRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/marker/{marker}/complete", pDrawMarkerCompleteRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", pDrawMarkerIncompleteRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", pDrawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", pDrawPortalHardnessRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", pDrawPortalKeysRoute).Methods("POST")
@@ -373,4 +379,113 @@ func getAgentID(req *http.Request) (wasabi.GoogleID, error) {
 
 	var agentID = wasabi.GoogleID(ses.Values["id"].(string))
 	return agentID, nil
+}
+
+// apTokenRoute receives a Google Oauth2 token from the Android/iOS app and sets the authentication cookie
+func apTokenRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	// fetched from google
+	type googleData struct {
+		Gid   wasabi.GoogleID `json:"id"`
+		Name  string          `json:"name"`
+		Email string          `json:"email"`
+		Pic   string          `json:"picture"`
+	}
+
+	// passed in
+	type token struct {
+		AccessToken string `json:"accessToken"`
+	}
+	var t token
+
+	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
+	if contentType != jsonTypeShort {
+		err := fmt.Errorf("invalid request (needs to be application/json)")
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		wasabi.Log.Notice(err)
+		return
+	}
+
+	jBlob, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	if string(jBlob) == "" {
+		err = fmt.Errorf("empty JSON")
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+	jRaw := json.RawMessage(jBlob)
+	if err = json.Unmarshal(jRaw, &t); err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + t.AccessToken)
+	if err != nil {
+		err = fmt.Errorf("failed getting agent info: %s", err.Error())
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	defer response.Body.Close()
+	contents, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		err := fmt.Errorf("failed reading response body")
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	var m googleData
+	if err = json.Unmarshal(contents, &m); err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// session cookie
+	ses, err := config.store.Get(req, config.sessionName)
+	if err != nil {
+		// cookie is borked, maybe sessionName or key changed
+		wasabi.Log.Notice("Cookie error: ", err)
+		ses = sessions.NewSession(config.store, config.sessionName)
+		ses.Options = &sessions.Options{
+			Path:   "/",
+			MaxAge: -1, // force delete
+		}
+		_ = ses.Save(req, res)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
+	if !authorized {
+		err = fmt.Errorf("access denied")
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	ses.Values["id"] = m.Gid.String()
+	nonce, _ := calculateNonce(m.Gid)
+	ses.Values["nonce"] = nonce
+	ses.Values["google"] = t.AccessToken
+	ses.Options = &sessions.Options{
+		Path:   "/",
+		MaxAge: 0,
+	}
+	err = ses.Save(req, res)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "OK"}`)
 }

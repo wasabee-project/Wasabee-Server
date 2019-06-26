@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // OperationID wrapper to ensure type safety
@@ -42,6 +43,14 @@ type Operation struct {
 	Modified  string      `json:"modified"`
 	Comment   string      `json:"comment"`
 	Keys      []KeyOnHand `json:"keysonhand"`
+	Fetched   string      `json:"fetched"`
+}
+
+// OpStat is a minimal struct to determine if the op has been updated
+type OpStat struct {
+	ID       OperationID `json:"ID"`
+	Gid      GoogleID    `json:"creator"`
+	Modified string      `json:"modified"`
 }
 
 // Portal is defined by the PhtivDraw IITC plugin.
@@ -70,7 +79,8 @@ type Marker struct {
 	PortalID   PortalID   `json:"portalId"`
 	Type       MarkerType `json:"type"`
 	Comment    string     `json:"comment"`
-	AssignedTo GoogleID   `json:"assignedTo"` // currently not in database, need schema change
+	AssignedTo GoogleID   `json:"assignedTo"`
+	Complete   bool       `json:"complete"`
 }
 
 // KeyOnHand describes the already in possession for the op
@@ -78,6 +88,13 @@ type KeyOnHand struct {
 	ID     PortalID `json:"portalId"`
 	Gid    GoogleID `json:"gid"`
 	Onhand int32    `json:"onhand"`
+}
+
+// Assignments is used to show assignments to users in various ways
+type Assignments struct {
+	Links   []Link
+	Markers []Marker
+	Portals map[PortalID]Portal
 }
 
 // PDrawInsert parses a raw op sent from the IITC plugin and stores it in the database
@@ -181,6 +198,9 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
+	if err = o.ID.Touch(); err != nil {
+		Log.Error(err)
+	}
 
 	return pDrawOpWorker(o, gid, teamID)
 }
@@ -208,8 +228,8 @@ func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
 
 // insertMarkers adds a marker to the database
 func (o *Operation) insertMarker(m Marker) error {
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment) VALUES (?, ?, ?, ?, ?, ?)",
-		m.ID, o.ID, m.PortalID, m.Type, m.AssignedTo, m.Comment)
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, complete) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		m.ID, o.ID, m.PortalID, m.Type, m.AssignedTo, m.Comment, m.Complete)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -240,6 +260,11 @@ func (o *Operation) insertAnchor(p PortalID) error {
 
 // insertLink adds a link to the database
 func (o *Operation) insertLink(l Link) error {
+	if l.To == l.From {
+		Log.Debug("source and destination the same, ignoring link")
+		return nil
+	}
+
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		l.ID, l.From, l.To, o.ID, l.Desc, l.AssignedTo, l.ThrowOrder)
 	if err != nil {
@@ -256,6 +281,9 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	if err = o.ID.Touch(); err != nil {
+		Log.Error(err)
 	}
 	return nil
 }
@@ -355,6 +383,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 		Log.Notice(err)
 		return err
 	}
+	t := time.Now()
+	o.Fetched = fmt.Sprint(t.Format(time.RFC3339))
 
 	return nil
 }
@@ -399,14 +429,14 @@ func (o *Operation) PopulateMarkers() error {
 	var gid, comment sql.NullString
 
 	// XXX join with portals table, get name and order by name, don't expose it in this json -- will make the friendly in the https module easier
-	rows, err := db.Query("SELECT ID, PortalID, type, gid, comment FROM marker WHERE opID = ?", o.ID)
+	rows, err := db.Query("SELECT ID, PortalID, type, gid, comment, complete FROM marker WHERE opID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &gid, &comment)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &gid, &comment, &tmpMarker.Complete)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -500,7 +530,7 @@ func (o *Operation) PopulateKeys() error {
 
 // this is still very early -- dunno what the client is going to want
 func (teamID TeamID) pdMarkers(tl *TeamData) error {
-	mr, err := db.Query("SELECT m.ID, m.portalID, m.type, m.comment, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID = ?) AND m.portalID = p.ID AND m.opID = p.opID", teamID)
+	mr, err := db.Query("SELECT m.ID, m.portalID, m.type, m.comment, m.complete, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID = ?) AND m.portalID = p.ID AND m.opID = p.opID", teamID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -510,7 +540,8 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 	var tmpMarker Marker
 	var tmpWaypoint waypoint
 	for mr.Next() {
-		err := mr.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.Comment, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
+		// XXX Comment and assigned can be null
+		err := mr.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.Comment, &tmpMarker.Complete, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -745,6 +776,9 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 			// do not report send errors up the chain, just log
 		}
 	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
 
 	return nil
 }
@@ -755,6 +789,9 @@ func (opID OperationID) LinkDescription(linkID LinkID, desc string) error {
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
 	}
 	return nil
 }
@@ -786,6 +823,9 @@ func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 		Log.Errorf("%s %s %s", gid, err, msg)
 		// do not report send errors up the chain, just log
 	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
 
 	return nil
 }
@@ -797,6 +837,9 @@ func (opID OperationID) MarkerComment(markerID MarkerID, comment string) error {
 		Log.Error(err)
 		return err
 	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
 	return nil
 }
 
@@ -807,6 +850,9 @@ func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error
 		Log.Error(err)
 		return err
 	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
 	return nil
 }
 
@@ -816,6 +862,9 @@ func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
 	}
 	return nil
 }
@@ -855,6 +904,9 @@ func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, 
 	if hardness.Valid {
 		p.Hardness = hardness.String
 	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
 	return p, nil
 }
 
@@ -880,6 +932,9 @@ func (opID OperationID) PortalOrder(order string, gid GoogleID) error {
 		}
 		pos++
 	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
 	return nil
 }
 
@@ -890,6 +945,9 @@ func (opID OperationID) SetInfo(info string, gid GoogleID) error {
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
 	}
 	return nil
 }
@@ -906,6 +964,137 @@ func (opID OperationID) KeyOnHand(gid GoogleID, portalID PortalID, count int32) 
 	if err := o.insertKey(k); err != nil {
 		Log.Error(err)
 		return err
+	}
+	return nil
+}
+
+// MarkComplete lets the operator know a target has been taken care of
+func (m MarkerID) MarkComplete(opID OperationID, gid GoogleID, done bool) error {
+	var ns sql.NullString
+	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, opID).Scan(&ns)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
+		return err
+	}
+	if err != nil && err == sql.ErrNoRows {
+		err = fmt.Errorf("no such marker")
+		Log.Error(err)
+		return err
+	}
+	if !ns.Valid {
+		err = fmt.Errorf("marker not assigned")
+		Log.Error(err)
+		return err
+	}
+	markerGid := GoogleID(ns.String)
+	if gid != markerGid {
+		err = fmt.Errorf("marker assigned to someone else")
+		Log.Error(err)
+		return err
+	}
+	_, err = db.Exec("UPDATE marker SET complete = ? WHERE ID = ? AND opID = ?", done, m, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
+
+	return nil
+}
+
+// Touch updates the modified timestamp on an operation
+func (opID OperationID) Touch() error {
+	_, err := db.Exec("UPDATE operation SET modified = NOW() WHERE ID = ?", opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+// Stat returns useful info on an operation
+func (opID OperationID) Stat() (OpStat, error) {
+	var s OpStat
+	s.ID = opID
+	err := db.QueryRow("SELECT gid, modified FROM operation WHERE ID = ?", opID).Scan(&s.Gid, &s.Modified)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
+		return s, err
+	}
+	if err != nil && err == sql.ErrNoRows {
+		err = fmt.Errorf("no such operation")
+		Log.Error(err)
+		return s, err
+	}
+
+	return s, nil
+}
+
+// Assignments builds an Assignments struct for a user for an op
+func (gid GoogleID) Assignments(opID OperationID, assignments *Assignments) error {
+	var tmpLink Link
+	var tmpMarker Marker
+	var tmpPortal Portal
+	var description, comment sql.NullString
+
+	rows, err := db.Query("SELECT ID, fromPortalID, toPortalID, description, throworder FROM link WHERE opID = ? AND gid = ? ORDER BY throworder", opID, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &tmpLink.ThrowOrder)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		if description.Valid {
+			tmpLink.Desc = description.String
+		} else {
+			tmpLink.Desc = ""
+		}
+		assignments.Links = append(assignments.Links, tmpLink)
+	}
+
+	rows2, err := db.Query("SELECT ID, PortalID, type, gid, comment, complete FROM marker WHERE opID = ? AND gid = ?", opID, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows2.Close()
+	for rows2.Next() {
+		err := rows2.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.AssignedTo, &comment, &tmpMarker.Complete)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		if comment.Valid {
+			tmpMarker.Comment = comment.String
+		} else {
+			tmpMarker.Comment = ""
+		}
+		assignments.Markers = append(assignments.Markers, tmpMarker)
+	}
+
+	// XXX this gets way too much, but good enough for now
+	assignments.Portals = make(map[PortalID]Portal)
+	rows3, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon FROM portal WHERE opID = ? ORDER BY name", opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows3.Close()
+	for rows3.Next() {
+		err := rows3.Scan(&tmpPortal.ID, &tmpPortal.Name, &tmpPortal.Lat, &tmpPortal.Lon)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		assignments.Portals[tmpPortal.ID] = tmpPortal
 	}
 	return nil
 }

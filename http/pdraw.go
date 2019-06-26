@@ -907,3 +907,116 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
+
+func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+	markerID := wasabi.MarkerID(vars["marker"])
+	err = markerID.MarkComplete(opID, gid, true)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+	markerID := wasabi.MarkerID(vars["marker"])
+	err = markerID.MarkComplete(opID, gid, false)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	_, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+	s, err := opID.Stat()
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data, _ := json.Marshal(s)
+
+	fmt.Fprint(res, string(data))
+}
+
+func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabi.OperationID(vars["document"])
+
+	var a wasabi.Assignments
+	err = gid.Assignments(opID, &a)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	lls := "https://maps.google.com/maps/dir/?api=1"
+	stops := len(a.Links) - 1
+
+	if stops < 1 {
+		res.Header().Set("Content-Type", jsonType)
+		fmt.Fprintf(res, `{ "status": "no assignments" }`)
+		return
+	}
+
+	for i, l := range a.Links {
+		if i == 0 {
+			lls = fmt.Sprintf("%s&origin=%s,%s&waypoints=", lls, a.Portals[l.From].Lat, a.Portals[l.From].Lon)
+		}
+		// Google only allows 9 waypoints
+		// we could do something fancy and show every (n) link based on len(a.Links) / 8
+		// this is good enough for now
+		if i < 7 {
+			lls = fmt.Sprintf("%s|%s,%s", lls, a.Portals[l.From].Lat, a.Portals[l.From].Lon)
+		}
+		if i == stops { // last one -- even if > 10 in list
+			lls = fmt.Sprintf("%s&destination=%s,%s", lls, a.Portals[l.From].Lat, a.Portals[l.From].Lon)
+		}
+	}
+	// wasabi.Log.Debug(lls)
+
+	http.Redirect(res, req, lls, http.StatusFound)
+}

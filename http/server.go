@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"html/template"
-	// "io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,7 +14,6 @@ import (
 	"golang.org/x/oauth2/google"
 
 	"github.com/cloudkucooland/WASABI"
-	// "github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
@@ -53,6 +51,7 @@ const jsonTypeShort = "application/json"
 const me = "/me"
 const login = "/login"
 const callback = "/callback"
+const aptoken = "/aptok"
 const apipath = "/api/v1"
 
 // initializeConfig will normalize the options and create the "config" object.
@@ -232,7 +231,6 @@ func scannerMW(next http.Handler) http.Handler {
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ses, err := config.store.Get(req, config.sessionName)
-
 		if err != nil {
 			wasabi.Log.Debug(err)
 			delete(ses.Values, "nonce")
@@ -312,3 +310,12 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
 	http.Redirect(res, req, url, http.StatusFound)
 }
+
+/*
+func debugMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		dump, _ := httputil.DumpRequest(req, false)
+		wasabi.Log.Debug(string(dump))
+		next.ServeHTTP(res, req)
+	})
+} */
