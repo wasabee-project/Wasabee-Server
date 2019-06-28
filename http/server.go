@@ -53,6 +53,7 @@ const login = "/login"
 const callback = "/callback"
 const aptoken = "/aptok"
 const apipath = "/api/v1"
+const appUserAgent = "(dart:io)"
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {

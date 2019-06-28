@@ -65,17 +65,6 @@ func TestNewTeam(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	err = gid.SetTeamState(teamID, "Primary")
-	if err != nil {
-		t.Error(err.Error())
-	}
-	p, err := gid.PrimaryTeam()
-	if err != nil {
-		t.Error(err.Error())
-	}
-	if p != teamID.String() {
-		t.Errorf("Primary team test fail: %s / %s", p, teamID.String())
-	}
 
 	// err = gid.SetTeamState(teamID, "Wombat")
 	//if err == nil {

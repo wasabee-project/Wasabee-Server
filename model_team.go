@@ -40,7 +40,7 @@ type Agent struct {
 	CanSendTo     bool            `json:"cansendto,omitempty"`
 }
 
-// AgentInTeam checks to see if a agent is in a team and (On|Primary).
+// AgentInTeam checks to see if a agent is in a team and enabled.
 // allowOff == true will report if a agent is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling agent.
 func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 	var count string
@@ -49,7 +49,7 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 	if allowOff {
 		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
 	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ? AND state IN ('On', 'Primary')", team, gid).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ? AND state = 'On'", team, gid).Scan(&count)
 	}
 	if err != nil {
 		return false, err
@@ -77,7 +77,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
 			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
-			"AND x.state IN ('On', 'Primary') ORDER BY x.state DESC, u.iname", teamID)
+			"AND x.state = 'On' ORDER BY x.state DESC, u.iname", teamID)
 	}
 	if err != nil {
 		Log.Error(err)
@@ -91,7 +91,11 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 			Log.Error(err)
 			return err
 		}
-		tmpU.State = isActive(state)
+		if state == "On" {
+			tmpU.State = true
+		} else {
+			tmpU.State = false
+		}
 		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		tmpU.OwnTracks = json.RawMessage(otdata)
@@ -307,16 +311,6 @@ func (teamID TeamID) Chown(to AgentID) error {
 	return nil
 }
 
-// ClearPrimaryTeam sets any team marked as primary to "On" for a agent
-func (gid GoogleID) ClearPrimaryTeam() error {
-	_, err := db.Exec("UPDATE agentteams SET state = 'On' WHERE state = 'Primary' AND gid = ?", gid)
-	if err != nil {
-		Log.Notice(err)
-		return (err)
-	}
-	return nil
-}
-
 // TeammatesNear identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
 func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
 	var state, lat, lon, otdata string
@@ -334,8 +328,8 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	rows, err = db.Query("SELECT DISTINCT u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
 		"FROM agentteams=x, agent=u, locations=l, otdata=o "+
-		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state IN ('On', 'Primary')) "+
-		"AND x.state IN ('On', 'Primary') AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
+		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
+		"AND x.state = 'On' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
 		"HAVING distance < ? AND distance > 0 ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
@@ -349,7 +343,11 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 			Log.Error(err)
 			return err
 		}
-		tmpU.State = isActive(state)
+		if state == "On" {
+			tmpU.State = true
+		} else {
+			tmpU.State = false
+		}
 		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		tmpU.OwnTracks = json.RawMessage(otdata)
@@ -376,7 +374,7 @@ func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) err
 	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, Y(loc), X(loc), teamID, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
 		"FROM waypoints "+
-		"WHERE teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state IN ('On', 'Primary')) "+
+		"WHERE teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
 		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
@@ -433,12 +431,8 @@ func (teamID TeamID) String() string {
 	return string(teamID)
 }
 
-// SetTeamState updates the agent's state on the team (Off|On|Primary)
+// SetTeamState updates the agent's state on the team (Off|On)
 func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
-	if state == "Primary" {
-		_ = gid.ClearPrimaryTeam()
-	}
-
 	if _, err := db.Exec("UPDATE agentteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
 		Log.Notice(err)
 		return err
@@ -447,18 +441,9 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 }
 
 // PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint data is saved
+// XXX deprecated - here just to for transition
 func (gid GoogleID) PrimaryTeam() (string, error) {
-	var primary string
-	err := db.QueryRow("SELECT teamID FROM agentteams WHERE gid = ? AND state = 'Primary'", gid).Scan(&primary)
-	if err != nil && err == sql.ErrNoRows {
-		Log.Debug("Primary Team Not Set")
-		return "", nil
-	}
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-	return primary, nil
+	return "", nil
 }
 
 // FetchAgent populates the minimal Agent struct with data anyone can see
@@ -476,14 +461,6 @@ func FetchAgent(id AgentID, agent *Agent) error {
 		return err
 	}
 	return nil
-}
-
-func isActive(state string) bool {
-	switch state {
-	case "On", "Primary":
-		return true
-	}
-	return false
 }
 
 // Name returns a team's friendly name for a TeamID

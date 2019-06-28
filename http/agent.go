@@ -36,7 +36,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	agent.CanSendTo = gid.CanSendTo(togid)
 
 	// if the request comes from intel, just return JSON
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		data, _ := json.MarshalIndent(agent, "", "\t")
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))

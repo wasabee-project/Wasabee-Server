@@ -18,23 +18,48 @@ func teamKeyboard(gid wasabi.GoogleID) tgbotapi.InlineKeyboardMarkup {
 		for _, v := range ud.Teams {
 			i++
 			var row []tgbotapi.InlineKeyboardButton
-			var on, off, primary tgbotapi.InlineKeyboardButton
+			var on, off tgbotapi.InlineKeyboardButton
 			if v.State == "Off" {
 				on = tgbotapi.NewInlineKeyboardButtonData("Activate "+v.Name, "team/activate/"+v.ID)
 				row = append(row, on)
 			}
-			if v.State == "On" || v.State == "Primary" {
+			if v.State == "On" {
 				off = tgbotapi.NewInlineKeyboardButtonData("Deactivate "+v.Name, "team/deactivate/"+v.ID)
 				row = append(row, off)
-			}
-			if v.State == "On" {
-				primary = tgbotapi.NewInlineKeyboardButtonData("Make "+v.Name+" Primary", "team/primary/"+v.ID)
-				row = append(row, primary)
 			}
 			rows = append(rows, row)
 
 			if i > 8 { // too many rows and the screen fills up
 				break
+			}
+		}
+	}
+
+	tmp := tgbotapi.InlineKeyboardMarkup{
+		InlineKeyboard: rows,
+	}
+	return tmp
+}
+
+func assignmentKeyboard(gid wasabi.GoogleID) tgbotapi.InlineKeyboardMarkup {
+	var ud wasabi.AgentData
+	var rows [][]tgbotapi.InlineKeyboardButton
+	var a wasabi.Assignments
+
+	if err := gid.GetAgentData(&ud); err == nil {
+		for _, op := range ud.Assignments {
+			gid.Assignments(op.OpID, &a)
+			for _, marker := range a.Markers {
+				var row []tgbotapi.InlineKeyboardButton
+				var action, reject tgbotapi.InlineKeyboardButton
+				title := fmt.Sprintf("%s %s - Complete", marker.Type, a.Portals[marker.PortalID].Name)
+				cmd := fmt.Sprintf("marker/complete/%s", marker.ID)
+				rcmd := fmt.Sprintf("marker/reject/%s", marker.ID)
+				action = tgbotapi.NewInlineKeyboardButtonData(title, cmd)
+				reject = tgbotapi.NewInlineKeyboardButtonData("reject", rcmd)
+				row = append(row, action)
+				row = append(row, reject)
+				rows = append(rows, row)
 			}
 		}
 	}
@@ -92,10 +117,10 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Operation not supported yet"},
 		)
-	case "target": // XXX nothing yet
-		_ = callbackTarget(command[1], command[2], gid, lang, &msg)
+	case "marker": // XXX nothing yet
+		_ = callbackMarker(command[1], command[2], gid, lang, &msg)
 		resp, err = bot.AnswerCallbackQuery(
-			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Target not supported yet"},
+			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Marker Updated"},
 		)
 	default:
 		resp, err = bot.AnswerCallbackQuery(
@@ -127,15 +152,6 @@ func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tg
 	}
 
 	switch action {
-	case "primary":
-		msg.Text, _ = templateExecute("TeamStateChange", lang, tStruct{
-			State: "Primary",
-			Team:  name,
-		})
-		err = gid.SetTeamState(t, "Primary")
-		if err != nil {
-			wasabi.Log.Notice(err)
-		}
 	case "activate":
 		msg.Text, _ = templateExecute("TeamStateChange", lang, tStruct{
 			State: "On",
@@ -156,10 +172,7 @@ func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tg
 		}
 	default:
 		err = fmt.Errorf("unknown team state: %s", action)
-		wasabi.Log.Error(err)
-		if err != nil {
-			wasabi.Log.Notice(err)
-		}
+		wasabi.Log.Info(err)
 	}
 	return nil
 }
@@ -168,7 +181,15 @@ func callbackOperation(action, op string, gid wasabi.GoogleID, lang string, msg 
 	return nil
 }
 
-func callbackTarget(action, target string, gid wasabi.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
-	// XXX mark completed, what else?
+func callbackMarker(action, target string, gid wasabi.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
+	switch action {
+	case "complete":
+		msg.Text = "assignment completion coming soon"
+	case "reject":
+		msg.Text = "assignment rejection coming soon"
+	default:
+		err := fmt.Errorf("unknown marker action: %s", action)
+		wasabi.Log.Info(err)
+	}
 	return nil
 }

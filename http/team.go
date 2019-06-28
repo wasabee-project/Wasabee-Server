@@ -41,20 +41,21 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+		res.Header().Add("Content-Type", jsonType)
 		data, err := json.MarshalIndent(teamList, "", "\t")
 		if err != nil {
 			wasabi.Log.Error(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
-		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
-	} else {
-		if err = templateExecute(res, req, "team", teamList); err != nil {
-			wasabi.Log.Notice(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-		}
+		return
+	}
+
+	if err = templateExecute(res, req, "team", teamList); err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -256,10 +257,11 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabi.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -268,11 +270,12 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabi.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("Unauthorized")
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -286,6 +289,5 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }

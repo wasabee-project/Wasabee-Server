@@ -41,8 +41,9 @@ type AgentData struct {
 	OwnedTeams    []AdOwnedTeam
 	Teams         []AdTeam
 	Ops           []AdOperation
-	OwnedOps      []AdOperation
-	Telegram      struct {
+	// OwnedOps is deprecated use Ops.IsOwner
+	OwnedOps []AdOperation
+	Telegram struct {
 		UserName  string
 		ID        int64
 		Verified  bool
@@ -366,14 +367,30 @@ func adTelegram(gid GoogleID, ud *AgentData) error {
 func adOps(gid GoogleID, ud *AgentData) error {
 	var op AdOperation
 	var g GoogleID
-	row, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, o.teamID FROM operation=o, team=t WHERE o.gid = ? AND o.teamID = t.teamID ORDER BY o.Name", gid)
+	row, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, o.teamID FROM operation=o, team=t WHERE o.gid = ? AND o.teamID = t.teamID ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer row.Close()
 	for row.Next() {
-		err := row.Scan(&op.ID, &op.Name, &g, &op.Color, &op.TeamName, &op.TeamID)
+		err := row.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		op.IsOwner = true
+		ud.OwnedOps = append(ud.OwnedOps, op)
+	}
+
+	row2, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, o.teamID FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state = 'On') ORDER BY o.Name", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer row2.Close()
+	for row2.Next() {
+		err := row2.Scan(&op.ID, &op.Name, &g, &op.Color, &op.TeamName, &op.TeamID)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -383,22 +400,6 @@ func adOps(gid GoogleID, ud *AgentData) error {
 		} else {
 			op.IsOwner = false
 		}
-		ud.OwnedOps = append(ud.OwnedOps, op)
-	}
-
-	row2, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, o.teamID FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state IN ('On', 'Primary') ORDER BY o.Name", gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer row2.Close()
-	for row2.Next() {
-		err := row2.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		op.IsOwner = true
 		ud.Ops = append(ud.Ops, op)
 	}
 	return nil

@@ -26,7 +26,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		data, _ := json.MarshalIndent(ud, "", "\t")
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
@@ -69,6 +69,7 @@ func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// XXX this gets too much -- but works for now; if it is slow, then use the deeper calls
 	var ud wasabi.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
 		wasabi.Log.Notice(err)
@@ -76,14 +77,14 @@ func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		data, _ := json.MarshalIndent(ud.Ops, "", "\t")
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
 		return
 	}
 
-	if err = templateExecute(res, req, "operations", ud); err != nil {
+	if err = templateExecute(res, req, "operations", ud.Ops); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}

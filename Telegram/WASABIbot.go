@@ -283,12 +283,10 @@ func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabi
 
 	switch cmd {
 	case "Assignments":
-		msg.Text = "coming soon"
-		msg.ReplyMarkup = config.baseKbd
-		msg.DisableWebPagePreview = true
+		msg.ReplyMarkup = assignmentKeyboard(gid)
+		msg.Text = "Assignments"
 	case "Teams":
-		tmp := teamKeyboard(gid)
-		msg.ReplyMarkup = tmp
+		msg.ReplyMarkup = teamKeyboard(gid)
 		msg.Text = "Your Teams"
 	case "Teammates":
 		msg.Text, _ = teammatesNear(gid, inMsg)
