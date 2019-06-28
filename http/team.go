@@ -41,7 +41,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
-	if strings.Contains(req.Referer(), "intel.ingress.com") {
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
 		data, err := json.MarshalIndent(teamList, "", "\t")
 		if err != nil {
 			wasabi.Log.Error(err)

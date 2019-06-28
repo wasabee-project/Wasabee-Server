@@ -111,7 +111,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// JSON if referer is intel.ingress.com
-	if strings.Contains(req.Referer(), "intel.ingress.com") {
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
 		res.Header().Set("Content-Type", jsonType)
 		s, err := json.MarshalIndent(o, "", "\t")
 		if err != nil {

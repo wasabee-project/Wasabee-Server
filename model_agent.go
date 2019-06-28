@@ -71,6 +71,7 @@ type AdTeam struct {
 type AdOperation struct {
 	ID       string
 	Name     string
+	IsOwner  bool
 	Color    string
 	TeamName string
 	TeamID   TeamID
@@ -364,17 +365,23 @@ func adTelegram(gid GoogleID, ud *AgentData) error {
 
 func adOps(gid GoogleID, ud *AgentData) error {
 	var op AdOperation
-	row, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, o.teamID FROM operation=o, team=t WHERE o.gid = ? AND o.teamID = t.teamID ORDER BY o.Name", gid)
+	var g GoogleID
+	row, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, o.teamID FROM operation=o, team=t WHERE o.gid = ? AND o.teamID = t.teamID ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer row.Close()
 	for row.Next() {
-		err := row.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
+		err := row.Scan(&op.ID, &op.Name, &g, &op.Color, &op.TeamName, &op.TeamID)
 		if err != nil {
 			Log.Error(err)
 			return err
+		}
+		if gid == g {
+			op.IsOwner = true
+		} else {
+			op.IsOwner = false
 		}
 		ud.OwnedOps = append(ud.OwnedOps, op)
 	}
@@ -391,6 +398,7 @@ func adOps(gid GoogleID, ud *AgentData) error {
 			Log.Error(err)
 			return err
 		}
+		op.IsOwner = true
 		ud.Ops = append(ud.Ops, op)
 	}
 	return nil

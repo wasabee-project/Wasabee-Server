@@ -344,22 +344,47 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, stri
 
 	ctx, cancel := context.WithTimeout(rctx, 5*time.Second)
 	defer cancel()
-
 	token, err := config.googleOauthConfig.Exchange(ctx, code)
 	if err != nil {
 		return nil, "", fmt.Errorf("code exchange failed: %s", err.Error())
 	}
-	tokenStr, _ := json.Marshal(token)
-	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	cancel()
+
+	contents, err := getGoogleUserInfo(token.AccessToken)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed getting agent info: %s", err.Error())
 	}
-	defer response.Body.Close()
-	contents, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed reading response body: %s", err.Error())
-	}
+
+	// XXX is this necessary?
+	tokenStr, _ := json.Marshal(token)
 	return contents, string(tokenStr), nil
+}
+
+// used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token from Google and requests their info from Google
+// timeout enforced -- XXX url and timout should be consts in server.go...
+func getGoogleUserInfo(accessToken string) ([]byte, error) {
+	url := fmt.Sprintf("https://www.googleapis.com/oauth2/v2/userinfo?access_token=%s", accessToken)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return nil, err
+	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		wasabi.Log.Error(err)
+		return nil, err
+	}
+	return body, nil
 }
 
 // read the gid from the session cookie and return it
@@ -391,8 +416,9 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		Email string          `json:"email"`
 		Pic   string          `json:"picture"`
 	}
+	var m googleData
 
-	// passed in
+	// passed in from Android/iOS app
 	type token struct {
 		AccessToken string `json:"accessToken"`
 	}
@@ -425,21 +451,12 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + t.AccessToken)
+	contents, err := getGoogleUserInfo(t.AccessToken)
 	if err != nil {
 		err = fmt.Errorf("failed getting agent info: %s", err.Error())
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	defer response.Body.Close()
-	contents, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		err := fmt.Errorf("failed reading response body")
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	var m googleData
 	if err = json.Unmarshal(contents, &m); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

@@ -49,6 +49,7 @@ type Operation struct {
 // OpStat is a minimal struct to determine if the op has been updated
 type OpStat struct {
 	ID       OperationID `json:"ID"`
+	Name     string      `json:"name"`
 	Gid      GoogleID    `json:"creator"`
 	Modified string      `json:"modified"`
 }
@@ -1019,7 +1020,7 @@ func (opID OperationID) Touch() error {
 func (opID OperationID) Stat() (OpStat, error) {
 	var s OpStat
 	s.ID = opID
-	err := db.QueryRow("SELECT gid, modified FROM operation WHERE ID = ?", opID).Scan(&s.Gid, &s.Modified)
+	err := db.QueryRow("SELECT name, gid, modified FROM operation WHERE ID = ?", opID).Scan(&s.Name, &s.Gid, &s.Modified)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Notice(err)
 		return s, err

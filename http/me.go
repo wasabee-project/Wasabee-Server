@@ -26,7 +26,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") {
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
 		data, _ := json.MarshalIndent(ud, "", "\t")
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
@@ -73,6 +73,13 @@ func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
 	if err = gid.GetAgentData(&ud); err != nil {
 		wasabi.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), "(dart:io)") {
+		data, _ := json.MarshalIndent(ud.Ops, "", "\t")
+		res.Header().Add("Content-Type", jsonType)
+		fmt.Fprint(res, string(data))
 		return
 	}
 
