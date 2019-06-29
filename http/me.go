@@ -249,3 +249,14 @@ func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
 }
+
+func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabi.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	gid.Logout("user requested logout")
+	http.Redirect(res, req, "/", http.StatusPermanentRedirect)
+}

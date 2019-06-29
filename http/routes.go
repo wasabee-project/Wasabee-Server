@@ -145,6 +145,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
+	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")
 
 	// other agents
 	// "profile" page, such as it is

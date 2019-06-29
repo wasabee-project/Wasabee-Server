@@ -383,7 +383,7 @@ func adOps(gid GoogleID, ud *AgentData) error {
 		ud.OwnedOps = append(ud.OwnedOps, op)
 	}
 
-	row2, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, o.teamID FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state = 'On') ORDER BY o.Name", gid)
+	row2, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, o.teamID FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state = 'On' ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -650,7 +650,6 @@ func (gid GoogleID) Logout(reason string) {
 	if gid == "" {
 		err := fmt.Errorf("gid unset")
 		Log.Error(err)
-		// return err
 	}
 
 	Log.Debugf("adding %s to logout list: %s", gid, reason)
@@ -665,6 +664,7 @@ func (gid GoogleID) CheckLogout() bool {
 	}
 	Log.Debugf("clearing %s from logoutlist", gid)
 	logoutlist[gid] = false // now that they've been checked, clear them
+	// defer delete(logoutlist, gid)
 	return logout
 }
 
