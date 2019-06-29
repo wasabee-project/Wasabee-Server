@@ -48,7 +48,11 @@ func assignmentKeyboard(gid wasabi.GoogleID) tgbotapi.InlineKeyboardMarkup {
 
 	if err := gid.GetAgentData(&ud); err == nil {
 		for _, op := range ud.Assignments {
-			gid.Assignments(op.OpID, &a)
+			err = gid.Assignments(op.OpID, &a)
+			if err != nil {
+				wasabi.Log.Error(err)
+				continue
+			}
 			for _, marker := range a.Markers {
 				var row []tgbotapi.InlineKeyboardButton
 				var action, reject tgbotapi.InlineKeyboardButton

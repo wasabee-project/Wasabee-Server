@@ -284,6 +284,8 @@ func authMW(next http.Handler) http.Handler {
 			}
 		}
 
+		// TBD: if request is from app or IITC, just return http.StatusXXX
+		// @Phtiv bult the app to handle the HTML screen, no worries
 		if ses.Values["nonce"] == "unset" {
 			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return

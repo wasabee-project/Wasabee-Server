@@ -65,7 +65,7 @@ func setupRouter() *mux.Router {
 
 	// /OwnTracks route
 	ot := wasabi.Subrouter("/OwnTracks")
-	ot.HandleFunc("", ownTracksRoute).Methods("POST")
+	ot.HandleFunc("", ownTracksBasicRoute).Methods("POST")
 	// does own auth
 	// no need to log
 	ot.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
@@ -146,6 +146,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
 	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")
+	r.HandleFunc("/me/ot", ownTracksWasabiRoute).Methods("POST")
 
 	// other agents
 	// "profile" page, such as it is

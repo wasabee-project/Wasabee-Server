@@ -18,7 +18,8 @@ type loc struct {
 	Type string  `json:"_type"`
 }
 
-func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
+// basic auth for the OT app
+func ownTracksBasicRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, auth := ownTracksAuthentication(res, req)
@@ -26,7 +27,19 @@ func ownTracksRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Error verifing authentication", http.StatusUnauthorized)
 		return
 	}
+	ownTracksmain(res, req, gid)
+}
 
+// WASABEE auth for our app
+func ownTracksWasabiRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusUnauthorized)
+	}
+	ownTracksmain(res, req, gid)
+}
+
+func ownTracksmain(res http.ResponseWriter, req *http.Request, gid wasabi.GoogleID) {
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != jsonTypeShort {
 		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
