@@ -756,27 +756,30 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 		return err
 	}
 
-	link := struct {
-		OpID   OperationID
-		LinkID LinkID
-	}{
-		OpID:   opID,
-		LinkID: linkID,
-	}
+	/*
+		link := struct {
+			OpID   OperationID
+			LinkID LinkID
+		}{
+			OpID:   opID,
+			LinkID: linkID,
+		}
 
-	msg, err := gid.ExecuteTemplate("assignLink", link)
-	if err != nil {
-		Log.Error(err)
-		msg = fmt.Sprintf("assigned a marker for op %s", opID)
-		// do not report send errors up the chain, just log
-	}
-	if string(gid) != "" {
-		_, err = gid.SendMessage(msg)
+		msg, err := gid.ExecuteTemplate("assignLink", link)
 		if err != nil {
 			Log.Error(err)
+			msg = fmt.Sprintf("assigned a marker for op %s", opID)
 			// do not report send errors up the chain, just log
 		}
-	}
+		if string(gid) != "" {
+			_, err = gid.SendMessage(msg)
+			if err != nil {
+				Log.Error(err)
+				// do not report send errors up the chain, just log
+			}
+		}
+	*/
+
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}

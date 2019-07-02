@@ -12,21 +12,22 @@ import (
 
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
-	Name      string
-	ID        TeamID
-	Agent     []Agent
-	Markers   []Marker
-	Waypoints []waypoint
-	RocksComm string
-	RocksKey  string
+	Name      string     `json:"name"`
+	ID        TeamID     `json:"id"`
+	Agent     []Agent    `json:"agents"`
+	Markers   []Marker   `json:"markers"`
+	Waypoints []waypoint `json:"deprecatedwp"`
+	RocksComm string     `json:"rc"`
+	RocksKey  string     `json:"rk"`
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams
 type Agent struct {
-	Gid           GoogleID
-	Name          string
-	Level         int64
-	EnlID         EnlID
+	Gid           GoogleID        `json:"id"`
+	Name          string          `json:"name"`
+	Level         int64           `json:"level"`
+	EnlID         EnlID           `json:"enlid"`
+	PictureURL    string          `json:"pic"`
 	Verified      bool            `json:"Vverified,omitempty"`
 	Blacklisted   bool            `json:"blacklisted"`
 	RocksVerified bool            `json:"rocks,omitempty"`
@@ -99,6 +100,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		tmpU.OwnTracks = json.RawMessage(otdata)
+		tmpU.PictureURL = tmpU.Gid.GetPicture()
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 
@@ -121,10 +123,10 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		Log.Error(err)
 	}
 	// Waypoints
-	err = teamID.otWaypoints(teamList)
+	/* err = teamID.otWaypoints(teamList)
 	if err != nil {
 		Log.Error(err)
-	}
+	} */
 
 	return nil
 }

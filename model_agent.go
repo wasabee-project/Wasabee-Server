@@ -694,8 +694,9 @@ func (gid GoogleID) GetPicture() string {
 
 	err := db.QueryRow("SELECT picurl FROM agentextras WHERE gid = ?", gid).Scan(&url)
 	if err != nil {
-		Log.Info(err)
-		return "/static/mstile-150x150.png"
+		// Log.Info(err)
+		wr, _ := GetWebroot()
+		return fmt.Sprintf("%s/static/android-chrome-512x512.png", wr)
 	}
 
 	return url
