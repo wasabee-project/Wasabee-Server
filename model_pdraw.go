@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -531,7 +530,7 @@ func (o *Operation) PopulateKeys() error {
 
 // this is still very early -- dunno what the client is going to want
 func (teamID TeamID) pdMarkers(tl *TeamData) error {
-	mr, err := db.Query("SELECT m.ID, m.portalID, m.type, m.comment, m.complete, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID = ?) AND m.portalID = p.ID AND m.opID = p.opID", teamID)
+	mr, err := db.Query("SELECT m.ID, m.portalID, m.type, m.comment, m.complete FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID = ?) AND m.portalID = p.ID AND m.opID = p.opID", teamID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -539,89 +538,15 @@ func (teamID TeamID) pdMarkers(tl *TeamData) error {
 	defer mr.Close()
 
 	var tmpMarker Marker
-	var tmpWaypoint waypoint
 	for mr.Next() {
 		// XXX Comment and assigned can be null
-		err := mr.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.Comment, &tmpMarker.Complete, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
+		err := mr.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.Comment, &tmpMarker.Complete)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
 		tl.Markers = append(tl.Markers, tmpMarker)
-
-		tmpWaypoint.Type = wpc
-		tmpWaypoint.MarkerType = tmpMarker.Type.String()
-		tmpWaypoint.TeamID = teamID.String()
-		tmpWaypoint.ID = markerIDwaypointID(tmpMarker.ID)
-		tmpWaypoint.Radius = 150
-		tmpWaypoint.Share = true
-		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
 	}
-	return nil
-}
-
-func (gid GoogleID) pdWaypoints(wc *waypointCommand) error {
-	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM agentteams=t WHERE gid = ? AND state != 'Off')) AND m.portalID = p.ID AND m.opID = p.opID", gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer mr.Close()
-	var markerID MarkerID
-	var tmpWaypoint waypoint
-	for mr.Next() {
-		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc)
-		if err != nil {
-			Log.Error(err)
-			continue
-		}
-		tmpWaypoint.Type = wpc
-		tmpWaypoint.ID = markerIDwaypointID(markerID)
-		tmpWaypoint.Radius = 150
-		tmpWaypoint.Share = true
-		wc.Waypoints.Waypoints = append(wc.Waypoints.Waypoints, tmpWaypoint)
-	}
-	return nil
-}
-
-func (gid GoogleID) pdMarkersNear(maxdistance int, maxresults int, td *TeamData) error {
-	var lat, lon string
-	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	mr, err := db.Query("SELECT m.ID, m.type, Y(p.loc) AS lat, X(p.loc) AS lon, p.name, "+
-		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(p.loc))) * cos(radians(X(p.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(p.loc))))) AS distance "+
-		"FROM marker=m, portal=p "+
-		"WHERE m.opID IN (SELECT ID FROM operation WHERE teamID IN (SELECT t.teamID FROM agentteams=t WHERE gid = ? AND state != 'Off')) "+
-		"AND m.portalID = p.ID AND m.opID = p.opID "+
-		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer mr.Close()
-	var markerID MarkerID
-	var tmpWaypoint waypoint
-	for mr.Next() {
-		err := mr.Scan(&markerID, &tmpWaypoint.MarkerType, &tmpWaypoint.Lat, &tmpWaypoint.Lon, &tmpWaypoint.Desc, &tmpWaypoint.Distance)
-		if err != nil {
-			Log.Error(err)
-			continue
-		}
-		tmpWaypoint.Type = wpc
-		tmpWaypoint.ID = markerIDwaypointID(markerID)
-		tmpWaypoint.Radius = 150
-		tmpWaypoint.Share = true
-		td.Waypoints = append(td.Waypoints, tmpWaypoint)
-	}
-
-	// since otWaypoints already set, we need to resort
-	sort.Slice(td.Waypoints, func(i, j int) bool {
-		return td.Waypoints[i].Distance < td.Waypoints[j].Distance
-	})
 	return nil
 }
 

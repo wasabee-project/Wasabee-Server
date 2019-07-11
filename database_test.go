@@ -5,10 +5,6 @@ import (
 	"testing"
 )
 
-func TestConnect(t *testing.T) {
-	// now taken care of in main
-}
-
 func TestQuery(t *testing.T) {
 	// assumes a whole host of other things already work
 	_, err := gid.InitAgent()

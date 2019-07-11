@@ -114,16 +114,3 @@ func TestTeammatesNear(t *testing.T) {
 		fmt.Printf("%s is %fkm away\n", v.Name, v.Distance)
 	}
 }
-
-func TestWaypointsNear(t *testing.T) {
-	var td wasabi.TeamData
-
-	err := gid.WaypointsNear(1000, 10, &td)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	for _, v := range td.Waypoints {
-		fmt.Printf("%s is %fkm away\n", v.Desc, v.Distance)
-	}
-}

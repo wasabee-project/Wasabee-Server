@@ -12,13 +12,12 @@ import (
 
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
-	Name      string     `json:"name"`
-	ID        TeamID     `json:"id"`
-	Agent     []Agent    `json:"agents"`
-	Markers   []Marker   `json:"markers"`
-	Waypoints []waypoint `json:"deprecatedwp"`
-	RocksComm string     `json:"rc"`
-	RocksKey  string     `json:"rk"`
+	Name      string   `json:"name"`
+	ID        TeamID   `json:"id"`
+	Agent     []Agent  `json:"agents"`
+	Markers   []Marker `json:"markers"`
+	RocksComm string   `json:"rc"`
+	RocksKey  string   `json:"rk"`
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams
@@ -122,11 +121,6 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	if err != nil {
 		Log.Error(err)
 	}
-	// Waypoints
-	/* err = teamID.otWaypoints(teamList)
-	if err != nil {
-		Log.Error(err)
-	} */
 
 	return nil
 }
@@ -362,58 +356,21 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 // the Agents portion of the TeamData is uninitialized
 func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) error {
 	var lat, lon string
-	var rows *sql.Rows
-	var tmpW waypoint
+	/* var rows *sql.Rows */
 
 	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	// Log.Debug("Waypoints Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
-	// no ST_Distance_Sphere in MariaDB yet...
-	rows, err = db.Query("SELECT DISTINCT Id, name, radius, type, Y(loc), X(loc), teamID, "+
-		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(loc))) * cos(radians(X(loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(loc))))) AS distance "+
-		"FROM waypoints "+
-		"WHERE teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
-		"HAVING distance < ? ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	/* This would use the ST_ Index... instead of offloading it until the HAVING -- saving a lot of db calculations if we get a lot of Waypoints
-	   AND MBRContains( LineString(
-	Point( 42.353443 + 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 + 1 / 111.1),
-	Point( 42.353443 - 1 / ( 111.1 / COS(RADIANS(-71.076584))), -71.076584 - 1 / 111.1)
-	   ), loc)
-	*/
-
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&tmpW.ID, &tmpW.Desc, &tmpW.Radius, &tmpW.MarkerType, &lat, &lon, &tmpW.TeamID, &tmpW.Distance)
+	/*
+		err = gid.pdMarkersNear(maxdistance, maxresults, td)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		tmpW.Lat, _ = strconv.ParseFloat(lat, 64)
-		tmpW.Lon, _ = strconv.ParseFloat(lon, 64)
-		tmpW.Type = wpc
-		tmpW.Share = true
-		td.Waypoints = append(td.Waypoints, tmpW)
-	}
-	err = rows.Err()
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	err = gid.pdMarkersNear(maxdistance, maxresults, td)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
+	*/
 	return nil
 }
 
@@ -440,12 +397,6 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 		return err
 	}
 	return nil
-}
-
-// PrimaryTeam is called to determine an agent's primary team -- which is where Waypoint data is saved
-// XXX deprecated - here just to for transition
-func (gid GoogleID) PrimaryTeam() (string, error) {
-	return "", nil
 }
 
 // FetchAgent populates the minimal Agent struct with data anyone can see

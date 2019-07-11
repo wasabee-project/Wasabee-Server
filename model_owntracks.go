@@ -3,7 +3,6 @@ package wasabi
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -157,12 +156,12 @@ func (gid GoogleID) OwnTracksWaypoints() (json.RawMessage, error) {
 		Log.Error(err)
 		return j, err
 	}
-
-	err = gid.pdWaypoints(&wp)
-	if err != nil {
-		Log.Error(err)
-		return j, err
-	}
+	/*
+		err = gid.pdWaypoints(&wp)
+		if err != nil {
+			Log.Error(err)
+			return j, err
+		} */
 
 	j, err = json.Marshal(wp)
 	if err != nil {
@@ -209,39 +208,6 @@ func (gid GoogleID) otWaypoints(wp *waypointCommand) error {
 	return nil
 }
 
-// otWaypoints takes populates a teamlist's waypoints struct
-func (teamID TeamID) otWaypoints(tl *TeamData) error {
-	var lat, lon sql.NullString
-	var tmpWaypoint waypoint
-	tmpWaypoint.Type = wpc
-
-	wr, err := db.Query("SELECT ID, teamID, Y(loc) as lat, X(loc) as lon, radius, type, name FROM waypoints WHERE teamID = ?", teamID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer wr.Close()
-	for wr.Next() {
-		err := wr.Scan(&tmpWaypoint.ID, &tmpWaypoint.TeamID, &lat, &lon, &tmpWaypoint.Radius, &tmpWaypoint.MarkerType, &tmpWaypoint.Desc)
-		if err != nil {
-			Log.Error(err)
-			return nil
-		}
-		if lat.Valid {
-			f, _ := strconv.ParseFloat(lat.String, 64)
-			tmpWaypoint.Lat = f
-		}
-		if lon.Valid {
-			f, _ := strconv.ParseFloat(lon.String, 64)
-			tmpWaypoint.Lon = f
-		}
-		tmpWaypoint.Share = true
-		tmpWaypoint.Type = wpc
-		tl.Waypoints = append(tl.Waypoints, tmpWaypoint)
-	}
-	return nil
-}
-
 // OwnTracksTransition is called when an agent enters or leaves a WayPoint's radius
 // currently a stub which only sends a message alerting the agent that they have made the transition
 // future features are still being considered
@@ -255,7 +221,7 @@ func (gid GoogleID) OwnTracksTransition(jTran json.RawMessage) (json.RawMessage,
 	}
 
 	// XXX do something here -- or not
-	Log.Debugf("%s transition %s: %s (%n)", gid, t.Event, t.Desc, t.ID)
+	Log.Debugf("%s transition %s: %s", gid, t.Event, t.Desc)
 	// gid.SendMessage(fmt.Sprintf("%s area: %s", t.Event, t.Desc))
 
 	return j, nil
@@ -343,6 +309,7 @@ func (gid GoogleID) ownTracksExternalUpdate(lat, lon, source string) error {
 	return nil
 }
 
+/*
 // OwnTracksSetWaypoint is called when a waypoint message is received from the OwnTracks application
 func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
@@ -369,6 +336,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 	j, err = gid.OwnTracksWaypoints()
 	return j, err
 }
+*/
 
 // ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the data to the database.
 func ownTracksWriteWaypoint(w waypoint, team string) error {
@@ -382,6 +350,7 @@ func ownTracksWriteWaypoint(w waypoint, team string) error {
 	return err
 }
 
+/*
 // OwnTracksSetWaypointList is called when a waypoint list is received from the OwnTracks application
 func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))
@@ -410,6 +379,7 @@ func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessag
 	j, err = gid.OwnTracksWaypoints()
 	return j, err
 }
+*/
 
 // SetOwnTracksPW updates the database with a new OwnTracks password for a given agent
 // TODO: move to model_owntracks.go

@@ -322,6 +322,11 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		MaxAge: 0,
 	}
 	_ = ses.Save(req, res)
+	iname, err := m.Gid.IngressName()
+	if err != nil {
+		wasabi.Log.Debug("no iname at end of login? %n", m.Gid)
+	}
+	wasabi.Log.Debugf("%s login", iname)
 	http.Redirect(res, req, location, http.StatusFound)
 }
 
@@ -506,5 +511,10 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	iname, err := m.Gid.IngressName()
+	if err != nil {
+		wasabi.Log.Error(err)
+	}
+	wasabi.Log.Debugf("%s app login", iname)
 	fmt.Fprintf(res, `{ "status": "OK"}`)
 }

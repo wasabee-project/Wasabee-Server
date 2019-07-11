@@ -92,12 +92,14 @@ func ownTracksmain(res http.ResponseWriter, req *http.Request, gid wasabi.Google
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
 		fmt.Fprint(res, string(s))
-	case "waypoints":
-		s, _ := gid.OwnTracksSetWaypointList(jRaw)
-		fmt.Fprint(res, string(s))
-	case "waypoint":
-		s, _ := gid.OwnTracksSetWaypoint(jRaw)
-		fmt.Fprint(res, string(s))
+	/*
+		case "waypoints":
+			s, _ := gid.OwnTracksSetWaypointList(jRaw)
+			fmt.Fprint(res, string(s))
+		case "waypoint":
+			s, _ := gid.OwnTracksSetWaypoint(jRaw)
+			fmt.Fprint(res, string(s))
+	*/
 	default: // seen "cmd" in the wild
 		wasabi.Log.Noticef("unhandled owntracks t.Type: %s", t.Type)
 		wasabi.Log.Debug(string(jRaw))
