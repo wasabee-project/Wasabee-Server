@@ -1,6 +1,6 @@
 # setenv GOPATH ~/go
-setenv DATABASE "wasabi:PaSSw0r3D@tcp(localhost)/wasabi"
-setenv ROOT_URL "https://wasabi.example.com:8443"
+setenv DATABASE "wasabee:PaSSw0r3D@tcp(localhost)/wasabee"
+setenv ROOT_URL "https://wasabee.example.com:8443"
 setenv HTTPS_LISTEN ":8443"
 setenv HTTPS_LOGFILE "test.log"
 setenv GOOGLE_CLIENT_ID "--SOMETHING--SOMETHING--SOMETHING--.apps.googleusercontent.com"
