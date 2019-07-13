@@ -110,7 +110,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "OK"}`)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
@@ -135,7 +135,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "OK"}`)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
@@ -161,7 +161,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "OK"}`)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
@@ -187,7 +187,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "OK"}`)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
@@ -209,7 +209,7 @@ func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "OK"}`)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
@@ -236,7 +236,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "OK"}`)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusPermanentRedirect)
@@ -291,7 +291,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	gid.Logout("user requested logout")
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "OK"}`)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
 	http.Redirect(res, req, "/", http.StatusPermanentRedirect)

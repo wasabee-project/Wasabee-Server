@@ -292,7 +292,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	location := me + "?a=0"
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
-		// wasabi.Log.Debug("deep-link redirecting to", rr)
 		if rr[:len(me)] == me || rr[:len(login)] == login { // leave /me check in place
 			location = me + "?postlogin=1"
 		} else {
@@ -332,7 +331,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabi.Log.Debug("no iname at end of login? %n", m.Gid)
 	}
-	wasabi.Log.Debugf("%s login", iname)
+	wasabi.Log.Infof("%s login", iname)
 	http.Redirect(res, req, location, http.StatusFound)
 }
 
@@ -521,6 +520,6 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabi.Log.Error(err)
 	}
-	wasabi.Log.Debugf("%s app login", iname)
-	fmt.Fprintf(res, `{ "status": "OK"}`)
+	wasabi.Log.Infof("%s app login", iname)
+	fmt.Fprintf(res, `{ "status": "ok"}`)
 }
