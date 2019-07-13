@@ -1,14 +1,14 @@
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![GoReportCard](https://goreportcard.com/badge/cloudkucooland/WASABI)](https://goreportcard.com/report/cloudkucooland/WASABI)
-[![GoDoc](https://godoc.org/github.com/cloudkucooland/WASABI?status.svg)](https://godoc.org/github.com/cloudkucooland/WASABI)
-![GitHub issues](https://img.shields.io/github/issues/cloudkucooland/WASABI.svg)
-[![Build Status](https://travis-ci.com/cloudkucooland/WASABI.svg?branch=master)](https://travis-ci.com/cloudkucooland/WASABI)
-[![Coverage Status](https://coveralls.io/repos/github/cloudkucooland/WASABI/badge.svg?branch=master)](https://coveralls.io/github/cloudkucooland/WASABI?branch=master)
+[![GoReportCard](https://goreportcard.com/badge/wasabee-project/Wasabee-Server)](https://goreportcard.com/report/wasabee-project/Wasabee-Server)
+[![GoDoc](https://godoc.org/github.com/wasabee-project/Wasabee-Server?status.svg)](https://godoc.org/github.com/wasabee-project/Wasabee-Server)
+![GitHub issues](https://img.shields.io/github/issues/wasabee-project/Wasabee-Server.svg)
+[![Build Status](https://travis-ci.com/wasabee-project/Wasabee-Server.svg?branch=master)](https://travis-ci.com/wasabee-project/Wasabee-Server)
+[![Coverage Status](https://coveralls.io/repos/github/wasabee-project/Wasabee-Server/badge.svg?branch=master)](https://coveralls.io/github/wasabee-project/Wasabee-Server?branch=master)
 
 [IITC Plugin](https://github.com/pcaddict08/Wasabee-IITC)
 
-# WASABI
-### The Server-Side component for WASABI and related Ingress tools for Enlightened Agents.
+# Wasabee-Server 
+### The Server-Side component for the Wasabee Project tools for Enlightened Agents.
 
 ## But... OPSEC!!!!? Tools!!!
 
@@ -46,7 +46,7 @@ That's cool also. It wouldn't be hard to add support for manually pulling team d
 
 ## Our group uses GroupMe/Slack/Hangouts/AIM/ICQ/IRC...
 
-Look through the Telegram code. Adding support for your favorite system probably shouldn't be too hard. Probably a couple files, few lines of code and you'll have the basics.  Then you send it back to us in a pull request and the beauty of open source in action causes WASABI to gain more features.
+Look through the Telegram code. Adding support for your favorite system probably shouldn't be too hard. Probably a couple files, few lines of code and you'll have the basics.  Then you send it back to us in a pull request and the beauty of open source in action causes Wasabee to gain more features.
 
 ## I don't want to use your app for sharing my location data.
 
@@ -88,10 +88,10 @@ Opposite answer to the above... When this project started we didn't know Go. We 
 1. Install and configure MySQL or MariaDB
 https://mariadb.com/kb/en/library/where-to-download-mariadb/
 
-1.1 Create a database (suggested: wasabi)
+1.1 Create a database (suggested: wasabee)
 https://mariadb.com/kb/en/library/create-database/
 
-1.2 Create a user for that database (suggested: wasabi@localhost)
+1.2 Create a user for that database (suggested: wasabee@localhost)
 https://mariadb.com/kb/en/library/create-user/
 
 1.3 GRANT the new user full privileges to that database
@@ -104,12 +104,12 @@ https://golang.org/doc/install
 3. Install git
 https://www.git-scm.com/book/en/v2/Getting-Started-Installing-Git
 
-4. Use git to checkout the frontend directory; use go to get wasabi and all dependencies
+4. Use git to checkout the frontend directory; use go to get wasabee and all dependencies
 ```
-mkdir WASABI ; cd WASABI
-git clone https://github.com/cloudkucooland/WASABI/frontend
+mkdir wasabee; cd wasabee 
+git clone https://github.com/wasabee-project/Wasabee-Server/frontend
 setenv GOPATH ~/go
-go get github.com/cloudkucooland/WASABI
+go get github.com/wasabee-project/Wasabee-Server
 ```
 
 5. Build the eff_large_wordlist.txt file
@@ -124,10 +124,10 @@ https://letsencrypt.org/docs/client-options/
 7. Create the certificate directories
 ```
 mkdir certs
-#install certificates as WASABI.fullchain.pem and WASABI.key
+#install certificates as wasabee.fullchain.pem and wasabee.key
 ```
 ```
-NB: you can point WASABI to your ACME directory, so long as both files are named correctly and in the same directory
+NB: you can point wasabee-server to your ACME directory, so long as both files are named correctly and in the same directory
 TODO: allow different names and the key to be in $CERT_DIR/keys/ as how most ACME clients create them
 ```
 
@@ -142,8 +142,8 @@ https://developers.google.com/identity/protocols/OAuth2WebServer
 9. Configure your environment (don't just copy-and-paste this, tweak for your setup!)
 ```
 setenv GOPATH ~/go
-setenv DATABASE "wasabi:password@tcp(localhost)/wasabi"
-setenv ROOT_URL "https://wasabi.example.com:8443"
+setenv DATABASE "wasabee:password@tcp(localhost)/wasabee"
+setenv ROOT_URL "https://wasabee.example.com:8443"
 # this is the port to listen on, :8443 is the suggested value
 setenv HTTPS_LISTEN ":8443"
 setenv GOOGLE_CLIENT_ID "--SOMETHING--SOMETHING--SOMETHING--.apps.googleusercontent.com"
@@ -162,5 +162,5 @@ setenv ENLROCKS_API_KEY "--SOMETHING--"
 
 10. Start the processes
 ```
-$GOPATH/bin/wasabi & ; $GOPATH/bin/wasabi-reaper &
+$GOPATH/bin/wasabee & ; $GOPATH/bin/wasabee-reaper &
 ```

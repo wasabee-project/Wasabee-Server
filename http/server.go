@@ -101,7 +101,7 @@ func initializeConfig(initialConfig Configuration) {
 		key := config.CookieSessionKey
 		wasabee.Log.Debugf("Session Key: %s", key)
 		config.store = sessions.NewCookieStore([]byte(key))
-		config.sessionName = "WASABI"
+		config.sessionName = "wasabee"
 	}
 
 	// certificate directory cleanup
@@ -127,7 +127,7 @@ func initializeConfig(initialConfig Configuration) {
 		wasabee.Log.Fatal(err)
 	}
 	config.unrolled = logger.New(logger.Options{
-		Prefix: "WASABI",
+		Prefix: "wasabee",
 		Out:    config.logfileHandle,
 		IgnoredRequestURIs: []string{
 			"/favicon.ico",
@@ -190,7 +190,7 @@ func StartHTTP(initialConfig Configuration) {
 		},
 	}
 	wasabee.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
-	if err := config.srv.ListenAndServeTLS(config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key"); err != nil {
+	if err := config.srv.ListenAndServeTLS(config.CertDir+"/wasabee.fullchain.pem", config.CertDir+"/wasabee.key"); err != nil {
 		wasabee.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
 	}
@@ -208,7 +208,7 @@ func Shutdown() error {
 
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Add("Server", "WASABI")
+		res.Header().Add("Server", "Wasabee-Server")
 		res.Header().Add("X-Frame-Options", "deny")
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")

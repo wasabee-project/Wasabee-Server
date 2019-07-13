@@ -75,10 +75,10 @@ func GMbot(init GMConfiguration) {
 	gm := wasabee.Subrouter("/gm")
 	gm.HandleFunc("/{hook}", GMWebHook).Methods("POST")
 
-	// let WASABI know we can process messages
+	// let Wasabee-server know we can process messages
 	_ = wasabee.RegisterMessageBus("GroupMe", SendMessage)
 
-	// Tell WASABI we are set up
+	// Tell Wasabee-server we are set up
 	wasabee.GMSetBot()
 
 	// setup config.bots
@@ -109,7 +109,7 @@ func runUpdate(update json.RawMessage) error {
 	return nil
 }
 
-// SendMessage is registered with WASABI as a message bus to allow other modules to send messages via GroupMe
+// SendMessage is registered with Wasabee-server as a message bus to allow other modules to send messages via GroupMe
 func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	return false, nil
 }

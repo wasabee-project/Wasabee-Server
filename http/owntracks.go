@@ -10,7 +10,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 )
 
-// or use the WASABI.Location struct
+// or use the wasabee.Location struct
 // this is minimal for what we need here
 type loc struct {
 	Lat  float64 `json:"lat"`
@@ -30,7 +30,7 @@ func ownTracksBasicRoute(res http.ResponseWriter, req *http.Request) {
 	ownTracksmain(res, req, gid)
 }
 
-// WASABEE auth for our app
+// wasabee auth for our app
 func ownTracksWasabeeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {

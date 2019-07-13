@@ -39,9 +39,9 @@ type waypoint struct {
 	Major      string  `json:"major,omitempty"`
 	Minor      string  `json:"minor,omitempty"`
 	Share      bool    `json:"share"`                // this was removed from the API, but I'm going to leave it for now
-	MarkerType string  `json:"markertype,omitempty"` // WASABI extension
-	TeamID     string  `json:"teamid,omitempty"`     // WASABI extension
-	Distance   float64 `json:"distance,omitempty"`   // WASABI extension
+	MarkerType string  `json:"markertype,omitempty"` // Wasabee extension
+	TeamID     string  `json:"teamid,omitempty"`     // Wasabee extension
+	Distance   float64 `json:"distance,omitempty"`   // Wasabee extension
 }
 
 // location is defined by the OwnTracks JSON format.

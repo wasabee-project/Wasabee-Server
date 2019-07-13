@@ -6,8 +6,8 @@ import (
 	"github.com/op/go-logging"
 )
 
-// Log refers to the main logger instance used by the WASABI application.
-var Log = logging.MustGetLogger("WASABI")
+// Log refers to the main logger instance used by the server.
+var Log = logging.MustGetLogger("wasabee-server")
 var leveled logging.LeveledBackend
 
 // SetLogLevel changes how much information is printed to Stdout.

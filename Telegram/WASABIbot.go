@@ -25,8 +25,8 @@ type TGConfiguration struct {
 var bot *tgbotapi.BotAPI
 var config TGConfiguration
 
-// WASABIBot is called from main() to start the bot.
-func WASABIBot(init TGConfiguration) {
+// WasabeeBot is called from main() to start the bot.
+func WasabeeBot(init TGConfiguration) {
 	if init.APIKey == "" {
 		err := fmt.Errorf("the Telegram API Key not set")
 		wasabee.Log.Info(err)
@@ -305,7 +305,7 @@ func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabe
 	}
 }
 
-// SendMessage is registered with WASABI as a message bus to allow other modules to send messages via Telegram
+// SendMessage is registered with Wasabee-Server as a message bus to allow other modules to send messages via Telegram
 func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	tgid, err := gid.TelegramID()
 	if err != nil {

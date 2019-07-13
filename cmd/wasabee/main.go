@@ -80,9 +80,9 @@ var flags = []cli.Flag{
 func main() {
 	app := cli.NewApp()
 
-	app.Name = "WASABI"
+	app.Name = "wasabee-server"
 	app.Version = "0.6.9"
-	app.Usage = "WASABI Server"
+	app.Usage = "Wasabee Server"
 	app.Authors = []cli.Author{
 		{
 			Name:  "Scot C. Bontrager",
@@ -179,7 +179,7 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "" {
-		go wasabeetelegram.WASABIBot(wasabeetelegram.TGConfiguration{
+		go wasabeetelegram.WasabeeBot(wasabeetelegram.TGConfiguration{
 			APIKey:      c.String("tgkey"),
 			HookPath:    "/tg",
 			TemplateSet: ts,
