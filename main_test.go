@@ -1,33 +1,33 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/op/go-logging"
 	"os"
 	"testing"
 )
 
-var gid wasabi.GoogleID
+var gid wasabee.GoogleID
 
 func TestMain(m *testing.M) {
-	gid = wasabi.GoogleID("118281765050946915735")
+	gid = wasabee.GoogleID("118281765050946915735")
 
-	wasabi.SetLogLevel(logging.DEBUG)
-	err := wasabi.Connect(os.Getenv("DATABASE"))
+	wasabee.SetLogLevel(logging.DEBUG)
+	err := wasabee.Connect(os.Getenv("DATABASE"))
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 	}
-	wasabi.SetVEnlOne(os.Getenv("VENLONE_API_KEY"))
-	wasabi.SetEnlRocks(os.Getenv("ENLROCKS_API_KEY"))
+	wasabee.SetVEnlOne(os.Getenv("VENLONE_API_KEY"))
+	wasabee.SetEnlRocks(os.Getenv("ENLROCKS_API_KEY"))
 
 	// flag.Parse()
 	exitCode := m.Run()
-	wasabi.Disconnect()
+	wasabee.Disconnect()
 	os.Exit(exitCode)
 }
 
 func TestLoadWordsFile(t *testing.T) {
-	err := wasabi.LoadWordsFile("testdata/small_wordlist.txt")
+	err := wasabee.LoadWordsFile("testdata/small_wordlist.txt")
 	if err != nil {
 		t.Error(err.Error())
 	}

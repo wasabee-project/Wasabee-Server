@@ -1,4 +1,4 @@
-package wasabi
+package wasabee
 
 import (
 	"crypto/rand"

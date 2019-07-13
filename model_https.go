@@ -1,4 +1,4 @@
-package wasabi
+package wasabee
 
 import (
 	"sync"
@@ -8,9 +8,9 @@ import (
 
 var once sync.Once
 
-// wasabiHTTPConfig stores values from the https server which are used in templates
+// wasabeeHTTPConfig stores values from the https server which are used in templates
 // to allow URL creation in other services (e.g. Telegram)
-var wasabiHTTPSConfig struct {
+var wasabeeHTTPSConfig struct {
 	webroot string
 	apipath string
 	router  *mux.Router
@@ -21,38 +21,38 @@ func NewRouter() *mux.Router {
 	// http://marcio.io/2015/07/singleton-pattern-in-go/
 	once.Do(func() {
 		Log.Info("Establishing main HTTPS router")
-		wasabiHTTPSConfig.router = mux.NewRouter()
+		wasabeeHTTPSConfig.router = mux.NewRouter()
 	})
-	return wasabiHTTPSConfig.router
+	return wasabeeHTTPSConfig.router
 }
 
 // Subrouter creates a Gorilla subroute with a prefix
 func Subrouter(prefix string) *mux.Router {
 	Log.Debugf("Establishing HTTPS subrouter for %s", prefix)
-	if wasabiHTTPSConfig.router == nil {
+	if wasabeeHTTPSConfig.router == nil {
 		NewRouter()
 	}
 
-	sr := wasabiHTTPSConfig.router.PathPrefix(prefix).Subrouter()
+	sr := wasabeeHTTPSConfig.router.PathPrefix(prefix).Subrouter()
 	return sr
 }
 
 // SetWebroot is called at https startup
 func SetWebroot(w string) {
-	wasabiHTTPSConfig.webroot = w
+	wasabeeHTTPSConfig.webroot = w
 }
 
 // GetWebroot is called from templates
 func GetWebroot() (string, error) {
-	return wasabiHTTPSConfig.webroot, nil
+	return wasabeeHTTPSConfig.webroot, nil
 }
 
 // SetWebAPIPath is called at https startup
 func SetWebAPIPath(a string) {
-	wasabiHTTPSConfig.apipath = a
+	wasabeeHTTPSConfig.apipath = a
 }
 
 // GetWebAPIPath is called from templates
 func GetWebAPIPath() (string, error) {
-	return wasabiHTTPSConfig.apipath, nil
+	return wasabeeHTTPSConfig.apipath, nil
 }

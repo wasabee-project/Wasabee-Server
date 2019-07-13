@@ -1,4 +1,4 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 )
 
@@ -23,23 +23,23 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
-		wasabi.Log.Notice("empty JSON")
+		wasabee.Log.Notice("empty JSON")
 		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	wasabi.Log.Debug(string(jBlob))
-	err = wasabi.RocksCommunitySync(jRaw)
+	wasabee.Log.Debug(string(jBlob))
+	err = wasabee.RocksCommunitySync(jRaw)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -50,17 +50,17 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -71,7 +71,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = team.RocksCommunityMemberPull()
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -82,19 +82,19 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 	rc := vars["rockscomm"]
 	rk := vars["rockskey"]
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -104,7 +104,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.SetRocks(rk, rc)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

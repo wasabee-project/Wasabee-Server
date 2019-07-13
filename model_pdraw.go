@@ -1,4 +1,4 @@
-package wasabi
+package wasabee
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -627,13 +626,6 @@ func (m MarkerID) String() string {
 // String returns the string version of a LinkID
 func (l LinkID) String() string {
 	return string(l)
-}
-
-// markerIDwaypointID converts (hackishly) a markerID to a waypointID
-// this could be a lot smarter, but we need a deterministic conversion and this works for now
-func markerIDwaypointID(markerID MarkerID) int64 {
-	i, _ := strconv.ParseInt("0x"+string(markerID[:6]), 0, 64)
-	return i
 }
 
 type objectID interface {

@@ -1,7 +1,7 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"testing"
 	"time"
 )
@@ -16,7 +16,7 @@ func TestSimple(t *testing.T) {
 		// {true, ""}, // block empty strings?
 		// {true, "  "}, // block empty strings?
 	}
-	var sd wasabi.SimpleDocument
+	var sd wasabee.SimpleDocument
 	sd.Expiration = time.Unix(0, 0) // mark it as volitile so it self-destructs on first read
 
 	for _, v := range teststring {
@@ -31,7 +31,7 @@ func TestSimple(t *testing.T) {
 		}
 
 		if !v.fail {
-			rd, err := wasabi.Request(sd.ID)
+			rd, err := wasabee.Request(sd.ID)
 			if err != nil {
 				t.Errorf(err.Error())
 			}

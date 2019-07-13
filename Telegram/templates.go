@@ -1,10 +1,10 @@
-package wasabitelegram
+package wasabeetelegram
 
 import (
 	"bytes"
 	"fmt"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 )
 
 func templateExecute(name, lang string, data interface{}) (string, error) {
@@ -24,7 +24,7 @@ func templateExecute(name, lang string, data interface{}) (string, error) {
 
 	var tpBuffer bytes.Buffer
 	if err := config.TemplateSet[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		return "", err
 	}
 	return tpBuffer.String(), nil

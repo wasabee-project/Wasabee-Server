@@ -1,4 +1,4 @@
-package wasabigm
+package wasabeegm
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	wasabi "github.com/cloudkucooland/WASABI"
+	wasabee "github.com/wasabee-project/Wasabee-Server"
 )
 
 // InboundMessage is what we receive from GM
@@ -61,7 +61,7 @@ var config GMConfiguration
 func GMbot(init GMConfiguration) {
 	if init.AccessToken == "" {
 		err := errors.New("access token not set")
-		wasabi.Log.Info(err)
+		wasabee.Log.Info(err)
 		return
 	}
 	config.AccessToken = init.AccessToken
@@ -72,14 +72,14 @@ func GMbot(init GMConfiguration) {
 	// the webhook feeds this channel
 	config.upChan = make(chan json.RawMessage, 1)
 
-	gm := wasabi.Subrouter("/gm")
+	gm := wasabee.Subrouter("/gm")
 	gm.HandleFunc("/{hook}", GMWebHook).Methods("POST")
 
 	// let WASABI know we can process messages
-	_ = wasabi.RegisterMessageBus("GroupMe", SendMessage)
+	_ = wasabee.RegisterMessageBus("GroupMe", SendMessage)
 
 	// Tell WASABI we are set up
-	wasabi.GMSetBot()
+	wasabee.GMSetBot()
 
 	// setup config.bots
 	err := getBots()
@@ -91,26 +91,26 @@ func GMbot(init GMConfiguration) {
 	for update := range config.upChan {
 		err = runUpdate(update)
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			continue
 		}
 	}
 }
 
 func runUpdate(update json.RawMessage) error {
-	// wasabi.Log.Debug(string(update))
+	// wasabee.Log.Debug(string(update))
 	var i InboundMessage
 	err := json.Unmarshal(update, &i)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
-	wasabi.Log.Debugf("Message %s from %s", i.Text, i.UserID)
+	wasabee.Log.Debugf("Message %s from %s", i.Text, i.UserID)
 	return nil
 }
 
 // SendMessage is registered with WASABI as a message bus to allow other modules to send messages via GroupMe
-func SendMessage(gid wasabi.GoogleID, message string) (bool, error) {
+func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	return false, nil
 }
 
@@ -124,10 +124,10 @@ type gmResponse struct {
 
 func getBots() error {
 	url := fmt.Sprintf("%s/bots?token=%s", config.APIEndpoint, config.AccessToken)
-	wasabi.Log.Debugf("Getting list of GroupMe bots from: %s", url)
+	wasabee.Log.Debugf("Getting list of GroupMe bots from: %s", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	client := &http.Client{
@@ -135,33 +135,33 @@ func getBots() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 
-	// wasabi.Log.Debug(string(body))
+	// wasabee.Log.Debug(string(body))
 
 	var gmRes gmResponse
 	err = json.Unmarshal(json.RawMessage(body), &gmRes)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	if gmRes.Meta.Code != 200 {
 		err = fmt.Errorf("%d: %s", gmRes.Meta.Code, gmRes.Meta.Errors[0])
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	for _, v := range gmRes.Bot {
 		config.bots = append(config.bots, v)
-		wasabi.Log.Debugf("bot %s for group %s on callback %s", v.Name, v.GroupID, v.CallbackURL)
+		wasabee.Log.Debugf("bot %s for group %s on callback %s", v.Name, v.GroupID, v.CallbackURL)
 	}
 
 	return nil

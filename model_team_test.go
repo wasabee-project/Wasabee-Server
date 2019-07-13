@@ -1,12 +1,12 @@
-package wasabi_test
+package wasabee_test
 
 import (
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"testing"
 )
 
-var tids []wasabi.TeamID
+var tids []wasabee.TeamID
 
 func TestNewTeam(t *testing.T) {
 	teamID, err := gid.NewTeam("Test Team")
@@ -30,7 +30,7 @@ func TestNewTeam(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	t2, err := wasabi.RocksTeamID("example.com")
+	t2, err := wasabee.RocksTeamID("example.com")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -38,7 +38,7 @@ func TestNewTeam(t *testing.T) {
 		t.Error("rocks community mismatch")
 	}
 
-	var td wasabi.TeamData
+	var td wasabee.TeamData
 	err = teamID.FetchTeam(&td, true)
 	if err != nil {
 		t.Error(err.Error())
@@ -103,7 +103,7 @@ func BenchmarkDeleteTeam(b *testing.B) {
 }
 
 func TestTeammatesNear(t *testing.T) {
-	var td wasabi.TeamData
+	var td wasabee.TeamData
 
 	err := gid.TeammatesNear(1000, 10, &td)
 	if err != nil {

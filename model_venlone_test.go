@@ -1,23 +1,23 @@
-package wasabi_test
+package wasabee_test
 
 import (
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"strconv"
 	"testing"
 )
 
 func TestVConfigured(t *testing.T) {
-	b := wasabi.GetvEnlOne()
+	b := wasabee.GetvEnlOne()
 	if b != true {
 		t.Errorf("V API Key not configured")
 	}
 }
 
 func TestVsearch(t *testing.T) {
-	var v wasabi.Vresult
+	var v wasabee.Vresult
 
-	err := wasabi.VSearch(gid, &v)
+	err := wasabee.VSearch(gid, &v)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -48,7 +48,7 @@ func TestStatusLocation(t *testing.T) {
 }
 
 func TestGid(t *testing.T) {
-	eid := wasabi.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
+	eid := wasabee.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
 	fgid, err := eid.Gid()
 	if err != nil {
 		t.Errorf(err.Error())

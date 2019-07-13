@@ -1,21 +1,21 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strings"
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
-	var agent wasabi.Agent
+	var agent wasabee.Agent
 
 	// must be authenticated
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -23,12 +23,12 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	togid, err := wasabi.ToGid(id)
+	togid, err := wasabee.ToGid(id)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = wasabi.FetchAgent(togid, &agent)
+	err = wasabee.FetchAgent(togid, &agent)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -45,7 +45,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 
 	// TemplateExecute prints directly to the result writer
 	if err := templateExecute(res, req, "agent", agent); err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -53,14 +53,14 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
 	id := vars["id"]
-	togid, err := wasabi.ToGid(id)
+	togid, err := wasabee.ToGid(id)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -92,14 +92,14 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	_, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
 	id := vars["id"]
-	togid, err := wasabi.ToGid(id)
+	togid, err := wasabee.ToGid(id)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

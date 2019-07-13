@@ -1,10 +1,10 @@
-package wasabitelegram
+package wasabeetelegram 
 
 import (
 	// "errors"
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -18,7 +18,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 
 	if config.APIKey == "" || config.hook == "" {
 		err = fmt.Errorf("the Telegram API is not configured")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -28,7 +28,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 
 	if hook != config.hook {
 		err = fmt.Errorf("%s is not a valid hook", hook)
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -36,29 +36,29 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/json" {
 		err = fmt.Errorf("invalid request (needs to be application/json)")
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 	jRaw := json.RawMessage(jBlob)
-	// wasabi.Log.Debug(string(jRaw))
+	// wasabee.Log.Debug(string(jRaw))
 
 	var update tgbotapi.Update
 	err = json.Unmarshal(jRaw, &update)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

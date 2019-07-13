@@ -1,4 +1,4 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 )
 
@@ -16,7 +16,7 @@ const maxFilesize = 1024 * 1024
 
 func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	var err error
-	doc := wasabi.SimpleDocument{}
+	doc := wasabee.SimpleDocument{}
 	exp := "14d"
 
 	// Parse form and get content
@@ -28,7 +28,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// Parse form
 		err = req.ParseForm()
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -37,7 +37,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// Parse form
 		err = req.ParseMultipartForm(maxFilesize + 1024)
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -48,12 +48,12 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			file, _, err := req.FormFile("Q")
 			if err != nil && err.Error() == "http: no such file" {
 				err = fmt.Errorf("the document can't be empty")
-				wasabi.Log.Error(err)
+				wasabee.Log.Error(err)
 				http.Error(res, err.Error(), http.StatusBadRequest)
 				return
 			}
 			if err != nil {
-				wasabi.Log.Error(err)
+				wasabee.Log.Error(err)
 				http.Error(res, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -62,7 +62,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 			// defer file.Close()
 			content, err := ioutil.ReadAll(file)
 			if err != nil {
-				wasabi.Log.Error(err)
+				wasabee.Log.Error(err)
 				http.Error(res, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -73,7 +73,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 		// defer req.Body.Close()
 		content, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -83,14 +83,14 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	// Check exact filesize
 	if len(doc.Content) > maxFilesize {
 		err = fmt.Errorf("maximum document size exceeded")
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusRequestEntityTooLarge)
 		return
 	}
 
 	if len(strings.TrimSpace(doc.Content)) < 1 {
 		err = fmt.Errorf("the document can't be empty (after whitespace removal)")
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -104,7 +104,7 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	doc.Expiration, err = parseExpiration(exp)
 	if err != nil {
 		err = fmt.Errorf("invalid expiration")
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -113,11 +113,11 @@ func uploadRoute(res http.ResponseWriter, req *http.Request) {
 	err = dp.Store()
 	if err != nil && err.Error() == "file contains 0x00 bytes" {
 		err = fmt.Errorf("binary file upload is not supported")
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	} else if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -129,7 +129,7 @@ func getRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
-	doc, err := wasabi.Request(id)
+	doc, err := wasabee.Request(id)
 	if err != nil {
 		notFoundRoute(res, req)
 	}

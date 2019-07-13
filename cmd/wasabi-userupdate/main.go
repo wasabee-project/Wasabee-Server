@@ -4,14 +4,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "database, d", EnvVar: "DATABASE", Value: "wasabi:GoodPassword@tcp(localhost)/wasabi",
+		Name: "database, d", EnvVar: "DATABASE", Value: "wasabee:GoodPassword@tcp(localhost)/wasabee",
 		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
 	cli.StringFlag{
 		Name: "venlonekey", EnvVar: "VENLONE_API_KEY", Value: "",
@@ -43,7 +43,7 @@ func main() {
 		},
 	}
 	app.Copyright = "© Scot C. Bontrager"
-	app.HelpName = "wasabi-userupdate"
+	app.HelpName = "wasabee-userupdate"
 	app.Flags = flags
 	app.HideHelp = true
 	cli.AppHelpTemplate = strings.Replace(cli.AppHelpTemplate, "GLOBAL OPTIONS:", "OPTIONS:", 1)
@@ -60,34 +60,34 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool("debug") {
-		wasabi.SetLogLevel(logging.DEBUG)
+		wasabee.SetLogLevel(logging.DEBUG)
 	}
 
 	// Connect to database
-	err := wasabi.Connect(c.String("database"))
+	err := wasabee.Connect(c.String("database"))
 	if err != nil {
-		wasabi.Log.Errorf("Error connecting to database: %s", err)
+		wasabee.Log.Errorf("Error connecting to database: %s", err)
 		panic(err)
 	}
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		wasabi.SetVEnlOne(c.String("venlonekey"))
+		wasabee.SetVEnlOne(c.String("venlonekey"))
 	}
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		wasabi.SetEnlRocks(c.String("enlrockskey"))
+		wasabee.SetEnlRocks(c.String("enlrockskey"))
 	}
 
 	// setup enl.io
 	if c.String("enliokey") != "" {
-		wasabi.SetENLIO(c.String("enliokey"))
+		wasabee.SetENLIO(c.String("enliokey"))
 	}
 
-	err = wasabi.RevalidateEveryone()
+	err = wasabee.RevalidateEveryone()
 	if err != nil {
-		wasabi.Log.Errorf("Revalidate Failed: %s", err)
+		wasabee.Log.Errorf("Revalidate Failed: %s", err)
 		panic(err)
 	}
 	return nil

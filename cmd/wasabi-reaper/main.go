@@ -6,14 +6,14 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 )
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "database, d", EnvVar: "DATABASE", Value: "wasabi:GoodPassword@tcp(localhost)/wasabi",
+		Name: "database, d", EnvVar: "DATABASE", Value: "wasabee:GoodPassword@tcp(localhost)/wasabee",
 		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
@@ -22,14 +22,14 @@ var flags = []cli.Flag{
 		Name:  "help, h",
 		Usage: "Shows this help, then exits."},
 	cli.StringFlag{
-		Name: "log", EnvVar: "REAPER_LOGFILE", Value: "logs/wasabi-reaper.log",
+		Name: "log", EnvVar: "REAPER_LOGFILE", Value: "logs/wasabee-reaper.log",
 		Usage: "output log file."},
 }
 
 func main() {
 	app := cli.NewApp()
 
-	app.Name = "wasabi-reaper"
+	app.Name = "wasabee-reaper"
 	app.Version = "0.3.0"
 	app.Usage = "WASABI Background Process"
 	app.Authors = []cli.Author{
@@ -39,7 +39,7 @@ func main() {
 		},
 	}
 	app.Copyright = "© Scot C. Bontrager"
-	app.HelpName = "wasabi-reaper"
+	app.HelpName = "wasabee-reaper"
 	app.Flags = flags
 	app.HideHelp = true
 	cli.AppHelpTemplate = strings.Replace(cli.AppHelpTemplate, "GLOBAL OPTIONS:", "OPTIONS:", 1)
@@ -56,16 +56,16 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool("debug") {
-		wasabi.SetLogLevel(logging.DEBUG)
+		wasabee.SetLogLevel(logging.DEBUG)
 	}
 	if c.String("log") != "" {
-		_ = wasabi.AddFileLog(c.String("log"), logging.INFO)
+		_ = wasabee.AddFileLog(c.String("log"), logging.INFO)
 	}
 
 	// Connect to database
-	err := wasabi.Connect(c.String("database"))
+	err := wasabee.Connect(c.String("database"))
 	if err != nil {
-		wasabi.Log.Errorf("Error connecting to database: %s", err)
+		wasabee.Log.Errorf("Error connecting to database: %s", err)
 		return err
 	}
 
@@ -74,9 +74,9 @@ func run(c *cli.Context) error {
 
 	// this will loop until an OS signal is sent
 	// Location cleanup, waypoint expiration, etc
-	wasabi.BackgroundTasks(sigch)
+	wasabee.BackgroundTasks(sigch)
 
-	wasabi.Disconnect()
+	wasabee.Disconnect()
 
 	return nil
 }

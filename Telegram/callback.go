@@ -1,16 +1,16 @@
-package wasabitelegram
+package wasabeetelegram
 
 import (
 	"fmt"
 	// "encoding/json"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"strconv"
 	"strings"
 )
 
-func teamKeyboard(gid wasabi.GoogleID) tgbotapi.InlineKeyboardMarkup {
-	var ud wasabi.AgentData
+func teamKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
+	var ud wasabee.AgentData
 	var rows [][]tgbotapi.InlineKeyboardButton
 
 	if err := gid.GetAgentData(&ud); err == nil {
@@ -41,16 +41,16 @@ func teamKeyboard(gid wasabi.GoogleID) tgbotapi.InlineKeyboardMarkup {
 	return tmp
 }
 
-func assignmentKeyboard(gid wasabi.GoogleID) tgbotapi.InlineKeyboardMarkup {
-	var ud wasabi.AgentData
+func assignmentKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
+	var ud wasabee.AgentData
 	var rows [][]tgbotapi.InlineKeyboardButton
-	var a wasabi.Assignments
+	var a wasabee.Assignments
 
 	if err := gid.GetAgentData(&ud); err == nil {
 		for _, op := range ud.Assignments {
 			err = gid.Assignments(op.OpID, &a)
 			if err != nil {
-				wasabi.Log.Error(err)
+				wasabee.Log.Error(err)
 				continue
 			}
 			for _, marker := range a.Markers {
@@ -79,14 +79,14 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var resp tgbotapi.APIResponse
 	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
 	lang := update.CallbackQuery.Message.From.LanguageCode
-	gid, err := wasabi.TelegramID(update.CallbackQuery.From.ID).Gid()
+	gid, err := wasabee.TelegramID(update.CallbackQuery.From.ID).Gid()
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return msg, err
 	}
 
 	// s, _ := json.MarshalIndent(update.CallbackQuery, "", " " )
-	// wasabi.Log.Debug(string(s))
+	// wasabee.Log.Debug(string(s))
 
 	if update.CallbackQuery.Message.Location != nil && update.CallbackQuery.Message.Location.Latitude != 0 {
 		err = gid.AgentLocation(
@@ -95,14 +95,14 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 			"Telegram",
 		)
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			return msg, err
 		}
 		msg.Text = "Location Processed"
 	}
 
 	if update.CallbackQuery.Message.Chat.Type != "private" {
-		wasabi.Log.Errorf("Not in private chat: %s", update.CallbackQuery.Message.Chat.Type)
+		wasabee.Log.Errorf("Not in private chat: %s", update.CallbackQuery.Message.Chat.Type)
 		return msg, nil
 	}
 
@@ -133,25 +133,25 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	}
 
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return msg, err
 	}
 	if !resp.Ok {
-		wasabi.Log.Error(resp.Description)
+		wasabee.Log.Error(resp.Description)
 	}
 	return msg, nil
 }
 
-func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
+func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
 	type tStruct struct {
 		State string
 		Team  string
 	}
 
-	t := wasabi.TeamID(team)
+	t := wasabee.TeamID(team)
 	name, err := t.Name()
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		return err
 	}
 
@@ -163,7 +163,7 @@ func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tg
 		})
 		err = gid.SetTeamState(t, "On")
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 		}
 	case "deactivate":
 		msg.Text, _ = templateExecute("TeamStateChange", lang, tStruct{
@@ -172,20 +172,20 @@ func callbackTeam(action, team string, gid wasabi.GoogleID, lang string, msg *tg
 		})
 		err = gid.SetTeamState(t, "Off")
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 		}
 	default:
 		err = fmt.Errorf("unknown team state: %s", action)
-		wasabi.Log.Info(err)
+		wasabee.Log.Info(err)
 	}
 	return nil
 }
 
-func callbackOperation(action, op string, gid wasabi.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
+func callbackOperation(action, op string, gid wasabee.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
 	return nil
 }
 
-func callbackMarker(action, target string, gid wasabi.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
+func callbackMarker(action, target string, gid wasabee.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
 	switch action {
 	case "complete":
 		msg.Text = "assignment completion coming soon"
@@ -193,7 +193,7 @@ func callbackMarker(action, target string, gid wasabi.GoogleID, lang string, msg
 		msg.Text = "assignment rejection coming soon"
 	default:
 		err := fmt.Errorf("unknown marker action: %s", action)
-		wasabi.Log.Info(err)
+		wasabee.Log.Info(err)
 	}
 	return nil
 }

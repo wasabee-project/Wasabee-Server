@@ -7,11 +7,11 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cloudkucooland/WASABI"
-	"github.com/cloudkucooland/WASABI/GroupMe"
-	"github.com/cloudkucooland/WASABI/RISC"
-	"github.com/cloudkucooland/WASABI/Telegram"
-	"github.com/cloudkucooland/WASABI/http"
+	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/GroupMe"
+	"github.com/wasabee-project/Wasabee-Server/RISC"
+	"github.com/wasabee-project/Wasabee-Server/Telegram"
+	"github.com/wasabee-project/Wasabee-Server/http"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	// "runtime/pprof"
@@ -19,25 +19,25 @@ import (
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "database, d", EnvVar: "DATABASE", Value: "wasabi:GoodPassword@tcp(localhost)/wasabi",
+		Name: "database, d", EnvVar: "DATABASE", Value: "wasabee:GoodPassword@tcp(localhost)/wasabee",
 		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
 	cli.StringFlag{
 		Name: "certs", EnvVar: "CERTDIR", Value: "./certs/",
 		Usage: "Directory where HTTPS certificates are stored."},
 	cli.StringFlag{
-		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://wasabi.phtiv.com",
+		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://wasabee.phtiv.com",
 		Usage: "The path under which the application will be reachable from the internet."},
 	cli.StringFlag{
 		Name: "wordlist", EnvVar: "WORD_LIST", Value: "eff_large_wordlist.txt",
 		Usage: "Word list used for random slug generation."},
 	cli.StringFlag{
-		Name: "log", EnvVar: "LOGFILE", Value: "logs/wasabi.log",
+		Name: "log", EnvVar: "LOGFILE", Value: "logs/wasabee.log",
 		Usage: "output log file."},
 	cli.StringFlag{
 		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":443",
 		Usage: "HTTPS listen address."},
 	cli.StringFlag{
-		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "logs/wasabi-https.log",
+		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "logs/wasabee-https.log",
 		Usage: "HTTPS log file."},
 	cli.StringFlag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
@@ -90,7 +90,7 @@ func main() {
 		},
 	}
 	app.Copyright = "© Scot C. Bontrager"
-	app.HelpName = "wasabi"
+	app.HelpName = "wasabee"
 	app.Flags = flags
 	app.HideHelp = true
 	cli.AppHelpTemplate = strings.Replace(cli.AppHelpTemplate, "GLOBAL OPTIONS:", "OPTIONS:", 1)
@@ -111,53 +111,53 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool("debug") {
-		wasabi.SetLogLevel(logging.DEBUG)
+		wasabee.SetLogLevel(logging.DEBUG)
 	}
 	if c.String("log") != "" {
-		_ = wasabi.AddFileLog(c.String("log"), logging.INFO)
+		_ = wasabee.AddFileLog(c.String("log"), logging.INFO)
 	}
 
 	// Load words
-	err := wasabi.LoadWordsFile(c.String("wordlist"))
+	err := wasabee.LoadWordsFile(c.String("wordlist"))
 	if err != nil {
-		wasabi.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
+		wasabee.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
 	}
 
 	// load the UI templates
-	ts, err := wasabi.TemplateConfig(c.String("frontend-path"))
+	ts, err := wasabee.TemplateConfig(c.String("frontend-path"))
 	if err != nil {
-		wasabi.Log.Errorf("unable to load frontend templates from %s; shutting down", c.String("frontend-path"))
+		wasabee.Log.Errorf("unable to load frontend templates from %s; shutting down", c.String("frontend-path"))
 		panic(err)
 	}
 
 	// Connect to database
-	err = wasabi.Connect(c.String("database"))
+	err = wasabee.Connect(c.String("database"))
 	if err != nil {
-		wasabi.Log.Errorf("Error connecting to database: %s", err)
+		wasabee.Log.Errorf("Error connecting to database: %s", err)
 		panic(err)
 	}
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		wasabi.SetVEnlOne(c.String("venlonekey"))
+		wasabee.SetVEnlOne(c.String("venlonekey"))
 		if c.Bool("venlonepoller") {
-			go wasabi.StatusServerPoller()
+			go wasabee.StatusServerPoller()
 		}
 	}
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		wasabi.SetEnlRocks(c.String("enlrockskey"))
+		wasabee.SetEnlRocks(c.String("enlrockskey"))
 	}
 
 	// setup enl.io
 	if c.String("enliokey") != "" {
-		wasabi.SetENLIO(c.String("enliokey"))
+		wasabee.SetENLIO(c.String("enliokey"))
 	}
 
 	// Serve HTTPS
 	if c.String("https") != "none" {
-		go wasabihttps.StartHTTP(wasabihttps.Configuration{
+		go wasabeehttps.StartHTTP(wasabeehttps.Configuration{
 			ListenHTTPS:      c.String("https"),
 			FrontendPath:     c.String("frontend-path"),
 			Root:             c.String("root"),
@@ -172,14 +172,14 @@ func run(c *cli.Context) error {
 
 	riscPath := path.Join(c.String("certs"), "risc.json")
 	if _, err := os.Stat(riscPath); err != nil {
-		wasabi.Log.Noticef("%s does not exist, not enabling RISC", riscPath)
+		wasabee.Log.Noticef("%s does not exist, not enabling RISC", riscPath)
 	} else {
 		go risc.RISC(riscPath)
 	}
 
 	// Serve Telegram
 	if c.String("tgkey") != "" {
-		go wasabitelegram.WASABIBot(wasabitelegram.TGConfiguration{
+		go wasabeetelegram.WASABIBot(wasabeetelegram.TGConfiguration{
 			APIKey:      c.String("tgkey"),
 			HookPath:    "/tg",
 			TemplateSet: ts,
@@ -188,7 +188,7 @@ func run(c *cli.Context) error {
 
 	// Serve Groupme
 	if c.String("gmbotkey") != "" {
-		go wasabigm.GMbot(wasabigm.GMConfiguration{
+		go wasabeegm.GMbot(wasabeegm.GMConfiguration{
 			AccessToken: c.String("gmbotkey"),
 			TemplateSet: ts,
 		})
@@ -201,18 +201,18 @@ func run(c *cli.Context) error {
 	// loop until signal sent
 	sig := <-sigch
 
-	wasabi.Log.Info("Shutdown Requested: ", sig)
+	wasabee.Log.Info("Shutdown Requested: ", sig)
 	if _, err := os.Stat(riscPath); err == nil {
 		risc.DisableWebhook()
 	}
-	if r, _ := wasabi.TGRunning(); r {
-		wasabitelegram.Shutdown()
+	if r, _ := wasabee.TGRunning(); r {
+		wasabeetelegram.Shutdown()
 	}
 	if c.String("https") != "none" {
-		_ = wasabihttps.Shutdown()
+		_ = wasabeehttps.Shutdown()
 	}
 
 	// close database connection
-	wasabi.Disconnect()
+	wasabee.Disconnect()
 	return nil
 }

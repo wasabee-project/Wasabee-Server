@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
@@ -57,7 +57,7 @@ const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configu
 func RISC(configfile string) {
 	// load config from google
 	if err := googleRiscDiscovery(); err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return
 	}
 
@@ -65,13 +65,13 @@ func RISC(configfile string) {
 	// #nosec
 	data, err := ioutil.ReadFile(configfile)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return
 	}
 	var sc serviceCreds
 	err = json.Unmarshal(data, &sc)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return
 	}
 	config.clientemail = sc.ClientEmail
@@ -80,7 +80,7 @@ func RISC(configfile string) {
 	// make a channel to read for events
 	riscchan = make(chan event, 1)
 
-	risc := wasabi.Subrouter(riscHook)
+	risc := wasabee.Subrouter(riscHook)
 	risc.HandleFunc("", Webhook).Methods("POST")
 	risc.HandleFunc("", WebhookStatus).Methods("GET")
 
@@ -89,32 +89,32 @@ func RISC(configfile string) {
 
 	// this loops on the channel messsages
 	for e := range riscchan {
-		gid := wasabi.GoogleID(e.Subject)
+		gid := wasabee.GoogleID(e.Subject)
 		switch e.Type {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
-			wasabi.Log.Criticalf("locking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Criticalf("locking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			_ = gid.Lock(e.Reason)
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
-			wasabi.Log.Criticalf("unlocking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Criticalf("unlocking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			_ = gid.Unlock(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
-			wasabi.Log.Criticalf("deleting %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Criticalf("deleting %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			gid.Logout(e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
-			wasabi.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
-			wasabi.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
-			wasabi.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// no need to do anything
 		default:
-			wasabi.Log.Noticef("Unknown event %s (%s)", e.Type, e.Reason)
+			wasabee.Log.Noticef("Unknown event %s (%s)", e.Type, e.Reason)
 		}
 	}
 }
@@ -123,7 +123,7 @@ func RISC(configfile string) {
 func validateToken(rawjwt []byte) error {
 	token, err := jwt.ParseBytes(rawjwt)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 
@@ -133,37 +133,37 @@ func validateToken(rawjwt []byte) error {
 		key := config.keys.LookupKeyID(kid.(string))
 		if len(key) == 0 {
 			err = fmt.Errorf("no matching key")
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			return err
 		}
 		if len(key) != 1 {
 			// pick the first that is RS256?
 			err = fmt.Errorf("multiple matching keys found, using the first")
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 		}
 		r, err := key[0].Materialize()
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			return err
 		}
 
 		// this checks iss, iat, aud and others
 		err = token.Verify(jwt.WithAudience(config.clientemail), jwt.WithAcceptableSkew(60), jwt.WithIssuer(config.Issuer), jwt.WithVerify(jwa.RS256, r))
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			return err
 		}
 		// this checks the signature
 		_, err = jws.Verify(rawjwt, jwa.RS256, r)
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			return err
 		}
 	}
 
 	tmp, ok := token.Get("events")
 	if !ok {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 
@@ -177,7 +177,7 @@ func validateToken(rawjwt []byte) error {
 			e.Reason = "ping requsted"
 			riscchan <- e
 		} else if keyOK {
-			wasabi.Log.Criticalf("verified RISC event: (%s) %s", k, v)
+			wasabee.Log.Criticalf("verified RISC event: (%s) %s", k, v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
@@ -187,7 +187,7 @@ func validateToken(rawjwt []byte) error {
 			e.Subject = y["sub"].(string)
 			riscchan <- e
 		} else {
-			wasabi.Log.Noticef("non-ping, non-verified request: (%s) %s", k, v)
+			wasabee.Log.Noticef("non-ping, non-verified request: (%s) %s", k, v)
 		}
 	}
 	return nil
@@ -196,7 +196,7 @@ func validateToken(rawjwt []byte) error {
 func googleRiscDiscovery() error {
 	req, err := http.NewRequest("GET", googleDiscoveryURL, nil)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	client := &http.Client{
@@ -204,18 +204,18 @@ func googleRiscDiscovery() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	err = json.Unmarshal(body, &config)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	return nil
@@ -225,7 +225,7 @@ func googleRiscDiscovery() error {
 func googleLoadKeys() error {
 	keys, err := jwk.Fetch(config.JWKURI)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	config.keys = keys

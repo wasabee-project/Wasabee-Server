@@ -1,4 +1,4 @@
-package wasabi
+package wasabee
 
 var gmrunning bool
 

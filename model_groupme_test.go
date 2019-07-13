@@ -1,14 +1,14 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"testing"
 )
 
 // nothing to do here, just run the code
 func TestGM(t *testing.T) {
-	wasabi.GMSetBot()
-	b, err := wasabi.GMRunning()
+	wasabee.GMSetBot()
+	b, err := wasabee.GMRunning()
 	if err != nil {
 		t.Errorf(err.Error())
 	}

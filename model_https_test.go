@@ -1,22 +1,22 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"testing"
 )
 
 // nothing to do here, just run the code
 func TestHttps(t *testing.T) {
-	wasabi.SetWebroot("testing")
-	b, err := wasabi.GetWebroot()
+	wasabee.SetWebroot("testing")
+	b, err := wasabee.GetWebroot()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 	if b != "testing" {
 		t.Errorf("set/get webroot mismatch")
 	}
-	wasabi.SetWebAPIPath("testing")
-	b, err = wasabi.GetWebAPIPath()
+	wasabee.SetWebAPIPath("testing")
+	b, err = wasabee.GetWebAPIPath()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -26,16 +26,16 @@ func TestHttps(t *testing.T) {
 }
 
 func TestRouter(t *testing.T) {
-	r := wasabi.NewRouter()
-	s := wasabi.NewRouter()
+	r := wasabee.NewRouter()
+	s := wasabee.NewRouter()
 
 	// there should only ever be one top router
 	if r != s {
 		t.Errorf("multiple top routers created")
 	}
 
-	x := wasabi.Subrouter("/X")
-	y := wasabi.Subrouter("/Y")
+	x := wasabee.Subrouter("/X")
+	y := wasabee.Subrouter("/Y")
 	if x == y {
 		t.Errorf("subrouters stepped on each other")
 	}

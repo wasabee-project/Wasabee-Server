@@ -1,4 +1,4 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"encoding/json"
@@ -7,21 +7,21 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var ud wasabi.AgentData
+	var ud wasabee.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -35,7 +35,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 
 	// templateExecute runs the "me" template and outputs directly to the res
 	if err = templateExecute(res, req, "me", ud); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -43,20 +43,20 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 func meSettingsRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var ud wasabi.AgentData
+	var ud wasabee.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err = templateExecute(res, req, "settings", ud); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -64,15 +64,15 @@ func meSettingsRoute(res http.ResponseWriter, req *http.Request) {
 func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// XXX this gets too much -- but works for now; if it is slow, then use the deeper calls
-	var ud wasabi.AgentData
+	var ud wasabee.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -85,7 +85,7 @@ func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = templateExecute(res, req, "operations", ud.Ops); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -93,17 +93,17 @@ func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 	state := vars["state"]
 
 	if err = gid.SetTeamState(team, state); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -119,16 +119,16 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 
 	if err = team.RemoveAgent(gid); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -144,7 +144,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -154,7 +154,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 
 	// do the work
 	if err = gid.SetIngressName(name); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -170,7 +170,7 @@ func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
 func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -180,7 +180,7 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 
 	// do the work
 	if err = gid.SetOwnTracksPW(otpw); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -196,13 +196,13 @@ func meSetOwnTracksPWRoute(res http.ResponseWriter, req *http.Request) {
 func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err = gid.ResetLocKey(); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -218,7 +218,7 @@ func meSetLocKeyRoute(res http.ResponseWriter, req *http.Request) {
 func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -229,7 +229,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 
 	// do the work
 	if err = gid.AgentLocation(lat, lon, "https"); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -245,15 +245,15 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// do the work
-	wasabi.Log.Noticef("Agent requested delete: %s", gid.String())
+	wasabee.Log.Noticef("Agent requested delete: %s", gid.String())
 	if err = gid.Delete(); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -265,7 +265,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -284,7 +284,7 @@ func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -1,7 +1,7 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,12 +14,12 @@ func TestBackground(t *testing.T) {
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
 
 	// start reaper thread
-	wasabi.Log.Info("Starting background thread")
-	go wasabi.BackgroundTasks(sigch)
+	wasabee.Log.Info("Starting background thread")
+	go wasabee.BackgroundTasks(sigch)
 
 	// sleep a bit, then signal to stop
-	wasabi.Log.Info("Sleeping 5 seconds")
+	wasabee.Log.Info("Sleeping 5 seconds")
 	time.Sleep(5 * time.Second)
-	wasabi.Log.Info("Sending interrupt signal")
+	wasabee.Log.Info("Sending interrupt signal")
 	sigch <- syscall.SIGINT
 }

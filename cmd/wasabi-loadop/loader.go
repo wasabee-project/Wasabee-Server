@@ -3,31 +3,31 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 )
 
 func importop(gid, opfile string) error {
-	g := wasabi.GoogleID(gid)
+	g := wasabee.GoogleID(gid)
 
-	wasabi.Log.Debugf("loading: %s", opfile)
+	wasabee.Log.Debugf("loading: %s", opfile)
 	if opfile == "" {
 		err := fmt.Errorf("no op file specified")
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 
 	// #nosec
 	content, err := ioutil.ReadFile(opfile)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 
 	j := json.RawMessage(content)
-	err = wasabi.PDrawInsert(j, g)
+	err = wasabee.PDrawInsert(j, g)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	return nil

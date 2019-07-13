@@ -1,4 +1,4 @@
-package wasabi
+package wasabee
 
 import (
 	"database/sql"
@@ -338,6 +338,7 @@ func (gid GoogleID) OwnTracksSetWaypoint(wp json.RawMessage) (json.RawMessage, e
 }
 */
 
+/*
 // ownTracksWriteWaypoint is called from SetWaypoint and SetWaypointList and writes the data to the database.
 func ownTracksWriteWaypoint(w waypoint, team string) error {
 	_, err := db.Exec("INSERT INTO waypoints (Id, teamID, loc, radius, type, name, expiration) VALUES (?,?,POINT(?, ?),?,?,?,FROM_UNIXTIME(? + (86400 * 14))) "+
@@ -350,7 +351,6 @@ func ownTracksWriteWaypoint(w waypoint, team string) error {
 	return err
 }
 
-/*
 // OwnTracksSetWaypointList is called when a waypoint list is received from the OwnTracks application
 func (gid GoogleID) OwnTracksSetWaypointList(wp json.RawMessage) (json.RawMessage, error) {
 	// Log.Debug(string(wp))

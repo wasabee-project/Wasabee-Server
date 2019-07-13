@@ -1,9 +1,9 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 	"html"
 	"net/http"
@@ -11,21 +11,21 @@ import (
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
-	var teamList wasabi.TeamData
+	var teamList wasabee.TeamData
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 
 	safe, err := gid.AgentInTeam(team, false)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -35,7 +35,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.FetchTeam(&teamList, false)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -45,7 +45,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		res.Header().Add("Content-Type", jsonType)
 		data, err := json.MarshalIndent(teamList, "", "\t")
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -54,7 +54,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = templateExecute(res, req, "team", teamList); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -62,7 +62,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -72,7 +72,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	_, err = gid.NewTeam(name)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -82,16 +82,16 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -100,7 +100,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err = team.Delete(); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -110,16 +110,16 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -134,14 +134,14 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	togid, err := wasabi.ToGid(to)
+	togid, err := wasabee.ToGid(to)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if err = team.Chown(togid); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -151,16 +151,16 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -168,15 +168,15 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var teamList wasabi.TeamData
+	var teamList wasabee.TeamData
 	if err = team.FetchTeam(&teamList, true); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err = templateExecute(res, req, "teamedit", teamList); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -184,18 +184,18 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 	key := vars["key"]
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -205,14 +205,14 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if key != "" { // prevents a bit of log spam
-		togid, err := wasabi.ToGid(key)
+		togid, err := wasabee.ToGid(key)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if err = team.AddAgent(togid); err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -224,22 +224,22 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
-	togid, err := wasabi.ToGid(vars["key"])
+	team := wasabee.TeamID(vars["team"])
+	togid, err := wasabee.ToGid(vars["key"])
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -248,7 +248,7 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err = team.RemoveAgent(togid); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -260,16 +260,16 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	team := wasabi.TeamID(vars["team"])
+	team := wasabee.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -285,7 +285,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.SendAnnounce(gid, message)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

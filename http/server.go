@@ -1,4 +1,4 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/sessions"
 	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
@@ -73,14 +73,14 @@ func initializeConfig(initialConfig Configuration) {
 	config.domain = strings.Split(rootParts[len(rootParts)-1], "/")[0]
 
 	// used for templates
-	wasabi.SetWebroot(config.Root)
-	wasabi.SetWebAPIPath(apipath)
+	wasabee.SetWebroot(config.Root)
+	wasabee.SetWebAPIPath(apipath)
 
 	if config.GoogleClientID == "" {
-		wasabi.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
+		wasabee.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
 	}
 	if config.GoogleSecret == "" {
-		wasabi.Log.Error("GOOGLE_SECRET unset: logins will fail")
+		wasabee.Log.Error("GOOGLE_SECRET unset: logins will fail")
 	}
 
 	config.googleOauthConfig = &oauth2.Config{
@@ -90,41 +90,41 @@ func initializeConfig(initialConfig Configuration) {
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
-	wasabi.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
-	wasabi.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
-	config.oauthStateString = wasabi.GenerateName()
-	wasabi.Log.Debugf("oauthStateString: " + config.oauthStateString)
+	wasabee.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
+	wasabee.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
+	config.oauthStateString = wasabee.GenerateName()
+	wasabee.Log.Debugf("oauthStateString: " + config.oauthStateString)
 
 	if config.CookieSessionKey == "" {
-		wasabi.Log.Error("SESSION_KEY unset: logins will fail")
+		wasabee.Log.Error("SESSION_KEY unset: logins will fail")
 	} else {
 		key := config.CookieSessionKey
-		wasabi.Log.Debugf("Session Key: %s", key)
+		wasabee.Log.Debugf("Session Key: %s", key)
 		config.store = sessions.NewCookieStore([]byte(key))
 		config.sessionName = "WASABI"
 	}
 
 	// certificate directory cleanup
 	if config.CertDir == "" {
-		wasabi.Log.Error("CERTDIR unset: defaulting to 'certs'")
+		wasabee.Log.Error("CERTDIR unset: defaulting to 'certs'")
 		config.CertDir = "certs"
 	}
 	certdir, err := filepath.Abs(config.CertDir)
 	config.CertDir = certdir
 	if err != nil {
-		wasabi.Log.Critical("certificate path could not be resolved.")
+		wasabee.Log.Critical("certificate path could not be resolved.")
 		panic(err)
 	}
-	wasabi.Log.Debugf("Certificate Directory: " + config.CertDir)
+	wasabee.Log.Debugf("Certificate Directory: " + config.CertDir)
 
 	if config.Logfile == "" {
-		config.Logfile = "wasabi-https.log"
+		config.Logfile = "wasabee-https.log"
 	}
-	wasabi.Log.Infof("https logfile: %s", config.Logfile)
+	wasabee.Log.Infof("https logfile: %s", config.Logfile)
 	// #nosec
 	config.logfileHandle, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		wasabi.Log.Fatal(err)
+		wasabee.Log.Fatal(err)
 	}
 	config.unrolled = logger.New(logger.Options{
 		Prefix: "WASABI",
@@ -154,7 +154,7 @@ func templateExecute(res http.ResponseWriter, req *http.Request, name string, da
 	}
 
 	if err := config.TemplateSet[lang].ExecuteTemplate(res, name, data); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		return err
 	}
 	return nil
@@ -189,18 +189,18 @@ func StartHTTP(initialConfig Configuration) {
 			},
 		},
 	}
-	wasabi.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
+	wasabee.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
 	if err := config.srv.ListenAndServeTLS(config.CertDir+"/WASABI.fullchain.pem", config.CertDir+"/WASABI.key"); err != nil {
-		wasabi.Log.Errorf("HTTPS server error: %s", err)
+		wasabee.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
 	}
 }
 
 // Shutdown forces a graceful shutdown of the https server
 func Shutdown() error {
-	wasabi.Log.Info("Shutting down HTTPS server")
+	wasabee.Log.Info("Shutting down HTTPS server")
 	if err := config.srv.Shutdown(context.Background()); err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	return nil
@@ -233,7 +233,7 @@ func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ses, err := config.store.Get(req, config.sessionName)
 		if err != nil {
-			wasabi.Log.Debug(err)
+			wasabee.Log.Debug(err)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
@@ -256,16 +256,16 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		gid := wasabi.GoogleID(id.(string))
+		gid := wasabee.GoogleID(id.(string))
 		if gid.CheckLogout() {
-			wasabi.Log.Notice("requested logout")
+			wasabee.Log.Notice("requested logout")
 			http.Redirect(res, req, "/", http.StatusFound)
 			return
 		}
 
 		in, ok := ses.Values["nonce"]
 		if !ok || in == nil {
-			wasabi.Log.Error("gid set, but nonce not")
+			wasabee.Log.Error("gid set, but nonce not")
 			http.Redirect(res, req, redirectURL, http.StatusFound)
 			return
 		}
@@ -274,11 +274,11 @@ func authMW(next http.Handler) http.Handler {
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				// wasabi.Log.Debug("Session timed out for", gid.String())
+				// wasabee.Log.Debug("Session timed out for", gid.String())
 				ses.Values["nonce"] = "unset"
 				_ = ses.Save(req, res)
 			} else {
-				// wasabi.Log.Debug("Updating to new nonce")
+				// wasabee.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
 				_ = ses.Save(req, res)
 			}
@@ -299,7 +299,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
-		wasabi.Log.Debug(err)
+		wasabee.Log.Debug(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -318,7 +318,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		dump, _ := httputil.DumpRequest(req, false)
-		wasabi.Log.Debug(string(dump))
+		wasabee.Log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
 } */

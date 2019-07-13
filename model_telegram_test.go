@@ -1,7 +1,7 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"testing"
 )
 
@@ -22,7 +22,7 @@ func TestTG(t *testing.T) {
 	}
 	_ = tgID.String()
 
-	_, err = wasabi.TGGetBotID()
+	_, err = wasabee.TGGetBotID()
 	if err != nil {
 		t.Errorf(err.Error())
 	}

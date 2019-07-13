@@ -1,4 +1,4 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"io/ioutil"
@@ -18,7 +18,7 @@ import (
 
 func setupRouter() *mux.Router {
 	// Main Router
-	router := wasabi.NewRouter()
+	router := wasabee.NewRouter()
 
 	// apply to all
 	router.Use(headersMW)
@@ -31,7 +31,7 @@ func setupRouter() *mux.Router {
 
 	// establish subrouters -- these each have different middleware requirements
 	// if we want to disable logging on /simple, these need to be on a subrouter
-	notauthed := wasabi.Subrouter("")
+	notauthed := wasabee.Subrouter("")
 	// Google Oauth2 stuff (constants defined in server.go)
 	notauthed.HandleFunc(login, googleRoute).Methods("GET")
 	notauthed.HandleFunc(callback, callbackRoute).Methods("GET")
@@ -48,7 +48,7 @@ func setupRouter() *mux.Router {
 	notauthed.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
 	// /api/v1/... route
-	api := wasabi.Subrouter(apipath)
+	api := wasabee.Subrouter(apipath)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	setupAuthRoutes(api)
 	api.Use(authMW)
@@ -56,7 +56,7 @@ func setupRouter() *mux.Router {
 	api.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 
 	// /me route
-	me := wasabi.Subrouter(me)
+	me := wasabee.Subrouter(me)
 	me.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	me.HandleFunc("", meShowRoute).Methods("GET")
 	me.Use(authMW)
@@ -64,28 +64,28 @@ func setupRouter() *mux.Router {
 	me.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
 	// /OwnTracks route
-	ot := wasabi.Subrouter("/OwnTracks")
+	ot := wasabee.Subrouter("/OwnTracks")
 	ot.HandleFunc("", ownTracksBasicRoute).Methods("POST")
 	// does own auth
 	// no need to log
 	ot.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 
 	// /rocks route
-	rocks := wasabi.Subrouter("/rocks")
+	rocks := wasabee.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	// internal API-key based auth
 	rocks.Use(config.unrolled.Handler)
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 
 	// /simple route
-	simple := wasabi.Subrouter("/simple")
+	simple := wasabee.Subrouter("/simple")
 	setupSimpleRoutes(simple)
 	// no auth
 	// no log
 	simple.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 
 	// /static files
-	static := wasabi.Subrouter("/static")
+	static := wasabee.Subrouter("/static")
 	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
 	// no auth
 	static.Use(config.unrolled.Handler)
@@ -152,7 +152,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
 	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")
-	r.HandleFunc("/me/ot", ownTracksWasabiRoute).Methods("POST")
+	r.HandleFunc("/me/ot", ownTracksWasabeeRoute).Methods("POST")
 
 	// other agents
 	// "profile" page, such as it is
@@ -203,7 +203,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	err := templateExecute(res, req, "index", nil)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -212,7 +212,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 func privacyRoute(res http.ResponseWriter, req *http.Request) {
 	err := templateExecute(res, req, "privacy", nil)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -220,9 +220,9 @@ func privacyRoute(res http.ResponseWriter, req *http.Request) {
 // this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
 func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	var err error
-	config.TemplateSet, err = wasabi.TemplateConfig(config.FrontendPath) // XXX KLUDGE FOR NOW -- this does not update the other protocols
+	config.TemplateSet, err = wasabee.TemplateConfig(config.FrontendPath) // XXX KLUDGE FOR NOW -- this does not update the other protocols
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -254,7 +254,7 @@ func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 // final step of the oauth cycle
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type googleData struct {
-		Gid   wasabi.GoogleID `json:"id"`
+		Gid   wasabee.GoogleID `json:"id"`
 		Name  string          `json:"name"`
 		Email string          `json:"email"`
 		Pic   string          `json:"picture"`
@@ -262,14 +262,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	content, tokenStr, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		return
 	}
-	// wasabi.Log.Debug(string(content))
+	// wasabee.Log.Debug(string(content))
 
 	var m googleData
 	if err = json.Unmarshal(content, &m); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -278,7 +278,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabi.Log.Notice("Cookie error: ", err)
+		wasabee.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:   "/",
@@ -306,14 +306,14 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = m.Gid.UpdatePicture(m.Pic)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -329,15 +329,15 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	_ = ses.Save(req, res)
 	iname, err := m.Gid.IngressName()
 	if err != nil {
-		wasabi.Log.Debug("no iname at end of login? %n", m.Gid)
+		wasabee.Log.Debug("no iname at end of login? %n", m.Gid)
 	}
-	wasabi.Log.Infof("%s login", iname)
+	wasabee.Log.Infof("%s login", iname)
 	http.Redirect(res, req, location, http.StatusFound)
 }
 
 // the secret value exchanged / verified each request
 // not really a nonce, but it started life as one
-func calculateNonce(gid wasabi.GoogleID) (string, string) {
+func calculateNonce(gid wasabee.GoogleID) (string, string) {
 	t := time.Now()
 	now := t.Round(time.Hour).String()
 	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
@@ -379,7 +379,7 @@ func getGoogleUserInfo(accessToken string) ([]byte, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return nil, err
 	}
 	client := &http.Client{
@@ -387,13 +387,13 @@ func getGoogleUserInfo(accessToken string) ([]byte, error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		return nil, err
 	}
 	return body, nil
@@ -401,7 +401,7 @@ func getGoogleUserInfo(accessToken string) ([]byte, error) {
 
 // read the gid from the session cookie and return it
 // this is the primary way to ensure a agent is authenticated
-func getAgentID(req *http.Request) (wasabi.GoogleID, error) {
+func getAgentID(req *http.Request) (wasabee.GoogleID, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
@@ -410,11 +410,11 @@ func getAgentID(req *http.Request) (wasabi.GoogleID, error) {
 	// XXX I think this is impossible to trigger now
 	if ses.Values["id"] == nil {
 		err := errors.New("getAgentID called for unauthenticated agent")
-		wasabi.Log.Critical(err)
+		wasabee.Log.Critical(err)
 		return "", err
 	}
 
-	var agentID = wasabi.GoogleID(ses.Values["id"].(string))
+	var agentID = wasabee.GoogleID(ses.Values["id"].(string))
 	return agentID, nil
 }
 
@@ -423,7 +423,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	// fetched from google
 	type googleData struct {
-		Gid   wasabi.GoogleID `json:"id"`
+		Gid   wasabee.GoogleID `json:"id"`
 		Name  string          `json:"name"`
 		Email string          `json:"email"`
 		Pic   string          `json:"picture"`
@@ -440,25 +440,25 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	if contentType != jsonTypeShort {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		return
 	}
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	jRaw := json.RawMessage(jBlob)
 	if err = json.Unmarshal(jRaw, &t); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -470,7 +470,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err = json.Unmarshal(contents, &m); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -479,7 +479,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabi.Log.Notice("Cookie error: ", err)
+		wasabee.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:   "/",
@@ -497,7 +497,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -512,14 +512,14 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = ses.Save(req, res)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	iname, err := m.Gid.IngressName()
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 	}
-	wasabi.Log.Infof("%s app login", iname)
+	wasabee.Log.Infof("%s app login", iname)
 	fmt.Fprintf(res, `{ "status": "ok"}`)
 }

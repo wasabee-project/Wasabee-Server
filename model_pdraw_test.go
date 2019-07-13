@@ -1,9 +1,9 @@
-package wasabi_test
+package wasabee_test
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"testing"
 )
@@ -16,12 +16,12 @@ func TestOperation(t *testing.T) {
 
 	j := json.RawMessage(content)
 
-	err = wasabi.PDrawInsert(j, gid)
+	err = wasabee.PDrawInsert(j, gid)
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	var op, in wasabi.Operation
+	var op, in wasabee.Operation
 
 	err = json.Unmarshal(j, &in)
 	if err != nil {

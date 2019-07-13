@@ -1,7 +1,7 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"testing"
 )
 
@@ -12,7 +12,7 @@ func TestQuery(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	fgid, err := wasabi.SearchAgentName("deviousness")
+	fgid, err := wasabee.SearchAgentName("deviousness")
 	if err != nil {
 		t.Errorf(err.Error())
 	}

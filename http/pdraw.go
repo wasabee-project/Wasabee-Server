@@ -1,4 +1,4 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 )
 
@@ -20,7 +20,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -34,29 +34,29 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
-		wasabi.Log.Notice("empty JSON")
+		wasabee.Log.Notice("empty JSON")
 		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
-	// wasabi.Log.Debugf("sent json: %s", string(jRaw))
-	if err = wasabi.PDrawInsert(jRaw, gid); err != nil {
-		wasabi.Log.Notice(err)
+	// wasabee.Log.Debugf("sent json: %s", string(jRaw))
+	if err = wasabee.PDrawInsert(jRaw, gid); err != nil {
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// the IITC plugin wants the full /me data on draw POST
-	var ad wasabi.AgentData
+	var ad wasabee.AgentData
 	if err = gid.GetAgentData(&ad); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -71,15 +71,15 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	var o wasabi.Operation
-	o.ID = wasabi.OperationID(id)
+	var o wasabee.Operation
+	o.ID = wasabee.OperationID(id)
 	if err = o.Populate(gid); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -90,12 +90,12 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		// XXX use http.ParseTime?
 		d, err := time.Parse(time.RFC1123, ims)
 		if err != nil {
-			wasabi.Log.Error(err)
+			wasabee.Log.Error(err)
 		} else {
-			wasabi.Log.Debug("if-modified-since: %s", d)
+			wasabee.Log.Debug("if-modified-since: %s", d)
 			m, err := time.Parse("2006-01-02 15:04:05", o.Modified)
 			if err != nil {
-				wasabi.Log.Error(err)
+				wasabee.Log.Error(err)
 			} else if d.Before(m) {
 				newer = true
 			}
@@ -104,7 +104,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	method := req.Header.Get("Method")
 	if newer && method == "HEAD" {
-		wasabi.Log.Debug("HEAD with 302")
+		wasabee.Log.Debug("HEAD with 302")
 		res.Header().Set("Content-Type", "")          // disable the default output
 		http.Redirect(res, req, "", http.StatusFound) // XXX redirect to nothing?
 		return
@@ -115,7 +115,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", jsonType)
 		s, err := json.MarshalIndent(o, "", "\t")
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -126,7 +126,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	// pretty output for everyone else
 	friendly, err := pDrawFriendlyNames(&o, gid)
 	if err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 
@@ -140,7 +140,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = templateExecute(res, req, template, friendly); err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -150,7 +150,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -158,22 +158,22 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
 	// only the ID needs to be set for this
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	// op.Delete checks ownership, do we need this check?
 	if op.ID.IsOwner(gid) {
 		err = fmt.Errorf("deleting operation %s", op.ID)
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		err := op.Delete(gid, false)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner can delete an operation")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -193,7 +193,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -207,22 +207,22 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
-		wasabi.Log.Notice("empty JSON")
+		wasabee.Log.Notice("empty JSON")
 		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	// wasabi.Log.Debug(string(jBlob))
-	if err = wasabi.PDrawUpdate(id, jRaw, gid); err != nil {
-		wasabi.Log.Notice(err)
+	// wasabee.Log.Debug(string(jBlob))
+	if err = wasabee.PDrawUpdate(id, jRaw, gid); err != nil {
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -237,25 +237,25 @@ func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
 		err = op.ID.Chown(gid, to)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner can set operation ownership ")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -266,29 +266,29 @@ func pDrawChgrpRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	vars := mux.Vars(req)
-	to := wasabi.TeamID(vars["team"])
+	to := wasabee.TeamID(vars["team"])
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
 		err = op.ID.Chgrp(gid, to)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner can set operation team")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -301,15 +301,15 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var o wasabi.Operation
-	o.ID = wasabi.OperationID(id)
+	var o wasabee.Operation
+	o.ID = wasabee.OperationID(id)
 	if err = o.Populate(gid); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -321,7 +321,7 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 		lon string
 	}
 
-	var portals = make(map[wasabi.PortalID]latlon)
+	var portals = make(map[wasabee.PortalID]latlon)
 
 	for _, p := range o.OpPortals {
 		var l latlon
@@ -344,19 +344,19 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 		url += y.lat + "," + y.lon
 	}
 
-	// wasabi.Log.Debugf("redirecting to :%s", url)
+	// wasabee.Log.Debugf("redirecting to :%s", url)
 	http.Redirect(res, req, url, http.StatusFound)
 }
 
 type pdrawFriendly struct {
-	ID       wasabi.OperationID
+	ID       wasabee.OperationID
 	Name     string
-	Gid      wasabi.GoogleID
+	Gid      wasabee.GoogleID
 	Agent    string
 	Color    string
 	Modified string
 	Comment  string
-	TeamID   wasabi.TeamID
+	TeamID   wasabee.TeamID
 	Team     string
 	Links    []friendlyLink
 	Markers  []friendlyMarker
@@ -365,30 +365,30 @@ type pdrawFriendly struct {
 }
 
 type friendlyLink struct {
-	ID           wasabi.LinkID
+	ID           wasabee.LinkID
 	From         string
-	FromID       wasabi.PortalID
+	FromID       wasabee.PortalID
 	To           string
-	ToID         wasabi.PortalID
+	ToID         wasabee.PortalID
 	Desc         string
 	AssignedTo   string
-	AssignedToID wasabi.GoogleID
+	AssignedToID wasabee.GoogleID
 	ThrowOrder   float64
 	Distance     float64
 }
 
 type friendlyMarker struct {
-	ID           wasabi.MarkerID
+	ID           wasabee.MarkerID
 	Portal       string
-	PortalID     wasabi.PortalID
-	Type         wasabi.MarkerType
+	PortalID     wasabee.PortalID
+	Type         wasabee.MarkerType
 	Comment      string
 	AssignedTo   string
-	AssignedToID wasabi.GoogleID
+	AssignedToID wasabee.GoogleID
 }
 
 type friendlyKeys struct {
-	ID         wasabi.PortalID
+	ID         wasabee.PortalID
 	Portal     string
 	Required   int32
 	Onhand     int32
@@ -397,22 +397,22 @@ type friendlyKeys struct {
 }
 
 type friendlyKeyOnHand struct {
-	ID     wasabi.PortalID
-	Gid    wasabi.GoogleID
+	ID     wasabee.PortalID
+	Gid    wasabee.GoogleID
 	Agent  string
 	Onhand int32
 }
 
 type capsuleEntry struct {
-	Gid      wasabi.GoogleID
+	Gid      wasabee.GoogleID
 	Agent    string
-	ID       wasabi.PortalID
+	ID       wasabee.PortalID
 	Portal   string
 	Required int32
 }
 
 // takes a populated op and returns a friendly named version
-func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendly, error) {
+func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFriendly, error) {
 	var err error
 	var friendly pdrawFriendly
 	friendly.ID = op.ID
@@ -432,7 +432,7 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 		return friendly, err
 	}
 
-	var portals = make(map[wasabi.PortalID]wasabi.Portal)
+	var portals = make(map[wasabee.PortalID]wasabee.Portal)
 
 	for _, p := range op.OpPortals {
 		portals[p.ID] = p
@@ -469,7 +469,7 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 		return friendly.Markers[i].Portal < friendly.Markers[j].Portal
 	})
 
-	var keys = make(map[wasabi.PortalID]friendlyKeys)
+	var keys = make(map[wasabee.PortalID]friendlyKeys)
 	for _, l := range op.Links {
 		_, ok := keys[l.To]
 		if !ok {
@@ -510,7 +510,7 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 		return friendly.Keys[i].Portal < friendly.Keys[j].Portal
 	})
 
-	var capsules = make(map[wasabi.GoogleID]map[wasabi.PortalID]capsuleEntry)
+	var capsules = make(map[wasabee.GoogleID]map[wasabee.PortalID]capsuleEntry)
 	for _, l := range op.Links {
 		if l.AssignedTo != "" {
 			if _, ok := capsules[l.AssignedTo]; ok {
@@ -524,7 +524,7 @@ func pDrawFriendlyNames(op *wasabi.Operation, gid wasabi.GoogleID) (pdrawFriendl
 					}
 				}
 			} else {
-				capsules[l.AssignedTo] = make(map[wasabi.PortalID]capsuleEntry)
+				capsules[l.AssignedTo] = make(map[wasabee.PortalID]capsuleEntry)
 				capsules[l.AssignedTo][l.To] = capsuleEntry{
 					Required: 1,
 				}
@@ -584,28 +584,28 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		link := wasabi.LinkID(vars["link"])
-		agent := wasabi.GoogleID(req.FormValue("agent"))
+		link := wasabee.LinkID(vars["link"])
+		agent := wasabee.GoogleID(req.FormValue("agent"))
 		err := op.ID.AssignLink(link, agent)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner can assign agents")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -617,28 +617,28 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		link := wasabi.LinkID(vars["link"])
+		link := wasabee.LinkID(vars["link"])
 		desc := req.FormValue("desc")
 		err := op.ID.LinkDescription(link, desc)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner can set link descriptions")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -650,28 +650,28 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		marker := wasabi.MarkerID(vars["marker"])
-		agent := wasabi.GoogleID(req.FormValue("agent"))
+		marker := wasabee.MarkerID(vars["marker"])
+		agent := wasabee.GoogleID(req.FormValue("agent"))
 		err := op.ID.AssignMarker(marker, agent)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner can assign targets")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -683,28 +683,28 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		marker := wasabi.MarkerID(vars["marker"])
+		marker := wasabee.MarkerID(vars["marker"])
 		comment := req.FormValue("comment")
 		err := op.ID.MarkerComment(marker, comment)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner set marker comments")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -716,28 +716,28 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		portalID := wasabi.PortalID(vars["portal"])
+		portalID := wasabee.PortalID(vars["portal"])
 		comment := req.FormValue("comment")
 		err := op.ID.PortalComment(portalID, comment)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner set portal comments")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -749,28 +749,28 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabi.Operation
-	op.ID = wasabi.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 
 	if op.ID.IsOwner(gid) {
-		portalID := wasabi.PortalID(vars["portal"])
+		portalID := wasabee.PortalID(vars["portal"])
 		hardness := req.FormValue("hardness")
 		err := op.ID.PortalHardness(portalID, hardness)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner set portal hardness")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -779,8 +779,8 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 
 func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
 	var friendlyPortal struct {
-		ID       wasabi.PortalID
-		OpID     wasabi.OperationID
+		ID       wasabee.PortalID
+		OpID     wasabee.OperationID
 		OpOwner  bool
 		Name     string
 		Lat      string
@@ -791,14 +791,14 @@ func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
-	portalID := wasabi.PortalID(vars["portal"])
+	opID := wasabee.OperationID(vars["document"])
+	portalID := wasabee.PortalID(vars["portal"])
 	portal, err := opID.PortalDetails(portalID, gid)
 	friendlyPortal.ID = portal.ID
 	friendlyPortal.OpID = opID
@@ -810,13 +810,13 @@ func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
 	friendlyPortal.Hardness = portal.Hardness
 
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err = templateExecute(res, req, "portaldata", friendlyPortal); err != nil {
-		wasabi.Log.Error(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -825,24 +825,24 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
+	opID := wasabee.OperationID(vars["document"])
 	if opID.IsOwner(gid) {
 		order := req.FormValue("order")
 		err = opID.PortalOrder(order, gid)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner set portal order")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -854,24 +854,24 @@ func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
+	opID := wasabee.OperationID(vars["document"])
 	if opID.IsOwner(gid) {
 		info := req.FormValue("info")
 		err = opID.SetInfo(info, gid)
 		if err != nil {
-			wasabi.Log.Notice(err)
+			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
 		err = fmt.Errorf("only the owner set operation info")
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
@@ -883,14 +883,14 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
-	portalID := wasabi.PortalID(vars["portal"])
+	opID := wasabee.OperationID(vars["document"])
+	portalID := wasabee.PortalID(vars["portal"])
 	onhand, err := strconv.Atoi(req.FormValue("onhand"))
 	if err != nil { // user supplied non-numeric value
 		onhand = 0
@@ -900,7 +900,7 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = opID.KeyOnHand(gid, portalID, int32(onhand))
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -912,17 +912,17 @@ func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
-	markerID := wasabi.MarkerID(vars["marker"])
+	opID := wasabee.OperationID(vars["document"])
+	markerID := wasabee.MarkerID(vars["marker"])
 	err = markerID.MarkComplete(opID, gid, true)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -934,17 +934,17 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
-	markerID := wasabi.MarkerID(vars["marker"])
+	opID := wasabee.OperationID(vars["document"])
+	markerID := wasabee.MarkerID(vars["marker"])
 	err = markerID.MarkComplete(opID, gid, false)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -956,17 +956,17 @@ func pDrawMarkerFinalizeRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
-	markerID := wasabi.MarkerID(vars["marker"])
+	opID := wasabee.OperationID(vars["document"])
+	markerID := wasabee.MarkerID(vars["marker"])
 	err = markerID.Finalize(opID, gid)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -977,17 +977,17 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
-	markerID := wasabi.MarkerID(vars["marker"])
+	opID := wasabee.OperationID(vars["document"])
+	markerID := wasabee.MarkerID(vars["marker"])
 	err = markerID.Acknowledge(opID, gid)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -998,16 +998,16 @@ func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	_, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
+	opID := wasabee.OperationID(vars["document"])
 	s, err := opID.Stat()
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -1019,18 +1019,18 @@ func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
 func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabi.OperationID(vars["document"])
+	opID := wasabee.OperationID(vars["document"])
 
-	var a wasabi.Assignments
+	var a wasabee.Assignments
 	err = gid.Assignments(opID, &a)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -1058,7 +1058,7 @@ func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 			lls = fmt.Sprintf("%s&destination=%s,%s", lls, a.Portals[l.From].Lat, a.Portals[l.From].Lon)
 		}
 	}
-	// wasabi.Log.Debug(lls)
+	// wasabee.Log.Debug(lls)
 
 	http.Redirect(res, req, lls, http.StatusFound)
 }

@@ -1,7 +1,7 @@
-package wasabi_test
+package wasabee_test
 
 import (
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"testing"
 )
 
@@ -20,7 +20,7 @@ func TestInitAgent(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	var ad wasabi.AgentData
+	var ad wasabee.AgentData
 	err = gid.GetAgentData(&ad)
 	if err != nil {
 		t.Errorf(err.Error())
@@ -40,7 +40,7 @@ func TestSetAgentName(t *testing.T) {
 	}
 
 	// since populated from V/Rocks, rename is rejected
-	g2, err := wasabi.SearchAgentName(name)
+	g2, err := wasabee.SearchAgentName(name)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -63,7 +63,7 @@ func TestAgentLocation(t *testing.T) {
 
 func TestAgentDelete(t *testing.T) {
 	// special case google ID that is not really used
-	ngid := wasabi.GoogleID("104743827901423568948")
+	ngid := wasabee.GoogleID("104743827901423568948")
 
 	_, err := ngid.InitAgent()
 	if err != nil {

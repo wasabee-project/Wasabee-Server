@@ -1,9 +1,9 @@
-package wasabihttps
+package wasabeehttps
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudkucooland/WASABI"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -11,15 +11,15 @@ import (
 func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var data wasabi.TeamData
+	var data wasabee.TeamData
 	err = gid.WaypointsNear(50, 10, &data)
 	if err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -36,7 +36,7 @@ func waypointsNearMeRoute(res http.ResponseWriter, req *http.Request) {
 
 	// templateExecute outputs to res
 	if err := templateExecute(res, req, "Waypoints", data); err != nil {
-		wasabi.Log.Notice(err)
+		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
