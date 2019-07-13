@@ -933,6 +933,18 @@ func (m MarkerID) MarkComplete(opID OperationID, gid GoogleID, done bool) error 
 	return nil
 }
 
+// Finalize is when an operator verifies that a marker has been taken care of
+func (m MarkerID) Finalize(opID OperationID, gid GoogleID) error {
+	// XXX NOT DONE
+	return nil
+}
+
+// Agent acknowledges that a marker has been assigned
+func (m MarkerID) Acknowledge(opID OperationID, gid GoogleID) error {
+	// XXX DOES NOTHING YET
+	return nil
+}
+
 // Touch updates the modified timestamp on an operation
 func (opID OperationID) Touch() error {
 	_, err := db.Exec("UPDATE operation SET modified = NOW() WHERE ID = ?", opID)
