@@ -26,7 +26,7 @@ type MarkerID string
 // MarkerType will be an enum once we figure out the full list
 type MarkerType string
 
-// Operation is defined by the PhtivDraw IITC plugin.
+// Operation is defined by the Wasabee IITC plugin.
 // It is the top level item in the JSON file.
 type Operation struct {
 	ID        OperationID `json:"ID"`
@@ -52,7 +52,7 @@ type OpStat struct {
 	Modified string      `json:"modified"`
 }
 
-// Portal is defined by the PhtivDraw IITC plugin.
+// Portal is defined by the Wasabee IITC plugin.
 type Portal struct {
 	ID       PortalID `json:"id"`
 	Name     string   `json:"name"`
@@ -62,7 +62,7 @@ type Portal struct {
 	Hardness string   `json:"hardness"` // string for now, enum in the future
 }
 
-// Link is defined by the PhtivDraw IITC plugin.
+// Link is defined by the Wasabee IITC plugin.
 type Link struct {
 	ID         LinkID   `json:"ID"`
 	From       PortalID `json:"fromPortalId"`
@@ -72,7 +72,7 @@ type Link struct {
 	ThrowOrder float64  `json:"throwOrderPos"` // currently not in database, need schema change
 }
 
-// Marker is defined by the PhtivDraw IITC plugin.
+// Marker is defined by the Wasabee IITC plugin.
 type Marker struct {
 	ID         MarkerID   `json:"ID"`
 	PortalID   PortalID   `json:"portalId"`
@@ -136,28 +136,49 @@ func pDrawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 		return err
 	}
 
+	portalMap := make(map[PortalID]Portal)
+	for _, p := range o.OpPortals {
+		portalMap[p.ID] = p
+		if err = o.insertPortal(p); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
 	for _, m := range o.Markers {
+		_, ok := portalMap[m.PortalID]
+		if !ok {
+			Log.Debugf("portalID %s missing from portal list for op %s", m.PortalID, o.ID)
+			continue
+		}
 		if err = o.insertMarker(m); err != nil {
 			Log.Error(err)
 			continue
 		}
 	}
 	for _, l := range o.Links {
+		_, ok := portalMap[l.From]
+		if !ok {
+			Log.Debugf("source portalID %s missing from portal list for op %s", l.From, o.ID)
+			continue
+		}
+		_, ok = portalMap[l.To]
+		if !ok {
+			Log.Debugf("destination portalID %s missing from portal list for op %s", l.To, o.ID)
+			continue
+		}
 		if err = o.insertLink(l); err != nil {
 			Log.Error(err)
 			continue
 		}
 	}
 	for _, a := range o.Anchors {
-		if err = o.insertAnchor(a); err != nil {
-			Log.Error(err)
+		_, ok := portalMap[a]
+		if !ok {
+			Log.Debugf("anchor portalID %s missing from portal list for op %s", a, o.ID)
 			continue
 		}
-	}
-
-	// I bet this isn't needed since they should be covered in links and markers... but just in case
-	for _, p := range o.OpPortals {
-		if err = o.insertPortal(p); err != nil {
+		if err = o.insertAnchor(a); err != nil {
 			Log.Error(err)
 			continue
 		}
