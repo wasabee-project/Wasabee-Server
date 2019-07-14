@@ -1,8 +1,8 @@
 package wasabee_test
 
 import (
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/op/go-logging"
+	"github.com/wasabee-project/Wasabee-Server"
 	"os"
 	"testing"
 )

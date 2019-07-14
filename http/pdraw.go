@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server"
 )
 
 func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
@@ -920,7 +920,7 @@ func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	opID := wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.MarkComplete(opID, gid, true)
+	err = markerID.Complete(opID, gid)
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -942,7 +942,7 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	opID := wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.MarkComplete(opID, gid, false)
+	err = markerID.Incomplete(opID, gid)
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -965,6 +965,27 @@ func pDrawMarkerFinalizeRoute(res http.ResponseWriter, req *http.Request) {
 	opID := wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
 	err = markerID.Finalize(opID, gid)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	opID := wasabee.OperationID(vars["document"])
+	markerID := wasabee.MarkerID(vars["marker"])
+	err = markerID.Reject(opID, gid)
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

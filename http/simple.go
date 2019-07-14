@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server"
 )
 
 const maxFilesize = 1024 * 1024

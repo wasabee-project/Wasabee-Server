@@ -58,7 +58,7 @@ func TestDamagedOp(t *testing.T) {
 
 	j := json.RawMessage(content)
 
-        // this should give an error in debug output
+	// this should give an error in debug output
 	if err := wasabee.PDrawInsert(j, gid); err != nil {
 		t.Error(err.Error())
 	}
