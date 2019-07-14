@@ -31,8 +31,7 @@ func TestOperation(t *testing.T) {
 	op.ID = in.ID
 
 	opp := &op
-	err = opp.Populate(gid)
-	if err != nil {
+	if err := opp.Populate(gid); err != nil {
 		t.Error(err.Error())
 	}
 
@@ -45,15 +44,33 @@ func TestOperation(t *testing.T) {
 		t.Error("wrong owner (OperationID)")
 	}
 
-	err = opp.Delete(gid, false)
-	if err != nil {
+	if err := opp.Delete(gid, false); err != nil {
 		t.Error(err.Error())
 	}
-
-	err = opp.TeamID.Delete()
-	if err != nil {
-		t.Error(err.Error())
-	}
-
 	fmt.Print(string(out))
+}
+
+func TestDamagedOp(t *testing.T) {
+	content, err := ioutil.ReadFile("testdata/test3.json")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	j := json.RawMessage(content)
+
+        // this should give an error in debug output
+	if err := wasabee.PDrawInsert(j, gid); err != nil {
+		t.Error(err.Error())
+	}
+	var in wasabee.Operation
+
+	if err = json.Unmarshal(j, &in); err != nil {
+		t.Error(err.Error())
+	}
+
+	opp := &in
+
+	if err = opp.Delete(gid, false); err != nil {
+		t.Error(err.Error())
+	}
 }
