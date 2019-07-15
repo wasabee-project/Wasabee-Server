@@ -923,33 +923,51 @@ func (m MarkerID) markerStatus(opID OperationID, gid GoogleID, state string) err
 	return nil
 }
 
-// Finalize is when an operator verifies that a marker has been taken care of
+// Finalize is when an operator verifies that a marker has been taken care of.
+// gid must be the op owner.
 func (m MarkerID) Finalize(opID OperationID, gid GoogleID) error {
-	return m.markerStatus(opID, gid, "completed")
+	if !opID.IsOwner(gid) {
+		err := fmt.Errorf("not operation owner")
+		Log.Error(err)
+		return err
+	}
+	_, err := db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "completed", m, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
 }
 
 // Acknowledge that a marker has been assigned
+// gid must be the assigned agent.
 func (m MarkerID) Acknowledge(opID OperationID, gid GoogleID) error {
 	return m.markerStatus(opID, gid, "acknowledged")
 }
 
 // Mark a marker as completed
+// gid must be the assigned agent.
 func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
 	return m.markerStatus(opID, gid, "completed")
 }
 
 // Mark a marker as not-completed
+// gid must be the assigned agent.
 func (m MarkerID) Incomplete(opID OperationID, gid GoogleID) error {
 	return m.markerStatus(opID, gid, "assigned")
 }
 
 // Reject allows an agent to refuse to take a target
+// gid must be the assigned agent.
 func (m MarkerID) Reject(opID OperationID, gid GoogleID) error {
-	if err := opID.AssignMarker(m, ""); err != nil {
+	if err := m.markerStatus(opID, gid, "pending"); err != nil {
 		Log.Error(err)
 		// return err
 	}
-	if err := m.markerStatus(opID, gid, "pending"); err != nil {
+	if err := opID.AssignMarker(m, ""); err != nil {
 		Log.Error(err)
 		// return err
 	}
