@@ -8,6 +8,7 @@ import (
 // logoutlist is used by the RISC system
 var logoutlist map[GoogleID]bool
 
+// init is bad magic; need a proper constructor
 func init() {
 	logoutlist = make(map[GoogleID]bool)
 }

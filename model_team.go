@@ -15,7 +15,6 @@ type TeamData struct {
 	Name      string   `json:"name"`
 	ID        TeamID   `json:"id"`
 	Agent     []Agent  `json:"agents"`
-	Markers   []Marker `json:"markers"`
 	RocksComm string   `json:"rc"`
 	RocksKey  string   `json:"rk"`
 }
@@ -114,12 +113,6 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	}
 	if rockskey.Valid {
 		teamList.RocksKey = rockskey.String
-	}
-
-	// Markers
-	err = teamID.pdMarkers(teamList)
-	if err != nil {
-		Log.Error(err)
 	}
 
 	return nil

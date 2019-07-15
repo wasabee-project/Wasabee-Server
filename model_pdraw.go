@@ -548,28 +548,6 @@ func (o *Operation) PopulateKeys() error {
 	return nil
 }
 
-// this is still very early -- dunno what the client is going to want
-func (teamID TeamID) pdMarkers(tl *TeamData) error {
-	mr, err := db.Query("SELECT m.ID, m.portalID, m.type, m.comment, m.state FROM marker=m, portal=p WHERE m.opID IN (SELECT ID FROM operation WHERE teamID = ?) AND m.portalID = p.ID AND m.opID = p.opID", teamID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer mr.Close()
-
-	var tmpMarker Marker
-	for mr.Next() {
-		// XXX Comment and assigned can be null
-		err := mr.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &tmpMarker.Comment, &tmpMarker.State)
-		if err != nil {
-			Log.Error(err)
-			continue
-		}
-		tl.Markers = append(tl.Markers, tmpMarker)
-	}
-	return nil
-}
-
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID
 func (opID OperationID) IsOwner(gid GoogleID) bool {
 	var c int
