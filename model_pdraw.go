@@ -79,6 +79,7 @@ type Marker struct {
 	Type       MarkerType `json:"type"`
 	Comment    string     `json:"comment"`
 	AssignedTo GoogleID   `json:"assignedTo"`
+	IngressName string    `json:"assignedNickname"`
 	State      string     `json:"state"`
 }
 
@@ -446,17 +447,17 @@ func (o *Operation) PopulatePortals() error {
 // PopulateMarkers fills in the Markers list for the Operation. No authorization takes place.
 func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
-	var gid, comment sql.NullString
+	var gid, comment, iname sql.NullString
 
 	// XXX join with portals table, get name and order by name, don't expose it in this json -- will make the friendly in the https module easier
-	rows, err := db.Query("SELECT ID, PortalID, type, gid, comment, state FROM marker WHERE opID = ?", o.ID)
+	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid WHERE m.opID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &gid, &comment, &tmpMarker.State)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &gid, &comment, &tmpMarker.State, &iname)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -470,6 +471,11 @@ func (o *Operation) PopulateMarkers() error {
 			tmpMarker.Comment = comment.String
 		} else {
 			tmpMarker.Comment = ""
+		}
+		if iname.Valid {
+			tmpMarker.IngressName = iname.String
+		} else {
+			tmpMarker.IngressName = ""
 		}
 		o.Markers = append(o.Markers, tmpMarker)
 	}
