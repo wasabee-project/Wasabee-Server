@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server"
 )
 
 func meShowRoute(res http.ResponseWriter, req *http.Request) {

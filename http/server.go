@@ -13,8 +13,8 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/sessions"
+	"github.com/wasabee-project/Wasabee-Server"
 	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
 )

@@ -3,8 +3,8 @@ package wasabeehttps
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server"
 	"net/http"
 )
 

@@ -1,0 +1,208 @@
+{
+	"ID": "2390341a678a56484186ad9b594bb3dd586bfb69",
+	"name": "Splat testing",
+	"creator": "118281765050946915735",
+	"color": "groupe",
+	"opportals": [
+		{
+			"id": "6413093f235247a09d63e07b8c8361d7.16",
+			"name": "Children Reading On Bench",
+			"lat": "33.226169",
+			"lng": "-96.765881",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "b98d79591d664b55a28d5cb30f6f6ece.16",
+			"name": "Cottage Hill Cemetery",
+			"lat": "33.309635",
+			"lng": "-96.714066",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "33c18713446e4e3299dc8b306c2496e4.16",
+			"name": "Country Brook ",
+			"lat": "33.001378",
+			"lng": "-96.837547",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "9abc0b8d22c844058a23f6d600606f18.16",
+			"name": "Light Farms Tire Playground",
+			"lat": "33.269815",
+			"lng": "-96.809242",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "f2103bf5c57b426cbddcf985b8c48ddc.16",
+			"name": "Lilyana Gazebo",
+			"lat": "33.263837",
+			"lng": "-96.762581",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
+			"name": "Lilyana Playground",
+			"lat": "33.265437",
+			"lng": "-96.759769",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "bac631c352d2477a9d9b9e9d33f6ca86.11",
+			"name": "North McKinney Elevated Storag",
+			"lat": "33.203367",
+			"lng": "-96.736002",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "ba546f06198043ea89e0792ce0ec23ca.16",
+			"name": "Paloma Creek South Tower",
+			"lat": "33.220823",
+			"lng": "-96.937496",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "e9813bf558d449228ed7658b38a509ce.16",
+			"name": "Plano Water Tower",
+			"lat": "33.008924",
+			"lng": "-96.740541",
+			"comment": "",
+			"hardness": ""
+		},
+		{
+			"id": "0bf27f83a8a24e4db764ef4ee6adf66a.16",
+			"name": "Union Park Retreats",
+			"lat": "33.220652",
+			"lng": "-96.92435",
+			"comment": "",
+			"hardness": ""
+		}
+	],
+	"anchors": [
+		"0bf27f83a8a24e4db764ef4ee6adf66a.16",
+		"6413093f235247a09d63e07b8c8361d7.16",
+		"b98d79591d664b55a28d5cb30f6f6ece.16",
+		"ba546f06198043ea89e0792ce0ec23ca.16",
+		"bac631c352d2477a9d9b9e9d33f6ca86.11",
+		"d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
+		"f2103bf5c57b426cbddcf985b8c48ddc.17"
+	],
+	"links": [
+		{
+			"ID": "9ba5ad05b3f56c4b8a7bca1c82c8dad74ec8122f",
+			"fromPortalId": "0bf27f83a8a24e4db764ef4ee6adf66a.16",
+			"toPortalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
+			"description": "hi floor, make me a sammich!",
+			"assignedTo": "",
+			"throwOrderPos": 1
+		},
+		{
+			"ID": "8bc4d15537abac0db5c32628e6dd82217ac2ed53",
+			"fromPortalId": "0bf27f83a8a24e4db764ef4ee6adf66a.16",
+			"toPortalId": "bac631c352d2477a9d9b9e9d33f6ca86.11",
+			"description": "Hawtness",
+			"assignedTo": "",
+			"throwOrderPos": 2
+		}
+	],
+	"markers": [
+		{
+			"ID": "d3b0e600f7ca8c1e50042e521fe4735476f30a19",
+			"portalId": "6413093f235247a09d63e07b8c8361d7.16",
+			"type": "DestroyPortalAlert",
+			"comment": "\u003cb\u003emy boldness\u003c/b\u003e",
+			"assignedTo": "104306603788891880159",
+			"complete": false
+		},
+		{
+			"ID": "424220b6df2e1a5c52ca6e5462c5389ba554273f",
+			"portalId": "e9813bf558d449228ed7658b38a509ce.16",
+			"type": "DestroyPortalAlert",
+			"comment": "get close, pray for drift",
+			"assignedTo": "",
+			"complete": false
+		},
+		{
+			"ID": "8213f2463bdb5896deb55f47389a279f623ad081",
+			"portalId": "33c18713446e4e3299dc8b306c2496e4.16",
+			"type": "DestroyPortalAlert",
+			"comment": "; drop table link",
+			"assignedTo": "115497148014064180036",
+			"complete": false
+		},
+		{
+			"ID": "e9734a961e1298760b877a9fbe22da015a76c258",
+			"portalId": "ba546f06198043ea89e0792ce0ec23ca.16",
+			"type": "LetDecayPortalAlert",
+			"comment": "$IFS; 0x00",
+			"assignedTo": "",
+			"complete": false
+		},
+		{
+			"ID": "01b9b258aa83ab9e0287d697bbc8116a2a84ab2b",
+			"portalId": "9abc0b8d22c844058a23f6d600606f18.16",
+			"type": "DestroyPortalAlert",
+			"comment": "this n00b sucks",
+			"assignedTo": "111296267873335135470",
+			"complete": false
+		}
+	],
+	"teamid": "emncr2",
+	"modified": "2019-07-13 21:35:36",
+	"comment": "this is broke\n",
+	"keysonhand": [
+		{
+			"portalId": "bac631c352d2477a9d9b9e9d33f6ca86.11",
+			"gid": "102791585367817582150",
+			"onhand": 0
+		},
+		{
+			"portalId": "bac631c352d2477a9d9b9e9d33f6ca86.11",
+			"gid": "103746893299177158327",
+			"onhand": 9
+		},
+		{
+			"portalId": "bac631c352d2477a9d9b9e9d33f6ca86.11",
+			"gid": "111640410306780882092",
+			"onhand": 2
+		},
+		{
+			"portalId": "bac631c352d2477a9d9b9e9d33f6ca86.11",
+			"gid": "113891827784514931834",
+			"onhand": 4
+		},
+		{
+			"portalId": "bac631c352d2477a9d9b9e9d33f6ca86.11",
+			"gid": "118281765050946915735",
+			"onhand": 1
+		},
+		{
+			"portalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
+			"gid": "103746893299177158327",
+			"onhand": 4
+		},
+		{
+			"portalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
+			"gid": "111640410306780882092",
+			"onhand": 1
+		},
+		{
+			"portalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
+			"gid": "113891827784514931834",
+			"onhand": 5
+		},
+		{
+			"portalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
+			"gid": "118281765050946915735",
+			"onhand": 1
+		}
+	],
+	"fetched": "2019-07-13T21:36:15-05:00"
+}

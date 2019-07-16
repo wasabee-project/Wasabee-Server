@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -129,6 +129,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", pDrawMarkerIncompleteRoute).Methods("GET")
 	// operator verify completing
 	r.HandleFunc("/draw/{document}/marker/{marker}/finalize", pDrawMarkerFinalizeRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/marker/{marker}/reject", pDrawMarkerRejectRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", pDrawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", pDrawPortalHardnessRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", pDrawPortalKeysRoute).Methods("POST")
@@ -255,9 +256,9 @@ func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	type googleData struct {
 		Gid   wasabee.GoogleID `json:"id"`
-		Name  string          `json:"name"`
-		Email string          `json:"email"`
-		Pic   string          `json:"picture"`
+		Name  string           `json:"name"`
+		Email string           `json:"email"`
+		Pic   string           `json:"picture"`
 	}
 
 	content, tokenStr, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
@@ -424,9 +425,9 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	// fetched from google
 	type googleData struct {
 		Gid   wasabee.GoogleID `json:"id"`
-		Name  string          `json:"name"`
-		Email string          `json:"email"`
-		Pic   string          `json:"picture"`
+		Name  string           `json:"name"`
+		Email string           `json:"email"`
+		Pic   string           `json:"picture"`
 	}
 	var m googleData
 
