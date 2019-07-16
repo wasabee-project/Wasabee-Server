@@ -74,13 +74,14 @@ type Link struct {
 
 // Marker is defined by the Wasabee IITC plugin.
 type Marker struct {
-	ID         MarkerID   `json:"ID"`
-	PortalID   PortalID   `json:"portalId"`
-	Type       MarkerType `json:"type"`
-	Comment    string     `json:"comment"`
-	AssignedTo GoogleID   `json:"assignedTo"`
-	IngressName string    `json:"assignedNickname"`
-	State      string     `json:"state"`
+	ID          MarkerID   `json:"ID"`
+	PortalID    PortalID   `json:"portalId"`
+	Type        MarkerType `json:"type"`
+	Comment     string     `json:"comment"`
+	AssignedTo  GoogleID   `json:"assignedTo"`
+	IngressName string     `json:"assignedNickname"`
+	CompletedBy GoogleID   `json:"completedBy"`
+	State       string     `json:"state"`
 }
 
 // KeyOnHand describes the already in possession for the op
@@ -311,13 +312,13 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 
 // Delete removes an operation and all associated data
 func (o *Operation) Delete(gid GoogleID, leaveteam bool) error {
-	_, teamID, err := pdrawAuthorized(gid, o.ID)
-	if err != nil {
+	if !o.ID.IsOwner(gid) {
+		err := fmt.Errorf("Attempt to delete op by non-owner")
 		Log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
+	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -329,6 +330,8 @@ func (o *Operation) Delete(gid GoogleID, leaveteam bool) error {
 	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
 
+	// just getting teamID, not really checking auth
+	_, teamID, _ := pdrawAuthorized(gid, o.ID)
 	if teamID.String() != "" {
 		var c int
 		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ?", teamID).Scan(&c)
@@ -894,7 +897,9 @@ func (opID OperationID) KeyOnHand(gid GoogleID, portalID PortalID, count int32) 
 	return nil
 }
 
-func (m MarkerID) markerStatus(opID OperationID, gid GoogleID, state string) error {
+// Acknowledge that a marker has been assigned
+// gid must be the assigned agent.
+func (m MarkerID) Acknowledge(opID OperationID, gid GoogleID) error {
 	var ns sql.NullString
 	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, opID).Scan(&ns)
 	if err != nil && err != sql.ErrNoRows {
@@ -917,7 +922,7 @@ func (m MarkerID) markerStatus(opID OperationID, gid GoogleID, state string) err
 		Log.Error(err)
 		return err
 	}
-	_, err = db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", state, m, opID)
+	_, err = db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "acknowledged", m, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -948,34 +953,80 @@ func (m MarkerID) Finalize(opID OperationID, gid GoogleID) error {
 	return nil
 }
 
-// Acknowledge that a marker has been assigned
-// gid must be the assigned agent.
-func (m MarkerID) Acknowledge(opID OperationID, gid GoogleID) error {
-	return m.markerStatus(opID, gid, "acknowledged")
-}
-
 // Mark a marker as completed
-// gid must be the assigned agent.
+// gid must be on the op team.
 func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
-	return m.markerStatus(opID, gid, "completed")
+	_, _, err := pdrawAuthorized(gid, opID)
+	if err != nil { // !authorized always sets error
+		Log.Error(err)
+		return err
+	}
+	_, err = db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
 }
 
 // Mark a marker as not-completed
-// gid must be the assigned agent.
+// gid must be on the op team.
 func (m MarkerID) Incomplete(opID OperationID, gid GoogleID) error {
-	return m.markerStatus(opID, gid, "assigned")
+	_, _, err := pdrawAuthorized(gid, opID)
+	if err != nil { // !authorized always sets error
+		Log.Error(err)
+		return err
+	}
+	_, err = db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
 }
 
 // Reject allows an agent to refuse to take a target
 // gid must be the assigned agent.
 func (m MarkerID) Reject(opID OperationID, gid GoogleID) error {
-	if err := m.markerStatus(opID, gid, "pending"); err != nil {
+	var ns sql.NullString
+	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, opID).Scan(&ns)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
+		return err
+	}
+	if err != nil && err == sql.ErrNoRows {
+		err = fmt.Errorf("no such marker")
+		Log.Error(err)
+		return err
+	}
+	if !ns.Valid {
+		err = fmt.Errorf("marker not assigned")
+		Log.Error(err)
+		return err
+	}
+	markerGid := GoogleID(ns.String)
+	if gid != markerGid {
+		err = fmt.Errorf("marker assigned to someone else")
+		Log.Error(err)
+		return err
+	}
+	_, err = db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "pending", m, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = opID.AssignMarker(m, ""); err != nil {
 		Log.Error(err)
 		// return err
 	}
-	if err := opID.AssignMarker(m, ""); err != nil {
+	if err = opID.Touch(); err != nil {
 		Log.Error(err)
-		// return err
 	}
 	return nil
 }
