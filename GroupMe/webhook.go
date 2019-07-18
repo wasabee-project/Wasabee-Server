@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	wasabee "github.com/wasabee-project/Wasabee-Server"
 	"github.com/gorilla/mux"
+	wasabee "github.com/wasabee-project/Wasabee-Server"
 )
 
 // GMWebHook is the http route for receiving GM updates

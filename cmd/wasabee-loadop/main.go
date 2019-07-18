@@ -4,9 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
+	"github.com/wasabee-project/Wasabee-Server"
 )
 
 var flags = []cli.Flag{
