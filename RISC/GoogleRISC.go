@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/wasabee-project/Wasabee-Server"
 )
 
 type riscConfig struct {

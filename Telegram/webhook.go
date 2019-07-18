@@ -1,12 +1,12 @@
-package wasabeetelegram 
+package wasabeetelegram
 
 import (
 	// "errors"
 	"encoding/json"
 	"fmt"
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"net/http"
 	"strings"

@@ -19,6 +19,7 @@ func (opID OperationID) GetTeamID() (TeamID, error) {
 	return teamID, nil
 }
 
+// ReadAccess determines if an agent has read acces to an op
 func (opID OperationID) ReadAccess(gid GoogleID) bool {
 	var teamID TeamID
 	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)

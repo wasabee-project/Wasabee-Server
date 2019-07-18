@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/wasabee-project/Wasabee-Server"
 )
 
 // TGConfiguration is the main configuration data for the Telegram interface

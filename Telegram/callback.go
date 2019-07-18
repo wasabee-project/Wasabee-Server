@@ -3,8 +3,8 @@ package wasabeetelegram
 import (
 	"fmt"
 	// "encoding/json"
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/wasabee-project/Wasabee-Server"
 	"strconv"
 	"strings"
 )

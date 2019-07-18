@@ -190,8 +190,7 @@ func (m MarkerID) Finalize(opID OperationID, gid GoogleID) error {
 	return nil
 }
 
-// Mark a marker as completed
-// gid must be on the op team.
+// Complete marks a marker as completed
 func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
 	if !opID.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
@@ -209,8 +208,7 @@ func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
 	return nil
 }
 
-// Mark a marker as not-completed
-// gid must be on the op team.
+// Incomplete marks a marker as not-completed
 func (m MarkerID) Incomplete(opID OperationID, gid GoogleID) error {
 	if !opID.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
