@@ -25,7 +25,7 @@ func importop(gid, opfile string) error {
 	}
 
 	j := json.RawMessage(content)
-	err = wasabee.PDrawInsert(j, g)
+	err = wasabee.DrawInsert(j, g)
 	if err != nil {
 		wasabee.Log.Error(err)
 		return err

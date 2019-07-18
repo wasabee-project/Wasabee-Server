@@ -39,10 +39,9 @@ type OpStat struct {
 	Modified string      `json:"modified"`
 }
 
-// PDrawInsert parses a raw op sent from the IITC plugin and stores it in the database
-// it will completely overwrite an existing draw with the same ID
-// if the current agent is the same as the agent who originally uploaded it
-func PDrawInsert(op json.RawMessage, gid GoogleID) error {
+// DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
+// use ONLY for initial op creation -- team is created
+func DrawInsert(op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
 		Log.Error(err)
@@ -67,14 +66,14 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		Log.Error(err)
 	}
 
-	if err = pDrawOpWorker(o, gid, teamID); err != nil {
+	if err = drawOpWorker(o, gid, teamID); err != nil {
 		Log.Error(err)
 		return err
 	}
 	return nil
 }
 
-func pDrawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
+func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	// start the insert process
 	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), o.Comment)
 	if err != nil {
@@ -139,8 +138,8 @@ func pDrawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	return nil
 }
 
-// PDrawUpdate - probably redundant as long as the id does not change?
-func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
+// DrawUpdate
+func DrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
 		Log.Error(err)
@@ -174,7 +173,7 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 		Log.Error(err)
 	}
 
-	return pDrawOpWorker(o, gid, teamID)
+	return drawOpWorker(o, gid, teamID)
 }
 
 // Delete removes an operation and all associated data

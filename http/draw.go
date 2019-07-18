@@ -47,7 +47,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	jRaw := json.RawMessage(jBlob)
 	// wasabee.Log.Debugf("sent json: %s", string(jRaw))
-	if err = wasabee.PDrawInsert(jRaw, gid); err != nil {
+	if err = wasabee.DrawInsert(jRaw, gid); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -221,7 +221,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	jRaw := json.RawMessage(jBlob)
 
 	// wasabee.Log.Debug(string(jBlob))
-	if err = wasabee.PDrawUpdate(id, jRaw, gid); err != nil {
+	if err = wasabee.DrawUpdate(id, jRaw, gid); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
