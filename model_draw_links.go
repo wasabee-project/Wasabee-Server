@@ -123,8 +123,8 @@ func (opID OperationID) LinkDescription(linkID LinkID, desc string) error {
 	return nil
 }
 
-// PortalOrder changes the order of the throws for an operation
-func (opID OperationID) PortalOrder(order string, gid GoogleID) error {
+// LinkOrder changes the order of the throws for an operation
+func (opID OperationID) LinkOrder(order string, gid GoogleID) error {
 	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
 
 	stmt, err := db.Prepare("UPDATE link SET throworder = ? WHERE opID = ? AND ID = ?")

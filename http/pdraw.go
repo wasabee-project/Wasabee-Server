@@ -161,11 +161,11 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	// op.Delete checks ownership, do we need this check?
+	// op.Delete checks ownership, do we need this check? -- yes for good status codes
 	if op.ID.IsOwner(gid) {
 		err = fmt.Errorf("deleting operation %s", op.ID)
 		wasabee.Log.Notice(err)
-		err := op.Delete(gid, false)
+		err := op.ID.Delete(gid, false)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -834,7 +834,7 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	opID := wasabee.OperationID(vars["document"])
 	if opID.IsOwner(gid) {
 		order := req.FormValue("order")
-		err = opID.PortalOrder(order, gid)
+		err = opID.LinkOrder(order, gid)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)

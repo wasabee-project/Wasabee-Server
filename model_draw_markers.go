@@ -193,17 +193,12 @@ func (m MarkerID) Finalize(opID OperationID, gid GoogleID) error {
 // Mark a marker as completed
 // gid must be on the op team.
 func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
-	ra, err := opID.ReadAccess(gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if !ra {
+	if !opID.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
 		Log.Error(err)
 		return err
 	}
-	_, err = db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, opID)
+	_, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -217,17 +212,12 @@ func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
 // Mark a marker as not-completed
 // gid must be on the op team.
 func (m MarkerID) Incomplete(opID OperationID, gid GoogleID) error {
-	ra, err := opID.ReadAccess(gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if !ra {
+	if !opID.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
 		Log.Error(err)
 		return err
 	}
-	_, err = db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, opID)
+	_, err := db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, opID)
 	if err != nil {
 		Log.Error(err)
 		return err

@@ -28,14 +28,38 @@ func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
 	return authorized, teamID, nil
 }
 
-func (opID OperationID) ReadAccess(gid GoogleID) (bool, error) {
+// GetTeamID returns the teamID for an op
+func (opID OperationID) GetTeamID() (TeamID, error) {
+	var teamID TeamID
+	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
+		return "", err
+	}
+	if err != nil && err == sql.ErrNoRows {
+		return "", nil
+	}
+	return teamID, nil
+}
+
+func (opID OperationID) ReadAccess(gid GoogleID) bool {
 	var teamID TeamID
 	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
 	if err != nil {
 		Log.Error(err)
-		return false, err
+		return false
 	}
-	return gid.AgentInTeam(teamID, false)
+	inteam, err := gid.AgentInTeam(teamID, false)
+	if err != nil {
+		Log.Error(err)
+		return false
+	}
+	return inteam
+}
+
+// WriteAccess determines if an agent has write access to an op
+func (opID OperationID) WriteAccess(gid GoogleID) bool {
+	return opID.IsOwner(gid)
 }
 
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID

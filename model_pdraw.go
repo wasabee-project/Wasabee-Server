@@ -55,20 +55,23 @@ func PDrawInsert(op json.RawMessage, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	// Log.Debugf("inserting %s", o.ID)
 
-	_, teamID, err := pdrawAuthorized(gid, o.ID)
-	if err != nil { // !authorized always sets error
+	// check to see if this opID is already in use
+	err := db.QueryRow("SELECT gid FROM operation WHERE ID = ?", o.ID).Scan(&gid)
+	if err == nil {
+		err := fmt.Errorf("attempt to POST to an existing opID -- use PUT to update an existing op")
+		Log.Error(err)
+		return err
+	}
+	if err != sql.ErrNoRows {
 		Log.Error(err)
 		return err
 	}
 
-	// create a new team if one did not already exist -- and one should never exist on Insert
-	if teamID.String() == "" {
-		teamID, err = gid.NewTeam(o.Name)
-		if err != nil {
-			Log.Error(err)
-		}
+	// do not even look at the teamID in the data, just create a new one for this op
+	teamID, err := gid.NewTeam(o.Name)
+	if err != nil {
+		Log.Error(err)
 	}
 
 	if err = pDrawOpWorker(o, gid, teamID); err != nil {
@@ -157,14 +160,20 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	_, teamID, err := pdrawAuthorized(gid, o.ID)
-	if err != nil { // !authorized always sets error
+	if !o.ID.WriteAccess(gid) {
+		err := fmt.Errorf("write access denied to op: %s", o.ID)
 		Log.Error(err)
 		return err
 	}
 
-	// clear and start from a blank slate - leave the team intact
-	if err = o.Delete(gid, true); err != nil {
+	teamID, err := o.ID.GetTeamID()
+	if err != nil { 
+		Log.Error(err)
+		return err
+	}
+
+	// just clear and start from a blank slate - leave the team intact
+	if err = o.ID.Delete(gid, true); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -176,27 +185,26 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 }
 
 // Delete removes an operation and all associated data
-func (o *Operation) Delete(gid GoogleID, leaveteam bool) error {
-	if !o.ID.IsOwner(gid) {
+func (opID OperationID) Delete(gid GoogleID, leaveteam bool) error {
+	if !opID.IsOwner(gid) {
 		err := fmt.Errorf("Attempt to delete op by non-owner")
 		Log.Error(err)
 		return err
 	}
 
-	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
+	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", opID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	// the foreign key constraints should take care of these, but just in case...
-	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", opID)
+	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", opID)
+	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", opID)
+	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", opID)
+	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", opID)
 
-	// just getting teamID, not really checking auth
-	_, teamID, _ := pdrawAuthorized(gid, o.ID)
+	teamID, _ := opID.GetTeamID()
 	if teamID.String() != "" {
 		var c int
 		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ?", teamID).Scan(&c)
