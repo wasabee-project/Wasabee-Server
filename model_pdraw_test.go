@@ -44,7 +44,7 @@ func TestOperation(t *testing.T) {
 		t.Error("wrong owner (OperationID)")
 	}
 
-	if err := opp.Delete(gid, false); err != nil {
+	if err := opp.ID.Delete(gid, false); err != nil {
 		t.Error(err.Error())
 	}
 	fmt.Print(string(out))
@@ -70,7 +70,7 @@ func TestDamagedOp(t *testing.T) {
 
 	opp := &in
 
-	if err = opp.Delete(gid, false); err != nil {
+	if err = opp.ID.Delete(gid, false); err != nil {
 		t.Error(err.Error())
 	}
 }

@@ -167,7 +167,7 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 	}
 
 	teamID, err := o.ID.GetTeamID()
-	if err != nil { 
+	if err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -187,7 +187,7 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 // Delete removes an operation and all associated data
 func (opID OperationID) Delete(gid GoogleID, leaveteam bool) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("Attempt to delete op by non-owner")
+		err := fmt.Errorf("attempt to delete op by non-owner")
 		Log.Error(err)
 		return err
 	}

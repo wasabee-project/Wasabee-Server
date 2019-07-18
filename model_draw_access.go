@@ -2,31 +2,8 @@ package wasabee
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 )
-
-// this is a kludge and needs to go away
-func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
-	var opgid GoogleID
-	var teamID TeamID
-	var authorized bool
-	err := db.QueryRow("SELECT gid, teamID FROM operation WHERE ID = ?", oid).Scan(&opgid, &teamID)
-	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
-		return false, "", err
-	}
-	if err != nil && err == sql.ErrNoRows {
-		authorized = true
-	}
-	if opgid == gid {
-		authorized = true
-	}
-	if !authorized {
-		return false, teamID, errors.New("unauthorized: this operation owned by someone else")
-	}
-	return authorized, teamID, nil
-}
 
 // GetTeamID returns the teamID for an op
 func (opID OperationID) GetTeamID() (TeamID, error) {
@@ -59,6 +36,8 @@ func (opID OperationID) ReadAccess(gid GoogleID) bool {
 
 // WriteAccess determines if an agent has write access to an op
 func (opID OperationID) WriteAccess(gid GoogleID) bool {
+	// for now, only the owner can write
+	// we can expand this in the future, but will need better checks in the client to keep from stepping on each other
 	return opID.IsOwner(gid)
 }
 
@@ -83,6 +62,8 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 		Log.Error(err)
 		return err
 	}
+
+	// XXX make sure target GID is valid!
 
 	togid, err := ToGid(to)
 	if err != nil {
