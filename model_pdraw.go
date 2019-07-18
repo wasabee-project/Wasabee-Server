@@ -66,13 +66,6 @@ type Link struct {
 	ThrowOrder float64  `json:"throwOrderPos"` // currently not in database, need schema change
 }
 
-// KeyOnHand describes the already in possession for the op
-type KeyOnHand struct {
-	ID     PortalID `json:"portalId"`
-	Gid    GoogleID `json:"gid"`
-	Onhand int32    `json:"onhand"`
-}
-
 // Assignments is used to show assignments to users in various ways
 type Assignments struct {
 	Links   []Link
@@ -209,38 +202,6 @@ func PDrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 	return pDrawOpWorker(o, gid, teamID)
 }
 
-// this is a kludge and needs to go away
-func pdrawAuthorized(gid GoogleID, oid OperationID) (bool, TeamID, error) {
-	var opgid GoogleID
-	var teamID TeamID
-	var authorized bool
-	err := db.QueryRow("SELECT gid, teamID FROM operation WHERE ID = ?", oid).Scan(&opgid, &teamID)
-	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
-		return false, "", err
-	}
-	if err != nil && err == sql.ErrNoRows {
-		authorized = true
-	}
-	if opgid == gid {
-		authorized = true
-	}
-	if !authorized {
-		return false, teamID, errors.New("unauthorized: this operation owned by someone else")
-	}
-	return authorized, teamID, nil
-}
-
-func (opID OperationID) ReadAccess(gid GoogleID) (bool, error) {
-	var teamID TeamID
-	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
-	if err != nil {
-		Log.Error(err)
-		return false, err
-	}
-	return gid.AgentInTeam(teamID, false)
-}
-
 // insertPortal adds a portal to the database
 func (o *Operation) insertPortal(p Portal) error {
 	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
@@ -274,20 +235,6 @@ func (o *Operation) insertLink(l Link) error {
 	if err != nil {
 		Log.Error(err)
 		return err
-	}
-	return nil
-}
-
-// insertKey adds a user keycount to the database
-func (o *Operation) insertKey(k KeyOnHand) error {
-	_, err := db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?",
-		o.ID, k.ID, k.Gid, k.Onhand, k.Onhand)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if err = o.ID.Touch(); err != nil {
-		Log.Error(err)
 	}
 	return nil
 }
@@ -477,85 +424,6 @@ func (o *Operation) PopulateAnchors() error {
 			continue
 		}
 		o.Anchors = append(o.Anchors, anchor)
-	}
-	return nil
-}
-
-// PopulateKeys fills in the Keys on hand list for the Operation. No authorization takes place.
-func (o *Operation) PopulateKeys() error {
-	var k KeyOnHand
-	rows, err := db.Query("SELECT portalID, gid, onhand FROM opkeys WHERE opID = ?", o.ID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&k.ID, &k.Gid, &k.Onhand)
-		if err != nil {
-			Log.Error(err)
-			continue
-		}
-		o.Keys = append(o.Keys, k)
-	}
-	return nil
-}
-
-// IsOwner returns a bool value determining if the operation is owned by the specified googleID
-func (opID OperationID) IsOwner(gid GoogleID) bool {
-	var c int
-	err := db.QueryRow("SELECT COUNT(*) FROM operation WHERE ID = ? and gid = ?", opID, gid).Scan(&c)
-	if err != nil {
-		Log.Error(err)
-		return false
-	}
-	if c < 1 {
-		return false
-	}
-	return true
-}
-
-// Chown changes an operation's owner
-func (opID OperationID) Chown(gid GoogleID, to string) error {
-	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
-		Log.Error(err)
-		return err
-	}
-
-	togid, err := ToGid(to)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	_, err = db.Exec("UPDATE operation SET gid = ? WHERE ID = ?", togid, opID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// Chgrp changes an operation's team -- because UNIX libc function names are cool, yo
-func (opID OperationID) Chgrp(gid GoogleID, to TeamID) error {
-	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
-		Log.Error(err)
-		return err
-	}
-
-	// check to see if the team really exists
-	if _, err := to.Name(); err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	_, err := db.Exec("UPDATE operation SET teamID = ? WHERE ID = ?", to, opID)
-	if err != nil {
-		Log.Error(err)
-		return err
 	}
 	return nil
 }
@@ -764,22 +632,6 @@ func (opID OperationID) SetInfo(info string, gid GoogleID) error {
 	}
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
-	}
-	return nil
-}
-
-// KeyOnHand updates a user's key-count for linking
-func (opID OperationID) KeyOnHand(gid GoogleID, portalID PortalID, count int32) error {
-	var o Operation
-	o.ID = opID
-	k := KeyOnHand{
-		ID:     portalID,
-		Gid:    gid,
-		Onhand: count,
-	}
-	if err := o.insertKey(k); err != nil {
-		Log.Error(err)
-		return err
 	}
 	return nil
 }
