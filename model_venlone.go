@@ -264,7 +264,7 @@ func StatusServerPoller() {
 			// Log.Debugf("Polling status.enl.one for %s", gid.String)
 			if !vid.Valid {
 				Log.Info("agent requested RAID poll, but has not configured V")
-				gid.StatusLocationDisable()
+				_ = gid.StatusLocationDisable()
 				continue
 			}
 			e := EnlID(vid.String)
