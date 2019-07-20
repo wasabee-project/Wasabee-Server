@@ -85,7 +85,8 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.EnlID)
+		var enlID sql.NullString
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &enlID)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -95,11 +96,17 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		} else {
 			tmpU.State = false
 		}
+		if enlID.Valid {
+			tmpU.EnlID = EnlID(enlID.String)
+		} else {
+			tmpU.EnlID = ""
+		}
 		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		tmpU.OwnTracks = json.RawMessage(otdata)
 		tmpU.PictureURL = tmpU.Gid.GetPicture()
 		teamList.Agent = append(teamList.Agent, tmpU)
+
 	}
 
 	var rockscomm, rockskey sql.NullString
