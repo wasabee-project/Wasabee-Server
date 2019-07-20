@@ -114,7 +114,7 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 	if vres.Status == "ok" && vres.Data.Agent != "" {
 		// Log.Debug("Updating V data for ", vres.Data.Agent)
 		_, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
-			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, vres.Data.EnlID, gid)
+			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid)
 
 		if err != nil {
 			Log.Error(err)
@@ -177,7 +177,11 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 // StatusLocation attempts to check for location data from status.enl.one.
 // The API documentation is scant, so this is provisional -- seems to work.
 func (gid GoogleID) StatusLocation() (string, string, error) {
-	e, _ := gid.EnlID()
+	e, err := gid.EnlID()
+	if err != nil {
+		Log.Error(err)
+		return "", "", err
+	}
 	lat, lon, err := e.StatusLocation()
 	return lat, lon, err
 }
@@ -211,9 +215,12 @@ func (eid EnlID) StatusLocationDisable() error {
 
 // StatusLocationDisable turns RAID/JEAH pulling off for the specified agent
 func (gid GoogleID) StatusLocationDisable() error {
-	eid, _ := gid.EnlID()
-	err := eid.StatusLocationDisable()
-	return err
+	_, err := db.Exec("UPDATE agent SET RAID = 0 WHERE gid = ?", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }
 
 // EnlID returns the V EnlID for a agent if it is known.
@@ -244,7 +251,8 @@ func StatusServerPoller() {
 			return
 		}
 		defer row.Close()
-		var gid, vid sql.NullString
+		var gid GoogleID
+		var vid sql.NullString
 
 		for row.Next() {
 			err = row.Scan(&gid, &vid)
@@ -256,24 +264,23 @@ func StatusServerPoller() {
 			// Log.Debugf("Polling status.enl.one for %s", gid.String)
 			if !vid.Valid {
 				Log.Info("agent requested RAID poll, but has not configured V")
+				gid.StatusLocationDisable()
 				continue
 			}
 			e := EnlID(vid.String)
-			g := GoogleID(gid.String)
 			lat, lon, err := e.StatusLocation()
 			if err != nil {
 				// XXX add the agent to an exception list? purge the list every 12 hours?
 				Log.Error(err)
 				continue
 			}
-			err = g.AgentLocation(lat, lon, "status.enl.one")
+			err = gid.AgentLocation(lat, lon, "status.enl.one")
 			if err != nil {
 				Log.Error(err)
 				continue
 			}
 		}
-		// XXX use a time.Ticker instead?
-		// SCB: https://github.com/golang/go/issues/27707 -- sleep is fine for now
+		// SCB: https://github.com/golang/go/issues/27707 -- sleep is fine
 		time.Sleep(300 * time.Second)
 	}
 }

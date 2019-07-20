@@ -174,7 +174,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			return false, err
 		}
 		_, err = db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,NULL,?,?,?,?,?,0)",
-			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, vdata.Data.EnlID, rocks.Verified, 0)
+			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, MakeNullString(vdata.Data.EnlID), rocks.Verified, 0)
 		if err != nil {
 			Log.Error(err)
 			return false, err
@@ -238,8 +238,8 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	ud.GoogleID = gid
 
-	var ot sql.NullString
-	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &ud.Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC, &ud.OwnTracksJSON)
+	var ot, Vid sql.NullString
+	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC, &ud.OwnTracksJSON)
 	if err != nil && err == sql.ErrNoRows {
 		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
 		err = fmt.Errorf("unknown GoogleID: [%s] try restarting your browser", gid)
@@ -252,6 +252,9 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	}
 	if ot.Valid {
 		ud.OwnTracksPW = ot.String
+	}
+	if Vid.Valid {
+		ud.OwnTracksPW = Vid.String
 	}
 
 	if err = adTeams(gid, ud); err != nil {
