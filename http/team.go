@@ -30,7 +30,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if !safe {
-		http.Error(res, "unauthorized", http.StatusUnauthorized)
+		http.Error(res, "unauthorized: enable the team to access it", http.StatusUnauthorized)
 		return
 	}
 	err = team.FetchTeam(&teamList, false)

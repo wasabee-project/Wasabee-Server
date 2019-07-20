@@ -188,6 +188,7 @@ func StartHTTP(initialConfig Configuration) {
 				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			},
 		},
+		// ErrorLog: wasabee.Log, // XXX need to write an interface for this
 	}
 	wasabee.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
 	if err := config.srv.ListenAndServeTLS(config.CertDir+"/wasabee.fullchain.pem", config.CertDir+"/wasabee.key"); err != nil {

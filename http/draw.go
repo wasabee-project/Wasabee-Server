@@ -365,16 +365,17 @@ type pdrawFriendly struct {
 }
 
 type friendlyLink struct {
-	ID           wasabee.LinkID
-	From         string
-	FromID       wasabee.PortalID
-	To           string
-	ToID         wasabee.PortalID
-	Desc         string
-	AssignedTo   string
-	AssignedToID wasabee.GoogleID
-	ThrowOrder   float64
-	Distance     float64
+	ID             wasabee.LinkID
+	From           string
+	FromID         wasabee.PortalID
+	To             string
+	ToID           wasabee.PortalID
+	Desc           string
+	AssignedTo     string
+	AssignedToID   wasabee.GoogleID
+	ThrowOrder     int32
+	Distance       int32
+	MinPortalLevel float64
 }
 
 type friendlyMarker struct {
@@ -442,14 +443,16 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		var fl friendlyLink
 		fl.ID = l.ID
 		fl.Desc = l.Desc
-		fl.ThrowOrder = l.ThrowOrder
+		fl.ThrowOrder = int32(l.ThrowOrder)
 		fl.From = portals[l.From].Name
 		fl.FromID = l.From
 		fl.To = portals[l.To].Name
 		fl.ToID = l.To
 		fl.AssignedTo, _ = l.AssignedTo.IngressName()
 		fl.AssignedToID = l.AssignedTo
-		fl.Distance = lldistance(portals[l.From].Lat, portals[l.From].Lon, portals[l.To].Lat, portals[l.To].Lon)
+		tmp := wasabee.Distance(portals[l.From].Lat, portals[l.From].Lon, portals[l.To].Lat, portals[l.To].Lon)
+		fl.Distance = int32(math.Round(tmp / 1000))
+		fl.MinPortalLevel = wasabee.MinPortalLevel(tmp, 8, true)
 		friendly.Links = append(friendly.Links, fl)
 	}
 
@@ -556,27 +559,6 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 	friendly.Capsules = caps
 
 	return friendly, nil
-}
-
-func lldistance(startLat, startLon, endLat, endLon string) float64 {
-	sl, _ := strconv.ParseFloat(startLat, 64)
-	startrl := math.Pi * sl / 180.0
-	el, _ := strconv.ParseFloat(endLat, 64)
-	endrl := math.Pi * el / 180.0
-
-	t, _ := strconv.ParseFloat(startLon, 64)
-	th, _ := strconv.ParseFloat(endLon, 64)
-	rt := math.Pi * (t - th) / 180.0
-
-	dist := math.Sin(startrl)*math.Sin(endrl) + math.Cos(startrl)*math.Cos(endrl)*math.Cos(rt)
-	if dist > 1 {
-		dist = 1
-	}
-
-	dist = math.Acos(dist)
-	dist = dist * 180 / math.Pi
-	dist = dist * 60 * 1.1515 * 1.609344
-	return math.RoundToEven(dist)
 }
 
 func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
