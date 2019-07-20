@@ -61,7 +61,7 @@ func locationClean() {
 // move to model_owntracks.go
 func waypointClean() {
 	// give the clients 3 days to receive the invalid ones and remove them from the list
-	_, err := db.Exec("DELETE FROM waypoints WHERE expiration < DATE_SUB(NOW(), INTERVAL 3 DAY)")
+	_, err := db.Exec("DELETE LOW_PRIORITY FROM waypoints WHERE expiration < DATE_SUB(NOW(), INTERVAL 3 DAY)")
 	if err != nil {
 		Log.Error(err)
 		return

@@ -2,6 +2,8 @@ package wasabee
 
 import (
 	"database/sql"
+	"math"
+	"strconv"
 	"strings"
 )
 
@@ -15,7 +17,7 @@ type Link struct {
 	To         PortalID `json:"toPortalId"`
 	Desc       string   `json:"description"`
 	AssignedTo GoogleID `json:"assignedTo"`
-	ThrowOrder float64  `json:"throwOrderPos"`
+	ThrowOrder int32    `json:"throwOrderPos"`
 }
 
 // insertLink adds a link to the database
@@ -26,7 +28,7 @@ func (o *Operation) insertLink(l Link) error {
 	}
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, o.ID, l.Desc, l.AssignedTo, l.ThrowOrder)
+		l.ID, l.From, l.To, o.ID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -73,7 +75,7 @@ func (l LinkID) String() string {
 
 // AssignLink assigns a link to an agent, sending them a message that they have an assignment
 func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
-	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", gid, linkID, opID)
+	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -112,7 +114,7 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 
 // LinkDescription updates the description for a link
 func (opID OperationID) LinkDescription(linkID LinkID, desc string) error {
-	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", desc, linkID, opID)
+	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", MakeNullString(desc), linkID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -149,4 +151,58 @@ func (opID OperationID) LinkOrder(order string, gid GoogleID) error {
 		Log.Error(err)
 	}
 	return nil
+}
+
+func Distance(startLat, startLon, endLat, endLon string) float64 {
+	sl, _ := strconv.ParseFloat(startLat, 64)
+	startrl := math.Pi * sl / 180.0
+	el, _ := strconv.ParseFloat(endLat, 64)
+	endrl := math.Pi * el / 180.0
+
+	t, _ := strconv.ParseFloat(startLon, 64)
+	th, _ := strconv.ParseFloat(endLon, 64)
+	rt := math.Pi * (t - th) / 180.0
+
+	dist := math.Sin(startrl)*math.Sin(endrl) + math.Cos(startrl)*math.Cos(endrl)*math.Cos(rt)
+	if dist > 1 {
+		dist = 1
+	}
+
+	dist = math.Acos(dist)
+	dist = dist * 180 / math.Pi
+	dist = dist * 60 * 1.1515 * 1.609344
+	return dist * 1000
+}
+
+func MinPortalLevel(distance float64, agents int, allowmods bool) float64 {
+	if distance < 160.0 {
+		return 1.000
+	}
+	if distance > 6553000.0 {
+		// link amp required
+		return 8.0
+	}
+
+	m := (root(distance, 4)) / (2 * root(10, 4))
+	return m
+}
+
+func root(a float64, n int) float64 {
+	n1 := n - 1
+	n1f, rn := float64(n1), 1/float64(n)
+	x, x0 := 1., 0.
+	for {
+		potx, t2 := 1/x, a
+		for b := n1; b > 0; b >>= 1 {
+			if b&1 == 1 {
+				t2 *= potx
+			}
+			potx *= potx
+		}
+		x0, x = x, rn*(n1f*x+t2)
+		if math.Abs(x-x0)*1e15 < x {
+			break
+		}
+	}
+	return x
 }

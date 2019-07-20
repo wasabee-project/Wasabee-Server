@@ -89,3 +89,30 @@ func setupTables() {
 	}
 	_ = tx.Commit() // the defer'd rollback will not have anything to rollback...
 }
+
+// MakeNullString is used for values that may & might be inserted/updated as NULL in the database
+func MakeNullString(in interface{}) sql.NullString {
+	var s string
+	switch v := in.(type) {
+	case string:
+		s = in.(string)
+	case GoogleID:
+		s = string(in.(GoogleID))
+	case TeamID:
+		s = string(in.(TeamID))
+	case fmt.Stringer:
+		Log.Debugf("%s passed to MakeNullString", v)
+		s = in.(string)
+	default:
+		Log.Debugf("%s passed to MakeNullString", v)
+		// return sql.NullString{}
+		s = in.(string)
+	}
+	if len(s) == 0 {
+		return sql.NullString{}
+	}
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
+}

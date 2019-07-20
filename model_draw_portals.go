@@ -21,7 +21,7 @@ type Portal struct {
 // insertPortal adds a portal to the database
 func (o *Operation) insertPortal(p Portal) error {
 	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
-		p.ID, o.ID, p.Name, p.Lon, p.Lat, p.Comment, p.Hardness)
+		p.ID, o.ID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -100,7 +100,7 @@ func (p PortalID) String() string {
 
 // PortalHardness updates the comment on a portal
 func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error {
-	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", hardness, portalID, opID)
+	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -113,7 +113,7 @@ func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error
 
 // PortalComment updates the comment on a portal
 func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
-	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", comment, portalID, opID)
+	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err

@@ -117,7 +117,7 @@ func Request(id string) (SimpleDocument, error) {
 		if doc.Expiration.Before(time.Unix(0, 1)) {
 			if doc.Views > 0 {
 				// Volatile document
-				_, err = db.Exec("DELETE FROM document WHERE id = ?", hex.EncodeToString(databaseID[:]))
+				_, err = db.Exec("DELETE LOW_PRIORITY FROM document WHERE id = ?", hex.EncodeToString(databaseID[:]))
 				if err != nil {
 					Log.Errorf("couldn't delete volatile document: %s", err)
 				}
@@ -137,7 +137,7 @@ func Request(id string) (SimpleDocument, error) {
 
 func simpleDocClean() {
 	// do it this way to get RowsAffected
-	stmt, _ := db.Prepare("DELETE FROM document WHERE expiration < CURRENT_TIMESTAMP AND expiration > FROM_UNIXTIME(0)")
+	stmt, _ := db.Prepare("DELETE LOW_PRIORITY FROM document WHERE expiration < CURRENT_TIMESTAMP AND expiration > FROM_UNIXTIME(0)")
 
 	result, err := stmt.Exec()
 	if err != nil {

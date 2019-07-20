@@ -75,7 +75,7 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 
 func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	// start the insert process
-	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), o.Comment)
+	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), MakeNullString(o.Comment))
 	if err != nil {
 		Log.Error(err)
 		return err

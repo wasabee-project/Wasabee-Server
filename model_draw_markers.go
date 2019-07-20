@@ -25,8 +25,12 @@ type Marker struct {
 
 // insertMarkers adds a marker to the database
 func (o *Operation) insertMarker(m Marker) error {
+	if m.State == "" {
+		m.State = "pending"
+	}
+
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		m.ID, o.ID, m.PortalID, m.Type, m.AssignedTo, m.Comment, m.State)
+		m.ID, o.ID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -73,6 +77,9 @@ func (o *Operation) PopulateMarkers() error {
 			tmpMarker.CompletedBy = ""
 		}
 		o.Markers = append(o.Markers, tmpMarker)
+		if tmpMarker.State == "" { // enums in sql default to ""/0 if invalid, WTF?
+			tmpMarker.State = "pending"
+		}
 	}
 	return nil
 }
@@ -89,7 +96,7 @@ func (m MarkerID) String() string {
 
 // AssignMarker assigns a marker to an agent, sending them a message
 func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
-	_, err := db.Exec("UPDATE marker SET gid = ?, state = ? WHERE ID = ? AND opID = ?", gid, "assigned", markerID, opID)
+	_, err := db.Exec("UPDATE marker SET gid = ?, state = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), "assigned", markerID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -123,7 +130,7 @@ func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 
 // MarkerComment updates the comment on a marker
 func (opID OperationID) MarkerComment(markerID MarkerID, comment string) error {
-	_, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", comment, markerID, opID)
+	_, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), markerID, opID)
 	if err != nil {
 		Log.Error(err)
 		return err
