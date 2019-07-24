@@ -18,6 +18,7 @@ type Link struct {
 	Desc       string   `json:"description"`
 	AssignedTo GoogleID `json:"assignedTo"`
 	ThrowOrder int32    `json:"throwOrderPos"`
+	Completed  bool     `json:"completed"`
 }
 
 // insertLink adds a link to the database
@@ -27,8 +28,8 @@ func (o *Operation) insertLink(l Link) error {
 		return nil
 	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, o.ID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		l.ID, l.From, l.To, o.ID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -41,14 +42,14 @@ func (o *Operation) PopulateLinks() error {
 	var tmpLink Link
 	var description, gid sql.NullString
 
-	rows, err := db.Query("SELECT ID, fromPortalID, toPortalID, description, gid, throworder FROM link WHERE opID = ? ORDER BY throworder", o.ID)
+	rows, err := db.Query("SELECT ID, fromPortalID, toPortalID, description, gid, throworder, completed FROM link WHERE opID = ? ORDER BY throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -123,6 +124,33 @@ func (opID OperationID) LinkDescription(linkID LinkID, desc string) error {
 		Log.Error(err)
 	}
 	return nil
+}
+
+// LinkCompleted updates the completed flag for a link
+func (opID OperationID) LinkCompleted(linkID LinkID, completed bool) error {
+	_, err := db.Exec("UPDATE link SET completed = ? WHERE ID = ? AND opID = ?", completed, linkID, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = opID.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
+func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
+	var x int
+
+	err := db.QueryRow("SELECT COUNT(*) FROM LINK WHERE opID = ? AND ID = ? AND gid = ?", opID, link, gid).Scan(&x)
+	if err != nil {
+		Log.Error(err)
+		return false
+	}
+	if x != 1 {
+		return false
+	}
+	return true
 }
 
 // LinkOrder changes the order of the throws for an operation

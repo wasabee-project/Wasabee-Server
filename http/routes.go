@@ -119,6 +119,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/myroute", pDrawMyRouteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/assign", pDrawLinkAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/desc", pDrawLinkDescRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/link/{link}/complete", pDrawLinkCompleteRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/link/{link}/incomplete", pDrawLinkIncompleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/assign", pDrawMarkerAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", pDrawMarkerCommentRoute).Methods("POST")
 	// agent acknowledge the assignment

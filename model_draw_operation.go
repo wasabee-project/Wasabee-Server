@@ -49,13 +49,14 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 	}
 
 	// check to see if this opID is already in use
-	err := db.QueryRow("SELECT gid FROM operation WHERE ID = ?", o.ID).Scan(&gid)
-	if err == nil {
-		err := fmt.Errorf("attempt to POST to an existing opID -- use PUT to update an existing op")
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM operation WHERE ID = ?", o.ID).Scan(&count)
+	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err != sql.ErrNoRows {
+	if count != 0 {
+		err := fmt.Errorf("attempt to POST to an existing opID; use PUT to update an existing op")
 		Log.Error(err)
 		return err
 	}

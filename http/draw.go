@@ -386,6 +386,7 @@ type friendlyMarker struct {
 	Comment      string
 	AssignedTo   string
 	AssignedToID wasabee.GoogleID
+	State        string
 }
 
 type friendlyKeys struct {
@@ -459,6 +460,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 	for _, m := range op.Markers {
 		var fm friendlyMarker
 		fm.ID = m.ID
+		fm.State = m.State
 		fm.AssignedToID = m.AssignedTo
 		fm.Type = m.Type
 		fm.Comment = m.Comment
@@ -622,6 +624,46 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 		err = fmt.Errorf("only the owner can set link descriptions")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawLinkCompleteRoute(res http.ResponseWriter, req *http.Request) {
+	pDrawLinkCompRoute(res, req, true)
+}
+
+func pDrawLinkIncompleteRoute(res http.ResponseWriter, req *http.Request) {
+	pDrawLinkCompRoute(res, req, false)
+}
+
+func pDrawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	// operator / asignee
+	link := wasabee.LinkID(vars["link"])
+	if !op.ID.WriteAccess(gid) && !op.ID.AssignedTo(link, gid) {
+		err = fmt.Errorf("permission to mark link as complete denied")
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	err = op.ID.LinkCompleted(link, complete)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprintf(res, `{ "status": "ok" }`)
