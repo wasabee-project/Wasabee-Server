@@ -235,12 +235,11 @@ func keyboards(c *TGConfiguration) {
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
 			tgbotapi.NewKeyboardButton("Teams"),
-			tgbotapi.NewKeyboardButton("Assignments"),
+			tgbotapi.NewKeyboardButton("Teammates Nearby"),
 		),
 		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton("Teammates Near Me"),
-			tgbotapi.NewKeyboardButton("Farms Near Me"),
-			tgbotapi.NewKeyboardButton("Targets Near Me"),
+			tgbotapi.NewKeyboardButton("My Assignments"),
+			tgbotapi.NewKeyboardButton("Nearby Tasks"),
 		),
 	)
 }
@@ -277,27 +276,18 @@ func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.Go
 }
 
 func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.GoogleID) {
-	// get first word
-	tokens := strings.Split(inMsg.Message.Text, " ")
-	cmd := tokens[0]
-
-	switch cmd {
-	case "Assignments":
+	switch inMsg.Message.Text {
+	case "My Assignments":
 		msg.ReplyMarkup = assignmentKeyboard(gid)
-		msg.Text = "Assignments"
+		msg.Text = "My Assignments"
+	case "Nearby Tasks":
+		msg.ReplyMarkup = assignmentKeyboard(gid)
+		msg.Text = "Nearby Tasks"
 	case "Teams":
 		msg.ReplyMarkup = teamKeyboard(gid)
 		msg.Text = "Your Teams"
-	case "Teammates":
+	case "Teammates Nearby":
 		msg.Text, _ = teammatesNear(gid, inMsg)
-		msg.ReplyMarkup = config.baseKbd
-		msg.DisableWebPagePreview = true
-	case "Farms":
-		msg.Text, _ = farmsNear(gid, inMsg)
-		msg.ReplyMarkup = config.baseKbd
-		msg.DisableWebPagePreview = true
-	case "Targets":
-		msg.Text, _ = targetsNear(gid, inMsg)
 		msg.ReplyMarkup = config.baseKbd
 		msg.DisableWebPagePreview = true
 	default:
@@ -352,6 +342,7 @@ func teammatesNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error)
 	return txt, nil
 }
 
+/* 
 func targetsNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	var td wasabee.TeamData
 	var txt = ""
@@ -390,7 +381,7 @@ func farmsNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	}
 
 	return txt, nil
-}
+} */
 
 // checks rocks based on tgid, Inits agent if found
 // returns gid, tgfound, error
