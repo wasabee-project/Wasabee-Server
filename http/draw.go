@@ -376,6 +376,7 @@ type friendlyLink struct {
 	ThrowOrder     int32
 	Distance       int32
 	MinPortalLevel float64
+	Completed      bool
 }
 
 type friendlyMarker struct {
@@ -444,6 +445,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		var fl friendlyLink
 		fl.ID = l.ID
 		fl.Desc = l.Desc
+		fl.Completed = l.Completed
 		fl.ThrowOrder = int32(l.ThrowOrder)
 		fl.From = portals[l.From].Name
 		fl.FromID = l.From
