@@ -102,25 +102,28 @@ func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 		return err
 	}
 
-	marker := struct {
-		OpID     OperationID
-		MarkerID MarkerID
-	}{
-		OpID:     opID,
-		MarkerID: markerID,
+	if gid.String() != "" {
+		marker := struct {
+			OpID     OperationID
+			MarkerID MarkerID
+		}{
+			OpID:     opID,
+			MarkerID: markerID,
+		}
+
+		msg, err := gid.ExecuteTemplate("assignMarker", marker)
+		if err != nil {
+			Log.Error(err)
+			msg = fmt.Sprintf("assigned a marker for op %s", opID)
+			// do not report send errors up the chain, just log
+		}
+		_, err = gid.SendMessage(msg)
+		if err != nil {
+			Log.Errorf("%s %s %s", gid, err, msg)
+			// do not report send errors up the chain, just log
+		}
 	}
 
-	msg, err := gid.ExecuteTemplate("assignMarker", marker)
-	if err != nil {
-		Log.Error(err)
-		msg = fmt.Sprintf("assigned a marker for op %s", opID)
-		// do not report send errors up the chain, just log
-	}
-	_, err = gid.SendMessage(msg)
-	if err != nil {
-		Log.Errorf("%s %s %s", gid, err, msg)
-		// do not report send errors up the chain, just log
-	}
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
