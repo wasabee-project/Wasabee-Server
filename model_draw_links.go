@@ -17,6 +17,7 @@ type Link struct {
 	To         PortalID `json:"toPortalId"`
 	Desc       string   `json:"description"`
 	AssignedTo GoogleID `json:"assignedTo"`
+	Iname      string   `json:"assignedToNickname"`
 	ThrowOrder int32    `json:"throwOrderPos"`
 	Completed  bool     `json:"completed"`
 }
@@ -40,16 +41,16 @@ func (o *Operation) insertLink(l Link) error {
 // PopulateLinks fills in the Links list for the Operation. No authorization takes place.
 func (o *Operation) PopulateLinks() error {
 	var tmpLink Link
-	var description, gid sql.NullString
+	var description, gid, iname sql.NullString
 
-	rows, err := db.Query("SELECT ID, fromPortalID, toPortalID, description, gid, throworder, completed FROM link WHERE opID = ? ORDER BY throworder", o.ID)
+	rows, err := db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -63,6 +64,11 @@ func (o *Operation) PopulateLinks() error {
 			tmpLink.AssignedTo = GoogleID(gid.String)
 		} else {
 			tmpLink.AssignedTo = ""
+		}
+		if iname.Valid {
+			tmpLink.Iname = iname.String
+		} else {
+			tmpLink.Iname = ""
 		}
 		o.Links = append(o.Links, tmpLink)
 	}
