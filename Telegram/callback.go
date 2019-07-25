@@ -46,8 +46,12 @@ func assignmentKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
 	var rows [][]tgbotapi.InlineKeyboardButton
 	var a wasabee.Assignments
 
+	limiter := 0
 	if err := gid.GetAgentData(&ud); err == nil {
 		for _, op := range ud.Assignments {
+			if limiter > 10 {
+				break
+			}
 			err = gid.Assignments(op.OpID, &a)
 			if err != nil {
 				wasabee.Log.Error(err)
@@ -64,6 +68,10 @@ func assignmentKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
 				row = append(row, action)
 				row = append(row, reject)
 				rows = append(rows, row)
+				limiter++
+				if limiter > 10 {
+					break
+				}
 			}
 		}
 	}
@@ -71,7 +79,12 @@ func assignmentKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
 	tmp := tgbotapi.InlineKeyboardMarkup{
 		InlineKeyboard: rows,
 	}
+	wasabee.Log.Debug(tmp)
 	return tmp
+}
+
+func nearbyAssignmentKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
+	return assignmentKeyboard(gid)
 }
 
 // callback is where to determine which callback is called, and what to do with it
@@ -114,18 +127,24 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Team Updated", ShowAlert: false},
 		)
-		tmp := teamKeyboard(gid)
-		msg.ReplyMarkup = tmp
+		msg.ReplyMarkup = teamKeyboard(gid)
 	case "operation": // XXX nothing yet
 		_ = callbackOperation(command[1], command[2], gid, lang, &msg)
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Operation not supported yet"},
 		)
+		msg.ReplyMarkup = assignmentKeyboard(gid)
 	case "marker": // XXX nothing yet
 		_ = callbackMarker(command[1], command[2], gid, lang, &msg)
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Marker Updated"},
 		)
+		msg.ReplyMarkup = assignmentKeyboard(gid)
+	case "assignments":
+		resp, err = bot.AnswerCallbackQuery(
+			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Assignments"},
+		)
+		msg.ReplyMarkup = assignmentKeyboard(gid)
 	default:
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Unknown Callback"},

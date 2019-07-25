@@ -281,7 +281,7 @@ func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabe
 		msg.ReplyMarkup = assignmentKeyboard(gid)
 		msg.Text = "My Assignments"
 	case "Nearby Tasks":
-		msg.ReplyMarkup = assignmentKeyboard(gid)
+		msg.ReplyMarkup = nearbyAssignmentKeyboard(gid)
 		msg.Text = "Nearby Tasks"
 	case "Teams":
 		msg.ReplyMarkup = teamKeyboard(gid)
@@ -342,7 +342,7 @@ func teammatesNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error)
 	return txt, nil
 }
 
-/* 
+/*
 func targetsNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error) {
 	var td wasabee.TeamData
 	var txt = ""
