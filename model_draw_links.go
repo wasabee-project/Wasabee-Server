@@ -23,14 +23,38 @@ type Link struct {
 }
 
 // insertLink adds a link to the database
-func (o *Operation) insertLink(l Link) error {
+func (opID OperationID) insertLink(l Link) error {
 	if l.To == l.From {
 		Log.Debug("source and destination the same, ignoring link")
 		return nil
 	}
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, o.ID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed)
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (opID OperationID) deleteLink(lid LinkID) error {
+	_, err := db.Exec("DELETE FROM link WHERE OpID = ? and ID = ?", opID, lid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (opID OperationID) updateLink(l Link) error {
+	if l.To == l.From {
+		Log.Debug("source and destination the same, ignoring link")
+		return nil
+	}
+
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.From, l.To, MakeNullString(l.Desc))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -187,6 +211,7 @@ func (opID OperationID) LinkOrder(order string, gid GoogleID) error {
 	return nil
 }
 
+// Distance calculates the distance between to lat/long pairs
 func Distance(startLat, startLon, endLat, endLon string) float64 {
 	sl, _ := strconv.ParseFloat(startLat, 64)
 	startrl := math.Pi * sl / 180.0
@@ -208,6 +233,8 @@ func Distance(startLat, startLon, endLat, endLon string) float64 {
 	return dist * 1000
 }
 
+// MinPortalLevel calculates the minimum portal level to make a link.
+// It needs to be extended to calculate required mods
 func MinPortalLevel(distance float64, agents int, allowmods bool) float64 {
 	if distance < 160.0 {
 		return 1.000

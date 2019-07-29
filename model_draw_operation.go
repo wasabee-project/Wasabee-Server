@@ -67,14 +67,14 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 		Log.Error(err)
 	}
 
-	if err = drawOpWorker(o, gid, teamID); err != nil {
+	if err = drawOpInsertWorker(o, gid, teamID); err != nil {
 		Log.Error(err)
 		return err
 	}
 	return nil
 }
 
-func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
+func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	// start the insert process
 	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), MakeNullString(o.Comment))
 	if err != nil {
@@ -85,7 +85,7 @@ func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	portalMap := make(map[PortalID]Portal)
 	for _, p := range o.OpPortals {
 		portalMap[p.ID] = p
-		if err = o.insertPortal(p); err != nil {
+		if err = o.ID.insertPortal(p); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -97,11 +97,12 @@ func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 			Log.Debugf("portalID %s missing from portal list for op %s", m.PortalID, o.ID)
 			continue
 		}
-		if err = o.insertMarker(m); err != nil {
+		if err = o.ID.insertMarker(m); err != nil {
 			Log.Error(err)
 			continue
 		}
 	}
+
 	for _, l := range o.Links {
 		_, ok := portalMap[l.From]
 		if !ok {
@@ -113,7 +114,7 @@ func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 			Log.Debugf("destination portalID %s missing from portal list for op %s", l.To, o.ID)
 			continue
 		}
-		if err = o.insertLink(l); err != nil {
+		if err = o.ID.insertLink(l); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -124,7 +125,7 @@ func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 			Log.Debugf("anchor portalID %s missing from portal list for op %s", a, o.ID)
 			continue
 		}
-		if err = o.insertAnchor(a); err != nil {
+		if err = o.ID.insertAnchor(a); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -139,15 +140,20 @@ func drawOpWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	return nil
 }
 
-// DrawUpdate
-func DrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
+// DrawUpdate is called to UPDATE an existing draw
+// in order to minimize races between the various writers, the following conditions are enforced
+// Links are added/removed as necessary -- assignments and status are not overwritten (deleting a link removes the assignment/status)
+// Markers are added/removed as necessary -- assignments and status are not overwritten (deleting the marker removes the assignment/status)
+// Anchors can simply be deleted and rebuilt
+// Key count data is left untouched (unless the portal is no longer listed in the portals list).
+func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if id != string(o.ID) {
+	if opID != o.ID {
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
 		Log.Error(err)
 		return err
@@ -159,33 +165,176 @@ func DrawUpdate(id string, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	teamID, err := o.ID.GetTeamID()
+	if err := o.ID.Touch(); err != nil {
+		Log.Error(err)
+	}
+
+	return drawOpUpdateWorker(o)
+}
+
+func drawOpUpdateWorker(o Operation) error {
+	_, err := db.Exec("UPDATE operation SET name = ?, color = ?, comment = ? WHERE ID = ?",
+		o.Name, o.Color, MakeNullString(o.Comment), o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	// just clear and start from a blank slate - leave the team intact
-	if err = o.ID.Delete(gid, true); err != nil {
+	// get the current portal list and stash in map
+	curPortals := make(map[PortalID]PortalID)
+	portalRows, err := db.Query("SELECT ID FROM portal WHERE OpID = ?", o.ID)
+	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = o.ID.Touch(); err != nil {
-		Log.Error(err)
+	defer portalRows.Close()
+	var pid PortalID
+	for portalRows.Next() {
+		err := portalRows.Scan(&pid)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		curPortals[pid] = pid
+	}
+	// update/add portals
+	portalMap := make(map[PortalID]Portal)
+	for _, p := range o.OpPortals {
+		portalMap[p.ID] = p
+		if err = o.ID.updatePortal(p); err != nil {
+			Log.Error(err)
+			continue
+		}
+		delete(curPortals, p.ID)
+	}
+	// clear portals that are no longer used
+	for k := range curPortals {
+		err := o.ID.deletePortal(k)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
 	}
 
-	return drawOpWorker(o, gid, teamID)
+	curMarkers := make(map[MarkerID]MarkerID)
+	markerRows, err := db.Query("SELECT ID FROM marker WHERE OpID = ?", o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer markerRows.Close()
+	var mid MarkerID
+	for markerRows.Next() {
+		err := markerRows.Scan(&mid)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		curMarkers[mid] = mid
+	}
+	for _, m := range o.Markers {
+		_, ok := portalMap[m.PortalID]
+		if !ok {
+			Log.Debugf("portalID %s missing from portal list for op %s", m.PortalID, o.ID)
+			continue
+		}
+		if err = o.ID.updateMarker(m); err != nil {
+			Log.Error(err)
+			continue
+		}
+		delete(curMarkers, m.ID)
+	}
+	for k := range curMarkers {
+		err = o.ID.deleteMarker(k)
+		// _, err = db.Exec("DELETE FROM marker WHERE OpID = ? AND ID = ?", o.ID, k)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
+	curLinks := make(map[LinkID]LinkID)
+	linkRows, err := db.Query("SELECT ID FROM link WHERE OpID = ?", o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer linkRows.Close()
+	var lid LinkID
+	for linkRows.Next() {
+		err := linkRows.Scan(&lid)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		curLinks[lid] = lid
+	}
+	for _, l := range o.Links {
+		_, ok := portalMap[l.From]
+		if !ok {
+			Log.Debugf("source portalID %s missing from portal list for op %s", l.From, o.ID)
+			continue
+		}
+		_, ok = portalMap[l.To]
+		if !ok {
+			Log.Debugf("destination portalID %s missing from portal list for op %s", l.To, o.ID)
+			continue
+		}
+		if err = o.ID.updateLink(l); err != nil {
+			Log.Error(err)
+			continue
+		}
+		delete(curLinks, l.ID)
+	}
+	for k := range curLinks {
+		err = o.ID.deleteLink(k)
+		// _, err = db.Exec("DELETE FROM link WHERE OpID = ? AND ID = ?", o.ID, k)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
+	// anchors are easy, just delete and re-add them all.
+	_, err = db.Exec("DELETE FROM anchor WHERE OpID = ?", o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	for _, a := range o.Anchors {
+		_, ok := portalMap[a]
+		if !ok {
+			Log.Debugf("anchor portalID %s missing from portal list for op %s", a, o.ID)
+			continue
+		}
+		if err = o.ID.insertAnchor(a); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
+	// XXX TBD remove unused opkey portals?
+
+	return nil
 }
 
 // Delete removes an operation and all associated data
-func (opID OperationID) Delete(gid GoogleID, leaveteam bool) error {
+// if the associated team has no other ops AND the deleter owns it (the default), it is deleted as well
+func (opID OperationID) Delete(gid GoogleID) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("attempt to delete op by non-owner")
+		err := fmt.Errorf("permission denied")
 		Log.Error(err)
 		return err
 	}
 
-	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", opID)
+	// get team before delete
+	teamID, err := opID.GetTeamID()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", opID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -197,26 +346,27 @@ func (opID OperationID) Delete(gid GoogleID, leaveteam bool) error {
 	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", opID)
 	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", opID)
 
-	teamID, _ := opID.GetTeamID()
-	if teamID.String() != "" {
-		var c int
-		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ?", teamID).Scan(&c)
+	owns, err := gid.OwnsTeam(teamID)
+	if err != nil {
+		Log.Error(err)
+		return nil
+	}
+	if !owns {
+		return nil
+	}
+
+	var teamOps int
+	err = db.QueryRow("SELECT COUNT(*) FROM operation WHERE teamID = ?", teamID).Scan(&teamOps)
+	if err != nil {
+		Log.Error(err)
+		teamOps = 0
+	}
+	if teamOps == 0 { // 0 because the op has already been deleted
+		Log.Debugf("deleting team %s since this was the only op assigned to it", teamID)
+		err = teamID.Delete()
 		if err != nil {
 			Log.Error(err)
-			c = 0
-		}
-		owns, err := gid.OwnsTeam(teamID)
-		if err != nil {
-			Log.Error(err)
-			return nil
-		}
-		if !leaveteam && c < 1 && owns {
-			Log.Debug("deleting team %s because this was the last op in it", teamID)
-			err = teamID.Delete()
-			if err != nil {
-				Log.Error(err)
-				return err
-			}
+			return err
 		}
 	}
 	return nil

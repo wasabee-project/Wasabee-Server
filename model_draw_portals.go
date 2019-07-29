@@ -19,9 +19,9 @@ type Portal struct {
 }
 
 // insertPortal adds a portal to the database
-func (o *Operation) insertPortal(p Portal) error {
+func (opID OperationID) insertPortal(p Portal) error {
 	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
-		p.ID, o.ID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
+		p.ID, opID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -30,8 +30,27 @@ func (o *Operation) insertPortal(p Portal) error {
 }
 
 // insertAnchor adds an anchor to the database
-func (o *Operation) insertAnchor(p PortalID) error {
-	_, err := db.Exec("INSERT IGNORE INTO anchor (opID, portalID) VALUES (?, ?)", o.ID, p)
+func (opID OperationID) insertAnchor(p PortalID) error {
+	_, err := db.Exec("INSERT IGNORE INTO anchor (opID, portalID) VALUES (?, ?)", opID, p)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (opID OperationID) updatePortal(p Portal) error {
+	_, err := db.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
+		p.ID, opID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (opID OperationID) deletePortal(p PortalID) error {
+	_, err := db.Exec("DELETE FROM portal WHERE ID = ? AND opID = ?", p, opID)
 	if err != nil {
 		Log.Error(err)
 		return err

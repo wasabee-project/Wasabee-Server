@@ -24,13 +24,36 @@ type Marker struct {
 }
 
 // insertMarkers adds a marker to the database
-func (o *Operation) insertMarker(m Marker) error {
+func (opID OperationID) insertMarker(m Marker) error {
 	if m.State == "" {
 		m.State = "pending"
 	}
 
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		m.ID, o.ID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State)
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (opID OperationID) updateMarker(m Marker) error {
+	if m.State == "" {
+		m.State = "pending"
+	}
+
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ?",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Type, m.PortalID, MakeNullString(m.Comment))
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (opID OperationID) deleteMarker(mid MarkerID) error {
+	_, err := db.Exec("DELETE FROM marker WHERE opID = ? and ID = ?", opID, mid)
 	if err != nil {
 		Log.Error(err)
 		return err

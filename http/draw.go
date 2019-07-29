@@ -165,7 +165,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	if op.ID.IsOwner(gid) {
 		err = fmt.Errorf("deleting operation %s", op.ID)
 		wasabee.Log.Notice(err)
-		err := op.ID.Delete(gid, false)
+		err := op.ID.Delete(gid)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -221,7 +221,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	jRaw := json.RawMessage(jBlob)
 
 	// wasabee.Log.Debug(string(jBlob))
-	if err = wasabee.DrawUpdate(id, jRaw, gid); err != nil {
+	if err = wasabee.DrawUpdate(wasabee.OperationID(id), jRaw, gid); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
