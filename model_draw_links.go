@@ -172,7 +172,7 @@ func (opID OperationID) LinkCompleted(linkID LinkID, completed bool) error {
 func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 	var x int
 
-	err := db.QueryRow("SELECT COUNT(*) FROM LINK WHERE opID = ? AND ID = ? AND gid = ?", opID, link, gid).Scan(&x)
+	err := db.QueryRow("SELECT COUNT(*) FROM link WHERE opID = ? AND ID = ? AND gid = ?", opID, link, gid).Scan(&x)
 	if err != nil {
 		Log.Error(err)
 		return false
