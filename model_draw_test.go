@@ -37,7 +37,7 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	fmt.Printf(string(newj))
+	fmt.Print(string(newj))
 
 	// make some changes
 	opp.ID.KeyOnHand(gid, "83c4d2bee503409cbfc76db98af4d749.16", 7)
@@ -54,7 +54,7 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	fmt.Printf(string(newj))
+	fmt.Print(string(newj))
 
 	// run an update
 	if err := wasabee.DrawUpdate("test1", newj, gid); err != nil {
@@ -70,7 +70,7 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	fmt.Printf(string(newj))
+	fmt.Print(string(newj))
 
 	// random test
 	if opp.ID.IsOwner(gid) != true {
@@ -118,6 +118,7 @@ func TestDamagedOperation(t *testing.T) {
 	}
 
 	if err := wasabee.DrawUpdate("random", j, gid); err != nil {
+		wasabee.Log.Debug("properly ignored update to 'random'")
 		// t.Error(err.Error())
 	}
 
