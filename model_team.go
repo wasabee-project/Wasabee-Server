@@ -396,6 +396,11 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 		Log.Notice(err)
 		return err
 	}
+	if state == "On" {
+		gid.firebaseSubscribeTeam(teamID)
+	} else {
+		gid.firebaseUnsubscribeTeam(teamID)
+	}
 	return nil
 }
 

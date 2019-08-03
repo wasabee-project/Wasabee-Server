@@ -156,6 +156,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
 	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")
 	r.HandleFunc("/me/ot", ownTracksWasabeeRoute).Methods("POST")
+	r.HandleFunc("/me/firebase", meFirebaseRoute).Methods("POST")
 
 	// other agents
 	// "profile" page, such as it is

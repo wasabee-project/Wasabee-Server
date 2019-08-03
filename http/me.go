@@ -296,3 +296,32 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	http.Redirect(res, req, "/", http.StatusPermanentRedirect)
 }
+
+func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	vars := mux.Vars(req)
+	token, ok := vars["token"]
+	if !ok || token == "" {
+		err := fmt.Errorf("token not set")
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = gid.FirebaseInsertToken(token)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+		res.Header().Add("Content-Type", jsonType)
+		fmt.Fprintf(res, `{ "status": "ok"}`)
+		return
+	}
+	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+}

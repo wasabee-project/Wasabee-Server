@@ -165,11 +165,16 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	if err := o.ID.Touch(); err != nil {
+	if err := drawOpUpdateWorker(o); err != nil {
 		Log.Error(err)
+		return err
 	}
 
-	return drawOpUpdateWorker(o)
+	if err := o.ID.Touch(); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }
 
 func drawOpUpdateWorker(o Operation) error {
@@ -477,6 +482,7 @@ func (opID OperationID) SetInfo(info string, gid GoogleID) error {
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
+	_ = opID.Touch()
 	return nil
 }
 
@@ -488,6 +494,7 @@ func (opID OperationID) Touch() error {
 		return err
 	}
 
+	opID.firebaseMapChange()
 	return nil
 }
 

@@ -166,9 +166,12 @@ func (opID OperationID) LinkCompleted(linkID LinkID, completed bool) error {
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
+
+	opID.firebaseLinkStatus(linkID, completed)
 	return nil
 }
 
+// AssignedTo checks to see if a link is assigned to a particular agent
 func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 	var x int
 
@@ -180,6 +183,8 @@ func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 	if x != 1 {
 		return false
 	}
+
+	opID.firebaseAssignLink(gid, link)
 	return true
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/GroupMe"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
@@ -175,6 +176,13 @@ func run(c *cli.Context) error {
 		wasabee.Log.Noticef("%s does not exist, not enabling RISC", riscPath)
 	} else {
 		go risc.RISC(riscPath)
+	}
+
+	firebasePath := path.Join(c.String("certs"), "firebase.json")
+	if _, err := os.Stat(firebasePath); err != nil {
+		wasabee.Log.Noticef("%s does not exist, not enabling Firebase", firebasePath)
+	} else {
+		go wasabeefirebase.ServeFirebase(firebasePath)
 	}
 
 	// Serve Telegram
