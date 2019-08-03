@@ -19,9 +19,6 @@ type GoogleID string
 // TeamID is the primary means for interfacing with teams
 type TeamID string
 
-// LocKey is the location share key
-type LocKey string
-
 // EnlID is a V EnlID
 type EnlID string
 
@@ -206,19 +203,6 @@ func (gid GoogleID) SetIngressName(name string) error {
 		Log.Notice(err)
 	}
 	return err
-}
-
-// Gid converts a location share key to a agent's gid
-func (lockey LocKey) Gid() (GoogleID, error) {
-	var gid GoogleID
-
-	err := db.QueryRow("SELECT gid FROM agent WHERE lockey = ?", lockey).Scan(&gid)
-	if err != nil {
-		Log.Notice(err)
-		return "", err
-	}
-
-	return gid, nil
 }
 
 // Gid just satisfies the AgentID function
@@ -437,16 +421,6 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 
 	gid.firebaseAgentLocation()
 	return nil
-}
-
-// ResetLocKey updates the database with a new LockKey for a given agent
-func (gid GoogleID) ResetLocKey() error {
-	newlockey, _ := GenerateSafeName()
-	_, err := db.Exec("UPDATE agent SET lockey = ? WHERE gid = ?", newlockey, gid)
-	if err != nil {
-		Log.Notice(err)
-	}
-	return err
 }
 
 // IngressName returns an agent's name for a GoogleID
@@ -672,3 +646,30 @@ func (gid GoogleID) GetPicture() string {
 
 	return url
 }
+
+// ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like (GoogleID, EnlID) otherwise it defaults to agent name
+func ToGid(in string) (GoogleID, error) {
+        var gid GoogleID
+        var err error
+        switch len(in) { 
+        case 0:
+                err = fmt.Errorf("empty agent request")
+        case 40:
+                gid, err = EnlID(in).Gid()
+        case 21:
+                gid = GoogleID(in) 
+        default:
+                gid, err = SearchAgentName(in)
+        }
+        if err == sql.ErrNoRows {
+                err = fmt.Errorf("unknown agent: %s", in)
+        }
+        if err == nil && gid == "" {
+                err = fmt.Errorf("unknown agent: %s", in)
+        }
+        if err != nil {
+                Log.Info(err, in)
+        }
+        return gid, err
+}
+

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"strconv"
-	"strings"
 )
 
 // TeamData is the wrapper type containing all the team info
@@ -204,45 +203,6 @@ func (teamID TeamID) Delete() error {
 		return err
 	}
 	return nil
-}
-
-// ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like (GoogleID, EnlID, LocKey) otherwise it defaults to agent name
-// XXX move to model_agent.go
-func ToGid(in string) (GoogleID, error) {
-	var gid GoogleID
-	var err error
-	switch len(in) { // length gives us a guess, presence of a - makes us certain
-	case 0:
-		err = fmt.Errorf("empty agent request")
-	case 40:
-		if strings.IndexByte(in, '-') != -1 {
-			gid, err = LocKey(in).Gid()
-		} else {
-			gid, err = EnlID(in).Gid()
-		}
-	case 21:
-		if strings.IndexByte(in, '-') != -1 {
-			gid, err = LocKey(in).Gid()
-		} else {
-			gid = GoogleID(in) // Looks like it already is a GoogleID
-		}
-	default:
-		if strings.IndexByte(in, '-') != -1 {
-			gid, err = LocKey(in).Gid()
-		} else {
-			gid, err = SearchAgentName(in)
-		}
-	}
-	if err == sql.ErrNoRows {
-		err = fmt.Errorf("unknown agent: %s", in)
-	}
-	if err == nil && gid == "" {
-		err = fmt.Errorf("unknown agent: %s", in)
-	}
-	if err != nil {
-		Log.Info(err, in)
-	}
-	return gid, err
 }
 
 // AddAgent adds a agent to a team
