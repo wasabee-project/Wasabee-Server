@@ -649,27 +649,26 @@ func (gid GoogleID) GetPicture() string {
 
 // ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like (GoogleID, EnlID) otherwise it defaults to agent name
 func ToGid(in string) (GoogleID, error) {
-        var gid GoogleID
-        var err error
-        switch len(in) { 
-        case 0:
-                err = fmt.Errorf("empty agent request")
-        case 40:
-                gid, err = EnlID(in).Gid()
-        case 21:
-                gid = GoogleID(in) 
-        default:
-                gid, err = SearchAgentName(in)
-        }
-        if err == sql.ErrNoRows {
-                err = fmt.Errorf("unknown agent: %s", in)
-        }
-        if err == nil && gid == "" {
-                err = fmt.Errorf("unknown agent: %s", in)
-        }
-        if err != nil {
-                Log.Info(err, in)
-        }
-        return gid, err
+	var gid GoogleID
+	var err error
+	switch len(in) {
+	case 0:
+		err = fmt.Errorf("empty agent request")
+	case 40:
+		gid, err = EnlID(in).Gid()
+	case 21:
+		gid = GoogleID(in)
+	default:
+		gid, err = SearchAgentName(in)
+	}
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("unknown agent: %s", in)
+	}
+	if err == nil && gid == "" {
+		err = fmt.Errorf("unknown agent: %s", in)
+	}
+	if err != nil {
+		Log.Info(err, in)
+	}
+	return gid, err
 }
-

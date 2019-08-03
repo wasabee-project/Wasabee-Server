@@ -8,13 +8,13 @@ type LocKey string
 
 // Gid converts a location share key to a agent's gid
 func (lockey LocKey) Gid() (GoogleID, error) {
-       var gid GoogleID
+	var gid GoogleID
 
-       err := db.QueryRow("SELECT gid FROM agent WHERE lockey = ?", lockey).Scan(&gid)
-       if err != nil {
-               Log.Notice(err)
-               return "", err
-       }
+	err := db.QueryRow("SELECT gid FROM agent WHERE lockey = ?", lockey).Scan(&gid)
+	if err != nil {
+		Log.Notice(err)
+		return "", err
+	}
 
-       return gid, nil
+	return gid, nil
 }
