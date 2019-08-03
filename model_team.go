@@ -362,6 +362,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 
 // FetchAgent populates the minimal Agent struct with data anyone can see
 func FetchAgent(id AgentID, agent *Agent) error {
+	var vid sql.NullString
 	gid, err := id.Gid()
 	if err != nil {
 		Log.Error(err)
@@ -369,10 +370,13 @@ func FetchAgent(id AgentID, agent *Agent) error {
 	}
 
 	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(
-		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &agent.EnlID, &agent.RocksVerified)
+		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &vid, &agent.RocksVerified)
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	if vid.Valid {
+		agent.EnlID = EnlID(vid.String)
 	}
 	return nil
 }
