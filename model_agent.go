@@ -230,8 +230,8 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	ud.GoogleID = gid
 
-	var ot, Vid sql.NullString
-	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
+	var Vid sql.NullString
+	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ud.VVerified, &ud.VBlacklisted, &Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
 	if err != nil && err == sql.ErrNoRows {
 		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
 		err = fmt.Errorf("unknown GoogleID: [%s] try restarting your browser", gid)
@@ -247,34 +247,34 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		ud.Vid = EnlID(Vid.String)
 	}
 
-	if err = adTeams(gid, ud); err != nil {
+	if err = gid.adTeams(ud); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = adOwnedTeams(gid, ud); err != nil {
+	if err = gid.adOwnedTeams(ud); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = adTelegram(gid, ud); err != nil {
+	if err = gid.adTelegram(ud); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = adOps(gid, ud); err != nil {
+	if err = gid.adOps(ud); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = adAssignments(gid, ud); err != nil {
+	if err = gid.adAssignments(ud); err != nil {
 		Log.Error(err)
 	}
 
 	return nil
 }
 
-func adTeams(gid GoogleID, ud *AgentData) error {
+func (gid GoogleID) adTeams(ud *AgentData) error {
 	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
 	if err != nil {
 		Log.Error(err)
@@ -282,18 +282,12 @@ func adTeams(gid GoogleID, ud *AgentData) error {
 	}
 	defer rows.Close()
 	var adteam AdTeam
-	var teamname, rc sql.NullString
+	var rc sql.NullString
 	for rows.Next() {
-		err := rows.Scan(&adteam.ID, &teamname, &adteam.State, &rc)
+		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &rc)
 		if err != nil {
 			Log.Error(err)
 			return err
-		}
-		// teamname can be null
-		if teamname.Valid {
-			adteam.Name = teamname.String
-		} else {
-			adteam.Name = ""
 		}
 		if rc.Valid {
 			adteam.RocksComm = rc.String
@@ -305,7 +299,7 @@ func adTeams(gid GoogleID, ud *AgentData) error {
 	return nil
 }
 
-func adOwnedTeams(gid GoogleID, ud *AgentData) error {
+func (gid GoogleID) adOwnedTeams(ud *AgentData) error {
 	var ownedTeam AdOwnedTeam
 	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ? ORDER BY name", gid)
 	if err != nil {
@@ -313,18 +307,12 @@ func adOwnedTeams(gid GoogleID, ud *AgentData) error {
 		return err
 	}
 	defer row.Close()
-	var rc, teamname, rockskey sql.NullString
+	var rc, rockskey sql.NullString
 	for row.Next() {
-		err := row.Scan(&ownedTeam.ID, &teamname, &rc, &rockskey)
+		err := row.Scan(&ownedTeam.ID, &ownedTeam.Name, &rc, &rockskey)
 		if err != nil {
 			Log.Error(err)
 			return err
-		}
-		// can be null -- but should change schema to disallow that
-		if teamname.Valid {
-			ownedTeam.Name = teamname.String
-		} else {
-			ownedTeam.Name = ""
 		}
 		if rc.Valid {
 			ownedTeam.RocksComm = rc.String
@@ -341,7 +329,7 @@ func adOwnedTeams(gid GoogleID, ud *AgentData) error {
 	return nil
 }
 
-func adTelegram(gid GoogleID, ud *AgentData) error {
+func (gid GoogleID) adTelegram(ud *AgentData) error {
 	var authtoken sql.NullString
 	err := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
 	if err != nil && err == sql.ErrNoRows {
@@ -358,7 +346,7 @@ func adTelegram(gid GoogleID, ud *AgentData) error {
 	return nil
 }
 
-func adOps(gid GoogleID, ud *AgentData) error {
+func (gid GoogleID) adOps(ud *AgentData) error {
 	var op AdOperation
 	var g GoogleID
 	row, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, o.teamID FROM operation=o, team=t WHERE o.gid = ? AND o.teamID = t.teamID ORDER BY o.Name", gid)
@@ -399,7 +387,7 @@ func adOps(gid GoogleID, ud *AgentData) error {
 	return nil
 }
 
-func adAssignments(gid GoogleID, ud *AgentData) error {
+func (gid GoogleID) adAssignments(ud *AgentData) error {
 	var a Assignment
 
 	a.Type = "Marker"
@@ -591,6 +579,8 @@ func (gid GoogleID) Delete() error {
 	// the foreign key constraints should take care of these, but just in case...
 	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
+	_, _ = db.Exec("DELETE FROM agentextras WHERE gid = ?", gid)
+	_, _ = db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
 
 	return nil
 }

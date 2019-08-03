@@ -57,14 +57,11 @@ func (cc FirebaseCommandCode) String() string {
 }
 
 // Functions called from Wasabee to message the firebase subsystem
-// func fbPush(cc FirebaseCommandCode, teamID TeamID, opID OperationID, objID string, gid GoogleID, msg string) {
 func fbPush(fbc FirebaseCmd) {
 	if !fb.running {
 		Log.Debug("Firebase is not running, not sending msg")
 		return
 	}
-	// Log.Debugf("sending %s", fbc.Cmd.String())
-	// XXX other sanity checking here?
 	fb.c <- fbc
 }
 
