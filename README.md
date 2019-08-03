@@ -50,8 +50,6 @@ Look through the Telegram code. Adding support for your favorite system probably
 
 ## I don't want to use your app for sharing my location data.
 
-We use OwnTracks now, we are working on our own app to handle this. We are using OwnTracks because it is also open source. But you don't have to trust it.
-
 We can pull from the RAID location store if you give us permission.
 
 You can send your location via the telegram bot.
@@ -71,10 +69,6 @@ Because we like building our own tools.  When we are not smashing blue, and maki
 We believe that having the code open means people looked at it. People will find bugs and hopfully fix them. New features will be added and new ways to solve problems will be shared. ENL have previoulsy completely decompiled/deobfuscated the RESwue client. All the attempts to hide the code was wasted effort. We have little doubt they have seen or heard of most of the ENL "secret" tools (People flip sides). Hiding code does not make it secure. API endpoint probing tools exist. Obscurity is not security, it only makes life harder on the tool maintainers, which can actaully make the code less secure because it is harder to audit. 
 
 Yes, anyone can run this server software. That does not give everyone access to all the ENL data. You would still need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, and probably needs to be tested that way) without V and rocks support enabled. Do you have moral objections to V? Do you hate the rocks people? That's fine. Run your own instance. Disable the parts you don't like. Keep your data on a private server. You do not have to trust us or them to use these tools. We don't have to trust you to let you use the tools. There is no strategic advantage to be had in secrecy when the other side already has a full toolset available to every agent. 
-
-## RABBITMQ/MQTT?
-
-We haven't used it yet. We have plans to look at optionally integrating a message broker.
 
 ## Wouldn't (my favorite database) be a better choice than MariaDB/MySQL?
 
