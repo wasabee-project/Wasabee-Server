@@ -1,22 +1,16 @@
-package WasabeeFirebase
+package wasabeefirebase
 
 import (
 	"context"
 	"fmt"
 
 	firebase "firebase.google.com/go"
-	// "firebase.google.com/go/auth"
-	"firebase.google.com/go/messaging"
+	// "firebase.google.com/go/messaging"
 
 	"google.golang.org/api/option"
 
 	"github.com/wasabee-project/Wasabee-Server"
 )
-
-var config struct {
-	app	*firebase.App
-	msg	*messaging.Client
-}
 
 // ServeFirebase is the main startup function for the Firebase integration
 func ServeFirebase(keypath string) error {
@@ -27,23 +21,37 @@ func ServeFirebase(keypath string) error {
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		err := fmt.Errorf("error initializing firebase: %v", err)
-		return err
-	}
-	config.app = app
-
-	// make sure we can authenticate
-	if auth, err := app.Auth(ctx); auth == nil || err != nil {
-		err = fmt.Errorf("Auth() = (%v, %v); want (auth, nil)", auth, err)
+		wasabee.Log.Error(err)
 		return err
 	}
 
 	// make sure we can send messages
 	msg, err := app.Messaging(ctx)
-	if msg == nil || err != nil {
-		err = fmt.Errorf("Messaging() = (%v, %v); want (iid, nil)", msg, err)
+	if err != nil {
+		wasabee.Log.Error(err)
 		return err
 	}
-	config.msg = msg
 
+	fbchan := wasabee.FirebaseInit()
+	for fb := range fbchan {
+		switch fb.Cmd {
+		case wasabee.FbccAgentLocationChange:
+			_ = agentLocationChange(ctx, msg, fb)
+		case wasabee.FbccMapChange:
+			_ = mapChange(ctx, msg, fb)
+		case wasabee.FbccMarkerStatusChange:
+			_ = markerStatusChange(ctx, msg, fb)
+		case wasabee.FbccMarkerAssignmentChange:
+			_ = markerAssignmentChange(ctx, msg, fb)
+		case wasabee.FbccLinkStatusChange:
+			_ = linkStatusChange(ctx, msg, fb)
+		case wasabee.FbccLinkAssignmentChange:
+			_ = linkAssignmentChange(ctx, msg, fb)
+		case wasabee.FbccSubscribeTeam:
+			_ = subscribeToTeam(ctx, msg, fb)
+		default:
+			wasabee.Log.Debugf("Unknown Firebase command %d", fb.Cmd)
+		}
+	}
 	return nil
 }

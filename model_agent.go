@@ -465,11 +465,8 @@ func (gid GoogleID) AgentLocation(lat, lon, source string) error {
 			Log.Notice(err)
 			return err
 		}
-		// XXX put it out onto MQTT
 	}
-
-	// XXX check for waypoints/markers in range -- spin off into go routine which sends notifications
-
+	gid.firebaseAgentLocation()
 	return nil
 }
 

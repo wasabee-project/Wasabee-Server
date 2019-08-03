@@ -151,6 +151,7 @@ func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 		Log.Error(err)
 	}
 
+	opID.firebaseAssignMarker(gid, markerID)
 	return nil
 }
 
@@ -201,6 +202,7 @@ func (m MarkerID) Acknowledge(opID OperationID, gid GoogleID) error {
 		Log.Error(err)
 	}
 
+	opID.firebaseMarkerStatus(m, "acknowledged")
 	return nil
 }
 
@@ -220,6 +222,8 @@ func (m MarkerID) Finalize(opID OperationID, gid GoogleID) error {
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
+
+	opID.firebaseMarkerStatus(m, "completed")
 	return nil
 }
 
@@ -238,6 +242,8 @@ func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
+
+	opID.firebaseMarkerStatus(m, "completed")
 	return nil
 }
 
@@ -256,6 +262,8 @@ func (m MarkerID) Incomplete(opID OperationID, gid GoogleID) error {
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
+
+	opID.firebaseMarkerStatus(m, "assigned")
 	return nil
 }
 
@@ -292,5 +300,7 @@ func (m MarkerID) Reject(opID OperationID, gid GoogleID) error {
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
+
+	opID.firebaseMarkerStatus(m, "pending")
 	return nil
 }

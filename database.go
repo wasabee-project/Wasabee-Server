@@ -61,6 +61,7 @@ func setupTables() {
 		{"messagelog", `CREATE TABLE messagelog (timestamp datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32) NOT NULL, message text NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"opkeys", `CREATE TABLE opkeys ( opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, gid varchar(32) NOT NULL, onhand int(11) NOT NULL DEFAULT '0', UNIQUE KEY key_unique (opID,portalID,gid), KEY fk_operation_id_keys (opID), CONSTRAINT fk_operation_id_keys FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"agentextras", `CREATE TABLE agentextras (gid varchar(32) NOT NULL, picurl TEXT, UNIQUE KEY gid (gid), CONSTRAINT fk_extra_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
+		{"firebase", `CREATE TABLE firebase (gid varchar(32) NOT NULL, token varchar(4092) NOT NULL, KEY fk_gid (gid), CONSTRAINT fk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 	}
 
 	var table string
