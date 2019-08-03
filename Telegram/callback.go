@@ -105,7 +105,6 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 		err = gid.AgentLocation(
 			strconv.FormatFloat(update.CallbackQuery.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(update.CallbackQuery.Message.Location.Longitude, 'f', -1, 64),
-			"Telegram",
 		)
 		if err != nil {
 			wasabee.Log.Error(err)

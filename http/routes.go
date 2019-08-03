@@ -63,13 +63,6 @@ func setupRouter() *mux.Router {
 	me.Use(config.unrolled.Handler)
 	me.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
-	// /OwnTracks route
-	ot := wasabee.Subrouter("/OwnTracks")
-	ot.HandleFunc("", ownTracksBasicRoute).Methods("POST")
-	// does own auth
-	// no need to log
-	ot.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-
 	// /rocks route
 	rocks := wasabee.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
@@ -138,8 +131,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/portal/{portal}", pDrawPortalRoute).Methods("GET")
 
 	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")
-	// set my OwnTracks Password (cleartext, yes, but SSL is required)
-	r.HandleFunc("/me", meSetOwnTracksPWRoute).Methods("GET").Queries("otpw", "{otpw}")
 	// request a new lockey
 	r.HandleFunc("/me", meSetLocKeyRoute).Methods("GET").Queries("newlockey", "{y}")
 	// manual location post
@@ -155,7 +146,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
 	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")
-	r.HandleFunc("/me/ot", ownTracksWasabeeRoute).Methods("POST")
 	r.HandleFunc("/me/firebase", meFirebaseRoute).Methods("POST")
 
 	// other agents

@@ -11,7 +11,6 @@ import (
 	"github.com/urfave/cli"
 	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
-	"github.com/wasabee-project/Wasabee-Server/GroupMe"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/http"
@@ -67,9 +66,6 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "enliokey", EnvVar: "ENLIO_API_KEY", Value: "",
 		Usage: "enl.io API token. It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "gmbotkey", EnvVar: "GROUPME_ACCESS_TOKEN", Value: "",
-		Usage: "GroupMe Access Token."},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output."},
@@ -190,14 +186,6 @@ func run(c *cli.Context) error {
 		go wasabeetelegram.WasabeeBot(wasabeetelegram.TGConfiguration{
 			APIKey:      c.String("tgkey"),
 			HookPath:    "/tg",
-			TemplateSet: ts,
-		})
-	}
-
-	// Serve Groupme
-	if c.String("gmbotkey") != "" {
-		go wasabeegm.GMbot(wasabeegm.GMConfiguration{
-			AccessToken: c.String("gmbotkey"),
 			TemplateSet: ts,
 		})
 	}

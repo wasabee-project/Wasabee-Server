@@ -269,7 +269,6 @@ func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.Go
 		_ = gid.AgentLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
-			"Telegram",
 		)
 		msg.Text = "Location Processed"
 	}

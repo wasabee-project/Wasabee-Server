@@ -31,11 +31,9 @@ type AgentData struct {
 	IngressName   string
 	Level         int64
 	LocationKey   string
-	OwnTracksPW   string
 	VVerified     bool
 	VBlacklisted  bool
 	Vid           EnlID
-	OwnTracksJSON string
 	RocksVerified bool
 	RAID          bool
 	RISC          bool
@@ -173,7 +171,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, OTpassword, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,NULL,?,?,?,?,?,0)",
+		_, err = db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0)",
 			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, MakeNullString(vdata.Data.EnlID), rocks.Verified, 0)
 		if err != nil {
 			Log.Error(err)
@@ -184,12 +182,6 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO otdata (gid, otdata) VALUES (?,'{ }')", gid)
-		if err != nil {
-			Log.Error(err)
-			return false, err
-		}
-		_ = gid.ownTracksExternalUpdate("0", "0", "reaper")
 	} else if err != nil {
 		Log.Error(err)
 		return false, err
@@ -239,7 +231,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	ud.GoogleID = gid
 
 	var ot, Vid sql.NullString
-	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC, ot.otdata FROM agent=u, otdata=ot WHERE u.gid = ? AND ot.gid = u.gid", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC, &ud.OwnTracksJSON)
+	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.OTpassword, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ot, &ud.VVerified, &ud.VBlacklisted, &Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
 	if err != nil && err == sql.ErrNoRows {
 		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
 		err = fmt.Errorf("unknown GoogleID: [%s] try restarting your browser", gid)
@@ -250,11 +242,9 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		Log.Notice(err)
 		return err
 	}
-	if ot.Valid {
-		ud.OwnTracksPW = ot.String
-	}
+
 	if Vid.Valid {
-		ud.OwnTracksPW = Vid.String
+		ud.Vid = EnlID(Vid.String)
 	}
 
 	if err = adTeams(gid, ud); err != nil {
@@ -448,29 +438,20 @@ func adAssignments(gid GoogleID, ud *AgentData) error {
 }
 
 // AgentLocation updates the database to reflect a agent's current location
-// OwnTracks data is updated to reflect the change
-// TODO: react based on the location
-func (gid GoogleID) AgentLocation(lat, lon, source string) error {
+func (gid GoogleID) AgentLocation(lat, lon string) error {
 	// sanity checing on bounds?
-	// YES, store lon,lat -- the ST_ functions expect it this way
+	// store as lon,lat -- the ST_ functions expect it this way
 	point := fmt.Sprintf("POINT(%s %s)", lon, lat)
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?", point, gid); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	if source != "OwnTracks" {
-		err := gid.ownTracksExternalUpdate(lat, lon, source)
-		if err != nil {
-			Log.Notice(err)
-			return err
-		}
-	}
 	gid.firebaseAgentLocation()
 	return nil
 }
 
-// ResetLocKey updates the database with a new OwnTracks ID for a given agent
+// ResetLocKey updates the database with a new LockKey for a given agent
 func (gid GoogleID) ResetLocKey() error {
 	newlockey, _ := GenerateSafeName()
 	_, err := db.Exec("UPDATE agent SET lockey = ? WHERE gid = ?", newlockey, gid)
@@ -608,7 +589,6 @@ func (gid GoogleID) Delete() error {
 	}
 
 	// the foreign key constraints should take care of these, but just in case...
-	_, _ = db.Exec("DELETE FROM otdata WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
 

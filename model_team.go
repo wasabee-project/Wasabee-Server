@@ -3,7 +3,6 @@ package wasabee
 import (
 	"bytes"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"strconv"
@@ -21,22 +20,21 @@ type TeamData struct {
 
 // Agent is the light version of AgentData, containing visible information exported to teams
 type Agent struct {
-	Gid           GoogleID        `json:"id"`
-	Name          string          `json:"name"`
-	Level         int64           `json:"level"`
-	EnlID         EnlID           `json:"enlid"`
-	PictureURL    string          `json:"pic"`
-	Verified      bool            `json:"Vverified,omitempty"`
-	Blacklisted   bool            `json:"blacklisted"`
-	RocksVerified bool            `json:"rocks,omitempty"`
-	Color         string          `json:"color,omitempty"`
-	State         bool            `json:"state,omitempty"`
-	Lat           float64         `json:"lat,omitempty"`
-	Lon           float64         `json:"lng,omitempty"`
-	Date          string          `json:"date,omitempty"`
-	OwnTracks     json.RawMessage `json:"OwnTracks,omitempty"`
-	Distance      float64         `json:"distance,omitempty"`
-	CanSendTo     bool            `json:"cansendto,omitempty"`
+	Gid           GoogleID `json:"id"`
+	Name          string   `json:"name"`
+	Level         int64    `json:"level"`
+	EnlID         EnlID    `json:"enlid"`
+	PictureURL    string   `json:"pic"`
+	Verified      bool     `json:"Vverified,omitempty"`
+	Blacklisted   bool     `json:"blacklisted"`
+	RocksVerified bool     `json:"rocks,omitempty"`
+	Color         string   `json:"color,omitempty"`
+	State         bool     `json:"state,omitempty"`
+	Lat           float64  `json:"lat,omitempty"`
+	Lon           float64  `json:"lng,omitempty"`
+	Date          string   `json:"date,omitempty"`
+	Distance      float64  `json:"distance,omitempty"`
+	CanSendTo     bool     `json:"cansendto,omitempty"`
 }
 
 // AgentInTeam checks to see if a agent is in a team and enabled.
@@ -63,19 +61,19 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 // fetchAll includes agent for whom their state == off, should only be used to display lists to the calling agent
 func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
-	var state, lat, lon, otdata string
+	var state, lat, lon string
 	var tmpU Agent
 
 	var err error
 	var rows *sql.Rows
 	if fetchAll {
-		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
-			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
-			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid ORDER BY x.state DESC, u.iname", teamID)
+		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid "+
+			"FROM team=t, agentteams=x, agent=u, locations=l "+
+			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY x.state DESC, u.iname", teamID)
 	} else {
-		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, u.Vid "+
-			"FROM team=t, agentteams=x, agent=u, locations=l, otdata=o "+
-			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid AND u.gid = o.gid "+
+		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid "+
+			"FROM team=t, agentteams=x, agent=u, locations=l "+
+			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid "+
 			"AND x.state = 'On' ORDER BY x.state DESC, u.iname", teamID)
 	}
 	if err != nil {
@@ -86,7 +84,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	defer rows.Close()
 	for rows.Next() {
 		var enlID sql.NullString
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &enlID)
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -103,7 +101,6 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		}
 		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
-		tmpU.OwnTracks = json.RawMessage(otdata)
 		tmpU.PictureURL = tmpU.Gid.GetPicture()
 		teamList.Agent = append(teamList.Agent, tmpU)
 
@@ -309,7 +306,7 @@ func (teamID TeamID) Chown(to AgentID) error {
 
 // TeammatesNear identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
 func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
-	var state, lat, lon, otdata string
+	var state, lat, lon string
 	var tmpU Agent
 	var rows *sql.Rows
 
@@ -321,11 +318,11 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	// Log.Debug("Teammates Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
 	// no ST_Distance_Sphere in MariaDB yet...
-	rows, err = db.Query("SELECT DISTINCT u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, o.otdata, u.VVerified, u.VBlacklisted, "+
+	rows, err = db.Query("SELECT DISTINCT u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
-		"FROM agentteams=x, agent=u, locations=l, otdata=o "+
+		"FROM agentteams=x, agent=u, locations=l "+
 		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
-		"AND x.state = 'On' AND x.gid = u.gid AND x.gid = l.gid AND x.gid = o.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
+		"AND x.state = 'On' AND x.gid = u.gid AND x.gid = l.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
 		"HAVING distance < ? AND distance > 0 ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
@@ -334,7 +331,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &otdata, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
+		err := rows.Scan(&tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -346,7 +343,6 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 		}
 		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
-		tmpU.OwnTracks = json.RawMessage(otdata)
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 	return nil

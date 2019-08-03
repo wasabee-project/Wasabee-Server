@@ -55,7 +55,7 @@ func TestSetAgentName(t *testing.T) {
 }
 
 func TestAgentLocation(t *testing.T) {
-	err := gid.AgentLocation("33.148", "-96.787", "test.go")
+	err := gid.AgentLocation("33.148", "-96.787")
 	if err != nil {
 		t.Errorf(err.Error())
 	}

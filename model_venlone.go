@@ -274,7 +274,7 @@ func StatusServerPoller() {
 				Log.Error(err)
 				continue
 			}
-			err = gid.AgentLocation(lat, lon, "status.enl.one")
+			err = gid.AgentLocation(lat, lon)
 			if err != nil {
 				Log.Error(err)
 				continue
