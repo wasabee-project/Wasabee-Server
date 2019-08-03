@@ -53,7 +53,7 @@ func FirebaseClose() {
 }
 
 func (cc FirebaseCommandCode) String() string {
-	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change"}[cc]
+	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe"}[cc]
 }
 
 // Functions called from Wasabee to message the firebase subsystem

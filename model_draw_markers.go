@@ -126,6 +126,8 @@ func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 	}
 
 	if gid.String() != "" {
+		opID.firebaseAssignMarker(gid, markerID)
+
 		marker := struct {
 			OpID     OperationID
 			MarkerID MarkerID
@@ -150,8 +152,6 @@ func (opID OperationID) AssignMarker(markerID MarkerID, gid GoogleID) error {
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
-
-	opID.firebaseAssignMarker(gid, markerID)
 	return nil
 }
 

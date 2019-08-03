@@ -34,6 +34,7 @@ func ServeFirebase(keypath string) error {
 
 	fbchan := wasabee.FirebaseInit()
 	for fb := range fbchan {
+		// wasabee.Log.Debugf("processing %s", fb.Cmd.String())
 		switch fb.Cmd {
 		case wasabee.FbccAgentLocationChange:
 			_ = agentLocationChange(ctx, msg, fb)

@@ -113,6 +113,7 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 	}
 
 	/*
+		if gid.String() != "" {
 		link := struct {
 			OpID   OperationID
 			LinkID LinkID
@@ -127,15 +128,17 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 			msg = fmt.Sprintf("assigned a marker for op %s", opID)
 			// do not report send errors up the chain, just log
 		}
-		if string(gid) != "" {
-			_, err = gid.SendMessage(msg)
-			if err != nil {
-				Log.Error(err)
-				// do not report send errors up the chain, just log
-			}
+		_, err = gid.SendMessage(msg)
+		if err != nil {
+			Log.Error(err)
+			// do not report send errors up the chain, just log
+		}
 		}
 	*/
 
+	if gid.String() != "" {
+		opID.firebaseAssignLink(gid, linkID)
+	}
 	if err = opID.Touch(); err != nil {
 		Log.Error(err)
 	}
@@ -183,8 +186,6 @@ func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 	if x != 1 {
 		return false
 	}
-
-	opID.firebaseAssignLink(gid, link)
 	return true
 }
 
