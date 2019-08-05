@@ -198,6 +198,9 @@ func run(c *cli.Context) error {
 	sig := <-sigch
 
 	wasabee.Log.Info("Shutdown Requested: ", sig)
+	if _, err := os.Stat(firebasePath); err == nil {
+		wasabee.FirebaseClose()
+	}
 	if _, err := os.Stat(riscPath); err == nil {
 		risc.DisableWebhook()
 	}
