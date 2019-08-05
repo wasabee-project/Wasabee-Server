@@ -204,24 +204,46 @@ func (gid GoogleID) firebaseUnsubscribeTeam(teamID TeamID) {
 
 // FirebaseToken gets an agents FirebaseToken from the database
 // token may be "" if it has not been set for a user
-func (gid GoogleID) FirebaseToken() (string, error) {
+func (gid GoogleID) FirebaseTokens() ([]string, error) {
 	var token string
-	err := db.QueryRow("SELECT token FROM firebase WHERE gid = ?", gid).Scan(&token)
+	var toks []string
+
+	rows, err := db.Query("SELECT token FROM firebase WHERE gid = ?", gid)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
-		return "", err
+		return toks, err
 	}
 	// this is technically redundant with the main return, but be explicit about what we want
 	if err != nil && err == sql.ErrNoRows {
-		return "", nil
+		return toks, nil
 	}
 
-	return token, nil
+	for rows.Next() {
+		err := rows.Scan(&token)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		toks = append(toks, token)
+	}
+
+	return toks, nil
 }
 
 // FirebaseInsertToken updates a token in the database for an agent
+// gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers) -- need a cleaning mechanism
 func (gid GoogleID) FirebaseInsertToken(token string) error {
-	_, err := db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?) ON DUPLICATE UPDATE token = ?", gid, token, token)
+	_, err := db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// Remove known token for a given user
+func (gid GoogleID) FirebaseRemoveToken(token string) error {
+	_, err := db.Exec("DELETE FROM firebase WHERE gid = ? AND token = ?", gid, token)
 	if err != nil {
 		Log.Error(err)
 		return err

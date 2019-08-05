@@ -69,37 +69,40 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 		return nil
 	}
 
-	token, err := fb.Gid.FirebaseToken()
+	tokens, err := fb.Gid.FirebaseTokens()
 	if err != nil {
 		wasabee.Log.Error(err)
 		return err
 	}
-	if token == "" {
-		return nil
-	}
 
-	notif := messaging.Notification{
-		Title: "Marker Assignment",
-		Body:  "You have been assigned a new marker",
-	}
+	for _, token := range tokens {
+		if token == "" {
+			continue
+		}
 
-	data := map[string]string{
-		"opID":     string(fb.OpID),
-		"markerID": fb.ObjID,
-		"msg":      fb.Msg,
-		"cmd":      fb.Cmd.String(),
-	}
+		notif := messaging.Notification{
+			Title: "Marker Assignment",
+			Body:  "You have been assigned a new marker",
+		}
 
-	msg := messaging.Message{
-		Token:        token,
-		Data:         data,
-		Notification: &notif,
-	}
+		data := map[string]string{
+			"opID":     string(fb.OpID),
+			"markerID": fb.ObjID,
+			"msg":      fb.Msg,
+			"cmd":      fb.Cmd.String(),
+		}
 
-	_, err = c.Send(ctx, &msg)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
+		msg := messaging.Message{
+			Token:        token,
+			Data:         data,
+			Notification: &notif,
+		}
+
+		_, err = c.Send(ctx, &msg)
+		if err != nil {
+			wasabee.Log.Error(err)
+			return err
+		}
 	}
 	return nil
 }
@@ -160,37 +163,40 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 		return nil
 	}
 
-	token, err := fb.Gid.FirebaseToken()
+	tokens, err := fb.Gid.FirebaseTokens()
 	if err != nil {
 		wasabee.Log.Error(err)
 		return err
 	}
-	if token == "" {
-		return nil
-	}
 
-	notif := messaging.Notification{
-		Title: "Link Assignment",
-		Body:  "You have been assigned a new link",
-	}
+	for _, token := range tokens {
+		if token == "" {
+			continue
+		}
 
-	data := map[string]string{
-		"opID":   string(fb.OpID),
-		"linkID": fb.ObjID,
-		"msg":    fb.Msg,
-		"cmd":    fb.Cmd.String(),
-	}
+		notif := messaging.Notification{
+			Title: "Link Assignment",
+			Body:  "You have been assigned a new link",
+		}
 
-	msg := messaging.Message{
-		Token:        token,
-		Data:         data,
-		Notification: &notif,
-	}
+		data := map[string]string{
+			"opID":   string(fb.OpID),
+			"linkID": fb.ObjID,
+			"msg":    fb.Msg,
+			"cmd":    fb.Cmd.String(),
+		}
 
-	_, err = c.Send(ctx, &msg)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
+		msg := messaging.Message{
+			Token:        token,
+			Data:         data,
+			Notification: &notif,
+		}
+
+		_, err = c.Send(ctx, &msg)
+		if err != nil {
+			wasabee.Log.Error(err)
+			return err
+		}
 	}
 	return nil
 }
@@ -203,26 +209,30 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 		return nil
 	}
 
-	token, err := fb.Gid.FirebaseToken()
+	tokens, err := fb.Gid.FirebaseTokens()
 	if err != nil {
 		wasabee.Log.Error(err)
 		return err
-	}
-	if token == "" {
-		return nil
 	}
 
-	t := []string{token}
+	var tmr *messaging.TopicManagementResponse
 	if fb.Msg == "subscribe" {
-		_, err = c.SubscribeToTopic(ctx, t, string(fb.TeamID))
-		wasabee.Log.Debugf("subscribed %s to %s", fb.Gid, fb.TeamID)
+		tmr, err = c.SubscribeToTopic(ctx, tokens, string(fb.TeamID))
+		wasabee.Log.Debugf("subscribed %s to %s (%s)", fb.Gid, fb.TeamID, tokens)
 	} else {
-		_, err = c.UnsubscribeFromTopic(ctx, t, string(fb.TeamID))
-		wasabee.Log.Debugf("unsubscribed %s from %s", fb.Gid, fb.TeamID)
+		tmr, err = c.UnsubscribeFromTopic(ctx, tokens, string(fb.TeamID))
+		wasabee.Log.Debugf("unsubscribed %s from %s (%s)", fb.Gid, fb.TeamID, tokens)
 	}
 	if err != nil {
 		wasabee.Log.Error(err)
 		return err
 	}
+	if tmr != nil && tmr.FailureCount > 0 {
+		for _, f := range tmr.Errors {
+			wasabee.Log.Debugf("[un]subscribe failed for %s: %s ; deleting token", tokens[f.Index], f.Reason)
+			fb.Gid.FirebaseRemoveToken(tokens[f.Index])
+		}
+	}
+
 	return nil
 }

@@ -94,7 +94,7 @@ func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 
 	gid, err := lockey.Gid()
 	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf("Location Share Key (%s) is not recognized", lockey)
+		err = fmt.Errorf("location Share Key (%s) is not recognized", lockey)
 		Log.Notice(err)
 		return err
 	}
