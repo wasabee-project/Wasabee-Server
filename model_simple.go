@@ -3,7 +3,7 @@ package wasabee
 import (
 	"database/sql"
 	"encoding/hex"
-	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -40,8 +40,9 @@ func (document *SimpleDocument) Store() error {
 
 	// Don't accept binary files
 	if strings.Contains(document.Content, "\x00") {
-		Log.Debug("file contails NULL bytes")
-		return errors.New("file contains 0x00 bytes")
+		err = fmt.Errorf("file contains 0x00 bytes")
+		Log.Debug(err)
+		return err
 	}
 
 	var expiration interface{}
@@ -127,7 +128,8 @@ func Request(id string) (SimpleDocument, error) {
 				return SimpleDocument{}, err
 			}
 			if doc.Expiration.Before(time.Now()) {
-				return SimpleDocument{}, errors.New("the document has expired")
+				err = fmt.Errorf("the document has expired")
+				return SimpleDocument{}, err
 			}
 		}
 	}

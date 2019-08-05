@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -384,8 +383,9 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		return err
 	}
 	if !rr.Success {
-		Log.Error(rr.Error)
-		return errors.New(rr.Error)
+		err = fmt.Errorf(rr.Error)
+		Log.Error(err)
+		return err
 	}
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"time"
@@ -132,7 +131,7 @@ func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	}
 
 	for _, k := range o.Keys {
-		if err = o.insertKey(k); err != nil {
+		if err = o.ID.insertKey(k); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -397,7 +396,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		authorized = true
 	}
 	if !authorized {
-		return errors.New("unauthorized: you are not on a team authorized to see this operation")
+		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation")
 	}
 
 	if comment.Valid {

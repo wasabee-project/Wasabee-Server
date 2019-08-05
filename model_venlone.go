@@ -3,7 +3,6 @@ package wasabee
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -96,7 +95,7 @@ func VSearch(id AgentID, vres *Vresult) error {
 		return err
 	}
 	if vres.Status != "ok" && vres.Message != "Agent not found" {
-		err = errors.New(vres.Message)
+		err = fmt.Errorf(vres.Message)
 		Log.Info(err)
 		return err
 	}
@@ -136,7 +135,7 @@ type statusResponse struct {
 // The API documentation is scant, so this is provisional -- seems to work.
 func (eid EnlID) StatusLocation() (string, string, error) {
 	if !vc.configured {
-		return "", "", errors.New("the V API key not configured")
+		return "", "", fmt.Errorf("the V API key not configured")
 	}
 	url := fmt.Sprintf("%s/%s?apikey=%s", vc.statusEndpoint, eid, vc.vAPIKey)
 	req, err := http.NewRequest("GET", url, nil)

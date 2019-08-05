@@ -2,7 +2,6 @@ package wasabee
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strconv"
 )
@@ -95,8 +94,9 @@ func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 
 	gid, err := lockey.Gid()
 	if err != nil && err == sql.ErrNoRows {
-		e := fmt.Sprintf("Location Share Key (%s) is not recognized", lockey)
-		return errors.New(e)
+		err = fmt.Errorf("Location Share Key (%s) is not recognized", lockey)
+		Log.Notice(err)
+		return err
 	}
 
 	if err != nil {
@@ -126,7 +126,8 @@ func (tgid TelegramID) VerifyAgent(authtoken string) error {
 	}
 
 	if i < 1 {
-		return errors.New("invalid AuthToken")
+		err = fmt.Errorf("invalid AuthToken")
+		return err
 	} // trust the primary key prevents i > 1
 
 	return nil

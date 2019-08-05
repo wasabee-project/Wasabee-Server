@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"strings"
@@ -41,7 +41,8 @@ func LoadWordsFile(filename string) error {
 			}
 		}
 		if len(words) == 0 {
-			return errors.New("file doesn't contain any words")
+			err = fmt.Errorf("file doesn't contain any words")
+			return err
 		}
 		Log.Debugf("%d words loaded.", len(words))
 	}
@@ -78,7 +79,8 @@ func GenerateSafeName() (string, error) {
 		var i, total int
 		name = GenerateName()
 		if name == "" {
-			return "", errors.New("name generation failed")
+			err := fmt.Errorf("name generation failed")
+			return "", err
 		}
 		databaseID := sha256.Sum256([]byte(name))
 		err := db.QueryRow("SELECT COUNT(id) FROM document WHERE id = ?", hex.EncodeToString(databaseID[:])).Scan(&i)

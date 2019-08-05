@@ -47,6 +47,7 @@ func FirebaseInit() <-chan FirebaseCmd {
 // FirebaseClose shuts down the channel when done
 func FirebaseClose() {
 	if fb.running {
+		Log.Debug("shutting down firebase")
 		fb.running = false
 		close(fb.c)
 	}
