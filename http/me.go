@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -250,30 +251,34 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	vars := mux.Vars(req)
-	token, ok := vars["token"]
-	if !ok || token == "" {
-		err := fmt.Errorf("token not set")
+
+	t, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	token := string(t)
+
+	if token == "" {
+		err := fmt.Errorf("token empty")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	err = gid.FirebaseInsertToken(token)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
-		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "ok"}`)
-		return
-	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+
+	fmt.Fprintf(res, `{ "status": "ok"}`)
 }

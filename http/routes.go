@@ -41,6 +41,8 @@ func setupRouter() *mux.Router {
 	notauthed.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
 	notauthed.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
 	notauthed.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
+	// this cannot be a redirect -- sent it raw
+	notauthed.HandleFunc("/firebase-messaging-sw.js", fbmswRoute).Methods("GET")
 	// do not make these static -- they should be translated via the templates system
 	notauthed.HandleFunc("/privacy", privacyRoute).Methods("GET")
 	notauthed.HandleFunc("/", frontRoute).Methods("GET")
@@ -241,6 +243,11 @@ func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 		config.scanners[req.RemoteAddr] = 1
 	}
 	http.Error(res, `{status: "Not Found"}`, http.StatusNotFound)
+}
+
+func fbmswRoute(res http.ResponseWriter, req *http.Request) {
+	prefix := http.Dir(config.FrontendPath)
+	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", prefix))
 }
 
 // final step of the oauth cycle
