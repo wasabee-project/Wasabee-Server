@@ -207,9 +207,13 @@ func (gid GoogleID) firebaseUnsubscribeTeam(teamID TeamID) {
 func (gid GoogleID) FirebaseToken() (string, error) {
 	var token string
 	err := db.QueryRow("SELECT token FROM firebase WHERE gid = ?", gid).Scan(&token)
-	if err != nil && err == sql.ErrNoRows {
+	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
 		return "", err
+	}
+	// this is technically redundant with the main return, but be explicit about what we want
+	if err != nil && err == sql.ErrNoRows {
+		return "", nil
 	}
 
 	return token, nil
