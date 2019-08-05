@@ -449,9 +449,9 @@ func RevalidateEveryone() error {
 		Log.Error(err)
 		return err
 	}
+	defer rows.Close()
 
 	var gid GoogleID
-	defer rows.Close()
 	for rows.Next() {
 		if err = rows.Scan(&gid); err != nil {
 			Log.Error(err)

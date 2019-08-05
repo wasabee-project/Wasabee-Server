@@ -181,9 +181,9 @@ func (teamID TeamID) Delete() error {
 		Log.Error(err)
 		return err
 	}
+	defer rows.Close()
 
 	var gid GoogleID
-	defer rows.Close()
 	for rows.Next() {
 		err = rows.Scan(&gid)
 		if err != nil {

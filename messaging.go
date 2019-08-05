@@ -86,6 +86,7 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 		Log.Error(err)
 		return err
 	}
+	defer rows.Close()
 
 	var gid GoogleID
 	for rows.Next() {
