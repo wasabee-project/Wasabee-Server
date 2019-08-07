@@ -78,6 +78,7 @@ func (gid GoogleID) firebaseAgentLocation() {
 			Cmd:    FbccAgentLocationChange,
 			TeamID: tid,
 			Gid:    gid,
+			Msg:    tid.String(),
 		})
 	}
 }
@@ -238,6 +239,12 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 		Log.Error(err)
 		return err
 	}
+
+	tl := gid.teamList()
+	for _, teamID := range tl {
+		gid.firebaseSubscribeTeam(teamID)
+	}
+
 	return nil
 }
 
