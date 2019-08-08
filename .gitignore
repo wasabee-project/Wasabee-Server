@@ -4,5 +4,3 @@ eff_large_wordlist.txt
 .DS_Store
 env-test
 *.log
-go.sum
-go.mod
