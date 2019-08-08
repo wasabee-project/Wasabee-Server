@@ -254,6 +254,6 @@ func MinPortalLevel(distance float64, agents int, allowmods bool) float64 {
 	return m
 }
 
-func fourthroot (a float64) float64 {
-	return math.Pow(math.E, math.Log(a) / 4.0);
+func fourthroot(a float64) float64 {
+	return math.Pow(math.E, math.Log(a)/4.0)
 }
