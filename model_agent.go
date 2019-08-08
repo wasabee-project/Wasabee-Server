@@ -617,9 +617,11 @@ func (gid GoogleID) CheckLogout() bool {
 	if !ok { // not in the list
 		return false
 	}
-	Log.Debugf("clearing %s from logoutlist", gid)
-	logoutlist[gid] = false // now that they've been checked, clear them
-	// defer delete(logoutlist, gid)
+	if logout == true {
+		logoutlist[gid] = false
+		Log.Debugf("clearing %s from logoutlist", gid)
+		delete(logoutlist, gid)
+	}
 	return logout
 }
 
