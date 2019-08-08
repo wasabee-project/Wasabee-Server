@@ -203,7 +203,7 @@ func (gid GoogleID) firebaseUnsubscribeTeam(teamID TeamID) {
 
 // Functions called from Firebase to use Wasabee resources
 
-// FirebaseToken gets an agents FirebaseToken from the database
+// FirebaseTokens gets an agents FirebaseToken from the database
 // token may be "" if it has not been set for a user
 func (gid GoogleID) FirebaseTokens() ([]string, error) {
 	var token string
@@ -248,7 +248,7 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 	return nil
 }
 
-// Remove known token for a given user
+// FirebaseRemoveToken removes known token for a given user
 func (gid GoogleID) FirebaseRemoveToken(token string) error {
 	_, err := db.Exec("DELETE FROM firebase WHERE gid = ? AND token = ?", gid, token)
 	if err != nil {

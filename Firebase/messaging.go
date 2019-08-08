@@ -237,7 +237,11 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
 			wasabee.Log.Debugf("[un]subscribe failed for %s: %s ; deleting token", tokens[f.Index], f.Reason)
-			fb.Gid.FirebaseRemoveToken(tokens[f.Index])
+			err = fb.Gid.FirebaseRemoveToken(tokens[f.Index])
+			if err != nil {
+				wasabee.Log.Notice(err)
+				// keep going
+			}
 		}
 	}
 	return nil
