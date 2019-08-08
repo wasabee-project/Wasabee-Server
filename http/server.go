@@ -210,7 +210,7 @@ func Shutdown() error {
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Add("Server", "Wasabee-Server")
-		res.Header().Add("X-Frame-Options", "deny")
+		// res.Header().Add("X-Frame-Options", "deny")
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
