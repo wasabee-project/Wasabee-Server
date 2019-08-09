@@ -385,6 +385,12 @@ func (o *Operation) Populate(gid GoogleID) error {
 	// permission check and populate Operation top level
 	r := db.QueryRow("SELECT name, gid, color, teamID, modified, comment FROM operation WHERE ID = ?", o.ID)
 	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.TeamID, &o.Modified, &comment)
+
+	if err != nil && err == sql.ErrNoRows {
+		err = fmt.Errorf("operation not found")
+		Log.Error(err)
+		return err
+	}
 	if err != nil {
 		Log.Error(err)
 		return err
