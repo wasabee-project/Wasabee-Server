@@ -341,47 +341,6 @@ func teammatesNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error)
 	return txt, nil
 }
 
-/*
-func targetsNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td wasabee.TeamData
-	var txt = ""
-	maxdistance := 100
-	maxresults := 10
-
-	err := gid.WaypointsNear(maxdistance, maxresults, &td)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return txt, err
-	}
-	txt, err = templateExecute("Targets", inMsg.Message.From.LanguageCode, &td)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return txt, err
-	}
-
-	return txt, nil
-}
-
-func farmsNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td wasabee.TeamData
-	var txt = ""
-	maxdistance := 100
-	maxresults := 10
-
-	err := gid.WaypointsNear(maxdistance, maxresults, &td)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return txt, err
-	}
-	txt, err = templateExecute("Farms", inMsg.Message.From.LanguageCode, &td)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return txt, err
-	}
-
-	return txt, nil
-} */
-
 // checks rocks based on tgid, Inits agent if found
 // returns gid, tgfound, error
 func runRocks(tgid wasabee.TelegramID) (wasabee.GoogleID, error) {

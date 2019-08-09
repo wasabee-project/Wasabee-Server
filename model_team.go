@@ -308,28 +308,6 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	return nil
 }
 
-// WaypointsNear returns any Waypoints and Markers near the specified gid, up to distance maxdistance, with a maximum of maxresults returned
-// the Agents portion of the TeamData is uninitialized
-func (gid GoogleID) WaypointsNear(maxdistance, maxresults int, td *TeamData) error {
-	var lat, lon string
-	/* var rows *sql.Rows */
-
-	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	/*
-		err = gid.pdMarkersNear(maxdistance, maxresults, td)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-	*/
-	return nil
-}
-
 // SetRocks links a team to a community at enl.rocks.
 // Does not check team ownership -- caller should take care of authorization.
 // Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).

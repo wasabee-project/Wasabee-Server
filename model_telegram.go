@@ -103,7 +103,7 @@ func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 		Log.Notice(err)
 		return err
 	}
-	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tgid, name, gid, authtoken)
+	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, 'unused', ?, 0, ?)", tgid, name, gid, authtoken)
 	if err != nil {
 		Log.Notice(err)
 		return err

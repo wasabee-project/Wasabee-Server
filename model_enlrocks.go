@@ -140,9 +140,8 @@ func RocksUpdate(id AgentID, agent *RocksAgent) error {
 		}
 
 		// we trust .rocks to verify telegram info; if it is not already set for a agent, just import it.
-		// XXX using agent name for telegramName isn't right in many cases -- need to reverify later
 		if agent.TGId > 0 { // negative numbers are group chats, 0 is invalid
-			_, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", agent.TGId, agent.Agent, gid)
+			_, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, 'unused', ?, 1)", agent.TGId, gid)
 			if err != nil {
 				Log.Error(err)
 				return err

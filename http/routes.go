@@ -176,9 +176,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")
 
-	// waypoints
-	r.HandleFunc("/waypoints/me", waypointsNearMeRoute).Methods("GET")
-
 	// server control functions
 	// trigger the server refresh of the template files
 	r.HandleFunc("/templates/refresh", templateUpdateRoute).Methods("GET")

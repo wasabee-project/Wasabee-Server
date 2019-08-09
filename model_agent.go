@@ -41,7 +41,6 @@ type AgentData struct {
 	// OwnedOps is deprecated use Ops.IsOwner
 	OwnedOps []AdOperation
 	Telegram struct {
-		UserName  string
 		ID        int64
 		Verified  bool
 		Authtoken string
@@ -316,7 +315,7 @@ func (gid GoogleID) adOwnedTeams(ud *AgentData) error {
 
 func (gid GoogleID) adTelegram(ud *AgentData) error {
 	var authtoken sql.NullString
-	err := db.QueryRow("SELECT telegramName, telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ud.Telegram.UserName, &ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
+	err := db.QueryRow("SELECT telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
 	if err != nil && err == sql.ErrNoRows {
 		ud.Telegram.ID = 0
 		ud.Telegram.Verified = false
@@ -433,7 +432,8 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 	return nil
 }
 
-// IngressName returns an agent's name for a GoogleID
+// IngressName returns an agent's name for a given GoogleID.
+// It returns err == sql.ErrNoRows if there is no such agent.
 func (gid GoogleID) IngressName() (string, error) {
 	var iname string
 	err := db.QueryRow("SELECT iname FROM agent WHERE gid = ?", gid).Scan(&iname)

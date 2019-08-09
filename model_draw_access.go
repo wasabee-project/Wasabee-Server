@@ -64,10 +64,14 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 		return err
 	}
 
-	// XXX make sure target GID is valid!
-
 	togid, err := ToGid(to)
 	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	if x, err := togid.IngressName(); x == "" || err != nil {
+		err := fmt.Errorf("unknown user: %s", to)
 		Log.Error(err)
 		return err
 	}

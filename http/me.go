@@ -266,6 +266,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	token := string(t)
+	// XXX limit to 152 char? 1k?
 
 	if token == "" {
 		err := fmt.Errorf("token empty")
