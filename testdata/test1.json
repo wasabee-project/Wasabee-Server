@@ -9,8 +9,8 @@
 			"name": "Almanac Park",
 			"lat": "33.270218",
 			"lng": "-96.809123",
-			"comment": "",
-			"hardness": ""
+			"comment": "testing a comment",
+			"hardness": "BGAN only"
 		},
 		{
 			"id": "4c9f87acfc014597ae93c1fe6a706fdc.16",
@@ -42,7 +42,7 @@
 			"lat": "33.448497",
 			"lng": "-96.747848",
 			"comment": "",
-			"hardness": ""
+			"hardness": "booster required"
 		},
 		{
 			"id": "a8764229fe4542ff86f81aaf67a75bcb.16",
@@ -315,26 +315,6 @@
 			"completed": false
 		},
 		{
-			"ID": "5018ddb8459bb199f8e38e0724efde1c224638ad",
-			"fromPortalId": "7152255347c345438333b85c918ab35f.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "113891827784514931834",
-			"assignedToNickname": "Phtiv",
-			"throwOrderPos": 1,
-			"completed": false
-		},
-		{
-			"ID": "5018ddb8459bb199f8e38e0724efde1c224638ad",
-			"fromPortalId": "7152255347c345438333b85c918ab35f.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "113891827784514931834",
-			"assignedToNickname": "Phtiv",
-			"throwOrderPos": 1,
-			"completed": false
-		},
-		{
 			"ID": "8157aee8c50a81e0703f1f0fc33c69e734149c5a",
 			"fromPortalId": "7152255347c345438333b85c918ab35f.16",
 			"toPortalId": "4c9f87acfc014597ae93c1fe6a706fdc.16",
@@ -342,46 +322,6 @@
 			"assignedTo": "118281765050946915735",
 			"assignedToNickname": "deviousness",
 			"throwOrderPos": 2,
-			"completed": false
-		},
-		{
-			"ID": "8157aee8c50a81e0703f1f0fc33c69e734149c5a",
-			"fromPortalId": "7152255347c345438333b85c918ab35f.16",
-			"toPortalId": "4c9f87acfc014597ae93c1fe6a706fdc.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 2,
-			"completed": false
-		},
-		{
-			"ID": "8157aee8c50a81e0703f1f0fc33c69e734149c5a",
-			"fromPortalId": "7152255347c345438333b85c918ab35f.16",
-			"toPortalId": "4c9f87acfc014597ae93c1fe6a706fdc.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 2,
-			"completed": false
-		},
-		{
-			"ID": "a97cc90cd4612a653d7b15950509262d208dd0ea",
-			"fromPortalId": "af313ef7f66a44f7b6d862bd31b8033b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 3,
-			"completed": false
-		},
-		{
-			"ID": "a97cc90cd4612a653d7b15950509262d208dd0ea",
-			"fromPortalId": "af313ef7f66a44f7b6d862bd31b8033b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 3,
 			"completed": false
 		},
 		{
@@ -405,26 +345,6 @@
 			"completed": false
 		},
 		{
-			"ID": "4d2d92d62c8bce037a054a58610befeec49f57ff",
-			"fromPortalId": "af313ef7f66a44f7b6d862bd31b8033b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 4,
-			"completed": false
-		},
-		{
-			"ID": "4d2d92d62c8bce037a054a58610befeec49f57ff",
-			"fromPortalId": "af313ef7f66a44f7b6d862bd31b8033b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 4,
-			"completed": false
-		},
-		{
 			"ID": "680ace050ffa03fcb44c2b846278cfab5a5d7fbd",
 			"fromPortalId": "45a4025bdf014b22a2b47b32fb50e779.16",
 			"toPortalId": "7152255347c345438333b85c918ab35f.16",
@@ -432,46 +352,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 5,
-			"completed": false
-		},
-		{
-			"ID": "680ace050ffa03fcb44c2b846278cfab5a5d7fbd",
-			"fromPortalId": "45a4025bdf014b22a2b47b32fb50e779.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 5,
-			"completed": false
-		},
-		{
-			"ID": "680ace050ffa03fcb44c2b846278cfab5a5d7fbd",
-			"fromPortalId": "45a4025bdf014b22a2b47b32fb50e779.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 5,
-			"completed": false
-		},
-		{
-			"ID": "c5d8da9c63236b2cccface32c55b214ce749921d",
-			"fromPortalId": "45a4025bdf014b22a2b47b32fb50e779.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 6,
-			"completed": false
-		},
-		{
-			"ID": "c5d8da9c63236b2cccface32c55b214ce749921d",
-			"fromPortalId": "45a4025bdf014b22a2b47b32fb50e779.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 6,
 			"completed": false
 		},
 		{
@@ -495,26 +375,6 @@
 			"completed": false
 		},
 		{
-			"ID": "79ae0caedd7164058d85d0b49662134d71af6bc7",
-			"fromPortalId": "52b391159cb74ab486038c50faef346e.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 7,
-			"completed": false
-		},
-		{
-			"ID": "79ae0caedd7164058d85d0b49662134d71af6bc7",
-			"fromPortalId": "52b391159cb74ab486038c50faef346e.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 7,
-			"completed": false
-		},
-		{
 			"ID": "165e3eae9660a636a0e016dafcc6d8b0ba528de5",
 			"fromPortalId": "52b391159cb74ab486038c50faef346e.16",
 			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
@@ -522,46 +382,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 8,
-			"completed": false
-		},
-		{
-			"ID": "165e3eae9660a636a0e016dafcc6d8b0ba528de5",
-			"fromPortalId": "52b391159cb74ab486038c50faef346e.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 8,
-			"completed": false
-		},
-		{
-			"ID": "165e3eae9660a636a0e016dafcc6d8b0ba528de5",
-			"fromPortalId": "52b391159cb74ab486038c50faef346e.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 8,
-			"completed": false
-		},
-		{
-			"ID": "fe9e192c5941ac376e1aa8c06b70c32d3090e3e8",
-			"fromPortalId": "9f982f36190a448fa3eed5f2d6561c58.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 9,
-			"completed": false
-		},
-		{
-			"ID": "fe9e192c5941ac376e1aa8c06b70c32d3090e3e8",
-			"fromPortalId": "9f982f36190a448fa3eed5f2d6561c58.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 9,
 			"completed": false
 		},
 		{
@@ -585,26 +405,6 @@
 			"completed": false
 		},
 		{
-			"ID": "1299fe782f58f87cb1ed2739f63d7bf38b83b822",
-			"fromPortalId": "9f982f36190a448fa3eed5f2d6561c58.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 10,
-			"completed": false
-		},
-		{
-			"ID": "1299fe782f58f87cb1ed2739f63d7bf38b83b822",
-			"fromPortalId": "9f982f36190a448fa3eed5f2d6561c58.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 10,
-			"completed": false
-		},
-		{
 			"ID": "135da54fbf8480e084c4b434fee0294994526107",
 			"fromPortalId": "d75d44c209404b22a59d032fac1b83e3.12",
 			"toPortalId": "7152255347c345438333b85c918ab35f.16",
@@ -612,46 +412,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 11,
-			"completed": false
-		},
-		{
-			"ID": "135da54fbf8480e084c4b434fee0294994526107",
-			"fromPortalId": "d75d44c209404b22a59d032fac1b83e3.12",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 11,
-			"completed": false
-		},
-		{
-			"ID": "135da54fbf8480e084c4b434fee0294994526107",
-			"fromPortalId": "d75d44c209404b22a59d032fac1b83e3.12",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 11,
-			"completed": false
-		},
-		{
-			"ID": "ce439eab15af20e39c5d8933df7c2b7e999dce4c",
-			"fromPortalId": "d75d44c209404b22a59d032fac1b83e3.12",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 12,
-			"completed": false
-		},
-		{
-			"ID": "ce439eab15af20e39c5d8933df7c2b7e999dce4c",
-			"fromPortalId": "d75d44c209404b22a59d032fac1b83e3.12",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 12,
 			"completed": false
 		},
 		{
@@ -675,26 +435,6 @@
 			"completed": false
 		},
 		{
-			"ID": "57b9f8342f963a8871ac158ffadfb6fbe5522325",
-			"fromPortalId": "a25879a917954bd58e8b664a9618592b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 13,
-			"completed": false
-		},
-		{
-			"ID": "57b9f8342f963a8871ac158ffadfb6fbe5522325",
-			"fromPortalId": "a25879a917954bd58e8b664a9618592b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 13,
-			"completed": false
-		},
-		{
 			"ID": "135d5a85befc93c954d93be8af0130755afbefba",
 			"fromPortalId": "a25879a917954bd58e8b664a9618592b.16",
 			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
@@ -702,46 +442,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 14,
-			"completed": false
-		},
-		{
-			"ID": "135d5a85befc93c954d93be8af0130755afbefba",
-			"fromPortalId": "a25879a917954bd58e8b664a9618592b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 14,
-			"completed": false
-		},
-		{
-			"ID": "135d5a85befc93c954d93be8af0130755afbefba",
-			"fromPortalId": "a25879a917954bd58e8b664a9618592b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 14,
-			"completed": false
-		},
-		{
-			"ID": "6e645a1fdc3f256635252b87552a41fc710123d3",
-			"fromPortalId": "2aa9e865ab8a4bb9896fb371281dcb7b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 15,
-			"completed": false
-		},
-		{
-			"ID": "6e645a1fdc3f256635252b87552a41fc710123d3",
-			"fromPortalId": "2aa9e865ab8a4bb9896fb371281dcb7b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 15,
 			"completed": false
 		},
 		{
@@ -765,26 +465,6 @@
 			"completed": false
 		},
 		{
-			"ID": "1ab0a801bbee3d248a7520f178581bc4c1acc41b",
-			"fromPortalId": "2aa9e865ab8a4bb9896fb371281dcb7b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 16,
-			"completed": false
-		},
-		{
-			"ID": "1ab0a801bbee3d248a7520f178581bc4c1acc41b",
-			"fromPortalId": "2aa9e865ab8a4bb9896fb371281dcb7b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 16,
-			"completed": false
-		},
-		{
 			"ID": "d1b6919aa2601bfc75bd42590693177edb865746",
 			"fromPortalId": "0b1b4082722d411da2b4dc52b63c9288.16",
 			"toPortalId": "7152255347c345438333b85c918ab35f.16",
@@ -792,46 +472,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 17,
-			"completed": false
-		},
-		{
-			"ID": "d1b6919aa2601bfc75bd42590693177edb865746",
-			"fromPortalId": "0b1b4082722d411da2b4dc52b63c9288.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 17,
-			"completed": false
-		},
-		{
-			"ID": "d1b6919aa2601bfc75bd42590693177edb865746",
-			"fromPortalId": "0b1b4082722d411da2b4dc52b63c9288.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 17,
-			"completed": false
-		},
-		{
-			"ID": "81c337518315ccce63c5bb08f14e9b50d4b3927f",
-			"fromPortalId": "0b1b4082722d411da2b4dc52b63c9288.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 18,
-			"completed": false
-		},
-		{
-			"ID": "81c337518315ccce63c5bb08f14e9b50d4b3927f",
-			"fromPortalId": "0b1b4082722d411da2b4dc52b63c9288.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 18,
 			"completed": false
 		},
 		{
@@ -855,26 +495,6 @@
 			"completed": false
 		},
 		{
-			"ID": "7206284237db13d237f9c5fcd284060c5427122e",
-			"fromPortalId": "67d2f96a934a429e98faf04d6b2a5d2a.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 19,
-			"completed": false
-		},
-		{
-			"ID": "7206284237db13d237f9c5fcd284060c5427122e",
-			"fromPortalId": "67d2f96a934a429e98faf04d6b2a5d2a.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 19,
-			"completed": false
-		},
-		{
 			"ID": "64a54e74779280daf01a7347920ea8cc4471a8cd",
 			"fromPortalId": "67d2f96a934a429e98faf04d6b2a5d2a.16",
 			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
@@ -882,46 +502,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 20,
-			"completed": false
-		},
-		{
-			"ID": "64a54e74779280daf01a7347920ea8cc4471a8cd",
-			"fromPortalId": "67d2f96a934a429e98faf04d6b2a5d2a.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 20,
-			"completed": false
-		},
-		{
-			"ID": "64a54e74779280daf01a7347920ea8cc4471a8cd",
-			"fromPortalId": "67d2f96a934a429e98faf04d6b2a5d2a.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 20,
-			"completed": false
-		},
-		{
-			"ID": "4e2e099f6f4f2811725e9aaf858922f0566da94c",
-			"fromPortalId": "a8764229fe4542ff86f81aaf67a75bcb.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 21,
-			"completed": false
-		},
-		{
-			"ID": "4e2e099f6f4f2811725e9aaf858922f0566da94c",
-			"fromPortalId": "a8764229fe4542ff86f81aaf67a75bcb.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 21,
 			"completed": false
 		},
 		{
@@ -945,26 +525,6 @@
 			"completed": false
 		},
 		{
-			"ID": "1835c72866960e207e0a591a764ca472a0983fb5",
-			"fromPortalId": "a8764229fe4542ff86f81aaf67a75bcb.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 22,
-			"completed": false
-		},
-		{
-			"ID": "1835c72866960e207e0a591a764ca472a0983fb5",
-			"fromPortalId": "a8764229fe4542ff86f81aaf67a75bcb.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 22,
-			"completed": false
-		},
-		{
 			"ID": "39a3e38e70599e55be82d75cad00532241660628",
 			"fromPortalId": "df65407a4c0344f6a009979cdf1bc3a3.16",
 			"toPortalId": "7152255347c345438333b85c918ab35f.16",
@@ -972,46 +532,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 23,
-			"completed": false
-		},
-		{
-			"ID": "39a3e38e70599e55be82d75cad00532241660628",
-			"fromPortalId": "df65407a4c0344f6a009979cdf1bc3a3.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 23,
-			"completed": false
-		},
-		{
-			"ID": "39a3e38e70599e55be82d75cad00532241660628",
-			"fromPortalId": "df65407a4c0344f6a009979cdf1bc3a3.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 23,
-			"completed": false
-		},
-		{
-			"ID": "ab78c29eecb1668cb89a3f38ccb7f2c64c70c7f0",
-			"fromPortalId": "df65407a4c0344f6a009979cdf1bc3a3.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 24,
-			"completed": false
-		},
-		{
-			"ID": "ab78c29eecb1668cb89a3f38ccb7f2c64c70c7f0",
-			"fromPortalId": "df65407a4c0344f6a009979cdf1bc3a3.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 24,
 			"completed": false
 		},
 		{
@@ -1035,26 +555,6 @@
 			"completed": false
 		},
 		{
-			"ID": "053ec0eb0453761b078c0d7dd51908486df6ddf4",
-			"fromPortalId": "254d8dce7e9d474b96be8bd59720d525.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 25,
-			"completed": false
-		},
-		{
-			"ID": "053ec0eb0453761b078c0d7dd51908486df6ddf4",
-			"fromPortalId": "254d8dce7e9d474b96be8bd59720d525.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 25,
-			"completed": false
-		},
-		{
 			"ID": "1b5f10aff4db4cc8125083ac7b071341ac7c0790",
 			"fromPortalId": "254d8dce7e9d474b96be8bd59720d525.16",
 			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
@@ -1062,46 +562,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 26,
-			"completed": false
-		},
-		{
-			"ID": "1b5f10aff4db4cc8125083ac7b071341ac7c0790",
-			"fromPortalId": "254d8dce7e9d474b96be8bd59720d525.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 26,
-			"completed": false
-		},
-		{
-			"ID": "1b5f10aff4db4cc8125083ac7b071341ac7c0790",
-			"fromPortalId": "254d8dce7e9d474b96be8bd59720d525.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 26,
-			"completed": false
-		},
-		{
-			"ID": "aca62b7d0219f32afb2ffd116b2d7350df2b8d59",
-			"fromPortalId": "93037284547949249d5967fe1f0781ce.12",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 27,
-			"completed": false
-		},
-		{
-			"ID": "aca62b7d0219f32afb2ffd116b2d7350df2b8d59",
-			"fromPortalId": "93037284547949249d5967fe1f0781ce.12",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 27,
 			"completed": false
 		},
 		{
@@ -1125,26 +585,6 @@
 			"completed": false
 		},
 		{
-			"ID": "941614900d74cd31456883ae515e0fa2f72eee97",
-			"fromPortalId": "93037284547949249d5967fe1f0781ce.12",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 28,
-			"completed": false
-		},
-		{
-			"ID": "941614900d74cd31456883ae515e0fa2f72eee97",
-			"fromPortalId": "93037284547949249d5967fe1f0781ce.12",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 28,
-			"completed": false
-		},
-		{
 			"ID": "1fa530263f4456f887f44dfe1d138e2ad565b3b8",
 			"fromPortalId": "a40be6fb30d24ff3a021979914a03017.16",
 			"toPortalId": "7152255347c345438333b85c918ab35f.16",
@@ -1152,46 +592,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 29,
-			"completed": false
-		},
-		{
-			"ID": "1fa530263f4456f887f44dfe1d138e2ad565b3b8",
-			"fromPortalId": "a40be6fb30d24ff3a021979914a03017.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 29,
-			"completed": false
-		},
-		{
-			"ID": "1fa530263f4456f887f44dfe1d138e2ad565b3b8",
-			"fromPortalId": "a40be6fb30d24ff3a021979914a03017.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 29,
-			"completed": false
-		},
-		{
-			"ID": "09b46f3fe279f864c92ffc76de9f379ad537c49f",
-			"fromPortalId": "a40be6fb30d24ff3a021979914a03017.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 30,
-			"completed": false
-		},
-		{
-			"ID": "09b46f3fe279f864c92ffc76de9f379ad537c49f",
-			"fromPortalId": "a40be6fb30d24ff3a021979914a03017.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 30,
 			"completed": false
 		},
 		{
@@ -1215,26 +615,6 @@
 			"completed": false
 		},
 		{
-			"ID": "389b0bc921a7f9b384a3db3f0e4aa7e666441b96",
-			"fromPortalId": "a57e8818c0ca48a2a492a1d659d67b6b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 31,
-			"completed": false
-		},
-		{
-			"ID": "389b0bc921a7f9b384a3db3f0e4aa7e666441b96",
-			"fromPortalId": "a57e8818c0ca48a2a492a1d659d67b6b.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 31,
-			"completed": false
-		},
-		{
 			"ID": "1f719e6b2ad8d68567d75256a10c565adc31bd14",
 			"fromPortalId": "a57e8818c0ca48a2a492a1d659d67b6b.16",
 			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
@@ -1242,46 +622,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 32,
-			"completed": false
-		},
-		{
-			"ID": "1f719e6b2ad8d68567d75256a10c565adc31bd14",
-			"fromPortalId": "a57e8818c0ca48a2a492a1d659d67b6b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 32,
-			"completed": false
-		},
-		{
-			"ID": "1f719e6b2ad8d68567d75256a10c565adc31bd14",
-			"fromPortalId": "a57e8818c0ca48a2a492a1d659d67b6b.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 32,
-			"completed": false
-		},
-		{
-			"ID": "8d6a65ec502b3080f62b66e2fbba012344cb78f8",
-			"fromPortalId": "ff9239f29e6940da8faf61c8b65189d3.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 33,
-			"completed": false
-		},
-		{
-			"ID": "8d6a65ec502b3080f62b66e2fbba012344cb78f8",
-			"fromPortalId": "ff9239f29e6940da8faf61c8b65189d3.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 33,
 			"completed": false
 		},
 		{
@@ -1305,26 +645,6 @@
 			"completed": false
 		},
 		{
-			"ID": "3fd5094e6992ec1de5f4515afd0afdfda4e0e0ff",
-			"fromPortalId": "ff9239f29e6940da8faf61c8b65189d3.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 34,
-			"completed": false
-		},
-		{
-			"ID": "3fd5094e6992ec1de5f4515afd0afdfda4e0e0ff",
-			"fromPortalId": "ff9239f29e6940da8faf61c8b65189d3.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 34,
-			"completed": false
-		},
-		{
 			"ID": "dfcc054ab7593cd9f5a1369d50f10ba5a637a701",
 			"fromPortalId": "6cb8df4cc5ef4d33aa0b4062cb89ec83.16",
 			"toPortalId": "7152255347c345438333b85c918ab35f.16",
@@ -1332,46 +652,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 35,
-			"completed": false
-		},
-		{
-			"ID": "dfcc054ab7593cd9f5a1369d50f10ba5a637a701",
-			"fromPortalId": "6cb8df4cc5ef4d33aa0b4062cb89ec83.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 35,
-			"completed": false
-		},
-		{
-			"ID": "dfcc054ab7593cd9f5a1369d50f10ba5a637a701",
-			"fromPortalId": "6cb8df4cc5ef4d33aa0b4062cb89ec83.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 35,
-			"completed": false
-		},
-		{
-			"ID": "0e19b796dfdb47e80a65dd8cd02427124df0e665",
-			"fromPortalId": "6cb8df4cc5ef4d33aa0b4062cb89ec83.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 36,
-			"completed": false
-		},
-		{
-			"ID": "0e19b796dfdb47e80a65dd8cd02427124df0e665",
-			"fromPortalId": "6cb8df4cc5ef4d33aa0b4062cb89ec83.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 36,
 			"completed": false
 		},
 		{
@@ -1395,26 +675,6 @@
 			"completed": false
 		},
 		{
-			"ID": "f2282309eefb7a5e5b3438c946c9cb0a654d1dbe",
-			"fromPortalId": "693489c459844df1bb25c5703ddac775.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 37,
-			"completed": false
-		},
-		{
-			"ID": "f2282309eefb7a5e5b3438c946c9cb0a654d1dbe",
-			"fromPortalId": "693489c459844df1bb25c5703ddac775.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 37,
-			"completed": false
-		},
-		{
 			"ID": "40e3575329ea9aa75792eb265f51404f323b11b3",
 			"fromPortalId": "693489c459844df1bb25c5703ddac775.16",
 			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
@@ -1422,46 +682,6 @@
 			"assignedTo": "",
 			"assignedToNickname": "",
 			"throwOrderPos": 38,
-			"completed": false
-		},
-		{
-			"ID": "40e3575329ea9aa75792eb265f51404f323b11b3",
-			"fromPortalId": "693489c459844df1bb25c5703ddac775.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 38,
-			"completed": false
-		},
-		{
-			"ID": "40e3575329ea9aa75792eb265f51404f323b11b3",
-			"fromPortalId": "693489c459844df1bb25c5703ddac775.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "",
-			"assignedToNickname": "",
-			"throwOrderPos": 38,
-			"completed": false
-		},
-		{
-			"ID": "967c59ce86902202b40a308706544bfc7838ff84",
-			"fromPortalId": "f2103bf5c57b426cbddcf985b8c48ddc.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "111296267873335135470",
-			"assignedToNickname": "boxofkittens",
-			"throwOrderPos": 39,
-			"completed": false
-		},
-		{
-			"ID": "967c59ce86902202b40a308706544bfc7838ff84",
-			"fromPortalId": "f2103bf5c57b426cbddcf985b8c48ddc.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "111296267873335135470",
-			"assignedToNickname": "boxofkittens",
-			"throwOrderPos": 39,
 			"completed": false
 		},
 		{
@@ -1485,26 +705,6 @@
 			"completed": false
 		},
 		{
-			"ID": "961685d7a6f6cd80609fca53bb97480a84156557",
-			"fromPortalId": "f2103bf5c57b426cbddcf985b8c48ddc.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "103746893299177158327",
-			"assignedToNickname": "TheSned",
-			"throwOrderPos": 40,
-			"completed": false
-		},
-		{
-			"ID": "961685d7a6f6cd80609fca53bb97480a84156557",
-			"fromPortalId": "f2103bf5c57b426cbddcf985b8c48ddc.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "103746893299177158327",
-			"assignedToNickname": "TheSned",
-			"throwOrderPos": 40,
-			"completed": false
-		},
-		{
 			"ID": "a6c3dfd2adc66078773db7816743f697a2b95468",
 			"fromPortalId": "6413093f235247a09d63e07b8c8361d7.16",
 			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
@@ -1512,46 +712,6 @@
 			"assignedTo": "110846494094662444979",
 			"assignedToNickname": "pincushion1",
 			"throwOrderPos": 41,
-			"completed": false
-		},
-		{
-			"ID": "a6c3dfd2adc66078773db7816743f697a2b95468",
-			"fromPortalId": "6413093f235247a09d63e07b8c8361d7.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "110846494094662444979",
-			"assignedToNickname": "pincushion1",
-			"throwOrderPos": 41,
-			"completed": false
-		},
-		{
-			"ID": "a6c3dfd2adc66078773db7816743f697a2b95468",
-			"fromPortalId": "6413093f235247a09d63e07b8c8361d7.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "110846494094662444979",
-			"assignedToNickname": "pincushion1",
-			"throwOrderPos": 41,
-			"completed": false
-		},
-		{
-			"ID": "8baa9a15f10de41a7357019dc2bf29fae07692cd",
-			"fromPortalId": "b59c1b16eda341cebe2af9fb26e86d89.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 42,
-			"completed": false
-		},
-		{
-			"ID": "8baa9a15f10de41a7357019dc2bf29fae07692cd",
-			"fromPortalId": "b59c1b16eda341cebe2af9fb26e86d89.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 42,
 			"completed": false
 		},
 		{
@@ -1575,46 +735,6 @@
 			"completed": false
 		},
 		{
-			"ID": "b27a6891d39e418d22b89ab61158a04923a4732e",
-			"fromPortalId": "b59c1b16eda341cebe2af9fb26e86d89.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 43,
-			"completed": false
-		},
-		{
-			"ID": "b27a6891d39e418d22b89ab61158a04923a4732e",
-			"fromPortalId": "b59c1b16eda341cebe2af9fb26e86d89.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 43,
-			"completed": false
-		},
-		{
-			"ID": "b8e5b0f04620eb0345420fd44e8de8e3132f47b3",
-			"fromPortalId": "6413093f235247a09d63e07b8c8361d7.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "113246021517201662718",
-			"assignedToNickname": "ExperTech",
-			"throwOrderPos": 44,
-			"completed": false
-		},
-		{
-			"ID": "b8e5b0f04620eb0345420fd44e8de8e3132f47b3",
-			"fromPortalId": "6413093f235247a09d63e07b8c8361d7.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "113246021517201662718",
-			"assignedToNickname": "ExperTech",
-			"throwOrderPos": 44,
-			"completed": false
-		},
-		{
 			"ID": "b8e5b0f04620eb0345420fd44e8de8e3132f47b3",
 			"fromPortalId": "6413093f235247a09d63e07b8c8361d7.16",
 			"toPortalId": "7152255347c345438333b85c918ab35f.16",
@@ -1632,46 +752,6 @@
 			"assignedTo": "118281765050946915735",
 			"assignedToNickname": "deviousness",
 			"throwOrderPos": 45,
-			"completed": false
-		},
-		{
-			"ID": "9f16b4368be003d4b5f3ab6dd1b26385bb65bc30",
-			"fromPortalId": "35afcde367164de1bc66dd8b1267c34f.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 45,
-			"completed": false
-		},
-		{
-			"ID": "9f16b4368be003d4b5f3ab6dd1b26385bb65bc30",
-			"fromPortalId": "35afcde367164de1bc66dd8b1267c34f.16",
-			"toPortalId": "743ca5527bdf418b9758459305f90e9b.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 45,
-			"completed": false
-		},
-		{
-			"ID": "b2561fce2e3a1b61d4fdb9ef67faab41e007a918",
-			"fromPortalId": "35afcde367164de1bc66dd8b1267c34f.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 46,
-			"completed": false
-		},
-		{
-			"ID": "b2561fce2e3a1b61d4fdb9ef67faab41e007a918",
-			"fromPortalId": "35afcde367164de1bc66dd8b1267c34f.16",
-			"toPortalId": "7152255347c345438333b85c918ab35f.16",
-			"description": "",
-			"assignedTo": "118281765050946915735",
-			"assignedToNickname": "deviousness",
-			"throwOrderPos": 46,
 			"completed": false
 		},
 		{
@@ -1687,48 +767,8 @@
 	],
 	"markers": [
 		{
-			"ID": "e5b7b2f31481bc7293e65d7d7aa61977f29c301d",
-			"portalId": "83c4d2bee503409cbfc76db98af4d749.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "assigned"
-		},
-		{
-			"ID": "813b85ad0c8dc2e6ba832f3d2bfcb6d17952f86c",
-			"portalId": "88d4098f5c5a4e2999fd9a192a2474de.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "9019b7809e7deabdc1a67260e17b97ff96f52c88",
-			"portalId": "9abc0b8d22c844058a23f6d600606f18.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
 			"ID": "11ffcdb72295cb0972654b8e48c7f19d5e4ed850",
 			"portalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "dc359c4136c527b895bc88f0da718799d06dc064",
-			"portalId": "b905bf152a284d42b7d015e04e3b3095.16",
 			"type": "DestroyPortalAlert",
 			"comment": "",
 			"assignedTo": "118281765050946915735",
@@ -1757,56 +797,6 @@
 			"state": "pending"
 		},
 		{
-			"ID": "925863aa9adfda73984e5368491a9f89b6e2200c",
-			"portalId": "1974ace268d74b009f39880766f6466c.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "assigned"
-		},
-		{
-			"ID": "96ec7dcce6cd6baae67f4e065c29105731b6fc06",
-			"portalId": "500e24eb447949848ecb2f0c694f969b.16",
-			"type": "LetDecayPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "e39ea8abbf4c504d1bccfb4c7cd3b13c8bc40e9e",
-			"portalId": "500e24eb447949848ecb2f0c694f969b.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "102791585367817582150",
-			"assignedNickname": "Robely",
-			"completedBy": "",
-			"state": "assigned"
-		},
-		{
-			"ID": "a4209d51b1abebf1047bd1a28ad05610bfc8bce7",
-			"portalId": "4a02b122fe5c4f40860c8f36080294c3.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "102791585367817582150",
-			"assignedNickname": "Robely",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "e5b7b2f31481bc7293e65d7d7aa61977f29c301d",
-			"portalId": "83c4d2bee503409cbfc76db98af4d749.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "assigned"
-		},
-		{
 			"ID": "813b85ad0c8dc2e6ba832f3d2bfcb6d17952f86c",
 			"portalId": "88d4098f5c5a4e2999fd9a192a2474de.16",
 			"type": "DestroyPortalAlert",
@@ -1827,46 +817,6 @@
 			"state": "pending"
 		},
 		{
-			"ID": "11ffcdb72295cb0972654b8e48c7f19d5e4ed850",
-			"portalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "dc359c4136c527b895bc88f0da718799d06dc064",
-			"portalId": "b905bf152a284d42b7d015e04e3b3095.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "1e239ba9fa8f2a42b752438b874ddb625926058e",
-			"portalId": "6e1705f107eb46609c5ea6385e4c2b71.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "594982482f045d17c7b105261d6744087e866589",
-			"portalId": "6413093f235247a09d63e07b8c8361d7.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
 			"ID": "925863aa9adfda73984e5368491a9f89b6e2200c",
 			"portalId": "1974ace268d74b009f39880766f6466c.16",
 			"type": "DestroyPortalAlert",
@@ -1887,16 +837,6 @@
 			"state": "pending"
 		},
 		{
-			"ID": "e39ea8abbf4c504d1bccfb4c7cd3b13c8bc40e9e",
-			"portalId": "500e24eb447949848ecb2f0c694f969b.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "102791585367817582150",
-			"assignedNickname": "Robely",
-			"completedBy": "",
-			"state": "assigned"
-		},
-		{
 			"ID": "a4209d51b1abebf1047bd1a28ad05610bfc8bce7",
 			"portalId": "4a02b122fe5c4f40860c8f36080294c3.16",
 			"type": "DestroyPortalAlert",
@@ -1905,6 +845,26 @@
 			"assignedNickname": "Robely",
 			"completedBy": "",
 			"state": "pending"
+		},
+		{
+			"ID": "dc359c4136c527b895bc88f0da718799d06dc064",
+			"portalId": "b905bf152a284d42b7d015e04e3b3095.16",
+			"type": "DestroyPortalAlert",
+			"comment": "",
+			"assignedTo": "118281765050946915735",
+			"assignedNickname": "deviousness",
+			"completedBy": "",
+			"state": "pending"
+		},
+		{
+			"ID": "e39ea8abbf4c504d1bccfb4c7cd3b13c8bc40e9e",
+			"portalId": "500e24eb447949848ecb2f0c694f969b.16",
+			"type": "DestroyPortalAlert",
+			"comment": "",
+			"assignedTo": "102791585367817582150",
+			"assignedNickname": "Robely",
+			"completedBy": "",
+			"state": "assigned"
 		},
 		{
 			"ID": "e5b7b2f31481bc7293e65d7d7aa61977f29c301d",
@@ -1915,111 +875,22 @@
 			"assignedNickname": "deviousness",
 			"completedBy": "",
 			"state": "assigned"
-		},
-		{
-			"ID": "813b85ad0c8dc2e6ba832f3d2bfcb6d17952f86c",
-			"portalId": "88d4098f5c5a4e2999fd9a192a2474de.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "9019b7809e7deabdc1a67260e17b97ff96f52c88",
-			"portalId": "9abc0b8d22c844058a23f6d600606f18.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "11ffcdb72295cb0972654b8e48c7f19d5e4ed850",
-			"portalId": "d4cdf21c61fb42a2b5af62a3db8ee7e4.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "dc359c4136c527b895bc88f0da718799d06dc064",
-			"portalId": "b905bf152a284d42b7d015e04e3b3095.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "1e239ba9fa8f2a42b752438b874ddb625926058e",
-			"portalId": "6e1705f107eb46609c5ea6385e4c2b71.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "594982482f045d17c7b105261d6744087e866589",
-			"portalId": "6413093f235247a09d63e07b8c8361d7.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "925863aa9adfda73984e5368491a9f89b6e2200c",
-			"portalId": "1974ace268d74b009f39880766f6466c.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "assigned"
-		},
-		{
-			"ID": "96ec7dcce6cd6baae67f4e065c29105731b6fc06",
-			"portalId": "500e24eb447949848ecb2f0c694f969b.16",
-			"type": "LetDecayPortalAlert",
-			"comment": "",
-			"assignedTo": "118281765050946915735",
-			"assignedNickname": "deviousness",
-			"completedBy": "",
-			"state": "pending"
-		},
-		{
-			"ID": "e39ea8abbf4c504d1bccfb4c7cd3b13c8bc40e9e",
-			"portalId": "500e24eb447949848ecb2f0c694f969b.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "102791585367817582150",
-			"assignedNickname": "Robely",
-			"completedBy": "",
-			"state": "assigned"
-		},
-		{
-			"ID": "a4209d51b1abebf1047bd1a28ad05610bfc8bce7",
-			"portalId": "4a02b122fe5c4f40860c8f36080294c3.16",
-			"type": "DestroyPortalAlert",
-			"comment": "",
-			"assignedTo": "102791585367817582150",
-			"assignedNickname": "Robely",
-			"completedBy": "",
-			"state": "pending"
 		}
 	],
-	"teamid": null,
-	"modified": "2019-07-29 11:13:15",
+	"teamid": "bn157t",
+	"modified": "2019-08-10 12:41:32",
 	"comment": "This is only a test. The field you are seeing is not an actual emergency...",
-	"keysonhand": null,
-	"fetched": "2019-07-29T16:16:25-05:00"
+	"keysonhand": [
+		{
+			"portalId": "2aa9e865ab8a4bb9896fb371281dcb7b.16",
+			"gid": "118281765050946915735",
+			"onhand": 99
+		},
+		{
+			"portalId": "83c4d2bee503409cbfc76db98af4d749.16",
+			"gid": "118281765050946915735",
+			"onhand": 7
+		}
+	],
+	"fetched": "2019-08-10T12:42:47-05:00"
 }

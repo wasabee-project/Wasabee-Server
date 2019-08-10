@@ -77,6 +77,19 @@ func TestOperation(t *testing.T) {
 		t.Error("wrong owner (OperationID)")
 	}
 
+	if len(in.OpPortals) != len(opp.OpPortals) {
+		t.Error("wrong portal count")
+	}
+	if len(in.Links) != len(opp.Links) {
+		t.Error("wrong link count")
+	}
+	if len(in.Anchors) != len(opp.Anchors) {
+		t.Error("wrong anchor count")
+	}
+	if len(in.Markers) != len(opp.Markers) {
+		t.Error("wrong marker count")
+	}
+
 	// delete it - team should go too
 	if err := opp.ID.Delete(gid); err != nil {
 		t.Error(err.Error())
