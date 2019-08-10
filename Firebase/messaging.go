@@ -221,6 +221,9 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 		wasabee.Log.Error(err)
 		return err
 	}
+	if len(tokens) == 0 {
+		return nil
+	}
 
 	var tmr *messaging.TopicManagementResponse
 	if fb.Msg == "subscribe" {
