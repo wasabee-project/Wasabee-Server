@@ -70,6 +70,12 @@ func setupTables() {
 		Log.Error(err)
 		panic(err)
 	}
+	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS=0")
+	if err != nil {
+		Log.Error(err)
+	}
+
+	defer tx.Exec("SET FOREIGN_KEY_CHECKS=1")
 	defer tx.Rollback()
 	for _, v := range t {
 		q := fmt.Sprintf("SHOW TABLES LIKE '%s'", v.tablename)
@@ -85,6 +91,10 @@ func setupTables() {
 				Log.Error(err)
 			}
 		}
+	}
+	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS=1")
+	if err != nil {
+		Log.Error(err)
 	}
 	_ = tx.Commit() // the defer'd rollback will not have anything to rollback...
 }
