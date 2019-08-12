@@ -62,6 +62,10 @@ func setupTables() {
 		{"opkeys", `CREATE TABLE opkeys ( opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, gid varchar(32) NOT NULL, onhand int(11) NOT NULL DEFAULT '0', UNIQUE KEY key_unique (opID,portalID,gid), KEY fk_operation_id_keys (opID), CONSTRAINT fk_operation_id_keys FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"portal", `CREATE TABLE portal ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, name varchar(128) NOT NULL, loc point NOT NULL, comment text, hardness varchar(64) DEFAULT NULL, PRIMARY KEY ID (ID,opID), KEY fk_operation_id (opID), SPATIAL KEY sp_portal (loc)) ENGINE=Aria DEFAULT CHARSET=utf8mb4 PAGE_CHECKSUM=1;`},
 		{"telegram", `CREATE TABLE telegram ( telegramID bigint(20) NOT NULL, telegramName varchar(32) NOT NULL, gid varchar(32) NOT NULL, verified tinyint(1) NOT NULL DEFAULT '0', authtoken varchar(32) DEFAULT NULL, PRIMARY KEY (telegramID), UNIQUE KEY gid (gid), CONSTRAINT fk_agent_telegram FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+
+		// reg_form must come before reg_entry
+		{"reg_form", `CREATE TABLE reg_form ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, date datetime DEFAULT NULL, desc text, PRIMARY KEY (ID), UNIQUE KEY opID (opID), CONSTRAINT fk_opID FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"reg_entry", `CREATE TABLE reg_entry ( gid varchar(32) NOT NULL, formID varchar(64) NOT NULL, homecell varchar(32) NOT NULL, radius int(32) NOT NULL DEFAULT '100', roles set('keyfarm','boots','fielding','keytransport','other') DEFAULT NULL, special set('booster','bgan','onyx','hike') DEFAULT NULL, PRIMARY KEY (gid), UNIQUE KEY gid (gid,formID), KEY fk_reg_formID (formID), CONSTRAINT fk_reg_formID FOREIGN KEY (formID) REFERENCES reg_form (ID) ON DELETE CASCADE, CONSTRAINT fk_reg_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 	}
 
 	var table string
