@@ -45,7 +45,11 @@ func setupTables() {
 		tablename string
 		creation  string
 	}{
+		// agent must come first, team must come second, operation must come third, the rest can be in alphabetical order
 		{"agent", `CREATE TABLE agent ( gid varchar(32) NOT NULL, iname varchar(64) DEFAULT NULL, level tinyint(4) NOT NULL DEFAULT '1', lockey varchar(64) DEFAULT NULL, VVerified tinyint(1) NOT NULL DEFAULT '0', Vblacklisted tinyint(1) NOT NULL DEFAULT '0', Vid varchar(40) DEFAULT NULL, RocksVerified tinyint(1) NOT NULL DEFAULT '0', RAID tinyint(1) NOT NULL DEFAULT '0', RISC tinyint(1) NOT NULL DEFAULT '0', PRIMARY KEY (gid), UNIQUE KEY iname (iname), UNIQUE KEY lockey (lockey), UNIQUE KEY Vid (Vid)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"team", `CREATE TABLE team ( teamID varchar(64) NOT NULL, owner varchar(32) NOT NULL, name varchar(64) DEFAULT NULL, rockskey varchar(32) DEFAULT NULL, rockscomm varchar(32) DEFAULT NULL, PRIMARY KEY (teamID), KEY fk_team_owner (owner), CONSTRAINT fk_team_owner FOREIGN KEY (owner) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"operation", `CREATE TABLE operation ( ID varchar(64) NOT NULL, name varchar(128) NOT NULL DEFAULT 'new op', gid varchar(32) NOT NULL, color varchar(16) NOT NULL DEFAULT 'groupa', teamID varchar(64) NOT NULL DEFAULT '', modified datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, comment text, PRIMARY KEY (ID), KEY gid (gid), KEY fk_teamID (teamID), CONSTRAINT fk_operation_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_teamID FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+
 		{"agentextras", `CREATE TABLE agentextras ( gid varchar(32) NOT NULL, picurl text, UNIQUE KEY gid (gid), CONSTRAINT fk_extra_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"agentteams", `CREATE TABLE agentteams ( teamID varchar(64) NOT NULL, gid varchar(32) NOT NULL, state enum('Off','On') NOT NULL DEFAULT 'Off', color varchar(32) NOT NULL DEFAULT 'FF5500', PRIMARY KEY (teamID,gid), KEY GIDKEY (gid), CONSTRAINT fk_agent_teams FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_t_teams FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"anchor", `CREATE TABLE anchor ( opID varchar(64) DEFAULT NULL, portalID varchar(64) DEFAULT NULL, PRIMARY KEY anchor (opID,portalID), CONSTRAINT fk_operation_id_anchor FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
@@ -55,10 +59,8 @@ func setupTables() {
 		{"locations", `CREATE TABLE locations ( gid varchar(32) NOT NULL, upTime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, loc point NOT NULL, PRIMARY KEY (gid), SPATIAL KEY sp (loc)) ENGINE=Aria DEFAULT CHARSET=utf8mb4 PAGE_CHECKSUM=1;`},
 		{"marker", `CREATE TABLE marker ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, type varchar(128) NOT NULL, gid varchar(32) DEFAULT NULL, comment text, complete tinyint(1) NOT NULL DEFAULT '0', state enum('pending','assigned','acknowledged','completed') NOT NULL DEFAULT 'pending', completedBy varchar(32) DEFAULT NULL, PRIMARY KEY (ID,opID), KEY fk_operation_marker (opID), KEY fk_marker_gid (gid), CONSTRAINT fk_marker_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE SET NULL, CONSTRAINT fk_operation_marker FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"messagelog", `CREATE TABLE messagelog ( timestamp datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32) NOT NULL, message text NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
-		{"operation", `CREATE TABLE operation ( ID varchar(64) NOT NULL, name varchar(128) NOT NULL DEFAULT 'new op', gid varchar(32) NOT NULL, color varchar(16) NOT NULL DEFAULT 'groupa', teamID varchar(64) NOT NULL DEFAULT '', modified datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, comment text, PRIMARY KEY (ID), KEY gid (gid), KEY fk_teamID (teamID), CONSTRAINT fk_operation_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_teamID FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"opkeys", `CREATE TABLE opkeys ( opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, gid varchar(32) NOT NULL, onhand int(11) NOT NULL DEFAULT '0', UNIQUE KEY key_unique (opID,portalID,gid), KEY fk_operation_id_keys (opID), CONSTRAINT fk_operation_id_keys FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"portal", `CREATE TABLE portal ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, name varchar(128) NOT NULL, loc point NOT NULL, comment text, hardness varchar(64) DEFAULT NULL, PRIMARY KEY ID (ID,opID), KEY fk_operation_id (opID), SPATIAL KEY sp_portal (loc)) ENGINE=Aria DEFAULT CHARSET=utf8mb4 PAGE_CHECKSUM=1;`},
-		{"team", `CREATE TABLE team ( teamID varchar(64) NOT NULL, owner varchar(32) NOT NULL, name varchar(64) DEFAULT NULL, rockskey varchar(32) DEFAULT NULL, rockscomm varchar(32) DEFAULT NULL, PRIMARY KEY (teamID), KEY fk_team_owner (owner), CONSTRAINT fk_team_owner FOREIGN KEY (owner) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"telegram", `CREATE TABLE telegram ( telegramID bigint(20) NOT NULL, telegramName varchar(32) NOT NULL, gid varchar(32) NOT NULL, verified tinyint(1) NOT NULL DEFAULT '0', authtoken varchar(32) DEFAULT NULL, PRIMARY KEY (telegramID), UNIQUE KEY gid (gid), CONSTRAINT fk_agent_telegram FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 	}
 
@@ -75,8 +77,17 @@ func setupTables() {
 		Log.Error(err)
 	}
 
-	defer tx.Exec("SET FOREIGN_KEY_CHECKS=1")
-	defer tx.Rollback()
+	defer func() {
+		err := tx.Rollback()
+		if err != nil && err != sql.ErrTxDone {
+			Log.Critical(err)
+		}
+		// tx is complete, use db
+		_, err = db.Exec("SET FOREIGN_KEY_CHECKS=1")
+		if err != nil {
+			Log.Critical(err)
+		}
+	}()
 	for _, v := range t {
 		q := fmt.Sprintf("SHOW TABLES LIKE '%s'", v.tablename)
 		err = tx.QueryRow(q).Scan(&table)
@@ -88,15 +99,19 @@ func setupTables() {
 			Log.Noticef("Setting up '%s' table...", v.tablename)
 			_, err = tx.Exec(v.creation)
 			if err != nil {
-				Log.Error(err)
+				Log.Critical(err)
 			}
 		}
 	}
 	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS=1")
 	if err != nil {
-		Log.Error(err)
+		Log.Critical(err)
 	}
-	_ = tx.Commit() // the defer'd rollback will not have anything to rollback...
+	err = tx.Commit() // the defer'd rollback will not have anything to rollback...
+	if err != nil {
+		Log.Critical(err)
+	}
+	// defer'd func runs here
 }
 
 // MakeNullString is used for values that may & might be inserted/updated as NULL in the database
