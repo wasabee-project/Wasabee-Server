@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 const port = "8445"
@@ -40,6 +41,15 @@ type vagent struct {
 	Flagged     bool   `json:"flagged"`
 	Banned      bool   `json:"banned_by_nia"`
 	Cellid      string `json:"cellid"`
+}
+
+type RocksAgent struct {
+	Gid      string   `json:"gid"`
+	TGId     int64    `json:"tgid"`
+	Agent    string   `json:"agentid"`
+	Verified bool     `json:"verified"`
+	Smurf    bool     `json:"smurf"`
+	Fullname string   `json:"name"`
 }
 
 func main() {
@@ -94,7 +104,15 @@ func googleToken(res http.ResponseWriter, req *http.Request) {
 }
 
 func vSearch(res http.ResponseWriter, req *http.Request) {
-	gid := req.FormValue("gid")
+	// request is in this form: "%s/agent/%s/trust?apikey=%s"
+	apikey := req.FormValue("apikey")
+	fmt.Printf("V search request, apikey: %s ", apikey)
+
+	chunks := strings.Split(req.URL.Path, "/")
+	// fmt.Print(chunks)
+	gid := chunks[1]
+	fmt.Printf(" query: %s\n", gid)
+
 	if gid == "" {
 		fmt.Fprintf(res, "gid not set")
 		return
@@ -108,7 +126,7 @@ func vSearch(res http.ResponseWriter, req *http.Request) {
 			Message: "Agent not found",
 		}
 	} else {
-		// XXX craft and send response
+		// XXX craft and send random response
 		v = Vresult{
 			Status: "ok",
 		}
@@ -116,7 +134,7 @@ func vSearch(res http.ResponseWriter, req *http.Request) {
 			EnlID:       fmt.Sprintf("enl-%s", data.Gid),
 			Vlevel:      1,
 			Vpoints:     1,
-			Agent:       "Barcode",
+			Agent:       fmt.Sprintf("Barcode-%s", data.Gid[1:4]),
 			Level:       16,
 			Quarantine:  false,
 			Active:      true,
@@ -133,5 +151,35 @@ func vSearch(res http.ResponseWriter, req *http.Request) {
 }
 
 func rocksSearch(res http.ResponseWriter, req *http.Request) {
+	// /api/user/status/{GID}?apikey=
+	apikey := req.FormValue("apikey")
+	fmt.Printf("Rocks search request, apikey: %s ", apikey)
 
+	chunks := strings.Split(req.URL.Path, "/")
+	// fmt.Print(chunks)
+	gid := chunks[len(chunks)-1] // last element
+	fmt.Printf(" query: %s\n", gid)
+
+	if gid == "" {
+		fmt.Fprintf(res, "gid not set")
+		return
+	}
+	data, ok := gids[gid]
+	var r RocksAgent
+	if !ok {
+		// XXX mirror the error that Rocks actually uses
+	} else {
+		// XXX craft and send random response
+		r = RocksAgent{
+			Gid:      data.Gid,
+			TGId:     0,
+			Agent:    fmt.Sprintf("Barcode-%s", data.Gid[1:4]),
+			Verified: true,
+			Smurf:    false,
+			Fullname: "Rando Inadiquo",
+		}
+	}
+	j, _ := json.Marshal(r)
+	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	fmt.Fprintf(res, string(j))
 }
