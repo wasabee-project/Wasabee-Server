@@ -17,7 +17,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
-	wasabee.SetVEnlOne(os.Getenv("VENLONE_API_KEY"))
+	wasabee.SetVEnlOne(wasabee.Vconfig{
+		APIKey:	os.Getenv("VENLONE_API_KEY"),
+	})
 	wasabee.SetEnlRocks(os.Getenv("ENLROCKS_API_KEY"))
 
 	// flag.Parse()
