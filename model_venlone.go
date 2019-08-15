@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-type vconfig struct {
-	vAPIEndpoint   string
-	vAPIKey        string
-	statusEndpoint string
+type Vconfig struct {
+	APIEndpoint    string
+	APIKey         string
+	StatusEndpoint string
 	configured     bool
 }
 
-var vc vconfig
+var vc Vconfig
 
 // Vresult is set by the V API
 type Vresult struct {
@@ -42,11 +42,24 @@ type vagent struct {
 }
 
 // SetVEnlOne is called from main() to initialize the config
-func SetVEnlOne(w string) {
-	Log.Debugf("V.enl.one API Key: %s", w)
-	vc.vAPIKey = w
-	vc.vAPIEndpoint = "https://v.enl.one/api/v1"
-	vc.statusEndpoint = "https://status.enl.one/api/location"
+func SetVEnlOne(w Vconfig) {
+	if w.APIKey == "" {
+		Log.Notice("api key not set, not enabling V support")
+	}
+	Log.Debugf("V.enl.one API Key: %s", w.APIKey)
+	vc.APIKey = w.APIKey
+
+	if w.APIEndpoint != "" {
+		vc.APIEndpoint = w.APIEndpoint
+	} else {
+		vc.APIEndpoint = "https://v.enl.one/api/v1"
+	}
+
+	if w.StatusEndpoint != "" {
+		vc.StatusEndpoint = w.StatusEndpoint
+	} else {
+		vc.StatusEndpoint = "https://status.enl.one/api/location"
+	}
 	vc.configured = true
 }
 
@@ -65,7 +78,7 @@ func VSearch(id AgentID, vres *Vresult) error {
 		return fmt.Errorf("empty search value")
 	}
 
-	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.vAPIEndpoint, searchID, vc.vAPIKey)
+	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.APIEndpoint, searchID, vc.APIKey)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -137,7 +150,7 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 	if !vc.configured {
 		return "", "", fmt.Errorf("the V API key not configured")
 	}
-	url := fmt.Sprintf("%s/%s?apikey=%s", vc.statusEndpoint, eid, vc.vAPIKey)
+	url := fmt.Sprintf("%s/%s?apikey=%s", vc.StatusEndpoint, eid, vc.APIKey)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		Log.Error(err)

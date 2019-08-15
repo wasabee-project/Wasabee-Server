@@ -136,7 +136,10 @@ func run(c *cli.Context) error {
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		wasabee.SetVEnlOne(c.String("venlonekey"))
+		wasabee.SetVEnlOne(wasabee.Vconfig{
+			APIKey: c.String("venlonekey"),
+			// add URLs here if set
+		})
 		if c.Bool("venlonepoller") {
 			go wasabee.StatusServerPoller()
 		}

@@ -72,7 +72,10 @@ func run(c *cli.Context) error {
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		wasabee.SetVEnlOne(c.String("venlonekey"))
+		wasabee.SetVEnlOne(wasabee.Vconfig{
+			APIKey: c.String("venlonekey"),
+			// XXX add URLS if set
+		})
 	}
 
 	// setup Rocks
