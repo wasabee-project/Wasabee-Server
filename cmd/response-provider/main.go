@@ -100,28 +100,32 @@ func vSearch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	data, ok := gids[gid]
+	var v Vresult
 	if !ok {
-		fmt.Fprintf(res, "gid %s not known", gid)
-		return
-	}
-
-	// XXX craft and send response
-	v := Vresult{
-		Status: "ok",
-	}
-	v.Data = vagent{
-		EnlID:       fmt.Sprintf("enl-%s", data.Gid),
-		Vlevel:      1,
-		Vpoints:     1,
-		Agent:       "Barcode",
-		Level:       16,
-		Quarantine:  false,
-		Active:      true,
-		Blacklisted: false,
-		Verified:    true,
-		Flagged:     false,
-		Banned:      false,
-		Cellid:      "AMS-GOLF-06",
+		// mirror the error that V actually uses
+		v = Vresult{
+			Status:  "error",
+			Message: "Agent not found",
+		}
+	} else {
+		// XXX craft and send response
+		v = Vresult{
+			Status: "ok",
+		}
+		v.Data = vagent{
+			EnlID:       fmt.Sprintf("enl-%s", data.Gid),
+			Vlevel:      1,
+			Vpoints:     1,
+			Agent:       "Barcode",
+			Level:       16,
+			Quarantine:  false,
+			Active:      true,
+			Blacklisted: false,
+			Verified:    true,
+			Flagged:     false,
+			Banned:      false,
+			Cellid:      "AMS-GOLF-06",
+		}
 	}
 	j, _ := json.Marshal(v)
 	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
