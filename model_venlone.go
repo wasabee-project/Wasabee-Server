@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Vconfig contains configuration for calling v.enl.one APIs
 type Vconfig struct {
 	APIEndpoint    string
 	APIKey         string

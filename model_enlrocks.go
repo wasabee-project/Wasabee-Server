@@ -40,21 +40,37 @@ type RocksAgent struct {
 	Fullname string   `json:"name"`
 }
 
-type rocksconfig struct {
-	rocksAPIKey string
+// Rocksconfig contains configuration for interacting with the enl.rocks APIs.
+type Rocksconfig struct {
+	// APIKey is the API Key for enl.rocks.
+	APIKey string
+	// CommunityEndpoint is the API endpoint for viewing community membership
+	CommunityEndpoint string
+	// StatusEndpoint is the API endpoint for getting user status
+	StatusEndpoint string
 	configured  bool
 	limiter     *rate.Limiter
 }
 
-const commAPIEndpoint = "https://enlightened.rocks/comm/api/membership/"
-const rocksAPIEndpoint = "https://enlightened.rocks/api/user/status/"
 
-var rocks rocksconfig
+var rocks Rocksconfig
 
 // SetEnlRocks is called from main() to initialize the config
-func SetEnlRocks(key string) {
-	Log.Debugf("enl.rocks API Key: %s", key)
-	rocks.rocksAPIKey = key
+func SetEnlRocks(input Rocksconfig) {
+	Log.Debugf("enl.rocks API Key: %s", input.APIKey)
+	rocks.APIKey = input.APIKey
+
+	if len(input.CommunityEndpoint) != 0 {
+		rocks.CommunityEndpoint = input.CommunityEndpoint
+	} else {
+		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership/"
+	}
+
+	if len(input.StatusEndpoint) != 0 {
+		rocks.StatusEndpoint = input.StatusEndpoint
+	} else {
+		rocks.StatusEndpoint = "https://enlightened.rocks/api/user/status/"
+	}
 
 	rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
 	rocks.configured = true
@@ -88,7 +104,7 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s%s?apikey=%s", rocksAPIEndpoint, searchID, rocks.rocksAPIKey)
+	apiurl := fmt.Sprintf("%s%s?apikey=%s", rocks.StatusEndpoint, searchID, rocks.APIKey)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
@@ -219,7 +235,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s?key=%s", commAPIEndpoint, rc)
+	apiurl := fmt.Sprintf("%s?key=%s", rocks.CommunityEndpoint, rc)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
@@ -309,7 +325,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	}
 
 	// XXX use NewRequest/client
-	apiurl := fmt.Sprintf("%s%s?key=%s", commAPIEndpoint, gid, rc)
+	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.CommunityEndpoint, gid, rc)
 	// #nosec
 	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
 	if err != nil {
@@ -351,7 +367,7 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s%s?key=%s", commAPIEndpoint, gid, rc)
+	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.CommunityEndpoint, gid, rc)
 	Log.Debug(apiurl)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
 	if err != nil {

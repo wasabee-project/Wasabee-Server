@@ -1,0 +1,82 @@
+version: '3.5'
+services: 
+  
+  wasabee:
+    build:
+      context: ../
+      dockerfile: .devcontainer/Dockerfile
+    ports:
+      - 5050:5050
+    environment:
+      - DATABASE=root:password@tcp(db)/Wasabee
+      - CERTDIR=/certs/
+      - ROOT_URL=https://localdev.wasabee.rocks:5050
+      - WORD_LIST=/eff_large_wordlist.txt
+      - HTTPS_LISTEN=:5050
+      - FRONTEND_PATH=/Frontend
+      - OAUTH_CLIENT_ID=wasabee
+      - OAUTH_CLIENT_SECRET=c37a04dd-5d39-4166-bb81-025cbd9e955a
+      - OAUTH_AUTH_URL=http://localdev.wasabee.rocks:5052/auth/realms/wasabee/protocol/openid-connect/auth
+      - OAUTH_TOKEN_URL=http://localdev.wasabee.rocks:5052/auth/realms/wasabee/protocol/openid-connect/token
+      - OAUTH_USERINFO_URL=http://localdev.wasabee.rocks:5052/auth/realms/wasabee/protocol/openid-connect/userinfo
+      - SESSION_KEY=3jduwjdj4h3hdyeru4njdhdbfjcndbfh
+      - VENLONE_API_KEY=
+      - VENLONE_API_URL=https://localdev.wasabee.rocks:8445/VSearch
+      - VENLONE_STATUS_URL=
+      - ENLROCKS_API_KEY=
+      - ENLROCKS_COMM_URL=
+      - ENLROCKS_STATUS_URL=
+      - DEBUG=1
+      - LOGFILE=/logs/wasabee.log
+      - HTTPS_LOGFILE=/logs/wasabee-https.log
+    volumes:
+      - ./environment/certs/:/certs
+      - ../../Wasabee-Frontend/:/Frontend # You may need to change this depending on how you cloned the repos.
+      - ..:/workspace
+      - ../.vscode:/.vscode
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    # Overrides default command so things don't shut down after the process ends.
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    networks:
+      - wasabee
+  
+  db:
+    image: mariadb:10.4.7
+    ports:
+      - 5051:3306
+    command: mysqld --innodb-flush-method=fsync
+    volumes:
+      - ./db:/var/lib/mysql
+    environment: 
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=Wasabee
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DEFAULTS_FILE=/etc/mysql/my.cnf
+      - MYSQL_LOG_QUERIES_ENABLED=1
+    networks:
+      - wasabee
+
+  # Using this instead of Google Auth
+  keycloak:
+    image: jboss/keycloak:6.0.1
+    ports:
+      - "5052:5052"
+      - "5053:7600"
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+    volumes:
+      - ./idp_data:/var/idp_data
+    command: ["-b", "0.0.0.0", "-Djboss.http.port=5052", "-Dkeycloak.migration.action=import -Dkeycloak.migration.provider=dir -Dkeycloak.migration.dir=/var/idp_data"]
+    networks:
+      wasabee:
+        aliases:
+          - localdev.wasabee.rocks
+
+networks:
+  wasabee:
+    name: wasabee

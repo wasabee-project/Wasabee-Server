@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	//"golang.org/x/oauth2/google"
 
 	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server"
@@ -30,9 +30,8 @@ type Configuration struct {
 	domain            string
 	oauthStateString  string
 	CertDir           string
-	GoogleClientID    string
-	GoogleSecret      string
-	googleOauthConfig *oauth2.Config
+	OauthConfig       *oauth2.Config
+	OauthUserInfoURL string
 	store             *sessions.CookieStore
 	sessionName       string
 	CookieSessionKey  string
@@ -42,6 +41,7 @@ type Configuration struct {
 	logfileHandle     *os.File
 	unrolled          *logger.Logger
 	scanners          map[string]int64
+	Debug             bool
 }
 
 var config Configuration
@@ -76,22 +76,17 @@ func initializeConfig(initialConfig Configuration) {
 	wasabee.SetWebroot(config.Root)
 	wasabee.SetWebAPIPath(apipath)
 
-	if config.GoogleClientID == "" {
-		wasabee.Log.Error("GOOGLE_CLIENT_ID unset: logins will fail")
+	if config.OauthConfig.ClientID == "" {
+		wasabee.Log.Error("OAUTH_CLIENT_ID unset: logins will fail")
 	}
-	if config.GoogleSecret == "" {
-		wasabee.Log.Error("GOOGLE_SECRET unset: logins will fail")
+	if config.OauthConfig.ClientSecret == "" {
+		wasabee.Log.Error("OAUTH_SECRET unset: logins will fail")
 	}
 
-	config.googleOauthConfig = &oauth2.Config{
-		RedirectURL:  config.Root + callback,
-		ClientID:     config.GoogleClientID,
-		ClientSecret: config.GoogleSecret,
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
-		Endpoint:     google.Endpoint,
-	}
-	wasabee.Log.Debugf("ClientID: " + config.googleOauthConfig.ClientID)
-	wasabee.Log.Debugf("ClientSecret: " + config.googleOauthConfig.ClientSecret)
+	config.OauthConfig.RedirectURL = config.Root + callback
+
+	wasabee.Log.Debugf("ClientID: " + config.OauthConfig.ClientID)
+	wasabee.Log.Debugf("ClientSecret: " + config.OauthConfig.ClientSecret)
 	config.oauthStateString = wasabee.GenerateName()
 	wasabee.Log.Debugf("oauthStateString: " + config.oauthStateString)
 
@@ -311,7 +306,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	_ = ses.Save(req, res)
 
-	url := config.googleOauthConfig.AuthCodeURL(config.oauthStateString)
+	url := config.OauthConfig.AuthCodeURL(config.oauthStateString)
 	http.Redirect(res, req, url, http.StatusFound)
 }
 

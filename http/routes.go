@@ -264,6 +264,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	// wasabee.Log.Debug(string(content))
 
 	var m googleData
+	debug := string(content)
+	wasabee.Log.Debug(debug)
 	if err = json.Unmarshal(content, &m); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -352,7 +354,7 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, stri
 
 	ctx, cancel := context.WithTimeout(rctx, 5*time.Second)
 	defer cancel()
-	token, err := config.googleOauthConfig.Exchange(ctx, code)
+	token, err := config.OauthConfig.Exchange(ctx, code)
 	if err != nil {
 		return nil, "", fmt.Errorf("code exchange failed: %s", err.Error())
 	}
@@ -371,13 +373,14 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, stri
 // used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token from Google and requests their info from Google
 // timeout enforced -- XXX url and timout should be consts in server.go...
 func getGoogleUserInfo(accessToken string) ([]byte, error) {
-	url := fmt.Sprintf("https://www.googleapis.com/oauth2/v2/userinfo?access_token=%s", accessToken)
+	url := config.OauthUserInfoURL
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		wasabee.Log.Error(err)
 		return nil, err
 	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	client := &http.Client{
 		Timeout: 3 * time.Second,
 	}
