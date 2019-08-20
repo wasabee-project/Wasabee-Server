@@ -41,7 +41,6 @@ type Configuration struct {
 	logfileHandle     *os.File
 	unrolled          *logger.Logger
 	scanners          map[string]int64
-	Debug             bool
 }
 
 var config Configuration
@@ -167,9 +166,9 @@ func StartHTTP(initialConfig Configuration) {
 	config.srv = &http.Server{
 		Handler:           router,
 		Addr:              config.ListenHTTPS,
-		WriteTimeout:      15 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		ReadHeaderTimeout: 2 * time.Second,
+		WriteTimeout:      wasabee.GetTimeout(15 * time.Second),
+		ReadTimeout:       wasabee.GetTimeout(15 * time.Second),
+		ReadHeaderTimeout: wasabee.GetTimeout(2 * time.Second),
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -222,6 +221,27 @@ func scannerMW(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(res, req)
+	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+func (rec *statusRecorder) WriteHeader(code int) {
+	rec.status = code
+	rec.ResponseWriter.WriteHeader(code)
+}
+
+func logRequestMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		wasabee.Log.Debug("REQ", req.Method, req.RequestURI)
+
+		rec := statusRecorder{res, 200}
+
+		next.ServeHTTP(&rec, req)
+
+		wasabee.Log.Debug("RESP", rec.status, req.RequestURI)
 	})
 }
 

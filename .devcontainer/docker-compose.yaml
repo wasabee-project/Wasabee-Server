@@ -7,6 +7,7 @@ services:
       dockerfile: .devcontainer/Dockerfile
     ports:
       - 5050:5050
+      - 5054:5054
     environment:
       - DATABASE=root:password@tcp(db)/Wasabee
       - CERTDIR=/certs/
@@ -20,15 +21,16 @@ services:
       - OAUTH_TOKEN_URL=http://localdev.wasabee.rocks:5052/auth/realms/wasabee/protocol/openid-connect/token
       - OAUTH_USERINFO_URL=http://localdev.wasabee.rocks:5052/auth/realms/wasabee/protocol/openid-connect/userinfo
       - SESSION_KEY=3jduwjdj4h3hdyeru4njdhdbfjcndbfh
-      - VENLONE_API_KEY=
-      - VENLONE_API_URL=https://localdev.wasabee.rocks:8445/VSearch
-      - VENLONE_STATUS_URL=
-      - ENLROCKS_API_KEY=
-      - ENLROCKS_COMM_URL=
-      - ENLROCKS_STATUS_URL=
+      - VENLONE_API_KEY=12345
+      - VENLONE_API_URL=http://localhost:5054/VSearch
+      - VENLONE_STATUS_URL=http://localhost:5054/VStatus
+      - ENLROCKS_API_KEY=12345
+      - ENLROCKS_COMM_URL=http://localhost:5054/RocksComm
+      - ENLROCKS_STATUS_URL=http://localhost:5054/RocksSearch
       - DEBUG=1
       - LOGFILE=/logs/wasabee.log
       - HTTPS_LOGFILE=/logs/wasabee-https.log
+      - LONG_TIMEOUTS=1
     volumes:
       - ./environment/certs/:/certs
       - ../../Wasabee-Frontend/:/Frontend # You may need to change this depending on how you cloned the repos.

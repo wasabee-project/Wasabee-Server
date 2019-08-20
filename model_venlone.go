@@ -87,7 +87,7 @@ func VSearch(id AgentID, vres *Vresult) error {
 		return err
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -102,7 +102,7 @@ func VSearch(id AgentID, vres *Vresult) error {
 		return err
 	}
 
-	// Log.Debug(string(body))
+	Log.Debug(string(body))
 	err = json.Unmarshal(body, &vres)
 	if err != nil {
 		Log.Error(err)
@@ -158,7 +158,7 @@ func (eid EnlID) StatusLocation() (string, string, error) {
 		return "", "", err
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {

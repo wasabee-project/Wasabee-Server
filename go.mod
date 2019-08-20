@@ -13,6 +13,7 @@ require (
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
+	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/unrolled/logger v0.0.0-20190327162521-be1a2406c7c9
 	github.com/urfave/cli v1.21.0

@@ -95,6 +95,9 @@ var flags = []cli.Flag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output"},
 	cli.BoolFlag{
+		Name: "longtimeouts", EnvVar: "LONG_TIMEOUTS",
+		Usage: "Increase timeouts to 1 hour. (should only be used while debugging)"},
+	cli.BoolFlag{
 		Name:  "help, h",
 		Usage: "Shows this help, then exits"},
 }
@@ -138,6 +141,9 @@ func run(c *cli.Context) error {
 	if c.String("log") != "" {
 		_ = wasabee.AddFileLog(c.String("log"), logging.INFO)
 	}
+
+	wasabee.SetupDebug(c.Bool("longtimeouts"))
+	
 
 	// Load words
 	err := wasabee.LoadWordsFile(c.String("wordlist"))

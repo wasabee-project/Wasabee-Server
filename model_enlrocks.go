@@ -63,13 +63,13 @@ func SetEnlRocks(input Rocksconfig) {
 	if len(input.CommunityEndpoint) != 0 {
 		rocks.CommunityEndpoint = input.CommunityEndpoint
 	} else {
-		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership/"
+		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
 	}
 
 	if len(input.StatusEndpoint) != 0 {
 		rocks.StatusEndpoint = input.StatusEndpoint
 	} else {
-		rocks.StatusEndpoint = "https://enlightened.rocks/api/user/status/"
+		rocks.StatusEndpoint = "https://enlightened.rocks/api/user/status"
 	}
 
 	rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
@@ -97,21 +97,21 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
 		Log.Notice(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s%s?apikey=%s", rocks.StatusEndpoint, searchID, rocks.APIKey)
+	apiurl := fmt.Sprintf("%s/%s?apikey=%s", rocks.StatusEndpoint, searchID, rocks.APIKey)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -124,7 +124,8 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 		Log.Error(err)
 		return err
 	}
-
+	
+	Log.Debug(string(body))
 	err = json.Unmarshal(body, &agent)
 	if err != nil {
 		Log.Error(err)
@@ -228,7 +229,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
 		Log.Notice(err)
@@ -242,7 +243,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return err
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -317,7 +318,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
 		Log.Notice(err)
@@ -367,7 +368,7 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.CommunityEndpoint, gid, rc)
+	apiurl := fmt.Sprintf("%s/%s?key=%s", rocks.CommunityEndpoint, gid, rc)
 	Log.Debug(apiurl)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
 	if err != nil {
@@ -375,7 +376,7 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		return err
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {

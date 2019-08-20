@@ -23,6 +23,8 @@ func setupRouter() *mux.Router {
 	// apply to all
 	router.Use(headersMW)
 	router.Use(scannerMW)
+	router.Use(logRequestMW)
+
 	// router.Use(debugMW)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
@@ -256,7 +258,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Pic   string           `json:"picture"`
 	}
 
-	content, tokenStr, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
+	content, _, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
 		wasabee.Log.Notice(err)
 		return
@@ -282,7 +284,12 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 			Path:   "/",
 			MaxAge: -1, // force delete
 		}
-		_ = ses.Save(req, res)
+		err = ses.Save(req, res)
+		if err != nil {
+			wasabee.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -317,14 +324,20 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	ses.Values["id"] = m.Gid.String()
+	wasabee.Log.Debug("session: ", ses.Values["id"], ", m.Gid: ", m.Gid.String())
 	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
-	ses.Values["google"] = tokenStr
 	ses.Options = &sessions.Options{
 		Path:   "/",
 		MaxAge: 0,
 	}
+
+	for k, v := range ses.Values {
+		wasabee.Log.Debug(k, v)
+	}
+
 	_ = ses.Save(req, res)
+	wasabee.Log.Debug("session: ", ses.Values["id"], ", m.Gid: ", m.Gid.String())
 	iname, err := m.Gid.IngressName()
 	if err != nil {
 		wasabee.Log.Debug("no iname at end of login? %n", m.Gid)
@@ -352,7 +365,7 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, stri
 		return nil, "", fmt.Errorf("invalid oauth state")
 	}
 
-	ctx, cancel := context.WithTimeout(rctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(rctx, wasabee.GetTimeout(5*time.Second))
 	defer cancel()
 	token, err := config.OauthConfig.Exchange(ctx, code)
 	if err != nil {
@@ -382,7 +395,7 @@ func getGoogleUserInfo(accessToken string) ([]byte, error) {
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: wasabee.GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -504,7 +517,6 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["id"] = m.Gid.String()
 	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
-	ses.Values["google"] = t.AccessToken
 	ses.Options = &sessions.Options{
 		Path:   "/",
 		MaxAge: 0,
