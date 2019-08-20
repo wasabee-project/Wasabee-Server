@@ -13,8 +13,8 @@ type TeamData struct {
 	Name      string  `json:"name"`
 	ID        TeamID  `json:"id"`
 	Agent     []Agent `json:"agents"`
-	RocksComm string  `json:"rc"`
-	RocksKey  string  `json:"rk"`
+	RocksComm string  `json:"rc,omitempty"`
+	RocksKey  string  `json:"rk,omitempty"`
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams

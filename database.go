@@ -132,7 +132,7 @@ func MakeNullString(in interface{}) sql.NullString {
 		}
 		s = tmp.String()
 	}
-	if len(s) == 0 {
+	if s == "" {
 		return sql.NullString{}
 	}
 	return sql.NullString{
