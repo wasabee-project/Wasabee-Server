@@ -258,7 +258,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		Pic   string           `json:"picture"`
 	}
 
-	content, _, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
+	content, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
 		wasabee.Log.Notice(err)
 		return
@@ -358,34 +358,30 @@ func calculateNonce(gid wasabee.GoogleID) (string, string) {
 	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:])
 }
 
-// read the result from google at end of oauth session
-// should we save the token in the session cookie for any reason?
-func getAgentInfo(rctx context.Context, state string, code string) ([]byte, string, error) {
+// read the result from provider at end of oauth session
+func getAgentInfo(rctx context.Context, state string, code string) ([]byte, error) {
 	if state != config.oauthStateString {
-		return nil, "", fmt.Errorf("invalid oauth state")
+		return nil, fmt.Errorf("invalid oauth state")
 	}
 
 	ctx, cancel := context.WithTimeout(rctx, wasabee.GetTimeout(5*time.Second))
 	defer cancel()
 	token, err := config.OauthConfig.Exchange(ctx, code)
 	if err != nil {
-		return nil, "", fmt.Errorf("code exchange failed: %s", err.Error())
+		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
 	cancel()
 
-	contents, err := getGoogleUserInfo(token.AccessToken)
+	contents, err := getOauthUserInfo(token.AccessToken)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed getting agent info: %s", err.Error())
+		return nil, fmt.Errorf("failed getting agent info: %s", err.Error())
 	}
 
-	// XXX is this necessary?
-	tokenStr, _ := json.Marshal(token)
-	return contents, string(tokenStr), nil
+	return contents, nil
 }
 
-// used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token from Google and requests their info from Google
-// timeout enforced -- XXX url and timout should be consts in server.go...
-func getGoogleUserInfo(accessToken string) ([]byte, error) {
+// used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info 
+func getOauthUserInfo(accessToken string) ([]byte, error) {
 	url := config.OauthUserInfoURL
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -475,7 +471,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	contents, err := getGoogleUserInfo(t.AccessToken)
+	contents, err := getOauthUserInfo(t.AccessToken)
 	if err != nil {
 		err = fmt.Errorf("failed getting agent info: %s", err.Error())
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
