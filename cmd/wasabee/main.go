@@ -14,28 +14,32 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/http"
+
+	"golang.org/x/oauth2"
+	
+	"golang.org/x/oauth2/google"
 	// "runtime/pprof"
 )
 
 var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "database, d", EnvVar: "DATABASE", Value: "wasabee:GoodPassword@tcp(localhost)/wasabee",
-		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable."},
+		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable"},
 	cli.StringFlag{
 		Name: "certs", EnvVar: "CERTDIR", Value: "./certs/",
-		Usage: "Directory where HTTPS certificates are stored."},
+		Usage: "Directory where HTTPS certificates are stored"},
 	cli.StringFlag{
 		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://wasabee.phtiv.com",
-		Usage: "The path under which the application will be reachable from the internet."},
+		Usage: "The path under which the application will be reachable from the internet"},
 	cli.StringFlag{
 		Name: "wordlist", EnvVar: "WORD_LIST", Value: "eff_large_wordlist.txt",
-		Usage: "Word list used for random slug generation."},
+		Usage: "Word list used for random slug generation"},
 	cli.StringFlag{
 		Name: "log", EnvVar: "LOGFILE", Value: "logs/wasabee.log",
-		Usage: "output log file."},
+		Usage: "output log file"},
 	cli.StringFlag{
 		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":443",
-		Usage: "HTTPS listen address."},
+		Usage: "HTTPS listen address"},
 	cli.StringFlag{
 		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "logs/wasabee-https.log",
 		Usage: "HTTPS log file."},
@@ -43,11 +47,20 @@ var flags = []cli.Flag{
 		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
 		Usage: "Location of the frontend files."},
 	cli.StringFlag{
-		Name: "googleclient", EnvVar: "GOOGLE_CLIENT_ID", Value: "UNSET",
-		Usage: "Google ClientID. It is recommended to pass this parameter as an environment variable"},
+		Name: "oauth-clientid", EnvVar: "OAUTH_CLIENT_ID", Value: "UNSET",
+		Usage: "OAuth ClientID. It is recommended to pass this parameter as an environment variable"},
 	cli.StringFlag{
-		Name: "googlesecret", EnvVar: "GOOGLE_CLIENT_SECRET", Value: "UNSET",
-		Usage: "Google Client Secret. It is recommended to pass this parameter as an environment variable"},
+		Name: "oauth-secret", EnvVar: "OAUTH_CLIENT_SECRET", Value: "UNSET",
+		Usage: "OAuth Client Secret. It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
+		Name: "oauth-authurl", EnvVar: "OAUTH_AUTH_URL", Value: google.Endpoint.AuthURL,
+		Usage: "OAuth Auth URL. Defaults to Google's well-known auth url"},
+	cli.StringFlag{
+		Name: "oauth-tokenurl", EnvVar: "OAUTH_TOKEN_URL", Value: google.Endpoint.TokenURL,
+		Usage: "OAuth Token URL. Defaults to Google's well-known token url"},
+	cli.StringFlag{
+		Name: "oauth-userinfo", EnvVar: "OAUTH_USERINFO_URL", Value: "https://www.googleapis.com/oauth2/v2/userinfo",
+		Usage: "OAuth userinfo URL. Defaults to Google's well-known userinfo url"},
 	cli.StringFlag{
 		Name: "sessionkey", EnvVar: "SESSION_KEY", Value: "",
 		Usage: "Session Key (32 char, random). It is recommended to pass this parameter as an environment variable"},
@@ -57,21 +70,36 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "venlonekey", EnvVar: "VENLONE_API_KEY", Value: "",
 		Usage: "V.enl.one API Key. It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
+		Name: "venloneapiurl", EnvVar: "VENLONE_API_URL", Value: "",
+		Usage: "V.enl.one API URL. Defaults to v.enl.one well-known URL"},
+	cli.StringFlag{
+		Name: "venlonestatusurl", EnvVar: "VENLONE_STATUS_URL", Value: "",
+		Usage: "V.enl.one Status URL. Defaults to status.enl.one well-known URL"},
 	cli.BoolFlag{
 		Name: "venlonepoller", EnvVar: "VENLONE_POLLER",
-		Usage: "Poll status.enl.one for RAID/JEAH location data."},
+		Usage: "Poll status.enl.one for RAID/JEAH location data"},
 	cli.StringFlag{
 		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
 		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
+	cli.StringFlag{
+		Name: "enlrockscommurl", EnvVar: "ENLROCKS_COMM_URL", Value: "",
+		Usage: "enl.rocks Community API URL. Defaults to the enl.rocks well-known URL"},
+	cli.StringFlag{
+		Name: "enlrocksstatusurl", EnvVar: "ENLROCKS_STATUS_URL", Value: "",
+		Usage: "enl.rocks Status API URL. Defaults to the enl.rocks well-known URL"},
 	cli.StringFlag{
 		Name: "enliokey", EnvVar: "ENLIO_API_KEY", Value: "",
 		Usage: "enl.io API token. It is recommended to pass this parameter as an environment variable"},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
-		Usage: "Show (a lot) more output."},
+		Usage: "Show (a lot) more output"},
+	cli.BoolFlag{
+		Name: "longtimeouts", EnvVar: "LONG_TIMEOUTS",
+		Usage: "Increase timeouts to 1 hour. (should only be used while debugging)"},
 	cli.BoolFlag{
 		Name:  "help, h",
-		Usage: "Shows this help, then exits."},
+		Usage: "Shows this help, then exits"},
 }
 
 func main() {
@@ -114,6 +142,9 @@ func run(c *cli.Context) error {
 		_ = wasabee.AddFileLog(c.String("log"), logging.INFO)
 	}
 
+	wasabee.SetupDebug(c.Bool("longtimeouts"))
+	
+
 	// Load words
 	err := wasabee.LoadWordsFile(c.String("wordlist"))
 	if err != nil {
@@ -138,7 +169,8 @@ func run(c *cli.Context) error {
 	if c.String("venlonekey") != "" {
 		wasabee.SetVEnlOne(wasabee.Vconfig{
 			APIKey: c.String("venlonekey"),
-			// add URLs here if set
+			APIEndpoint: c.String("venloneapiurl"),
+			StatusEndpoint: c.String("venlonestatusurl"),
 		})
 		if c.Bool("venlonepoller") {
 			go wasabee.StatusServerPoller()
@@ -147,7 +179,11 @@ func run(c *cli.Context) error {
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		wasabee.SetEnlRocks(c.String("enlrockskey"))
+		wasabee.SetEnlRocks(wasabee.Rocksconfig{
+			APIKey: c.String("enlrockskey"),
+			CommunityEndpoint: c.String("enlrockscommurl"),
+			StatusEndpoint: c.String("enlrocksstatusurl"),
+		})
 	}
 
 	// setup enl.io
@@ -162,8 +198,17 @@ func run(c *cli.Context) error {
 			FrontendPath:     c.String("frontend-path"),
 			Root:             c.String("root"),
 			CertDir:          c.String("certs"),
-			GoogleClientID:   c.String("googleclient"),
-			GoogleSecret:     c.String("googlesecret"),
+			OauthConfig:  &oauth2.Config {
+				ClientID: c.String("oauth-clientid"),
+				ClientSecret: c.String("oauth-secret"),
+				Scopes: []string{"profile email"},
+				Endpoint: oauth2.Endpoint {
+					AuthURL: c.String("oauth-authurl"),
+					TokenURL: c.String("oauth-tokenurl"),
+					AuthStyle: oauth2.AuthStyleInParams,
+				},
+			},
+			OauthUserInfoURL: c.String("oauth-userinfo"),
 			CookieSessionKey: c.String("sessionkey"),
 			Logfile:          c.String("httpslog"),
 			TemplateSet:      ts,

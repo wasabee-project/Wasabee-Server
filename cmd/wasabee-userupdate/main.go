@@ -20,6 +20,12 @@ var flags = []cli.Flag{
 		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
 		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
 	cli.StringFlag{
+		Name: "enlrockscommurl", EnvVar: "ENLROCKS_COMM_URL", Value: "",
+		Usage: "enl.rocks Community API URL. Defaults to the enl.rocks well-known URL"},
+	cli.StringFlag{
+		Name: "enlrocksstatusurl", EnvVar: "ENLROCKS_STATUS_URL", Value: "",
+		Usage: "enl.rocks Status API URL. Defaults to the enl.rocks well-known URL"},
+	cli.StringFlag{
 		Name: "enliokey", EnvVar: "ENLIO_API_KEY", Value: "",
 		Usage: "enl.io API Token. It is recommended to pass this parameter as an environment variable"},
 	cli.BoolFlag{
@@ -80,7 +86,11 @@ func run(c *cli.Context) error {
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		wasabee.SetEnlRocks(c.String("enlrockskey"))
+		wasabee.SetEnlRocks(wasabee.Rocksconfig{
+			APIKey: c.String("enlrockskey"),
+			CommunityEndpoint: c.String("enlrockscommurl"),
+			StatusEndpoint: c.String("enlrocksstatusurl"),
+		})
 	}
 
 	// setup enl.io

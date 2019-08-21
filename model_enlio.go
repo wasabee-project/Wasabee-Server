@@ -43,7 +43,7 @@ func (gid GoogleID) enlioQuery() (string, error) {
 		return "", err
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {

@@ -1,0 +1,70 @@
+{
+  "realm" : "wasabee",
+  "users" : [ {
+    "id" : "33c924f0-32eb-4d81-a316-09f8c7487f9f",
+    "createdTimestamp" : 1565666266667,
+    "username" : "alice",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : true,
+    "firstName" : "Alice",
+    "lastName" : "Brooks",
+    "email" : "alice@alice.com",
+    "attributes" : {
+      "id" : [ "254857845965874" ]
+    },
+    "credentials" : [ {
+      "type" : "password",
+      "hashedSaltedValue" : "YIkLAMs/wT06bdlUsZjy47QflWq+T2CdM24dOFAgQoqL0BFWF2a9pez4YYw/aVh/HNeV32C4gnhDTW2MihOC3Q==",
+      "salt" : "yr1FkhuSIsbJjmn8JV0Q/w==",
+      "hashIterations" : 27500,
+      "counter" : 0,
+      "algorithm" : "pbkdf2-sha256",
+      "digits" : 0,
+      "period" : 0,
+      "createdDate" : 1565666297956,
+      "config" : { }
+    } ],
+    "disableableCredentialTypes" : [ "password" ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "uma_authorization", "offline_access" ],
+    "clientRoles" : {
+      "account" : [ "manage-account", "view-profile" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "41097da2-d003-489e-9fb0-de9b7c7487b1",
+    "createdTimestamp" : 1565666216582,
+    "username" : "bob",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : true,
+    "firstName" : "Bob",
+    "lastName" : "Jones",
+    "email" : "bob@bob.com",
+    "attributes" : {
+      "id" : [ "548578457485962" ]
+    },
+    "credentials" : [ {
+      "type" : "password",
+      "hashedSaltedValue" : "Wf/chmeIeUb4tRGPvGcM1YJ8IgZ3asuV3LGzNB9c0xxSGeHDPwPLLX/RgpOE7v06aa4DGVMNHm2lDe2/lf3gkg==",
+      "salt" : "xrnwcFKiTh2H8WhGme2qrQ==",
+      "hashIterations" : 27500,
+      "counter" : 0,
+      "algorithm" : "pbkdf2-sha256",
+      "digits" : 0,
+      "period" : 0,
+      "createdDate" : 1565666238406,
+      "config" : { }
+    } ],
+    "disableableCredentialTypes" : [ "password" ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "uma_authorization", "offline_access" ],
+    "clientRoles" : {
+      "account" : [ "manage-account", "view-profile" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}
