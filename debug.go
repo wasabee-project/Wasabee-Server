@@ -11,7 +11,7 @@ func SetupDebug(longTimeouts bool) {
 
 // GetTimeout returns the passed in timeout, or 1 hour if longTimeouts is set
 func GetTimeout(defaultTimeout time.Duration) time.Duration {
-	if(enableLongTimeouts) {
+	if enableLongTimeouts {
 		return 1 * time.Hour
 	}
 	return defaultTimeout

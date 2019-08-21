@@ -284,10 +284,10 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 			Path:   "/",
 			MaxAge: -1, // force delete
 		}
-		err = ses.Save(req, res)
-		if err != nil {
-			wasabee.Log.Notice(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
+		// don't stomp on err since we are currently in an error path
+		if saveerr = ses.Save(req, res); saveerr != nil {
+			wasabee.Log.Notice(saveerr)
+			http.Error(res, saveerr.Error(), http.StatusInternalServerError)
 			return
 		}
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -380,7 +380,7 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, erro
 	return contents, nil
 }
 
-// used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info 
+// used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info
 func getOauthUserInfo(accessToken string) ([]byte, error) {
 	url := config.OauthUserInfoURL
 

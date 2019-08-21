@@ -48,10 +48,9 @@ type Rocksconfig struct {
 	CommunityEndpoint string
 	// StatusEndpoint is the API endpoint for getting user status
 	StatusEndpoint string
-	configured  bool
-	limiter     *rate.Limiter
+	configured     bool
+	limiter        *rate.Limiter
 }
-
 
 var rocks Rocksconfig
 
@@ -124,7 +123,7 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 		Log.Error(err)
 		return err
 	}
-	
+
 	Log.Debug(string(body))
 	err = json.Unmarshal(body, &agent)
 	if err != nil {
