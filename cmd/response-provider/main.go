@@ -4,17 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+
+	"github.com/gorilla/mux"
 )
 
-const port = "8445"
+const port = "5054"
 
 var tokens map[string]GoogleData
 var gids map[string]GoogleData
 var rocks map[string]RocksAgent
 var vees map[string]vagent
 
-// what is returned when pretending to be google
+// GoogleData - what is returned when pretending to be google
 type GoogleData struct {
 	Gid   string `json:"id"`
 	Name  string `json:"name"`
@@ -45,6 +46,7 @@ type vagent struct {
 	Cellid      string `json:"cellid"`
 }
 
+// RocksAgent is set by the Rocks API
 type RocksAgent struct {
 	Gid      string `json:"gid"`
 	TGId     int64  `json:"tgid"`
@@ -70,9 +72,10 @@ func main() {
 	preload()
 
 	// set up handlers for the URIs
-	http.HandleFunc("/GoogleToken", googleToken)
-	http.HandleFunc("/VSearch", vSearch)
-	http.HandleFunc("/RocksSearch", rocksSearch)
+	router := mux.NewRouter()
+	router.HandleFunc("/VSearch/agent/{id}/trust", vSearch)
+	router.HandleFunc("/RocksSearch/{gid}", rocksSearch)
+	http.Handle("/", router)
 
 	fmt.Printf("starting http listener on port %s\nuse control-c to stop\n\n", port)
 	// start HTTP -- loop until something goes wrong (^C to kill)
@@ -81,67 +84,13 @@ func main() {
 	}
 }
 
-func googleToken(res http.ResponseWriter, req *http.Request) {
-	token := req.FormValue("token")
-	if token == "" {
-		fmt.Fprintf(res, "token not set")
-		return
-	}
-
-	fmt.Printf("looking for GoogleData for token %s", token)
-	data, ok := tokens[token]
-	if !ok {
-		fmt.Printf("generating new data for token %s", token)
-		// generate new GoogleData with random values
-		// XXX make this actually random
-		gid := "12345"
-		data = GoogleData{
-			Gid:   gid,
-			Name:  fmt.Sprintf("random %s inadequate", gid),
-			Email: fmt.Sprintf("%s@example.com", gid),
-			Pic:   fmt.Sprintf("http://example.com/%s.jpg", gid),
-		}
-		// stuff it into the maps for later usage
-		tokens[token] = data
-		gids[gid] = data
-		rocks[gid] = RocksAgent{
-			Gid:      gid,
-			TGId:     0,
-			Agent:    fmt.Sprintf("Barcode-%s", gid[1:4]),
-			Verified: true,
-			Smurf:    false,
-			Fullname: "Rando Inadiquo",
-		}
-		vees[gid] = vagent{
-			EnlID:       fmt.Sprintf("enl-%s", data.Gid),
-			Vlevel:      1,
-			Vpoints:     1,
-			Agent:       fmt.Sprintf("Barcode-%s", data.Gid[1:4]),
-			Level:       16,
-			Quarantine:  false,
-			Active:      true,
-			Blacklisted: false,
-			Verified:    true,
-			Flagged:     false,
-			Banned:      false,
-			Cellid:      "AMS-GOLF-06",
-		}
-	}
-
-	j, _ := json.Marshal(data)
-	fmt.Printf("returning %s for token %s", string(j), token)
-	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	fmt.Fprintf(res, string(j))
-}
-
 func vSearch(res http.ResponseWriter, req *http.Request) {
 	// request is in this form: "%s/agent/%s/trust?apikey=%s"
 	apikey := req.FormValue("apikey")
 	fmt.Printf("V search request, apikey: %s ", apikey)
 
-	chunks := strings.Split(req.URL.Path, "/")
-	// fmt.Print(chunks)
-	gid := chunks[1]
+	vars := mux.Vars(req)
+	gid := vars["id"]
 	fmt.Printf(" query: %s\n", gid)
 
 	if gid == "" {
@@ -170,10 +119,8 @@ func rocksSearch(res http.ResponseWriter, req *http.Request) {
 	// /api/user/status/{GID}?apikey=
 	apikey := req.FormValue("apikey")
 	fmt.Printf("Rocks search request, apikey: %s ", apikey)
-
-	chunks := strings.Split(req.URL.Path, "/")
-	// fmt.Print(chunks)
-	gid := chunks[len(chunks)-1] // last element
+	vars := mux.Vars(req)
+	gid := vars["gid"]
 	fmt.Printf(" query: %s\n", gid)
 
 	if gid == "" {
@@ -184,7 +131,7 @@ func rocksSearch(res http.ResponseWriter, req *http.Request) {
 	if !ok {
 		// XXX get the error that Rocks actually uses
 		res.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		fmt.Fprint(res, `{ status: "error" }`)
+		fmt.Fprint(res, `{ "status": "error" }`)
 		return
 	}
 	j, _ := json.Marshal(r)
@@ -193,6 +140,36 @@ func rocksSearch(res http.ResponseWriter, req *http.Request) {
 }
 
 func preload() {
+
+	// Bob
+	gids["548578457485962"] = GoogleData{
+		Gid: "548578457485962",
+		Name: "Bob Bob",
+		Email: "bob@bob.com",
+		Pic: "https://is5-ssl.mzstatic.com/image/thumb/Purple113/v4/cd/04/e3/cd04e3d3-c209-231c-a82a-22923808ec8a/source/256x256bb.jpg",
+	}
+	rocks["548578457485962"] = RocksAgent{
+		Gid:      "548578457485962",
+		Agent:    "bob",
+		Verified: true,
+		Smurf:    false,
+		Fullname: "Bob Bob",
+	}
+	vees["548578457485962"] = vagent{
+		EnlID:       "548578457485962",
+		Vlevel:      1,
+		Vpoints:     1,
+		Agent:       "bob",
+		Level:       13,
+		Quarantine:  false,
+		Active:      true,
+		Blacklisted: false,
+		Verified:    true,
+		Flagged:     false,
+		Banned:      false,
+		Cellid:      "AMS-GOLF-06",
+	}
+
 	// deviousness
 	gids["118281765050946915735"] = GoogleData{
 		Gid:   "118281765050946915735",

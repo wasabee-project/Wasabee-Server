@@ -200,7 +200,7 @@ func googleRiscDiscovery() error {
 		return err
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: wasabee.GetTimeout(3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {

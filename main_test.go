@@ -18,9 +18,11 @@ func TestMain(m *testing.M) {
 		wasabee.Log.Error(err)
 	}
 	wasabee.SetVEnlOne(wasabee.Vconfig{
-		APIKey:	os.Getenv("VENLONE_API_KEY"),
+		APIKey: os.Getenv("VENLONE_API_KEY"),
 	})
-	wasabee.SetEnlRocks(os.Getenv("ENLROCKS_API_KEY"))
+	wasabee.SetEnlRocks(wasabee.Rocksconfig{
+		APIKey: os.Getenv("ENLROCKS_API_KEY"),
+	})
 
 	// flag.Parse()
 	exitCode := m.Run()

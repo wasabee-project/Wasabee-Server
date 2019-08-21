@@ -1,0 +1,15 @@
+{
+  "name": "Go",
+  "dockerComposeFile": "docker-compose.yaml",
+  "service": "wasabee",
+  "workspaceFolder": "/workspace",
+  "cwd": "/workspace",
+  "shutdownAction": "stopCompose",
+  "appPort": 9000,
+  "extensions": ["ms-vscode.go"],
+  "settings": {
+    "go.gopath": "/go",
+    "go.inferGopath": true,
+    "go.useLanguageServer": true
+  }
+}
