@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"html/template"
 	"net/http"
+	//"net/http/httputil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server"
+
 	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
 )
@@ -23,24 +25,24 @@ import (
 // an initial config is sent from main() and that is updated with defaults
 // in the initializeConfig function
 type Configuration struct {
-	ListenHTTPS       string
-	FrontendPath      string
-	Root              string
-	path              string
-	domain            string
-	oauthStateString  string
-	CertDir           string
-	OauthConfig       *oauth2.Config
+	ListenHTTPS      string
+	FrontendPath     string
+	Root             string
+	path             string
+	domain           string
+	oauthStateString string
+	CertDir          string
+	OauthConfig      *oauth2.Config
 	OauthUserInfoURL string
-	store             *sessions.CookieStore
-	sessionName       string
-	CookieSessionKey  string
-	TemplateSet       map[string]*template.Template // allow multiple translations
-	Logfile           string
-	srv               *http.Server
-	logfileHandle     *os.File
-	unrolled          *logger.Logger
-	scanners          map[string]int64
+	store            *sessions.CookieStore
+	sessionName      string
+	CookieSessionKey string
+	TemplateSet      map[string]*template.Template // allow multiple translations
+	Logfile          string
+	srv              *http.Server
+	logfileHandle    *os.File
+	unrolled         *logger.Logger
+	scanners         map[string]int64
 }
 
 var config Configuration
@@ -228,6 +230,7 @@ type statusRecorder struct {
 	http.ResponseWriter
 	status int
 }
+
 func (rec *statusRecorder) WriteHeader(code int) {
 	rec.status = code
 	rec.ResponseWriter.WriteHeader(code)
@@ -330,11 +333,10 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, url, http.StatusFound)
 }
 
-/*
-func debugMW(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		dump, _ := httputil.DumpRequest(req, false)
-		wasabee.Log.Debug(string(dump))
-		next.ServeHTTP(res, req)
-	})
-} */
+// func debugMW(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+// 		dump, _ := httputil.DumpRequest(req, false)
+// 		wasabee.Log.Debug(string(dump))
+// 		next.ServeHTTP(res, req)
+// 	})
+// }

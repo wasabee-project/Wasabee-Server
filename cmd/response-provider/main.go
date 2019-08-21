@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 const port = "5054"
@@ -45,6 +46,7 @@ type vagent struct {
 	Cellid      string `json:"cellid"`
 }
 
+// RocksAgent is set by the Rocks API
 type RocksAgent struct {
 	Gid      string `json:"gid"`
 	TGId     int64  `json:"tgid"`
@@ -70,8 +72,10 @@ func main() {
 	preload()
 
 	// set up handlers for the URIs
-	http.HandleFunc("/VSearch", vSearch)
-	http.HandleFunc("/RocksSearch", rocksSearch)
+	router := mux.NewRouter()
+	router.HandleFunc("/VSearch/agent/{id}/trust", vSearch)
+	router.HandleFunc("/RocksSearch/{gid}", rocksSearch)
+	http.Handle("/", router)
 
 	fmt.Printf("starting http listener on port %s\nuse control-c to stop\n\n", port)
 	// start HTTP -- loop until something goes wrong (^C to kill)
@@ -85,9 +89,8 @@ func vSearch(res http.ResponseWriter, req *http.Request) {
 	apikey := req.FormValue("apikey")
 	fmt.Printf("V search request, apikey: %s ", apikey)
 
-	chunks := strings.Split(req.URL.Path, "/")
-	// fmt.Print(chunks)
-	gid := chunks[1]
+	vars := mux.Vars(req)
+	gid := vars["id"]
 	fmt.Printf(" query: %s\n", gid)
 
 	if gid == "" {
@@ -116,10 +119,8 @@ func rocksSearch(res http.ResponseWriter, req *http.Request) {
 	// /api/user/status/{GID}?apikey=
 	apikey := req.FormValue("apikey")
 	fmt.Printf("Rocks search request, apikey: %s ", apikey)
-
-	chunks := strings.Split(req.URL.Path, "/")
-	// fmt.Print(chunks)
-	gid := chunks[len(chunks)-1] // last element
+	vars := mux.Vars(req)
+	gid := vars["gid"]
 	fmt.Printf(" query: %s\n", gid)
 
 	if gid == "" {

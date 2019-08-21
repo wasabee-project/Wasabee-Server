@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",	
+	"type": "shell",	
+	"echoCommand": true,
+	"cwd": "${workspaceFolder}",
+	"tasks": [
+		{
+			"label": "Build",
+			"command": "go build -v ./... && echo Done!",
+			"dependsOn": "Lint",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Lint",
+			"command": "golint ./..."
+		}
+	]
+}
