@@ -23,8 +23,7 @@ func setupRouter() *mux.Router {
 	// apply to all
 	router.Use(headersMW)
 	router.Use(scannerMW)
-	router.Use(logRequestMW)
-
+	//router.Use(logRequestMW)
 	//router.Use(debugMW)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
@@ -285,7 +284,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 			MaxAge: -1, // force delete
 		}
 		// don't stomp on err since we are currently in an error path
-		if saveerr = ses.Save(req, res); saveerr != nil {
+		if saveerr := ses.Save(req, res); saveerr != nil {
 			wasabee.Log.Notice(saveerr)
 			http.Error(res, saveerr.Error(), http.StatusInternalServerError)
 			return
