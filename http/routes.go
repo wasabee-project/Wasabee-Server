@@ -25,7 +25,7 @@ func setupRouter() *mux.Router {
 	router.Use(scannerMW)
 	router.Use(logRequestMW)
 
-	// router.Use(debugMW)
+	//router.Use(debugMW)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// 404 error page
