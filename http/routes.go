@@ -265,8 +265,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	// wasabee.Log.Debug(string(content))
 
 	var m googleData
-	debug := string(content)
-	wasabee.Log.Debug(debug)
 	if err = json.Unmarshal(content, &m); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -323,7 +321,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	ses.Values["id"] = m.Gid.String()
-	wasabee.Log.Debug("session: ", ses.Values["id"], ", m.Gid: ", m.Gid.String())
 	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
@@ -331,12 +328,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		MaxAge: 0,
 	}
 
-	for k, v := range ses.Values {
-		wasabee.Log.Debug(k, v)
-	}
-
 	_ = ses.Save(req, res)
-	wasabee.Log.Debug("session: ", ses.Values["id"], ", m.Gid: ", m.Gid.String())
 	iname, err := m.Gid.IngressName()
 	if err != nil {
 		wasabee.Log.Debug("no iname at end of login? %n", m.Gid)

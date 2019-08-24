@@ -326,6 +326,10 @@ func (teamID TeamID) String() string {
 
 // SetTeamState updates the agent's state on the team (Off|On)
 func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
+	if state != "On" {
+		state = "Off"
+	}
+
 	if _, err := db.Exec("UPDATE agentteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
 		Log.Notice(err)
 		return err

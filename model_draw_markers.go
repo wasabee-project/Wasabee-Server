@@ -64,35 +64,38 @@ func (opID OperationID) deleteMarker(mid MarkerID) error {
 // PopulateMarkers fills in the Markers list for the Operation. No authorization takes place.
 func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
-	var gid, comment, iname, completedBy sql.NullString
+	var assignedGid, comment, assignedNick, completedBy sql.NullString
 
 	// XXX join with portals table, get name and order by name, don't expose it in this json -- will make the friendly in the https module easier
-	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname, b.iname FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ?", o.ID)
+	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &gid, &comment, &tmpMarker.State, &iname, &completedBy)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
-		if gid.Valid {
-			tmpMarker.AssignedTo = GoogleID(gid.String)
+		if tmpMarker.State == "" { // enums in sql default to "" if invalid, WTF?
+			tmpMarker.State = "pending"
+		}
+		if assignedGid.Valid {
+			tmpMarker.AssignedTo = GoogleID(assignedGid.String)
 		} else {
-			tmpMarker.Comment = ""
+			tmpMarker.AssignedTo = ""
+		}
+		if assignedNick.Valid {
+			tmpMarker.IngressName = assignedNick.String
+		} else {
+			tmpMarker.IngressName = ""
 		}
 		if comment.Valid {
 			tmpMarker.Comment = comment.String
 		} else {
 			tmpMarker.Comment = ""
-		}
-		if iname.Valid {
-			tmpMarker.IngressName = iname.String
-		} else {
-			tmpMarker.IngressName = ""
 		}
 		if completedBy.Valid {
 			tmpMarker.CompletedBy = completedBy.String
@@ -100,9 +103,6 @@ func (o *Operation) PopulateMarkers() error {
 			tmpMarker.CompletedBy = ""
 		}
 		o.Markers = append(o.Markers, tmpMarker)
-		if tmpMarker.State == "" { // enums in sql default to ""/0 if invalid, WTF?
-			tmpMarker.State = "pending"
-		}
 	}
 	return nil
 }
