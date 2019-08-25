@@ -491,11 +491,11 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
 	if !authorized {
-		err = fmt.Errorf("access denied")
+		err = fmt.Errorf("access denied: %s", err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	if err != nil {
+	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
