@@ -133,7 +133,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", pDrawPortalKeysRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}", pDrawPortalRoute).Methods("GET")
 
-	r.HandleFunc("/me", meSetIngressNameRoute).Methods("GET").Queries("name", "{name}")
 	// manual location post
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
 	// -- do not use, just here for safety

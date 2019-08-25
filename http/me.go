@@ -3,7 +3,6 @@ package wasabeehttps
 import (
 	"encoding/json"
 	"fmt"
-	"html"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -129,32 +128,6 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabee.TeamID(vars["team"])
 
 	if err = team.RemoveAgent(gid); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
-		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "ok"}`)
-		return
-	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
-}
-
-func meSetIngressNameRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	name := html.EscapeString(vars["name"])
-
-	// do the work
-	if err = gid.SetIngressName(name); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

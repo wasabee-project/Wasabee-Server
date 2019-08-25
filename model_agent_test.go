@@ -28,32 +28,6 @@ func TestInitAgent(t *testing.T) {
 	// xxx check a value or two in ad
 }
 
-func TestSetAgentName(t *testing.T) {
-	name, err := gid.IngressName()
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	err = gid.SetIngressName("TEST_AGENT_RENAME")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	// since populated from V/Rocks, rename is rejected
-	g2, err := wasabee.SearchAgentName(name)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	if g2.String() != gid.String() {
-		t.Errorf("gid mismatch after rename: %s %s", gid.String(), g2.String())
-	}
-
-	err = gid.SetIngressName(name)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-}
-
 func TestAgentLocation(t *testing.T) {
 	err := gid.AgentLocation("33.148", "-96.787")
 	if err != nil {
