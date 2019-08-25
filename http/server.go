@@ -3,6 +3,7 @@ package wasabeehttps
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"html/template"
 	"net/http"
 	//"net/http/httputil"
@@ -29,7 +30,6 @@ type Configuration struct {
 	FrontendPath     string
 	Root             string
 	path             string
-	domain           string
 	oauthStateString string
 	CertDir          string
 	OauthConfig      *oauth2.Config
@@ -70,9 +70,6 @@ func initializeConfig(initialConfig Configuration) {
 	}
 	config.path = strings.TrimSuffix("/"+strings.TrimPrefix(config.path, "/"), "/")
 
-	rootParts = strings.SplitN(strings.ToLower(config.Root), "://", 2)
-	config.domain = strings.Split(rootParts[len(rootParts)-1], "/")[0]
-
 	// used for templates
 	wasabee.SetWebroot(config.Root)
 	wasabee.SetWebAPIPath(apipath)
@@ -84,12 +81,10 @@ func initializeConfig(initialConfig Configuration) {
 		wasabee.Log.Error("OAUTH_SECRET unset: logins will fail")
 	}
 
-	config.OauthConfig.RedirectURL = config.Root + callback
-
-	wasabee.Log.Debugf("ClientID: " + config.OauthConfig.ClientID)
-	wasabee.Log.Debugf("ClientSecret: " + config.OauthConfig.ClientSecret)
+	wasabee.Log.Debugf("ClientID: %s", config.OauthConfig.ClientID)
+	wasabee.Log.Debugf("ClientSecret: %s", config.OauthConfig.ClientSecret)
 	config.oauthStateString = wasabee.GenerateName()
-	wasabee.Log.Debugf("oauthStateString: " + config.oauthStateString)
+	wasabee.Log.Debugf("oauthStateString: %s", config.oauthStateString)
 
 	if config.CookieSessionKey == "" {
 		wasabee.Log.Error("SESSION_KEY unset: logins will fail")
@@ -329,7 +324,11 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	_ = ses.Save(req, res)
 
-	url := config.OauthConfig.AuthCodeURL(config.oauthStateString)
+	// the server may have several names/ports ; redirect back to the one the user caled
+	tmpOC := config.OauthConfig
+	tmpOC.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
+	// wasabee.Log.Debugf("callback URL: %s", tmpOC.RedirectURL)
+	url := tmpOC.AuthCodeURL(config.oauthStateString)
 	http.Redirect(res, req, url, http.StatusFound)
 }
 
