@@ -126,7 +126,6 @@ func setupAuthRoutes(r *mux.Router) {
 	// agent undo complete mark
 	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", pDrawMarkerIncompleteRoute).Methods("GET")
 	// operator verify completing
-	r.HandleFunc("/draw/{document}/marker/{marker}/finalize", pDrawMarkerFinalizeRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/reject", pDrawMarkerRejectRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", pDrawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", pDrawPortalHardnessRoute).Methods("POST")

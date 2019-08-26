@@ -978,27 +978,6 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
 
-func pDrawMarkerFinalizeRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	opID := wasabee.OperationID(vars["document"])
-	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.Finalize(opID, gid)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprintf(res, `{ "status": "ok" }`)
-}
-
 func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)

@@ -206,27 +206,6 @@ func (m MarkerID) Acknowledge(opID OperationID, gid GoogleID) error {
 	return nil
 }
 
-// Finalize is when an operator verifies that a marker has been taken care of.
-// gid must be the op owner.
-func (m MarkerID) Finalize(opID OperationID, gid GoogleID) error {
-	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("not operation owner")
-		Log.Error(err)
-		return err
-	}
-	_, err := db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "completed", m, opID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if err = opID.Touch(); err != nil {
-		Log.Error(err)
-	}
-
-	opID.firebaseMarkerStatus(m, "completed")
-	return nil
-}
-
 // Complete marks a marker as completed
 func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
 	if !opID.ReadAccess(gid) {
