@@ -337,55 +337,54 @@ func drawOpUpdateWorker(o Operation) error {
 }
 
 // Delete removes an operation and all associated data
-// if the associated team has no other ops AND the deleter owns it (the default), it is deleted as well
-func (opID OperationID) Delete(gid GoogleID) error {
-	if !opID.IsOwner(gid) {
+// if any associated team has no other associated ops AND the deleter owns it, it is deleted as well
+func (o *Operation) Delete(gid GoogleID) error {
+	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied")
 		Log.Error(err)
 		return err
 	}
 
-	// get team before delete
-	teamID, err := opID.GetTeamID()
-	if err != nil {
-		Log.Error(err)
-		return err
+	if len(o.Teams) == 0 {
+		o.PopulateTeams()
 	}
 
-	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", opID)
+	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	// the foreign key constraints should take care of these, but just in case...
-	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", opID)
-	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", opID)
-	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", opID)
-	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", opID)
-	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", opID)
-	_, _ = db.Exec("DELETE FROM opteams WHERE opID = ?", opID)
+	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
+	_, _ = db.Exec("DELETE FROM opteams WHERE opID = ?", o.ID)
 
-	owns, err := gid.OwnsTeam(teamID)
-	if err != nil {
-		Log.Error(err)
-		return nil
-	}
-	if !owns {
-		return nil
-	}
-
-	var teamOps int
-	err = db.QueryRow("SELECT COUNT(*) FROM operation WHERE teamID = ?", teamID).Scan(&teamOps)
-	if err != nil {
-		Log.Error(err)
-		teamOps = 0
-	}
-	if teamOps == 0 { // 0 because the op has already been deleted
-		Log.Debugf("deleting team %s since this was the only op assigned to it", teamID)
-		err = teamID.Delete()
+	for _, t := range o.Teams {
+		owns, err := gid.OwnsTeam(t.TeamID)
 		if err != nil {
 			Log.Error(err)
-			return err
+			return nil
+		}
+		if !owns {
+			return nil
+		}
+
+		var teamOps int
+		err = db.QueryRow("SELECT COUNT(*) FROM operation WHERE teamID = ?", t.TeamID).Scan(&teamOps)
+		if err != nil {
+			Log.Error(err)
+			teamOps = 0
+		}
+		if teamOps == 0 { // 0 because the op has already been deleted
+			Log.Debugf("deleting team %s since this was the only op assigned to it", t.TeamID)
+			err = t.TeamID.Delete()
+			if err != nil {
+				Log.Error(err)
+				return err
+			}
 		}
 	}
 	return nil

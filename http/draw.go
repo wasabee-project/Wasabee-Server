@@ -165,7 +165,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	if op.ID.IsOwner(gid) {
 		err = fmt.Errorf("deleting operation %s", op.ID)
 		wasabee.Log.Notice(err)
-		err := op.ID.Delete(gid)
+		err := op.Delete(gid)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)

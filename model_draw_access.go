@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// GetTeamID returns the teamID for an op
-func (opID OperationID) GetTeamID() (TeamID, error) {
+// getTeamID returns the teamID for an op
+func (opID OperationID) getTeamIDdeprecated() (TeamID, error) {
 	var teamID TeamID
 	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
 	if err != nil && err != sql.ErrNoRows {
@@ -19,8 +19,13 @@ func (opID OperationID) GetTeamID() (TeamID, error) {
 	return teamID, nil
 }
 
+// PopulateTeams fills in the Teams data for an Operation
 func (o *Operation) PopulateTeams() error {
-	primaryTeam, err := o.ID.GetTeamID()
+	if len(o.Teams) > 0 {
+		return nil
+	}
+
+	primaryTeam, _ := o.ID.getTeamIDdeprecated()
 	o.Teams = append(o.Teams, ExtendedTeam{
 		TeamID: primaryTeam,
 		Role:   etRoleRead,
