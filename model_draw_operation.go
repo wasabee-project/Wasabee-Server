@@ -145,7 +145,7 @@ func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	}
 
 	for _, k := range o.Keys {
-		if err = o.ID.insertKey(k); err != nil {
+		if err = o.insertKey(k); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -183,7 +183,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	if err := o.ID.Touch(); err != nil {
+	if err := o.Touch(); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -492,29 +492,29 @@ func OpUserMenu(currentGid GoogleID, teamID TeamID, objID objectID, function str
 }
 
 // SetInfo changes the description of an operation
-func (opID OperationID) SetInfo(info string, gid GoogleID) error {
+func (o *Operation) SetInfo(info string, gid GoogleID) error {
 	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
-	_, err := db.Exec("UPDATE operation SET comment = ? WHERE ID = ?", info, opID)
+	_, err := db.Exec("UPDATE operation SET comment = ? WHERE ID = ?", info, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
-	_ = opID.Touch()
+	_ = o.Touch()
 	return nil
 }
 
 // Touch updates the modified timestamp on an operation
-func (opID OperationID) Touch() error {
-	_, err := db.Exec("UPDATE operation SET modified = NOW() WHERE ID = ?", opID)
+func (o *Operation) Touch() error {
+	_, err := db.Exec("UPDATE operation SET modified = NOW() WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	opID.firebaseMapChange()
+	o.firebaseMapChange()
 	return nil
 }
 

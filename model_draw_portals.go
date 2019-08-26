@@ -118,38 +118,38 @@ func (p PortalID) String() string {
 }
 
 // PortalHardness updates the comment on a portal
-func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error {
-	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, opID)
+func (o *Operation) PortalHardness(portalID PortalID, hardness string) error {
+	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
 }
 
 // PortalComment updates the comment on a portal
-func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
-	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, opID)
+func (o *Operation) PortalComment(portalID PortalID, comment string) error {
+	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
 }
 
 // PortalDetails returns information about the portal
-func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, error) {
+func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, error) {
 	var p Portal
 	p.ID = portalID
 	var teamID TeamID
 
-	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
+	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", o.ID).Scan(&teamID)
 	if err != nil {
 		Log.Error(err)
 		return p, err
@@ -167,7 +167,7 @@ func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, 
 	}
 
 	var comment, hardness sql.NullString
-	err = db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", opID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
+	err = db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", o.ID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
 	if err != nil {
 		Log.Error(err)
 		return p, err
@@ -178,7 +178,7 @@ func (opID OperationID) PortalDetails(portalID PortalID, gid GoogleID) (Portal, 
 	if hardness.Valid {
 		p.Hardness = hardness.String
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return p, nil

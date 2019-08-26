@@ -8,14 +8,14 @@ type KeyOnHand struct {
 }
 
 // insertKey adds a user keycount to the database
-func (opID OperationID) insertKey(k KeyOnHand) error {
+func (o *Operation) insertKey(k KeyOnHand) error {
 	_, err := db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?",
-		opID, k.ID, k.Gid, k.Onhand, k.Onhand)
+		o.ID, k.ID, k.Gid, k.Onhand, k.Onhand)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -42,13 +42,13 @@ func (o *Operation) PopulateKeys() error {
 }
 
 // KeyOnHand updates a user's key-count for linking
-func (opID OperationID) KeyOnHand(gid GoogleID, portalID PortalID, count int32) error {
+func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32) error {
 	k := KeyOnHand{
 		ID:     portalID,
 		Gid:    gid,
 		Onhand: count,
 	}
-	if err := opID.insertKey(k); err != nil {
+	if err := o.insertKey(k); err != nil {
 		Log.Error(err)
 		return err
 	}

@@ -105,8 +105,8 @@ func (l LinkID) String() string {
 }
 
 // AssignLink assigns a link to an agent, sending them a message that they have an assignment
-func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
-	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, opID)
+func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) error {
+	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -118,14 +118,14 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 			OpID   OperationID
 			LinkID LinkID
 		}{
-			OpID:   opID,
+			OpID:   o.ID,
 			LinkID: linkID,
 		}
 
 		msg, err := gid.ExecuteTemplate("assignLink", link)
 		if err != nil {
 			Log.Error(err)
-			msg = fmt.Sprintf("assigned a marker for op %s", opID)
+			msg = fmt.Sprintf("assigned a marker for op %s", o.ID)
 			// do not report send errors up the chain, just log
 		}
 		_, err = gid.SendMessage(msg)
@@ -137,9 +137,9 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 	*/
 
 	if gid.String() != "" {
-		opID.firebaseAssignLink(gid, linkID)
+		o.ID.firebaseAssignLink(gid, linkID)
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -147,30 +147,30 @@ func (opID OperationID) AssignLink(linkID LinkID, gid GoogleID) error {
 }
 
 // LinkDescription updates the description for a link
-func (opID OperationID) LinkDescription(linkID LinkID, desc string) error {
-	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", MakeNullString(desc), linkID, opID)
+func (o *Operation) LinkDescription(linkID LinkID, desc string) error {
+	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", MakeNullString(desc), linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
 }
 
 // LinkCompleted updates the completed flag for a link
-func (opID OperationID) LinkCompleted(linkID LinkID, completed bool) error {
-	_, err := db.Exec("UPDATE link SET completed = ? WHERE ID = ? AND opID = ?", completed, linkID, opID)
+func (o *Operation) LinkCompleted(linkID LinkID, completed bool) error {
+	_, err := db.Exec("UPDATE link SET completed = ? WHERE ID = ? AND opID = ?", completed, linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
-	opID.firebaseLinkStatus(linkID, completed)
+	o.firebaseLinkStatus(linkID, completed)
 	return nil
 }
 
@@ -190,7 +190,7 @@ func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 }
 
 // LinkOrder changes the order of the throws for an operation
-func (opID OperationID) LinkOrder(order string, gid GoogleID) error {
+func (o *Operation) LinkOrder(order string, gid GoogleID) error {
 	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
 
 	stmt, err := db.Prepare("UPDATE link SET throworder = ? WHERE opID = ? AND ID = ?")
@@ -205,13 +205,13 @@ func (opID OperationID) LinkOrder(order string, gid GoogleID) error {
 		if links[i] == "000" { // the header, could be anyplace in the order if the user was being silly
 			continue
 		}
-		if _, err := stmt.Exec(pos, opID, links[i]); err != nil {
+		if _, err := stmt.Exec(pos, o.ID, links[i]); err != nil {
 			Log.Error(err)
 			continue
 		}
 		pos++
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil

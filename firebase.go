@@ -99,23 +99,23 @@ func (opID OperationID) firebaseAssignMarker(gid GoogleID, markerID MarkerID) {
 }
 
 // notify a team that a marker's status has changed
-func (opID OperationID) firebaseMarkerStatus(markerID MarkerID, status string) {
+func (o *Operation) firebaseMarkerStatus(markerID MarkerID, status string) {
 	if !fb.running {
 		return
 	}
 
-	teamID, err := opID.GetTeamID()
-	if err != nil {
-		Log.Error(err)
-		return
+	if len(o.Teams) == 0 {
+		_ = o.PopulateTeams()
 	}
-	fbPush(FirebaseCmd{
-		Cmd:    FbccMarkerStatusChange,
-		TeamID: teamID,
-		OpID:   opID,
-		ObjID:  string(markerID),
-		Msg:    status,
-	})
+	for _, t := range o.Teams {
+		fbPush(FirebaseCmd{
+			Cmd:    FbccMarkerStatusChange,
+			TeamID: t.TeamID,
+			OpID:   o.ID,
+			ObjID:  string(markerID),
+			Msg:    status,
+		})
+	}
 }
 
 // notifiy the agent that they have a new assigned marker in a given op
@@ -133,7 +133,7 @@ func (opID OperationID) firebaseAssignLink(gid GoogleID, linkID LinkID) {
 	})
 }
 
-func (opID OperationID) firebaseLinkStatus(linkID LinkID, completed bool) {
+func (o *Operation) firebaseLinkStatus(linkID LinkID, completed bool) {
 	if !fb.running {
 		return
 	}
@@ -143,36 +143,36 @@ func (opID OperationID) firebaseLinkStatus(linkID LinkID, completed bool) {
 		msg = "incomplete"
 	}
 
-	teamID, err := opID.GetTeamID()
-	if err != nil {
-		Log.Error(err)
-		return
+	if len(o.Teams) == 0 {
+		_ = o.PopulateTeams()
 	}
-	fbPush(FirebaseCmd{
-		Cmd:    FbccLinkStatusChange,
-		TeamID: teamID,
-		OpID:   opID,
-		ObjID:  string(linkID),
-		Msg:    msg,
-	})
+	for _, t := range o.Teams {
+		fbPush(FirebaseCmd{
+			Cmd:    FbccLinkStatusChange,
+			TeamID: t.TeamID,
+			OpID:   o.ID,
+			ObjID:  string(linkID),
+			Msg:    msg,
+		})
+	}
 }
 
-func (opID OperationID) firebaseMapChange() {
+func (o *Operation) firebaseMapChange() {
 	if !fb.running {
 		return
 	}
 
-	teamID, err := opID.GetTeamID()
-	if err != nil {
-		Log.Error(err)
-		return
+	if len(o.Teams) == 0 {
+		_ = o.PopulateTeams()
 	}
-	fbPush(FirebaseCmd{
-		Cmd:    FbccMapChange,
-		TeamID: teamID,
-		OpID:   opID,
-		Msg:    "changed",
-	})
+	for _, t := range o.Teams {
+		fbPush(FirebaseCmd{
+			Cmd:    FbccMapChange,
+			TeamID: t.TeamID,
+			OpID:   o.ID,
+			Msg:    "changed",
+		})
+	}
 }
 
 func (gid GoogleID) firebaseSubscribeTeam(teamID TeamID) {
