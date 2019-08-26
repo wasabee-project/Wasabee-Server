@@ -27,13 +27,14 @@ type Agent struct {
 	Verified      bool     `json:"Vverified,omitempty"`
 	Blacklisted   bool     `json:"blacklisted"`
 	RocksVerified bool     `json:"rocks,omitempty"`
-	Color         string   `json:"color,omitempty"`
+	Squad         string   `json:"squad,omitempty"`
 	State         bool     `json:"state,omitempty"`
 	Lat           float64  `json:"lat,omitempty"`
 	Lon           float64  `json:"lng,omitempty"`
 	Date          string   `json:"date,omitempty"`
 	Distance      float64  `json:"distance,omitempty"`
 	CanSendTo     bool     `json:"cansendto,omitempty"`
+	DisplayName   string   `json:"displayname,omitempty"`
 }
 
 // AgentInTeam checks to see if a agent is in a team and enabled.
@@ -66,11 +67,11 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	var err error
 	var rows *sql.Rows
 	if fetchAll {
-		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid "+
+		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
 			"FROM team=t, agentteams=x, agent=u, locations=l "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY x.state DESC, u.iname", teamID)
 	} else {
-		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid "+
+		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
 			"FROM team=t, agentteams=x, agent=u, locations=l "+
 			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid "+
 			"AND x.state = 'On' ORDER BY x.state DESC, u.iname", teamID)
@@ -83,7 +84,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	defer rows.Close()
 	for rows.Next() {
 		var enlID sql.NullString
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID)
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &tmpU.DisplayName)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -154,7 +155,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 		Log.Notice(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color) VALUES (?,?,'On','00FF00')", team, gid)
+	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color, displayname) VALUES (?,?,'On','operator',NULL)", team, gid)
 	if err != nil {
 		Log.Notice(err)
 		return TeamID(team), err
@@ -213,7 +214,7 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color) VALUES (?, ?, 'Off', '00FF00')", teamID, gid)
+	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color, displayname) VALUES (?, ?, 'Off', 'boots', NULL)", teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -291,7 +292,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpU.Name, &tmpU.Color, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
+		err := rows.Scan(&tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -424,4 +425,22 @@ func (gid GoogleID) teamList() []TeamID {
 		x = append(x, tid)
 	}
 	return x
+}
+
+func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
+	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", squad, teamID, gid)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	return nil
+}
+
+func (teamID TeamID) SetDisplaname(gid GoogleID, displayname string) error {
+	_, err := db.Exec("UPDATE agentteams SET displayname = ? WHERE teamID = ? and gid = ?", displayname, teamID, gid)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	return nil
 }
