@@ -90,7 +90,7 @@ type Assignment struct {
 // InitAgent is called from Oauth callback to set up a agent for the first time.
 // It also checks and updates V and enl.rocks data. It returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked at V or enl.rocks.
 func (gid GoogleID) InitAgent() (bool, error) {
-	var authError error // delay reporting authorization problems until after INSERT/Vupdate/RocksUpdate
+	var authError error
 	var tmpName string
 	var err error
 	var vdata Vresult
@@ -125,16 +125,20 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			tmpName = vdata.Data.Agent
 		}
 		if vdata.Data.Quarantine {
-			authError = fmt.Errorf("%s quarantined at V", vdata.Data.Agent)
+			authError = fmt.Errorf("%s %s quarantined at V", gid, vdata.Data.Agent)
+			Log.Notice(authError)
 		}
 		if vdata.Data.Flagged {
-			authError = fmt.Errorf("%s flagged at V", vdata.Data.Agent)
+			authError = fmt.Errorf("%s %s flagged at V", gid, vdata.Data.Agent)
+			Log.Notice(authError)
 		}
 		if vdata.Data.Blacklisted {
-			authError = fmt.Errorf("%s blacklisted at V", vdata.Data.Agent)
+			authError = fmt.Errorf("%s %s blacklisted at V", gid, vdata.Data.Agent)
+			Log.Notice(authError)
 		}
 		if vdata.Data.Banned {
-			authError = fmt.Errorf("%s banned at V", vdata.Data.Agent)
+			authError = fmt.Errorf("%s %s banned at V", gid, vdata.Data.Agent)
+			Log.Notice(authError)
 		}
 	}
 
@@ -148,28 +152,37 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			tmpName = rocks.Agent
 		}
 		if rocks.Smurf {
-			authError = fmt.Errorf("%s listed as a smurf at enl.rocks", rocks.Agent)
+			authError = fmt.Errorf("%s %s listed as a smurf at enl.rocks", gid, rocks.Agent)
+			Log.Notice(authError)
 		}
+	}
+
+	if authError != nil {
+		return false, authError
+	}
+
+	if tmpName == "" {
+		// use enlio only for agent name, only if .rocks and V fail
+		tmpName, _ = gid.enlioQuery()
+	}
+
+	if tmpName == "" {
+		// err := fmt.Errorf("gid %s not found at rocks or V", gid.String())
+		// Log.Error(err)
+		// return false, err
+		tmpName = "UnverifiedAgent_" + gid.String()[:15]
 	}
 
 	// if the agent doesn't exist, prepopulate everything
 	_, err = gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
-		if tmpName == "" {
-			// use enlio only for agent name, only if .rocks and V fail
-			tmpName, _ = gid.enlioQuery()
-		}
-
-		if tmpName == "" {
-			tmpName = "UnverifiedAgent_" + gid.String()[:15]
-		}
 		lockey, err := GenerateSafeName()
 		if err != nil {
 			Log.Error(err)
 			return false, err
 		}
 		_, err = db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0)",
-			gid, tmpName, vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, MakeNullString(vdata.Data.EnlID), rocks.Verified, 0)
+			gid, MakeNullString(tmpName), vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, MakeNullString(vdata.Data.EnlID), rocks.Verified, 0)
 		if err != nil {
 			Log.Error(err)
 			return false, err
@@ -184,25 +197,13 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		return false, err
 	}
 
-	if authError != nil || gid.RISC() {
-		Log.Notice(authError)
-		return false, authError
+	if gid.RISC() {
+		err := fmt.Errorf("%s locked due to Google RISC", gid)
+		Log.Error(err)
+		return false, err
 	}
-	return true, nil
-}
 
-// SetIngressName is called to update the agent's ingress name in the database.
-// The ingress name cannot be updated if V or Rocks verification has taken place.
-// ZZZ Do we even want to allow this any longer since V and rocks are giving us data? Unverified agents can just live with the Agent_XXXXXX name.
-func (gid GoogleID) SetIngressName(name string) error {
-	// if VVerified or RocksVerified: ignore name changes -- let the V/Rocks functions take care of that
-	// XXX doesn't take care of the case where they are in .rocks but not verified
-	Log.Criticalf("%s changed agent name to %s", gid, name)
-	_, err := db.Exec("UPDATE agent SET iname = ? WHERE gid = ? AND VVerified = 0 AND RocksVerified = 0", name, gid)
-	if err != nil {
-		Log.Notice(err)
-	}
-	return err
+	return true, nil
 }
 
 // Gid just satisfies the AgentID function
@@ -438,6 +439,21 @@ func (gid GoogleID) IngressName() (string, error) {
 	var iname string
 	err := db.QueryRow("SELECT iname FROM agent WHERE gid = ?", gid).Scan(&iname)
 	return iname, err
+}
+
+// IngressNameTeam returns the display name for an agent on a particular team, or the IngressName if not set
+func (gid GoogleID) IngressNameTeam(teamID TeamID) (string, error) {
+	var displayname sql.NullString
+	err := db.QueryRow("SELECT displayname FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid).Scan(&displayname)
+	if (err != nil && err == sql.ErrNoRows) || !displayname.Valid {
+		return gid.IngressName()
+	}
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	return displayname.String, nil
 }
 
 func (gid GoogleID) String() string {
