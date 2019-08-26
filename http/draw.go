@@ -451,7 +451,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		fl.FromID = l.From
 		fl.To = portals[l.To].Name
 		fl.ToID = l.To
-		fl.AssignedTo, _ = l.AssignedTo.IngressName()
+		fl.AssignedTo, _ = l.AssignedTo.IngressNameTeam(op.TeamID)
 		fl.AssignedToID = l.AssignedTo
 		tmp := wasabee.Distance(portals[l.From].Lat, portals[l.From].Lon, portals[l.To].Lat, portals[l.To].Lon)
 		fl.Distance = int32(math.Round(tmp / 1000))
@@ -468,7 +468,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		fm.Comment = m.Comment
 		fm.PortalID = m.PortalID
 		fm.Portal = portals[m.PortalID].Name
-		fm.AssignedTo, _ = m.AssignedTo.IngressName()
+		fm.AssignedTo, _ = m.AssignedTo.IngressNameTeam(op.TeamID)
 		friendly.Markers = append(friendly.Markers, fm)
 	}
 
@@ -489,7 +489,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 					tmpfkoh.ID = km.ID
 					tmpfkoh.Gid = km.Gid
 					tmpfkoh.Onhand = km.Onhand
-					tmpfkoh.Agent, _ = km.Gid.IngressName()
+					tmpfkoh.Agent, _ = km.Gid.IngressNameTeam(op.TeamID)
 					tmplist = append(tmplist, tmpfkoh)
 					if gid == km.Gid {
 						ihave = km.Onhand
@@ -543,7 +543,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 	var caps []capsuleEntry
 	for agentID, entry := range capsules {
 		for portalID, x := range entry {
-			i, _ := agentID.IngressName()
+			i, _ := agentID.IngressNameTeam(op.TeamID)
 			tmp := capsuleEntry{
 				Gid:      agentID,
 				Agent:    i,
@@ -580,7 +580,7 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.ID.IsOwner(gid) {
+	if op.WriteAccess(gid) {
 		link := wasabee.LinkID(vars["link"])
 		agent := wasabee.GoogleID(req.FormValue("agent"))
 		err := op.ID.AssignLink(link, agent)
@@ -590,7 +590,7 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner can assign agents")
+		err = fmt.Errorf("write access required to assign agents")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -613,7 +613,7 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.ID.IsOwner(gid) {
+	if op.WriteAccess(gid) {
 		link := wasabee.LinkID(vars["link"])
 		desc := req.FormValue("desc")
 		err := op.ID.LinkDescription(link, desc)
@@ -623,7 +623,7 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner can set link descriptions")
+		err = fmt.Errorf("write access required to set link descriptions")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -656,7 +656,7 @@ func pDrawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete boo
 
 	// operator / asignee
 	link := wasabee.LinkID(vars["link"])
-	if !op.ID.WriteAccess(gid) && !op.ID.AssignedTo(link, gid) {
+	if !op.WriteAccess(gid) && !op.ID.AssignedTo(link, gid) {
 		err = fmt.Errorf("permission to mark link as complete denied")
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -686,7 +686,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.ID.IsOwner(gid) {
+	if op.WriteAccess(gid) {
 		marker := wasabee.MarkerID(vars["marker"])
 		agent := wasabee.GoogleID(req.FormValue("agent"))
 		err := op.ID.AssignMarker(marker, agent)
@@ -696,7 +696,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner can assign targets")
+		err = fmt.Errorf("write access required to assign targets")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -719,7 +719,7 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.ID.IsOwner(gid) {
+	if op.WriteAccess(gid) {
 		marker := wasabee.MarkerID(vars["marker"])
 		comment := req.FormValue("comment")
 		err := op.ID.MarkerComment(marker, comment)
@@ -729,7 +729,7 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner set marker comments")
+		err = fmt.Errorf("write access required to set marker comments")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -752,7 +752,7 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.ID.IsOwner(gid) {
+	if op.WriteAccess(gid) {
 		portalID := wasabee.PortalID(vars["portal"])
 		comment := req.FormValue("comment")
 		err := op.ID.PortalComment(portalID, comment)
@@ -762,7 +762,7 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner set portal comments")
+		err = fmt.Errorf("write access required to set portal comments")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -785,7 +785,7 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.ID.IsOwner(gid) {
+	if op.WriteAccess(gid) {
 		portalID := wasabee.PortalID(vars["portal"])
 		hardness := req.FormValue("hardness")
 		err := op.ID.PortalHardness(portalID, hardness)
@@ -795,7 +795,7 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner set portal hardness")
+		err = fmt.Errorf("write access required to set portal hardness")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -857,17 +857,19 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabee.OperationID(vars["document"])
-	if opID.IsOwner(gid) {
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if op.WriteAccess(gid) {
 		order := req.FormValue("order")
-		err = opID.LinkOrder(order, gid)
+		err = op.ID.LinkOrder(order, gid)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner set portal order")
+		err = fmt.Errorf("write access required to set link order")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -886,17 +888,19 @@ func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabee.OperationID(vars["document"])
-	if opID.IsOwner(gid) {
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if op.WriteAccess(gid) {
 		info := req.FormValue("info")
-		err = opID.SetInfo(info, gid)
+		err = op.ID.SetInfo(info, gid)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the owner set operation info")
+		err = fmt.Errorf("write access required to set operation info")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -944,9 +948,10 @@ func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabee.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.Complete(opID, gid)
+	err = markerID.Complete(op, gid)
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -966,9 +971,10 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	opID := wasabee.OperationID(vars["document"])
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.Incomplete(opID, gid)
+	err = markerID.Incomplete(op, gid)
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

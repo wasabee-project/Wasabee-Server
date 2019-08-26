@@ -207,42 +207,42 @@ func (m MarkerID) Acknowledge(opID OperationID, gid GoogleID) error {
 }
 
 // Complete marks a marker as completed
-func (m MarkerID) Complete(opID OperationID, gid GoogleID) error {
-	if !opID.ReadAccess(gid) {
+func (m MarkerID) Complete(o Operation, gid GoogleID) error {
+	if !o.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
 		Log.Error(err)
 		return err
 	}
-	_, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, opID)
+	_, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.ID.Touch(); err != nil {
 		Log.Error(err)
 	}
 
-	opID.firebaseMarkerStatus(m, "completed")
+	o.ID.firebaseMarkerStatus(m, "completed")
 	return nil
 }
 
 // Incomplete marks a marker as not-completed
-func (m MarkerID) Incomplete(opID OperationID, gid GoogleID) error {
-	if !opID.ReadAccess(gid) {
+func (m MarkerID) Incomplete(o Operation, gid GoogleID) error {
+	if !o.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
 		Log.Error(err)
 		return err
 	}
-	_, err := db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, opID)
+	_, err := db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = opID.Touch(); err != nil {
+	if err = o.ID.Touch(); err != nil {
 		Log.Error(err)
 	}
 
-	opID.firebaseMarkerStatus(m, "assigned")
+	o.ID.firebaseMarkerStatus(m, "assigned")
 	return nil
 }
 
@@ -281,5 +281,11 @@ func (m MarkerID) Reject(opID OperationID, gid GoogleID) error {
 	}
 
 	opID.firebaseMarkerStatus(m, "pending")
+	return nil
+}
+
+func (o *Operation) PopulateAssignedOnly(gid GoogleID) error {
+	// get all marker assignments
+
 	return nil
 }

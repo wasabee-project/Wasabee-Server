@@ -15,19 +15,20 @@ type OperationID string
 // Operation is defined by the Wasabee IITC plugin.
 // It is the top level item in the JSON file.
 type Operation struct {
-	ID        OperationID `json:"ID"`
-	Name      string      `json:"name"`
-	Gid       GoogleID    `json:"creator"` // IITC plugin sending agent name, need to convert to GID
-	Color     string      `json:"color"`   // could be an enum, but freeform is fine for now
-	OpPortals []Portal    `json:"opportals"`
-	Anchors   []PortalID  `json:"anchors"`
-	Links     []Link      `json:"links"`
-	Markers   []Marker    `json:"markers"`
-	TeamID    TeamID      `json:"teamid"`
-	Modified  string      `json:"modified"`
-	Comment   string      `json:"comment"`
-	Keys      []KeyOnHand `json:"keysonhand"`
-	Fetched   string      `json:"fetched"`
+	ID        OperationID    `json:"ID"`
+	Name      string         `json:"name"`
+	Gid       GoogleID       `json:"creator"` // IITC plugin sending agent name, need to convert to GID
+	Color     string         `json:"color"`   // could be an enum, but freeform is fine for now
+	OpPortals []Portal       `json:"opportals"`
+	Anchors   []PortalID     `json:"anchors"`
+	Links     []Link         `json:"links"`
+	Markers   []Marker       `json:"markers"`
+	TeamID    TeamID         `json:"teamid"`
+	Teams     []ExtendedTeam `json:"teamlist"`
+	Modified  string         `json:"modified"`
+	Comment   string         `json:"comment"`
+	Keys      []KeyOnHand    `json:"keysonhand"`
+	Fetched   string         `json:"fetched"`
 }
 
 // OpStat is a minimal struct to determine if the op has been updated
@@ -37,6 +38,19 @@ type OpStat struct {
 	Gid      GoogleID    `json:"creator"`
 	Modified string      `json:"modified"`
 }
+
+type ExtendedTeam struct {
+	TeamID TeamID `json:"teamid"`
+	Role   etRole `json:"role"`
+}
+
+type etRole string
+
+const (
+	etRoleRead         etRole = "read"
+	etRoleWrite        etRole = "write"
+	etRoleAssignedOnly etRole = "assignedonly"
+)
 
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
 // use ONLY for initial op creation -- team is created
@@ -158,7 +172,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	if !o.ID.WriteAccess(gid) {
+	if !o.WriteAccess(gid) {
 		err := fmt.Errorf("write access denied to op: %s", o.ID)
 		Log.Error(err)
 		return err
@@ -349,6 +363,7 @@ func (opID OperationID) Delete(gid GoogleID) error {
 	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", opID)
 	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", opID)
 	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", opID)
+	_, _ = db.Exec("DELETE FROM opteams WHERE opID = ?", opID)
 
 	owns, err := gid.OwnsTeam(teamID)
 	if err != nil {
@@ -379,8 +394,6 @@ func (opID OperationID) Delete(gid GoogleID) error {
 // Populate takes a pointer to an Operation and fills it in; o.ID must be set
 // checks to see that either the gid created the operation or the gid is on the team assigned to the operation
 func (o *Operation) Populate(gid GoogleID) error {
-	var authorized bool
-
 	var comment sql.NullString
 	// permission check and populate Operation top level
 	r := db.QueryRow("SELECT name, gid, color, teamID, modified, comment FROM operation WHERE ID = ?", o.ID)
@@ -395,14 +408,12 @@ func (o *Operation) Populate(gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if inteam, _ := gid.AgentInTeam(o.TeamID, false); inteam {
-		authorized = true
-	}
-	if gid == o.Gid {
-		authorized = true
-	}
-	if !authorized {
-		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation")
+
+	if !o.ReadAccess(gid) {
+		if o.AssignedOnlyAccess(gid) {
+			return o.PopulateAssignedOnly(gid)
+		}
+		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation (%s: %s)", gid, o.ID)
 	}
 
 	if comment.Valid {
@@ -445,7 +456,7 @@ type objectID interface {
 
 // OpUserMenu is used in html templates to draw the menus to assign targets/links
 func OpUserMenu(currentGid GoogleID, teamID TeamID, objID objectID, function string) (template.HTML, error) {
-	rows, err := db.Query("SELECT a.iname, a.gid FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid ORDER BY a.iname", teamID)
+	rows, err := db.Query("SELECT a.iname, a.gid, x.displayname FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid ORDER BY a.iname", teamID)
 	if err != nil {
 		Log.Error(err)
 		return "", err
@@ -454,17 +465,21 @@ func OpUserMenu(currentGid GoogleID, teamID TeamID, objID objectID, function str
 	defer rows.Close()
 
 	var b bytes.Buffer
-	var iname string
-	var gid string
+	var iname, gid string
+	var dn sql.NullString
 
 	_, _ = b.WriteString(`<select name="agent" onchange="` + function + `('` + objID.String() + `', this);">`)
 	_, _ = b.WriteString(`<option value="">-- unassigned--</option>`)
 	for rows.Next() {
-		err := rows.Scan(&iname, &gid)
+		err := rows.Scan(&iname, &gid, &dn)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
+		if dn.Valid {
+			iname = dn.String
+		}
+
 		if gid == string(currentGid) {
 			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\" selected=\"selected\">%s</option>", gid, iname))
 		} else {

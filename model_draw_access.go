@@ -19,27 +19,72 @@ func (opID OperationID) GetTeamID() (TeamID, error) {
 	return teamID, nil
 }
 
+func (o *Operation) PopulateTeams() error {
+	primaryTeam, err := o.ID.GetTeamID()
+	o.Teams = append(o.Teams, ExtendedTeam{
+		TeamID: primaryTeam,
+		Role:   etRoleRead,
+	})
+
+	rows, err := db.Query("SELECT teamID, role FROM opteams WHERE opID = ?", o.ID)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Notice(err)
+		return err
+	}
+
+	defer rows.Close()
+
+	var tid, role string
+	for rows.Next() {
+		err := rows.Scan(&tid, &role)
+		if err != nil {
+			Log.Notice(err)
+			continue
+		}
+		o.Teams = append(o.Teams, ExtendedTeam{
+			TeamID: TeamID(tid),
+			Role:   etRole(role),
+		})
+	}
+	return nil
+}
+
 // ReadAccess determines if an agent has read acces to an op
-func (opID OperationID) ReadAccess(gid GoogleID) bool {
-	var teamID TeamID
-	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
-	if err != nil {
-		Log.Error(err)
-		return false
+func (o *Operation) ReadAccess(gid GoogleID) bool {
+	if o.ID.IsOwner(gid) {
+		return true
 	}
-	inteam, err := gid.AgentInTeam(teamID, false)
-	if err != nil {
-		Log.Error(err)
-		return false
+	if len(o.Teams) == 0 {
+		o.PopulateTeams()
 	}
-	return inteam
+	for _, t := range o.Teams {
+		if t.Role == etRoleAssignedOnly {
+			continue
+		}
+		if inteam, _ := gid.AgentInTeam(t.TeamID, false); inteam {
+			return true
+		}
+	}
+	return false
 }
 
 // WriteAccess determines if an agent has write access to an op
-func (opID OperationID) WriteAccess(gid GoogleID) bool {
-	// for now, only the owner can write
-	// we can expand this in the future, but will need better checks in the client to keep from stepping on each other
-	return opID.IsOwner(gid)
+func (o *Operation) WriteAccess(gid GoogleID) bool {
+	if o.ID.IsOwner(gid) {
+		return true
+	}
+	if len(o.Teams) == 0 {
+		o.PopulateTeams()
+	}
+	for _, t := range o.Teams {
+		if t.Role != etRoleWrite {
+			continue
+		}
+		if inteam, _ := gid.AgentInTeam(t.TeamID, false); inteam {
+			return true
+		}
+	}
+	return false
 }
 
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID
@@ -105,4 +150,19 @@ func (opID OperationID) Chgrp(gid GoogleID, to TeamID) error {
 		return err
 	}
 	return nil
+}
+
+func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
+	if len(o.Teams) == 0 {
+		o.PopulateTeams()
+	}
+	for _, t := range o.Teams {
+		if t.Role != etRoleAssignedOnly {
+			continue
+		}
+		if inteam, _ := gid.AgentInTeam(t.TeamID, false); inteam {
+			return true
+		}
+	}
+	return false
 }

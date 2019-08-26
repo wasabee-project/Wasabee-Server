@@ -83,8 +83,8 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 
 	defer rows.Close()
 	for rows.Next() {
-		var enlID sql.NullString
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &tmpU.DisplayName)
+		var enlID, dn sql.NullString
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &dn)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -102,8 +102,13 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		tmpU.PictureURL = tmpU.Gid.GetPicture()
+		if dn.Valid {
+			tmpU.Name = dn.String
+			tmpU.DisplayName = dn.String
+		} else {
+			tmpU.DisplayName = ""
+		}
 		teamList.Agent = append(teamList.Agent, tmpU)
-
 	}
 
 	var rockscomm, rockskey sql.NullString
@@ -198,6 +203,11 @@ func (teamID TeamID) Delete() error {
 		}
 	}
 
+	_, err = db.Exec("DELETE FROM opteams WHERE teamID = ?", teamID)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
 	_, err = db.Exec("DELETE FROM team WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
@@ -428,7 +438,7 @@ func (gid GoogleID) teamList() []TeamID {
 }
 
 func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
-	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", squad, teamID, gid)
+	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", MakeNullString(squad), teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 		return err
@@ -437,7 +447,7 @@ func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 }
 
 func (teamID TeamID) SetDisplaname(gid GoogleID, displayname string) error {
-	_, err := db.Exec("UPDATE agentteams SET displayname = ? WHERE teamID = ? and gid = ?", displayname, teamID, gid)
+	_, err := db.Exec("UPDATE agentteams SET displayname = ? WHERE teamID = ? and gid = ?", MakeNullString(displayname), teamID, gid)
 	if err != nil {
 		Log.Notice(err)
 		return err
