@@ -31,7 +31,7 @@ func (o *Operation) PopulateTeams() error {
 		Role:   etRoleRead,
 	})
 
-	rows, err := db.Query("SELECT teamID, role FROM opteams WHERE opID = ?", o.ID)
+	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Notice(err)
 		return err
