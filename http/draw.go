@@ -79,7 +79,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	var o wasabee.Operation
 	o.ID = wasabee.OperationID(id)
 
-	if !o.WriteAccess(gid) {
+	if !o.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied (%s: %s)", gid, o.ID)
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
