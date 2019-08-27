@@ -78,12 +78,21 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	var o wasabee.Operation
 	o.ID = wasabee.OperationID(id)
+
+	if !o.WriteAccess(gid) {
+		err := fmt.Errorf("permission denied (%s: %s)", gid, o.ID)
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
 	if err = o.Populate(gid); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	// XXX most of this logic is still unused
 	var newer bool
 	ims := req.Header.Get("If-Modified-Since")
 	if ims != "" {
@@ -110,7 +119,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// JSON if referer is intel.ingress.com
+	// JSON if referer is intel.ingress.com or the mobile app
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Set("Content-Type", jsonType)
 		s, err := json.MarshalIndent(o, "", "\t")
@@ -123,7 +132,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// pretty output for everyone else
+	// pretty output for everyone else -- based on access... or expressed preference
 	friendly, err := pDrawFriendlyNames(&o, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
