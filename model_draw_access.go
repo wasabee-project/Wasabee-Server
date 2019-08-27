@@ -56,11 +56,11 @@ func (o *Operation) PopulateTeams() error {
 
 // ReadAccess determines if an agent has read acces to an op
 func (o *Operation) ReadAccess(gid GoogleID) bool {
-	if o.ID.IsOwner(gid) {
-		return true
-	}
 	if len(o.Teams) == 0 {
 		o.PopulateTeams()
+	}
+	if o.ID.IsOwner(gid) {
+		return true
 	}
 	for _, t := range o.Teams {
 		if t.Role == etRoleAssignedOnly {
@@ -75,11 +75,11 @@ func (o *Operation) ReadAccess(gid GoogleID) bool {
 
 // WriteAccess determines if an agent has write access to an op
 func (o *Operation) WriteAccess(gid GoogleID) bool {
-	if o.ID.IsOwner(gid) {
-		return true
-	}
 	if len(o.Teams) == 0 {
 		o.PopulateTeams()
+	}
+	if o.ID.IsOwner(gid) {
+		return true
 	}
 	for _, t := range o.Teams {
 		if t.Role != etRoleWrite {
