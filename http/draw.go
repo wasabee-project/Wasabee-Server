@@ -339,6 +339,7 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 		portals[p.ID] = l
 	}
 
+	count := 0
 	var notfirst bool
 	for _, l := range o.Links {
 		x := portals[l.From]
@@ -351,6 +352,10 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 		url += x.lat + "," + x.lon + ","
 		y := portals[l.To]
 		url += y.lat + "," + y.lon
+		count++
+		if count > 60 {
+			break
+		}
 	}
 
 	// wasabee.Log.Debugf("redirecting to :%s", url)
