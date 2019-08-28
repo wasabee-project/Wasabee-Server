@@ -171,3 +171,48 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 	}
 	return false
 }
+
+func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
+	if !o.ID.IsOwner(gid) {
+		err := fmt.Errorf("%s not current owner of op %s", gid, o.ID)
+		Log.Error(err)
+		return err
+	}
+
+	inteam, err := gid.AgentInTeam(teamID, false)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if !inteam {
+		err := fmt.Errorf("you must be on a team to add it as a permission: %s %s %s", gid, teamID, o.ID)
+		Log.Error(err)
+		return err
+	}
+
+	// XXX validate perm. invalid values will store as ""
+	// make sure it is not already there?
+	_, err = db.Exec("INSERT INTO opteams VALUES (?,?, ?)", teamID, o.ID, perm)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm string) error {
+	if !o.ID.IsOwner(gid) {
+		err := fmt.Errorf("%s not current owner of op %s", gid, o.ID)
+		Log.Error(err)
+		return err
+	}
+
+	// XXX this will get multiples if they were added
+	_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ?", teamID, o.ID, perm)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}

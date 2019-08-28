@@ -1122,3 +1122,142 @@ func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 
 	http.Redirect(res, req, lls, http.StatusFound)
 }
+
+type friendlyPerms struct {
+	ID          wasabee.OperationID
+	Gid         wasabee.GoogleID // needed for TeamMenu GUI
+	Permissions []friendlyPerm
+}
+
+type friendlyPerm struct {
+	TeamID   wasabee.TeamID
+	Role     string
+	TeamName string
+}
+
+func pDrawPermsRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.ReadAccess(gid) {
+		err = fmt.Errorf("permission to view permissions denied")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	op.PopulateTeams()
+	var fp friendlyPerms
+	fp.ID = op.ID
+	fp.Gid = gid
+	for _, v := range op.Teams {
+		tmp, _ := v.TeamID.Name()
+		tmpFp := friendlyPerm{
+			TeamID:   v.TeamID,
+			Role:     string(v.Role),
+			TeamName: string(tmp),
+		}
+		fp.Permissions = append(fp.Permissions, tmpFp)
+	}
+
+	if err = templateExecute(res, req, "opperms", fp); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.ID.IsOwner(gid) {
+		err = fmt.Errorf("permission to edit permissions permissions denied")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	teamID := wasabee.TeamID(req.FormValue("team"))
+	role := req.FormValue("role")
+	if teamID == "" || role == "" {
+		err = fmt.Errorf("required value not set")
+		wasabee.Log.Debug(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	if err := op.AddPerm(gid, teamID, role); err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+		fmt.Fprintf(res, `{ "status": "ok" }`)
+		return
+	}
+	url := fmt.Sprintf("%s/draw/%s/perms", apipath, op.ID)
+	http.Redirect(res, req, url, http.StatusFound)
+}
+
+func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.ID.IsOwner(gid) {
+		err = fmt.Errorf("permission to edit permissions permissions denied")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	teamID := wasabee.TeamID(req.FormValue("team"))
+	role := req.FormValue("role")
+	if teamID == "" || role == "" {
+		err = fmt.Errorf("required value not set")
+		wasabee.Log.Debug(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	if err := op.DelPerm(gid, teamID, role); err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+		fmt.Fprintf(res, `{ "status": "ok" }`)
+		return
+	}
+	url := fmt.Sprintf("%s/draw/%s/perms", apipath, op.ID)
+	http.Redirect(res, req, url, http.StatusFound)
+}
