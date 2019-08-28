@@ -3,6 +3,7 @@ package wasabeefirebase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	firebase "firebase.google.com/go"
 	// "firebase.google.com/go/messaging"
@@ -11,6 +12,12 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server"
 )
+
+var rlmap map[wasabee.TeamID]rlt
+
+type rlt struct {
+	t time.Time
+}
 
 // ServeFirebase is the main startup function for the Firebase integration
 func ServeFirebase(keypath string) error {
@@ -32,20 +39,30 @@ func ServeFirebase(keypath string) error {
 		return err
 	}
 
+	rlmap = make(map[wasabee.TeamID]rlt)
+
 	fbchan := wasabee.FirebaseInit()
 	for fb := range fbchan {
 		// wasabee.Log.Debugf("processing %s", fb.Cmd.String())
 		switch fb.Cmd {
 		case wasabee.FbccAgentLocationChange:
-			_ = agentLocationChange(ctx, msg, fb)
+			if rateLimit(fb.TeamID) {
+				_ = agentLocationChange(ctx, msg, fb)
+			}
 		case wasabee.FbccMapChange:
-			_ = mapChange(ctx, msg, fb)
+			if rateLimit(fb.TeamID) {
+				_ = mapChange(ctx, msg, fb)
+			}
 		case wasabee.FbccMarkerStatusChange:
-			_ = markerStatusChange(ctx, msg, fb)
+			if rateLimit(fb.TeamID) {
+				_ = markerStatusChange(ctx, msg, fb)
+			}
 		case wasabee.FbccMarkerAssignmentChange:
 			_ = markerAssignmentChange(ctx, msg, fb)
 		case wasabee.FbccLinkStatusChange:
-			_ = linkStatusChange(ctx, msg, fb)
+			if rateLimit(fb.TeamID) {
+				_ = linkStatusChange(ctx, msg, fb)
+			}
 		case wasabee.FbccLinkAssignmentChange:
 			_ = linkAssignmentChange(ctx, msg, fb)
 		case wasabee.FbccSubscribeTeam:
@@ -55,4 +72,27 @@ func ServeFirebase(keypath string) error {
 		}
 	}
 	return nil
+}
+
+func rateLimit(teamID wasabee.TeamID) bool {
+	rl, ok := rlmap[teamID]
+	now := time.Now()
+
+	// first time sending to this team
+	if !ok {
+		rlmap[teamID] = rlt{
+			t: now,
+		}
+		return true
+	}
+
+	waituntil := rl.t.Add(15 * time.Second)
+	if now.Before(waituntil) {
+		wasabee.Log.Debugf("skipping firebase send to team %s", teamID)
+		return false
+	}
+
+	rl.t = now
+	rlmap[teamID] = rl
+	return true
 }
