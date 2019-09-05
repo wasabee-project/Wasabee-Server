@@ -444,7 +444,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 	t := time.Now()
-	o.Fetched = fmt.Sprint(t.Format(time.RFC3339))
+	o.Fetched = fmt.Sprint(t.Format(time.RFC1123))
 
 	return nil
 }

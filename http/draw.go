@@ -92,35 +92,34 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// XXX most of this logic is still unused
-	var newer bool
+	lastModified, err := time.Parse("2006-01-02 15:04:05", o.Modified)
+	if err != nil {
+		wasabee.Log.Error(err)
+	}
+	res.Header().Set("Last-Modified", lastModified.Format(time.RFC1123))
+
+	var skipsending bool
 	ims := req.Header.Get("If-Modified-Since")
 	if ims != "" {
-		// XXX use http.ParseTime?
 		d, err := time.Parse(time.RFC1123, ims)
 		if err != nil {
 			wasabee.Log.Error(err)
 		} else {
-			wasabee.Log.Debug("if-modified-since: %s", d)
-			m, err := time.Parse("2006-01-02 15:04:05", o.Modified)
-			if err != nil {
-				wasabee.Log.Error(err)
-			} else if d.Before(m) {
-				newer = true
+			if lastModified.After(d) {
+				wasabee.Log.Debugf("skipsending: if-modified-since: %s / last-modified: %s", d, lastModified)
+				skipsending = true
 			}
 		}
 	}
 
-	method := req.Header.Get("Method")
-	if newer && method == "HEAD" {
-		wasabee.Log.Debug("HEAD with 302")
-		res.Header().Set("Content-Type", "")          // disable the default output
-		http.Redirect(res, req, "", http.StatusFound) // XXX redirect to nothing?
-		return
-	}
-
 	// JSON if referer is intel.ingress.com or the mobile app
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+		if (skipsending) {
+			wasabee.Log.Debugf("sending 304 for %s", o.ID)
+			res.Header().Set("Content-Type", "")
+			http.Redirect(res, req, "", http.StatusNotModified)
+			return;
+		}
 		res.Header().Set("Content-Type", jsonType)
 		s, err := json.MarshalIndent(o, "", "\t")
 		if err != nil {
