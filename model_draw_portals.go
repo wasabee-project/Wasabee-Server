@@ -178,8 +178,5 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, erro
 	if hardness.Valid {
 		p.Hardness = hardness.String
 	}
-	if err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
 	return p, nil
 }
