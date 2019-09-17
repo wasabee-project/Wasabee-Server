@@ -76,7 +76,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusPermanentRedirect)
+	http.Redirect(res, req, url, http.StatusSeeOther)
 }
 
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -110,5 +110,5 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusPermanentRedirect)
+	http.Redirect(res, req, url, http.StatusSeeOther)
 }

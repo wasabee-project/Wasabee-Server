@@ -113,7 +113,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusSeeOther)
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -138,7 +138,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusSeeOther)
 }
 
 func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
@@ -165,7 +165,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusSeeOther)
 }
 
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -204,7 +204,7 @@ func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		_ = gid.StatusLocationDisable()
 	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusSeeOther)
 }
 
 func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
@@ -220,7 +220,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, `{ "status": "ok"}`)
 		return
 	}
-	http.Redirect(res, req, "/", http.StatusPermanentRedirect)
+	http.Redirect(res, req, "/", http.StatusSeeOther)
 }
 
 func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {

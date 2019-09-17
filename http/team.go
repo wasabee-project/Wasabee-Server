@@ -76,7 +76,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusFound)
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -104,7 +104,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusFound)
 }
 
 func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -145,7 +145,7 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusPermanentRedirect)
+	http.Redirect(res, req, me, http.StatusFound)
 }
 
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -218,7 +218,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusPermanentRedirect)
+	http.Redirect(res, req, url, http.StatusFound)
 }
 
 func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -253,7 +253,7 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusPermanentRedirect)
+	http.Redirect(res, req, url, http.StatusFound)
 }
 
 func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
