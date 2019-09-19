@@ -15,9 +15,9 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
+	//if err = o.Touch(); err != nil {
+	//	Log.Error(err)
+	//}
 	return nil
 }
 

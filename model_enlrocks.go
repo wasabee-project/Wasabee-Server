@@ -343,6 +343,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	err = json.Unmarshal(body, &rr)
 	if err != nil {
 		Log.Error(err)
+		Log.Error(string(body))
 	}
 	if !rr.Success {
 		Log.Error(rr.Error)

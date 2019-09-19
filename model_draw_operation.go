@@ -501,7 +501,6 @@ func (o *Operation) SetInfo(info string, gid GoogleID) error {
 	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
-	_ = o.Touch()
 	return nil
 }
 

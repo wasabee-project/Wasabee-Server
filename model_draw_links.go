@@ -20,6 +20,7 @@ type Link struct {
 	Iname      string   `json:"assignedToNickname"`
 	ThrowOrder int32    `json:"throwOrderPos"`
 	Completed  bool     `json:"completed"`
+	Color      string   `json:"color"`
 }
 
 // insertLink adds a link to the database
@@ -29,8 +30,13 @@ func (opID OperationID) insertLink(l Link) error {
 		return nil
 	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed)
+	// transition from 0.12 to 0.14 ...
+	if l.Color == "" {
+		l.Color = "main"
+	}
+
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -53,8 +59,14 @@ func (opID OperationID) updateLink(l Link) error {
 		return nil
 	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.From, l.To, MakeNullString(l.Desc))
+	// transition from 0.12 to 0.14 ...
+	if l.Color == "" {
+		l.Color = "main"
+	}
+
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color,
+		l.From, l.To, MakeNullString(l.Desc), l.Color)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -67,14 +79,14 @@ func (o *Operation) PopulateLinks() error {
 	var tmpLink Link
 	var description, gid, iname sql.NullString
 
-	rows, err := db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
+	rows, err := db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname, &tmpLink.Color)
 		if err != nil {
 			Log.Error(err)
 			continue

@@ -133,7 +133,7 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 		wasabee.Log.Error(err)
 		return err
 	}
-	wasabee.Log.Debugf("sent to %s", fb.TeamID)
+	// wasabee.Log.Debugf("sent to %s", fb.TeamID)
 	return nil
 }
 
