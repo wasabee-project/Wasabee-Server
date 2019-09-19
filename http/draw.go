@@ -132,6 +132,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// pretty output for everyone else -- based on access... or expressed preference
+	res.Header().Set("Cache-Control", "no-cache"); // if the HTML version gets cached, IITC freaks
 	friendly, err := pDrawFriendlyNames(&o, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
