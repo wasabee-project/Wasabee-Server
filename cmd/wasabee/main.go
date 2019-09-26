@@ -6,7 +6,6 @@ import (
 	"path"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
@@ -104,11 +103,10 @@ var flags = []cli.Flag{
 }
 
 func main() {
-	time.LoadLocation("Local")
 	app := cli.NewApp()
 
 	app.Name = "wasabee-server"
-	app.Version = "0.6.9"
+	app.Version = "0.6.10"
 	app.Usage = "Wasabee Server"
 	app.Authors = []cli.Author{
 		{
