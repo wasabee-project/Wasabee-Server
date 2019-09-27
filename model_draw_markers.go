@@ -21,6 +21,7 @@ type Marker struct {
 	IngressName string     `json:"assignedNickname"`
 	CompletedBy string     `json:"completedBy"`
 	State       string     `json:"state"`
+	Order       int        `json:"order"`
 }
 
 // insertMarkers adds a marker to the database
@@ -29,8 +30,8 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State)
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -43,8 +44,8 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ?",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Type, m.PortalID, MakeNullString(m.Comment))
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ?",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Type, m.PortalID, MakeNullString(m.Comment), m.Order)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -67,14 +68,14 @@ func (o *Operation) PopulateMarkers() error {
 	var assignedGid, comment, assignedNick, completedBy sql.NullString
 
 	// XXX join with portals table, get name and order by name, don't expose it in this json -- will make the friendly in the https module easier
-	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ?", o.ID)
+	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order)
 		if err != nil {
 			Log.Error(err)
 			continue
