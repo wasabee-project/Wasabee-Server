@@ -970,6 +970,37 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
 
+func pDrawMarkerOrderRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if op.WriteAccess(gid) {
+		order := req.FormValue("order")
+		err = op.MarkerOrder(order, gid)
+		if err != nil {
+			wasabee.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("write access required to set marker order")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
 func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)

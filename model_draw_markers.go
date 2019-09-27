@@ -3,6 +3,7 @@ package wasabee
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 // MarkerID wrapper to ensure type safety
@@ -288,5 +289,31 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 func (o *Operation) PopulateAssignedOnly(gid GoogleID) error {
 	// get all marker assignments
 
+	return nil
+}
+
+// MarkerOrder changes the order of the throws for an operation
+func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
+	stmt, err := db.Prepare("UPDATE marker SET oporder = ? WHERE opID = ? AND ID = ?")
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	pos := 1
+	markers := strings.Split(order, ",")
+	for i := range markers {
+		if markers[i] == "000" { // the header, could be anyplace in the order if the user was being silly
+			continue
+		}
+		if _, err := stmt.Exec(pos, o.ID, markers[i]); err != nil {
+			Log.Error(err)
+			continue
+		}
+		pos++
+	}
+	if err = o.Touch(); err != nil {
+		Log.Error(err)
+	}
 	return nil
 }
