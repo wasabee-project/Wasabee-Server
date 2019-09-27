@@ -402,6 +402,7 @@ type friendlyMarker struct {
 	AssignedTo   string
 	AssignedToID wasabee.GoogleID
 	State        string
+	Order        int
 }
 
 type friendlyKeys struct {
@@ -483,6 +484,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		fm.PortalID = m.PortalID
 		fm.Portal = portals[m.PortalID].Name
 		fm.AssignedTo, _ = m.AssignedTo.IngressNameTeam(op.TeamID)
+		fm.Order = m.Order
 		friendly.Markers = append(friendly.Markers, fm)
 	}
 
