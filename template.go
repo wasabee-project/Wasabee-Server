@@ -35,6 +35,7 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 		"EnlRocks":     GetEnlRocks,
 		"TeamMenu":     TeamMenu,
 		"OpUserMenu":   OpUserMenu,
+		"OpColorMenu":  OpColorMenu,
 	}
 
 	Log.Info("Including frontend templates from: ", fp)

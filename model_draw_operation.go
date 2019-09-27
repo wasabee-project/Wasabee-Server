@@ -532,3 +532,51 @@ func (opID OperationID) Stat() (OpStat, error) {
 	}
 	return s, nil
 }
+
+type opColor struct {
+	Name string
+	Hex  string
+}
+
+// OpColorMap just returns a prebuilt color list
+func OpColorMap() map[string]opColor {
+	// for drawing color menus
+	opColors := map[string]opColor{
+		"main":   opColor{"Op Color", "ff0000"},
+		"groupa": opColor{"Orange", "ff6600"},
+		"groupb": opColor{"Light Orange", "ff9900"},
+		"groupc": opColor{"Tan", "bb9900"},
+		"groupd": opColor{"Purple", "bb22cc"},
+		"groupe": opColor{"Teal", "33cccc"},
+		"groupf": opColor{"Pink", "ff55ff"},
+	}
+	return opColors
+}
+
+// OpValidColor takes a color group name and returns it if valid, or "main" if invalid.
+func OpValidColor(color string) string {
+	ocm := OpColorMap()
+
+	if _, ok := ocm[color]; ok {
+		return color
+	}
+	return "main"
+}
+
+// OpColorMenu is used in html templates to draw the menus to assign targets/links
+func OpColorMenu(selected string, objID objectID, function string) (template.HTML, error) {
+	ocm := OpColorMap()
+	var b bytes.Buffer
+
+	_, _ = b.WriteString(`<select name="opcolor" onchange="` + function + `('` + objID.String() + `', this);">`)
+	for k, v := range ocm {
+		if k == selected {
+			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\" selected=\"selected\">%s</option>", k, v.Name))
+		} else {
+			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\">%s</option>", k, v.Name))
+		}
+	}
+	_, _ = b.WriteString(`</select>`)
+	// #nosec
+	return template.HTML(b.String()), nil
+}

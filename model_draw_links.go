@@ -30,10 +30,7 @@ func (opID OperationID) insertLink(l Link) error {
 		return nil
 	}
 
-	// transition from 0.12 to 0.14 ...
-	if l.Color == "" {
-		l.Color = "main"
-	}
+	l.Color = OpValidColor(l.Color)
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color)
@@ -59,10 +56,7 @@ func (opID OperationID) updateLink(l Link) error {
 		return nil
 	}
 
-	// transition from 0.12 to 0.14 ...
-	if l.Color == "" {
-		l.Color = "main"
-	}
+	l.Color = OpValidColor(l.Color)
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?",
 		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color,
@@ -222,6 +216,21 @@ func (o *Operation) LinkOrder(order string, gid GoogleID) error {
 			continue
 		}
 		pos++
+	}
+	if err = o.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
+// LinkColor changes the color of a link in an operation
+func (o *Operation) LinkColor(link LinkID, color string) error {
+	checked := OpValidColor(color)
+
+	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", checked, link, o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
 	if err = o.Touch(); err != nil {
 		Log.Error(err)

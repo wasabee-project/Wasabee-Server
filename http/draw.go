@@ -391,6 +391,7 @@ type friendlyLink struct {
 	Distance       int32
 	MinPortalLevel float64
 	Completed      bool
+	Color          string
 }
 
 type friendlyMarker struct {
@@ -460,6 +461,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		var fl friendlyLink
 		fl.ID = l.ID
 		fl.Desc = l.Desc
+		fl.Color = l.Color
 		fl.Completed = l.Completed
 		fl.ThrowOrder = int32(l.ThrowOrder)
 		fl.From = portals[l.From].Name
@@ -640,6 +642,39 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		err = fmt.Errorf("write access required to set link descriptions")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(res, `{ "status": "ok" }`)
+}
+
+func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if op.WriteAccess(gid) {
+		link := wasabee.LinkID(vars["link"])
+		color := req.FormValue("color")
+		err := op.LinkColor(link, color)
+		if err != nil {
+			wasabee.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("write access required to set link color")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
