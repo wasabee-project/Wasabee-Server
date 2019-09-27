@@ -122,6 +122,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/link/{link}/desc", pDrawLinkDescRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/complete", pDrawLinkCompleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/incomplete", pDrawLinkIncompleteRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/link/{link}/swap", pDrawLinkSwapRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/assign", pDrawMarkerAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", pDrawMarkerCommentRoute).Methods("POST")
 	// agent acknowledge the assignment
@@ -233,6 +234,7 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		config.scanners[req.RemoteAddr] = 1
 	}
+	wasabee.Log.Debugf("404: %s", req.URL);
 	http.Error(res, "404: No light here.", http.StatusNotFound)
 }
 

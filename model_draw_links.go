@@ -238,6 +238,27 @@ func (o *Operation) LinkColor(link LinkID, color string) error {
 	return nil
 }
 
+// LinkSwap changes the direction of a link in an operation
+func (o *Operation) LinkSwap(link LinkID) error {
+	var tmpLink Link
+
+	err := db.QueryRow("SELECT fromPortalID, toPortalID FROM link WHERE opID = ? AND ID = ?", o.ID, link).Scan(&tmpLink.From, &tmpLink.To)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	_, err = db.Exec("UPDATE link SET fromPortalID = ?, toPortalID = ? WHERE ID = ? and opID = ?", tmpLink.To, tmpLink.From, link, o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = o.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
 // Distance calculates the distance between to lat/long pairs
 func Distance(startLat, startLon, endLat, endLon string) float64 {
 	sl, _ := strconv.ParseFloat(startLat, 64)
