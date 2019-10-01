@@ -20,6 +20,7 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 		return err
 	}
 
+	webpush := webpushConfig()
 	data := map[string]string{
 		"gid": string(fb.Gid),
 		"msg": fb.Msg,
@@ -27,8 +28,9 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 	}
 
 	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
+		Topic:   string(fb.TeamID),
+		Data:    data,
+		Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -47,6 +49,7 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		return err
 	}
 
+	webpush := webpushConfig()
 	data := map[string]string{
 		"opID":     string(fb.OpID),
 		"markerID": fb.ObjID,
@@ -54,8 +57,9 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		"cmd":      fb.Cmd.String(),
 	}
 	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
+		Topic:   string(fb.TeamID),
+		Data:    data,
+		Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -83,11 +87,7 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 			continue
 		}
 
-		notif := messaging.Notification{
-			Title: "Marker Assignment",
-			Body:  "You have been assigned a new marker",
-		}
-
+		webpush := webpushConfig()
 		data := map[string]string{
 			"opID":     string(fb.OpID),
 			"markerID": fb.ObjID,
@@ -96,9 +96,9 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 		}
 
 		msg := messaging.Message{
-			Token:        token,
-			Data:         data,
-			Notification: &notif,
+			Token:   token,
+			Data:    data,
+			Webpush: &webpush,
 		}
 
 		_, err = c.Send(ctx, &msg)
@@ -118,14 +118,17 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 		return err
 	}
 
+	webpush := webpushConfig()
 	data := map[string]string{
 		"opID": string(fb.OpID),
 		"msg":  fb.Msg,
 		"cmd":  fb.Cmd.String(),
 	}
+
 	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
+		Topic:   string(fb.TeamID),
+		Data:    data,
+		Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -144,6 +147,7 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 		return err
 	}
 
+	webpush := webpushConfig()
 	data := map[string]string{
 		"opID":   string(fb.OpID),
 		"linkID": fb.ObjID,
@@ -151,8 +155,9 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 		"cmd":    fb.Cmd.String(),
 	}
 	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
+		Topic:   string(fb.TeamID),
+		Data:    data,
+		Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -180,11 +185,12 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 			continue
 		}
 
-		notif := messaging.Notification{
-			Title: "Link Assignment",
-			Body:  "You have been assigned a new link",
-		}
+		// notif := messaging.Notification{
+		//	Title: "Link Assignment",
+		//	Body:  "You have been assigned a new link",
+		//}
 
+		webpush := webpushConfig()
 		data := map[string]string{
 			"opID":   string(fb.OpID),
 			"linkID": fb.ObjID,
@@ -193,9 +199,10 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 		}
 
 		msg := messaging.Message{
-			Token:        token,
-			Data:         data,
-			Notification: &notif,
+			Token:   token,
+			Data:    data,
+			Webpush: &webpush,
+			// Notification: &notif,
 		}
 
 		_, err = c.Send(ctx, &msg)
@@ -248,4 +255,18 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 		}
 	}
 	return nil
+}
+
+func webpushConfig() messaging.WebpushConfig {
+	wpheaders := map[string]string{
+		"TTL": "0",
+	}
+	wpnotif := messaging.WebpushNotification{
+		Silent: true,
+	}
+	webpush := messaging.WebpushConfig{
+		Headers:      wpheaders,
+		Notification: &wpnotif,
+	}
+	return webpush
 }
