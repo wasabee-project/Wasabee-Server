@@ -1,11 +1,11 @@
 package wasabee
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"strings"
 	"time"
 )
 
@@ -469,7 +469,7 @@ func OpUserMenu(currentGid GoogleID, opID OperationID, objID objectID, function 
 
 	defer rows.Close()
 
-	var b bytes.Buffer
+	var b strings.Builder
 	var iname, gid string
 	var dn sql.NullString
 
@@ -572,7 +572,7 @@ func OpValidColor(color string) string {
 // OpColorMenu is used in html templates to draw the menus to assign targets/links
 func OpColorMenu(selected string, objID objectID, function string) (template.HTML, error) {
 	ocm := OpColorMap()
-	var b bytes.Buffer
+	var b strings.Builder
 
 	_, _ = b.WriteString(`<select name="opcolor" onchange="` + function + `('` + objID.String() + `', this);">`)
 	for k, v := range ocm {

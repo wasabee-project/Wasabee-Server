@@ -1,11 +1,11 @@
 package wasabee
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"html/template"
 	"strconv"
+	"strings"
 )
 
 // TeamData is the wrapper type containing all the team info
@@ -395,7 +395,7 @@ func TeamMenu(gid GoogleID, teamID TeamID) (template.HTML, error) {
 
 	defer rows.Close()
 
-	var b bytes.Buffer
+	var b strings.Builder
 	var name string
 	var tid string
 
