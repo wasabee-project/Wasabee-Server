@@ -289,7 +289,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, `{ "status": "ok" }`)
+	fmt.Fprintf(res, jsonStatusOK)
 }
 
 func setAgentTeamSquadRoute(res http.ResponseWriter, req *http.Request) {
@@ -320,7 +320,7 @@ func setAgentTeamSquadRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, `{ "status": "ok" }`)
+	fmt.Fprintf(res, jsonStatusOK)
 }
 
 func setAgentTeamDisplaynameRoute(res http.ResponseWriter, req *http.Request) {
@@ -351,5 +351,5 @@ func setAgentTeamDisplaynameRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, `{ "status": "ok" }`)
+	fmt.Fprintf(res, jsonStatusOK)
 }

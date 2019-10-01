@@ -110,7 +110,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "ok"}`)
+		fmt.Fprintf(res, jsonStatusOK)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusSeeOther)
@@ -135,7 +135,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "ok"}`)
+		fmt.Fprintf(res, jsonStatusOK)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusSeeOther)
@@ -162,7 +162,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "ok"}`)
+		fmt.Fprintf(res, jsonStatusOK)
 		return
 	}
 	http.Redirect(res, req, me, http.StatusSeeOther)
@@ -217,7 +217,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	gid.Logout("user requested logout")
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
 		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "ok"}`)
+		fmt.Fprintf(res, jsonStatusOK)
 		return
 	}
 	http.Redirect(res, req, "/", http.StatusSeeOther)
@@ -254,5 +254,5 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, `{ "status": "ok"}`)
+	fmt.Fprintf(res, jsonStatusOK)
 }

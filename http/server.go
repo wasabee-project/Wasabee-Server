@@ -49,6 +49,8 @@ var config Configuration
 
 const jsonType = "application/json; charset=UTF-8"
 const jsonTypeShort = "application/json"
+const jsonStatusOK = `{"status":"ok"}`
+const jsonStatusEmpty = `{"status":"error","error":"Empty JSON"}`
 const me = "/me"
 const login = "/login"
 const callback = "/callback"
@@ -330,6 +332,10 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	// wasabee.Log.Debugf("callback URL: %s", tmpOC.RedirectURL)
 	url := tmpOC.AuthCodeURL(config.oauthStateString)
 	http.Redirect(res, req, url, http.StatusFound)
+}
+
+func jsonError(e error) string {
+	return fmt.Sprintf("{\"status\":\"error\",\"error\":\"%s\"}", e.Error())
 }
 
 // func debugMW(next http.Handler) http.Handler {

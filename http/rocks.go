@@ -30,7 +30,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 
 	if string(jBlob) == "" {
 		wasabee.Log.Notice("empty JSON")
-		http.Error(res, `{ "status": "error", "error": "Empty JSON" }`, http.StatusNotAcceptable)
+		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
@@ -44,7 +44,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, `{ "status": "ok" }`)
+	fmt.Fprintf(res, jsonStatusOK)
 }
 
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {

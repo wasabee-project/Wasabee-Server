@@ -86,7 +86,7 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	res.Header().Add("Content-Type", jsonType)
-	fmt.Fprintf(res, `{ "status": "ok" }`)
+	fmt.Fprintf(res, jsonStatusOK)
 }
 
 func agentPictureRoute(res http.ResponseWriter, req *http.Request) {

@@ -235,18 +235,20 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 		config.scanners[req.RemoteAddr] = 1
 	}
 	wasabee.Log.Debugf("404: %s", req.URL)
-	http.Error(res, "404: No light here.", http.StatusNotFound)
+	http.Error(res, "404: no light here.", http.StatusNotFound)
 }
 
 // called when a resource/endpoint is not found
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
+	err := fmt.Errorf("not found")
+	wasabee.Log.Debug("not found: %s", req.URL)
 	i, ok := config.scanners[req.RemoteAddr]
 	if ok {
 		config.scanners[req.RemoteAddr] = i + 1
 	} else {
 		config.scanners[req.RemoteAddr] = 1
 	}
-	http.Error(res, `{status: "Not Found"}`, http.StatusNotFound)
+	http.Error(res, jsonError(err), http.StatusNotFound)
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {
@@ -458,7 +460,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON")
 		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 	jRaw := json.RawMessage(jBlob)
@@ -525,5 +527,5 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Error(err)
 	}
 	wasabee.Log.Infof("%s app login", iname)
-	fmt.Fprintf(res, `{ "status": "ok"}`)
+	fmt.Fprintf(res, jsonStatusOK)
 }
