@@ -140,7 +140,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	template := "opinfo"
-	if gid == o.Gid {
+	if o.WriteAccess(gid) {
 		template = "opdata"
 	}
 	lite := req.FormValue("lite")
