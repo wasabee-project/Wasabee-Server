@@ -5,31 +5,33 @@ import (
 	"fmt"
 )
 
-// getTeamID returns the teamID for an op
-func (opID OperationID) getTeamIDdeprecated() (TeamID, error) {
-	var teamID TeamID
-	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", opID).Scan(&teamID)
-	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
-		return "", err
-	}
-	if err != nil && err == sql.ErrNoRows {
-		return "", nil
-	}
-	return teamID, nil
-}
-
 // PopulateTeams fills in the Teams data for an Operation
 func (o *Operation) PopulateTeams() error {
 	if len(o.Teams) > 0 {
 		return nil
 	}
 
-	primaryTeam, _ := o.ID.getTeamIDdeprecated()
-	o.Teams = append(o.Teams, ExtendedTeam{
-		TeamID: primaryTeam,
-		Role:   etRoleRead,
-	})
+	// XXX TEMPORARY -- MIGRATE OLD STYLE TO NEW
+	var teamID TeamID
+	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", o.ID).Scan(&teamID)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	if teamID != "pregnant-dash-qy76" {
+		// not migrated yet
+		Log.Errorf("migrating team %s for op %s", teamID, o.ID)
+		_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?)", teamID, o.ID, "read")
+		if err != nil {
+			Log.Notice(err)
+			return err
+		}
+		_, err = db.Exec("UPDATE operation SET teamID = 'pregnant-dash-qy76' WHERE ID = ?", o.ID)
+		if err != nil {
+			Log.Notice(err)
+			return err
+		}
+	}
 
 	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
@@ -136,7 +138,7 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 }
 
 // Chgrp changes an operation's team -- because UNIX libc function names are cool, yo
-func (opID OperationID) Chgrp(gid GoogleID, to TeamID) error {
+func (opID OperationID) ChgrpDeprecated(gid GoogleID, to TeamID) error {
 	if !opID.IsOwner(gid) {
 		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
 		Log.Error(err)
@@ -192,7 +194,7 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 
 	// XXX validate perm. invalid values will store as ""
 	// make sure it is not already there?
-	_, err = db.Exec("INSERT INTO opteams VALUES (?,?, ?)", teamID, o.ID, perm)
+	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?)", teamID, o.ID, perm)
 	if err != nil {
 		Log.Error(err)
 		return err

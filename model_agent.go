@@ -456,6 +456,24 @@ func (gid GoogleID) IngressNameTeam(teamID TeamID) (string, error) {
 	return displayname.String, nil
 }
 
+func (gid GoogleID) IngressNameOperation(o *Operation) (string, error) {
+	var iname string
+	o.PopulateTeams()
+
+	for _, t := range o.Teams {
+		iname, err := gid.IngressNameTeam(t.TeamID)
+		if err != nil && err != sql.ErrNoRows {
+			Log.Error(err)
+			// keep looking
+		}
+		if iname != "" {
+			break
+		}
+	}
+
+	return iname, nil
+}
+
 func (gid GoogleID) String() string {
 	return string(gid)
 }

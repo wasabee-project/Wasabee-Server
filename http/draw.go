@@ -271,39 +271,6 @@ func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, `{ "status": "ok" }`)
 }
 
-func pDrawChgrpRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	vars := mux.Vars(req)
-	to := wasabee.TeamID(vars["team"])
-
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// only the ID needs to be set for this
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-
-	if op.ID.IsOwner(gid) {
-		err = op.ID.Chgrp(gid, to)
-		if err != nil {
-			wasabee.Log.Notice(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		err = fmt.Errorf("only the owner can set operation team")
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
-		return
-	}
-	fmt.Fprintf(res, `{ "status": "ok" }`)
-}
-
 func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
@@ -370,8 +337,6 @@ type pdrawFriendly struct {
 	Color    string
 	Modified string
 	Comment  string
-	TeamID   wasabee.TeamID
-	Team     string
 	Links    []friendlyLink
 	Markers  []friendlyMarker
 	Keys     []friendlyKeys
@@ -435,7 +400,6 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 	var err error
 	var friendly pdrawFriendly
 	friendly.ID = op.ID
-	friendly.TeamID = op.TeamID
 	friendly.Name = op.Name
 	friendly.Color = op.Color
 	friendly.Modified = op.Modified
@@ -443,10 +407,6 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 	friendly.Gid = op.Gid
 
 	friendly.Agent, err = op.Gid.IngressName()
-	if err != nil {
-		return friendly, err
-	}
-	friendly.Team, err = op.TeamID.Name()
 	if err != nil {
 		return friendly, err
 	}
@@ -468,7 +428,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		fl.FromID = l.From
 		fl.To = portals[l.To].Name
 		fl.ToID = l.To
-		fl.AssignedTo, _ = l.AssignedTo.IngressNameTeam(op.TeamID)
+		fl.AssignedTo, _ = l.AssignedTo.IngressNameOperation(op)
 		fl.AssignedToID = l.AssignedTo
 		tmp := wasabee.Distance(portals[l.From].Lat, portals[l.From].Lon, portals[l.To].Lat, portals[l.To].Lon)
 		fl.Distance = int32(math.Round(tmp / 1000))
@@ -485,7 +445,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		fm.Comment = m.Comment
 		fm.PortalID = m.PortalID
 		fm.Portal = portals[m.PortalID].Name
-		fm.AssignedTo, _ = m.AssignedTo.IngressNameTeam(op.TeamID)
+		fm.AssignedTo, _ = m.AssignedTo.IngressNameOperation(op)
 		fm.Order = m.Order
 		friendly.Markers = append(friendly.Markers, fm)
 	}
@@ -507,7 +467,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 					tmpfkoh.ID = km.ID
 					tmpfkoh.Gid = km.Gid
 					tmpfkoh.Onhand = km.Onhand
-					tmpfkoh.Agent, _ = km.Gid.IngressNameTeam(op.TeamID)
+					tmpfkoh.Agent, _ = km.Gid.IngressNameOperation(op)
 					tmplist = append(tmplist, tmpfkoh)
 					if gid == km.Gid {
 						ihave = km.Onhand
@@ -561,7 +521,7 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 	var caps []capsuleEntry
 	for agentID, entry := range capsules {
 		for portalID, x := range entry {
-			i, _ := agentID.IngressNameTeam(op.TeamID)
+			i, _ := agentID.IngressNameOperation(op)
 			tmp := capsuleEntry{
 				Gid:      agentID,
 				Agent:    i,

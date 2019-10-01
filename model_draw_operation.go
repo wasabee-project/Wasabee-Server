@@ -23,7 +23,6 @@ type Operation struct {
 	Anchors   []PortalID     `json:"anchors"`
 	Links     []Link         `json:"links"`
 	Markers   []Marker       `json:"markers"`
-	TeamID    TeamID         `json:"teamid"`
 	Teams     []ExtendedTeam `json:"teamlist"`
 	Modified  string         `json:"modified"`
 	Comment   string         `json:"comment"`
@@ -89,7 +88,7 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 
 func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	// start the insert process
-	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), MakeNullString(o.Comment))
+	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -150,6 +149,13 @@ func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
 			continue
 		}
 	}
+
+	err = o.AddPerm(gid, teamID, "read")
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
 	return nil
 }
 
@@ -395,8 +401,8 @@ func (o *Operation) Delete(gid GoogleID) error {
 func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
 	// permission check and populate Operation top level
-	r := db.QueryRow("SELECT name, gid, color, teamID, modified, comment FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.TeamID, &o.Modified, &comment)
+	r := db.QueryRow("SELECT name, gid, color, modified, comment FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment)
 
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")
@@ -454,8 +460,8 @@ type objectID interface {
 }
 
 // OpUserMenu is used in html templates to draw the menus to assign targets/links
-func OpUserMenu(currentGid GoogleID, teamID TeamID, objID objectID, function string) (template.HTML, error) {
-	rows, err := db.Query("SELECT a.iname, a.gid, x.displayname FROM agentteams=x, agent=a WHERE x.teamID = ? AND x.gid = a.gid ORDER BY a.iname", teamID)
+func OpUserMenu(currentGid GoogleID, opID OperationID, objID objectID, function string) (template.HTML, error) {
+	rows, err := db.Query("SELECT DISTINCT a.iname, a.gid, x.displayname FROM agentteams=x, agent=a, opteams=p WHERE x.teamID = p.teamID AND p.opID =  ? AND x.gid = a.gid ORDER BY a.iname", opID)
 	if err != nil {
 		Log.Error(err)
 		return "", err
