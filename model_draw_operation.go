@@ -23,6 +23,7 @@ type Operation struct {
 	Anchors   []PortalID     `json:"anchors"`
 	Links     []Link         `json:"links"`
 	Markers   []Marker       `json:"markers"`
+	TeamIDdep TeamID         `json:"teamid"`
 	Teams     []ExtendedTeam `json:"teamlist"`
 	Modified  string         `json:"modified"`
 	Comment   string         `json:"comment"`
@@ -88,7 +89,7 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 
 func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
 	// start the insert process
-	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
+	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), MakeNullString(o.Comment))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -401,8 +402,8 @@ func (o *Operation) Delete(gid GoogleID) error {
 func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
 	// permission check and populate Operation top level
-	r := db.QueryRow("SELECT name, gid, color, modified, comment FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment)
+	r := db.QueryRow("SELECT name, gid, color, teamID, modified, comment FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.TeamIDdep, &o.Modified, &comment)
 
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")

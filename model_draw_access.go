@@ -5,32 +5,39 @@ import (
 	"fmt"
 )
 
-// PopulateTeams fills in the Teams data for an Operation
+
 func (o *Operation) PopulateTeams() error {
 	if len(o.Teams) > 0 {
 		return nil
 	}
 
-	// XXX TEMPORARY -- MIGRATE OLD STYLE TO NEW
+	// MIGRATE OLD STYLE TO NEW
 	var teamID TeamID
 	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", o.ID).Scan(&teamID)
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
-	if teamID != "pregnant-dash-qy76" {
+        var teamSet = 0;
+	err = db.QueryRow("SELECT COUNT(*) FROM opteams WHERE opID = ? AND teamID = ? and permission = 'read'", o.ID, teamID).Scan(&teamSet)
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	if teamID != "unused" && teamSet == 0 {
 		// not migrated yet
+		// can't use o.AddPerm since that requires the GID which might not be good in this case
 		Log.Errorf("migrating team %s for op %s", teamID, o.ID)
 		_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?)", teamID, o.ID, "read")
 		if err != nil {
 			Log.Notice(err)
 			return err
 		}
-		_, err = db.Exec("UPDATE operation SET teamID = 'pregnant-dash-qy76' WHERE ID = ?", o.ID)
-		if err != nil {
-			Log.Notice(err)
-			return err
-		}
+		// _, err = db.Exec("UPDATE operation SET teamID = 'unused' WHERE ID = ?", o.ID)
+		// if err != nil {
+		//	Log.Notice(err)
+		//	return err
+		//}
 	}
 
 	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
@@ -199,6 +206,8 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 		Log.Error(err)
 		return err
 	}
+	// XXX MIGRATION PATH
+	_, err = db.Exec("UPDATE operation SET teamID = ? WHERE ID = ?", teamID, o.ID)
 
 	return nil
 }

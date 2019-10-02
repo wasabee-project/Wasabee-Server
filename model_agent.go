@@ -334,7 +334,7 @@ func (gid GoogleID) adTelegram(ud *AgentData) error {
 func (gid GoogleID) adOps(ud *AgentData) error {
 	var op AdOperation
 	var g GoogleID
-	row, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, o.teamID FROM operation=o, team=t WHERE o.gid = ? AND o.teamID = t.teamID ORDER BY o.Name", gid)
+	row, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, t.teamID FROM operation=o, team=t, opteams=p WHERE o.gid = ? AND o.ID = p.opID AND p.teamID = t.teamID ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -350,7 +350,7 @@ func (gid GoogleID) adOps(ud *AgentData) error {
 		ud.OwnedOps = append(ud.OwnedOps, op)
 	}
 
-	row2, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, o.teamID FROM operation=o, team=t, agentteams=x WHERE x.gid = ? AND x.teamID = o.teamID AND x.teamID = t.teamID AND x.state = 'On' ORDER BY o.Name", gid)
+	row2, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, p.teamID FROM operation=o, team=t, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID AND x.teamID = t.teamID AND x.state = 'On' ORDER BY o.Name, t.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
