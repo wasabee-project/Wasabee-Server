@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-
 func (o *Operation) PopulateTeams() error {
 	if len(o.Teams) > 0 {
 		return nil
@@ -18,7 +17,7 @@ func (o *Operation) PopulateTeams() error {
 		Log.Notice(err)
 		return err
 	}
-        var teamSet = 0;
+	var teamSet = 0
 	err = db.QueryRow("SELECT COUNT(*) FROM opteams WHERE opID = ? AND teamID = ? and permission = 'read'", o.ID, teamID).Scan(&teamSet)
 	if err != nil {
 		Log.Notice(err)
