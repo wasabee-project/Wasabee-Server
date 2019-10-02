@@ -187,7 +187,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
@@ -231,7 +231,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
@@ -264,7 +264,7 @@ func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
@@ -569,7 +569,7 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
@@ -602,7 +602,7 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
@@ -635,7 +635,7 @@ func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
@@ -667,7 +667,7 @@ func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawLinkCompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -707,7 +707,7 @@ func pDrawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete boo
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
@@ -740,7 +740,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
@@ -773,7 +773,7 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
@@ -806,7 +806,7 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
@@ -839,7 +839,7 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
@@ -923,7 +923,7 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawMarkerOrderRoute(res http.ResponseWriter, req *http.Request) {
@@ -954,7 +954,7 @@ func pDrawMarkerOrderRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
@@ -985,7 +985,7 @@ func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
@@ -1015,7 +1015,7 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -1038,7 +1038,7 @@ func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -1061,7 +1061,7 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
@@ -1083,7 +1083,7 @@ func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
@@ -1105,7 +1105,7 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
@@ -1156,7 +1156,7 @@ func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 
 	if stops < 1 {
 		res.Header().Set("Content-Type", jsonType)
-		fmt.Fprintf(res, `{ "status": "no assignments" }`)
+		fmt.Fprint(res, `{ "status": "no assignments" }`)
 		return
 	}
 
@@ -1267,7 +1267,7 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
-		fmt.Fprintf(res, jsonStatusOK)
+		fmt.Fprint(res, jsonStatusOK)
 		return
 	}
 	url := fmt.Sprintf("%s/draw/%s/perms", apipath, op.ID)
@@ -1311,7 +1311,7 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
-		fmt.Fprintf(res, jsonStatusOK)
+		fmt.Fprint(res, jsonStatusOK)
 		return
 	}
 	url := fmt.Sprintf("%s/draw/%s/perms", apipath, op.ID)

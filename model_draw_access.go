@@ -143,28 +143,6 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 	return nil
 }
 
-// Chgrp changes an operation's team -- because UNIX libc function names are cool, yo
-func (opID OperationID) ChgrpDeprecated(gid GoogleID, to TeamID) error {
-	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
-		Log.Error(err)
-		return err
-	}
-
-	// check to see if the team really exists
-	if _, err := to.Name(); err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	_, err := db.Exec("UPDATE operation SET teamID = ? WHERE ID = ?", to, opID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	return nil
-}
-
 func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
 		o.PopulateTeams()
@@ -207,6 +185,10 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 	}
 	// XXX MIGRATION PATH
 	_, err = db.Exec("UPDATE operation SET teamID = ? WHERE ID = ?", teamID, o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 
 	return nil
 }

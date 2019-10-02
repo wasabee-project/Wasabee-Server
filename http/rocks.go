@@ -44,7 +44,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {

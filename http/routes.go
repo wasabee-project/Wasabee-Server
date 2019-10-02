@@ -527,5 +527,5 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Error(err)
 	}
 	wasabee.Log.Infof("%s app login", iname)
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
