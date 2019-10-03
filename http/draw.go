@@ -446,10 +446,6 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 		friendly.Markers = append(friendly.Markers, fm)
 	}
 
-	sort.Slice(friendly.Markers[:], func(i, j int) bool {
-		return friendly.Markers[i].Portal < friendly.Markers[j].Portal
-	})
-
 	var keys = make(map[wasabee.PortalID]friendlyKeys)
 	for _, l := range op.Links {
 		_, ok := keys[l.To]
