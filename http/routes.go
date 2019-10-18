@@ -286,8 +286,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
-			Path:   "/",
-			MaxAge: -1, // force delete
+			Path:     "/",
+			MaxAge:   -1,
+			SameSite: http.SameSiteNoneMode, // requires go 1.13
 		}
 		// don't stomp on err since we are currently in an error path
 		if saveerr := ses.Save(req, res); saveerr != nil {
