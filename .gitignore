@@ -5,3 +5,5 @@ eff_large_wordlist.txt
 env-test
 *.log
 /.devcontainer/db/
+/certs/
+/frontend/
