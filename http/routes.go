@@ -289,6 +289,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 			Path:     "/",
 			MaxAge:   -1,
 			SameSite: http.SameSiteNoneMode, // requires go 1.13
+			Secure:   true,
 		}
 		// don't stomp on err since we are currently in an error path
 		if saveerr := ses.Save(req, res); saveerr != nil {
@@ -333,8 +334,10 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
-		Path:   "/",
-		MaxAge: 0,
+		Path:     "/",
+		MaxAge:   0,
+		SameSite: http.SameSiteNoneMode, // requires go 1.13
+		Secure:   true,
 	}
 
 	_ = ses.Save(req, res)
@@ -490,8 +493,10 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Notice("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
-			Path:   "/",
-			MaxAge: -1, // force delete
+			Path:     "/",
+			MaxAge:   -1,                    // force delete
+			SameSite: http.SameSiteNoneMode, // requires go 1.13
+			Secure:   true,
 		}
 		_ = ses.Save(req, res)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -514,8 +519,10 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	nonce, _ := calculateNonce(m.Gid)
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
-		Path:   "/",
-		MaxAge: 0,
+		Path:     "/",
+		MaxAge:   0,
+		SameSite: http.SameSiteNoneMode, // requires go 1.13
+		Secure:   true,
 	}
 	err = ses.Save(req, res)
 	if err != nil {
