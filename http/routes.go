@@ -117,6 +117,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/perms", pDrawPermsDeleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}/delperm", pDrawPermsDeleteRoute).Methods("GET") // .Queries("team", "{team}", "role", "{role}")
 	r.HandleFunc("/draw/{document}/myroute", pDrawMyRouteRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/copy", pDrawCopyRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/assign", pDrawLinkAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/color", pDrawLinkColorRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/desc", pDrawLinkDescRoute).Methods("POST")

@@ -38,7 +38,7 @@ type AgentData struct {
 	OwnedTeams    []AdOwnedTeam
 	Teams         []AdTeam
 	Ops           []AdOperation
-	// OwnedOps is deprecated use Ops.IsOwner
+	// OwnedOps is deprecated use Ops.IsOwner -- now empty, remove after client is updated
 	OwnedOps []AdOperation
 	Telegram struct {
 		ID        int64
@@ -334,21 +334,6 @@ func (gid GoogleID) adTelegram(ud *AgentData) error {
 func (gid GoogleID) adOps(ud *AgentData) error {
 	var op AdOperation
 	var g GoogleID
-	row, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, t.teamID FROM operation=o, team=t, opteams=p WHERE o.gid = ? AND o.ID = p.opID AND p.teamID = t.teamID ORDER BY o.Name", gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer row.Close()
-	for row.Next() {
-		err := row.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		op.IsOwner = true
-		ud.OwnedOps = append(ud.OwnedOps, op)
-	}
 
 	row2, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, p.teamID FROM operation=o, team=t, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID AND x.teamID = t.teamID AND x.state = 'On' ORDER BY o.Name, t.Name", gid)
 	if err != nil {

@@ -540,14 +540,84 @@ func (opID OperationID) Stat() (OpStat, error) {
 	return s, nil
 }
 
+// Rename changes an op's name
+func (opID OperationID) Rename(gid GoogleID, name string) error {
+	if !opID.IsOwner(gid) {
+		err := fmt.Errorf("permission denied")
+		Log.Error(err)
+		return err
+	}
+
+	if name == "" {
+		err := fmt.Errorf("invalid name")
+		Log.Error(err)
+		return err
+	}
+
+	_, err := db.Exec("UPDATE operation SET name = ? WHERE ID = ?", name, opID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// Copy duplicates an operation and returns the new op's ID
+func (o *Operation) Copy(gid GoogleID, complete bool) (OperationID, error) {
+	var new Operation
+
+	if o.Name == "" { // not populated
+		err := o.Populate(gid)
+		if err != nil {
+			Log.Error(err)
+			return "", err
+		}
+	}
+
+	tmpid, err := GenerateSafeName()
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	new.ID = OperationID(tmpid)
+	new.Name = fmt.Sprintf("%s %s", o.Name, "COPY")
+	new.Color = o.Color
+	copy(new.OpPortals, o.OpPortals)
+	copy(new.Anchors, o.Anchors)
+	copy(new.Links, o.Links)
+	copy(new.Markers, o.Markers)
+	copy(new.Teams, o.Teams)
+
+	if !complete {
+		for _, l := range new.Links {
+			l.AssignedTo = ""
+		}
+		for _, m := range new.Markers {
+			m.AssignedTo = ""
+		}
+
+		teamID, err := gid.NewTeam(new.Name)
+		if err != nil {
+			Log.Error(err)
+		}
+		if err = drawOpInsertWorker(new, gid, teamID); err != nil {
+			Log.Error(err)
+			return "", err
+		}
+	} else { // complete
+		// XXX copy over permissions
+	}
+
+	return new.ID, nil
+}
+
 type opColor struct {
 	Name string
 	Hex  string
 }
 
-// OpColorMap just returns a prebuilt color list
+// OpColorMap just returns a prebuilt color list for drawing color menus in the UI
 func OpColorMap() map[string]opColor {
-	// for drawing color menus
 	opColors := map[string]opColor{
 		"main":   opColor{"Op Color", "ff0000"},
 		"groupa": opColor{"Orange", "ff6600"},
