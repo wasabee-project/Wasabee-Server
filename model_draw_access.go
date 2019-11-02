@@ -10,41 +10,11 @@ func (o *Operation) PopulateTeams() error {
 		return nil
 	}
 
-	// MIGRATE OLD STYLE TO NEW
-	var teamID TeamID
-	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", o.ID).Scan(&teamID)
-	if err != nil {
-		Log.Notice(err)
-		return err
-	}
-	var teamSet = 0
-	err = db.QueryRow("SELECT COUNT(*) FROM opteams WHERE opID = ? AND teamID = ? and permission = 'read'", o.ID, teamID).Scan(&teamSet)
-	if err != nil {
-		Log.Notice(err)
-		return err
-	}
-	if teamID != "unused" && teamSet == 0 {
-		// not migrated yet
-		// can't use o.AddPerm since that requires the GID which might not be good in this case
-		Log.Errorf("migrating team %s for op %s", teamID, o.ID)
-		_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?)", teamID, o.ID, "read")
-		if err != nil {
-			Log.Notice(err)
-			return err
-		}
-		// _, err = db.Exec("UPDATE operation SET teamID = 'unused' WHERE ID = ?", o.ID)
-		// if err != nil {
-		//	Log.Notice(err)
-		//	return err
-		//}
-	}
-
 	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Notice(err)
 		return err
 	}
-
 	defer rows.Close()
 
 	var tid, role string
@@ -177,14 +147,8 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 	}
 
 	// XXX validate perm. invalid values will store as ""
-	// make sure it is not already there?
+	// XXX make sure it is not already there -- duplicates don't hurt... but...
 	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?)", teamID, o.ID, perm)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	// XXX MIGRATION PATH
-	_, err = db.Exec("UPDATE operation SET teamID = ? WHERE ID = ?", teamID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -200,8 +164,7 @@ func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm string) error {
 		return err
 	}
 
-	// XXX this will get multiples if they were added
-	_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ?", teamID, o.ID, perm)
+	_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o.ID, perm)
 	if err != nil {
 		Log.Error(err)
 		return err
