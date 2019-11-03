@@ -1115,7 +1115,7 @@ func pDrawCopyRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
-	c, ok := vars["complete"] 
+	c, ok := vars["complete"]
 	var complete bool
 	if ok && c == "true" {
 		complete = true

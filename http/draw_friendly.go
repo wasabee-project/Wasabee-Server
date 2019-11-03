@@ -196,6 +196,9 @@ func pDrawFriendlyNames(op *wasabee.Operation, gid wasabee.GoogleID) (pdrawFrien
 	for agentID, entry := range capsules {
 		for portalID, x := range entry {
 			i, _ := agentID.IngressNameOperation(op)
+			if i == "" {
+				i, _ = agentID.IngressName();
+			}
 			tmp := capsuleEntry{
 				Gid:      agentID,
 				Agent:    i,
