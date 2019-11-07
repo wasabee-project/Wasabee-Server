@@ -111,7 +111,8 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// JSON if referer is intel.ingress.com or the mobile app
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	sendjson := req.FormValue("json")
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
 		if skipsending {
 			// wasabee.Log.Debugf("sending 304 for %s", o.ID)
 			res.Header().Set("Content-Type", "")
@@ -137,13 +138,13 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 
+	// default to "opinfo" (user view)
 	template := "opinfo"
 	if o.WriteAccess(gid) {
-		template = "opdata"
-	}
-	lite := req.FormValue("lite")
-	if lite == "y" {
-		template = "opinfo"
+		lite := req.FormValue("lite")
+		if lite != "y" { // use admin view if has write access and lite was not requested
+			template = "opdata"
+		}
 	}
 
 	if err = templateExecute(res, req, template, friendly); err != nil {
