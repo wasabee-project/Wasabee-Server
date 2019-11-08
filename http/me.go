@@ -26,7 +26,8 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	sendjson := req.FormValue("json")
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
 		data, _ := json.MarshalIndent(ud, "", "\t")
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
