@@ -132,12 +132,6 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	// pretty output for everyone else -- based on access... or expressed preference
 	res.Header().Set("Cache-Control", "no-cache") // if the HTML version gets cached, IITC freaks
-	friendly, err := pDrawFriendlyNames(&o, gid)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-
 	// default to "opinfo" (user view)
 	template := "opinfo"
 	if o.WriteAccess(gid) {
@@ -147,7 +141,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if err = templateExecute(res, req, template, friendly); err != nil {
+	if err = templateExecute(res, req, template, o); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
@@ -701,31 +695,6 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
-	} else {
-		err = fmt.Errorf("write access required to set link order")
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
-		return
-	}
-
-	fmt.Fprint(res, jsonStatusOK)
-}
-
-func pDrawMarkerOrderRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-
-	if op.WriteAccess(gid) {
-		order := req.FormValue("order")
 		err = op.MarkerOrder(order, gid)
 		if err != nil {
 			wasabee.Log.Notice(err)
@@ -733,7 +702,7 @@ func pDrawMarkerOrderRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("write access required to set marker order")
+		err = fmt.Errorf("write access required to set operation order")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
