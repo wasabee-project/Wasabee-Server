@@ -41,7 +41,9 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+
+	sendjson := req.FormValue("json")
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
 		res.Header().Add("Content-Type", jsonType)
 		data, err := json.MarshalIndent(teamList, "", "\t")
 		if err != nil {
