@@ -325,7 +325,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	}
 
 	// XXX use NewRequest/client
-	apiurl := fmt.Sprintf("%s%s?key=%s", rocks.CommunityEndpoint, gid, rc)
+	apiurl := fmt.Sprintf("%s/%s?key=%s", rocks.CommunityEndpoint, gid, rc)
 	// #nosec
 	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
 	if err != nil {
