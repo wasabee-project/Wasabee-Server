@@ -203,7 +203,8 @@ func Shutdown() error {
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Add("Server", "Wasabee-Server")
-		res.Header().Add("X-Frame-Options", "allow-from https://intel.ingress.com")
+		res.Header().Add("Content-Security-Policy", "frame-ancestors https://intel.ingress.com")
+		res.Header().Add("X-Frame-Options", "allow-from https://intel.ingress.com") // deprecated
 		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
