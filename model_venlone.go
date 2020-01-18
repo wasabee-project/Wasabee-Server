@@ -29,6 +29,7 @@ type Vresult struct {
 // vagent is set by the V API
 type vagent struct {
 	EnlID       EnlID  `json:"enlid"`
+	Gid	    GoogleID `json:"gid"`
 	Vlevel      int64  `json:"vlevel"`
 	Vpoints     int64  `json:"vpoints"`
 	Agent       string `json:"agent"`
@@ -40,6 +41,18 @@ type vagent struct {
 	Flagged     bool   `json:"flagged"`
 	Banned      bool   `json:"banned_by_nia"`
 	Cellid      string `json:"cellid"`
+}
+
+// v team is set by the V API
+type vteam struct {
+	Status string `json:"status"`
+	Agents []vtagent `json:"data"`
+}
+
+// keep it simple
+type vtagent struct {
+	EnlID       EnlID  `json:"enlid"`
+	Gid	    GoogleID `json:"gid"`
 }
 
 // SetVEnlOne is called from main() to initialize the config
@@ -134,6 +147,66 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 			return err
 		}
 	}
+	return nil
+}
+
+// Pull a V team's member list into a WASABEE team
+// do not use the server's api key, this is per-team... we do not want to store this key info
+func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) error {
+	owns, err := gid.OwnsTeam(teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if ! owns {
+		err := fmt.Errorf("not team owner")
+		Log.Error(err)
+		return err
+	}
+
+	// no need to check if V is configured since it doesn't apply in this case
+	// XXX need the V2 API -- ugly
+	url := fmt.Sprintf("%s/%s?apikey=%s", "https://v.enl.one/api/v2/teams", vteamid, vapikey)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	client := &http.Client{
+		Timeout: GetTimeout(3 * time.Second),
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	Log.Debug(string(body))
+
+	var vt vteam
+	err = json.Unmarshal(body, &vt)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	Log.Debug(vt)
+
+	for _, agent := range vt.Agents {
+		Log.Debug(agent)
+		_, err := agent.Gid.InitAgent()
+		if err == nil {
+			teamID.AddAgent(agent.Gid)
+		} else {
+			return err
+		}
+	}
+
 	return nil
 }
 

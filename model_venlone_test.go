@@ -54,6 +54,15 @@ func TestGid(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	if gid.String() != fgid.String() {
-		t.Errorf("EnlID(%s) = Gid(%s); expecting Gid(%s)", eid.String(), fgid.String(), fgid.String())
+		t.Errorf("EnlID(%s) = Gid(%s); expecting Gid(%s)", eid.String(), fgid.String(), gid.String())
+	}
+}
+
+func TestVTeamPull(t *testing.T) {
+	teamID := wasabee.TeamID("stopping-caboose-l114")
+	k := "some API key"
+	err := teamID.VPullTeam(gid, "1589", k)
+	if err != nil {
+		t.Errorf(err.Error())
 	}
 }
