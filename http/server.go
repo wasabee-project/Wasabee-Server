@@ -259,17 +259,12 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		var redirectURL = login
-		if req.URL.String()[:len(me)] != me {
-			redirectURL = login + "?returnto=" + req.URL.String()
-		}
-
 		id, ok := ses.Values["id"]
 		if !ok || id == nil {
 			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
 			ses.Values["loginReq"] = req.URL.String()
 			_ = ses.Save(req, res)
-			http.Redirect(res, req, redirectURL, http.StatusFound)
+			redirectOrError(res, req)
 			return
 		}
 
@@ -283,7 +278,7 @@ func authMW(next http.Handler) http.Handler {
 		in, ok := ses.Values["nonce"]
 		if !ok || in == nil {
 			wasabee.Log.Error("gid set, but nonce not")
-			http.Redirect(res, req, redirectURL, http.StatusFound)
+			redirectOrError(res, req)
 			return
 		}
 		inNonce := in.(string)
@@ -302,13 +297,27 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		// TBD: if request is from app or IITC, just return http.StatusXXX
-		// @Phtiv bult the app to handle the HTML screen, no worries
+		// @Phtiv built the app to handle the HTML screen, no worries
+
 		if ses.Values["nonce"] == "unset" {
-			http.Redirect(res, req, redirectURL, http.StatusFound)
+			redirectOrError(res, req)
 			return
 		}
 		next.ServeHTTP(res, req)
 	})
+}
+
+func redirectOrError(res http.ResponseWriter, req *http.Request) {
+	if strings.Contains(req.Referer(), "intel.ingress.com") {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+	} else {
+		var redirectURL = login
+		if req.URL.String()[:len(me)] != me {
+			redirectURL = login + "?returnto=" + req.URL.String()
+		}
+
+		http.Redirect(res, req, redirectURL, http.StatusFound)
+	}
 }
 
 func googleRoute(res http.ResponseWriter, req *http.Request) {
