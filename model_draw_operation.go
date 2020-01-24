@@ -179,6 +179,8 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
+	// ignore incoming team data
+	o.Teams = nil
 	if !o.WriteAccess(gid) {
 		err := fmt.Errorf("write access denied to op: %s", o.ID)
 		Log.Error(err)
@@ -415,6 +417,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
+	o.PopulateTeams()
 	if !o.ReadAccess(gid) {
 		if o.AssignedOnlyAccess(gid) {
 			return o.PopulateAssignedOnly(gid)

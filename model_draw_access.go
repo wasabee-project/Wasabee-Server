@@ -6,9 +6,8 @@ import (
 )
 
 func (o *Operation) PopulateTeams() error {
-	if len(o.Teams) > 0 {
-		return nil
-	}
+	// start empty, trust only what is in the database
+	o.Teams = nil
 
 	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
@@ -53,9 +52,7 @@ func (o *Operation) ReadAccess(gid GoogleID) bool {
 
 // WriteAccess determines if an agent has write access to an op
 func (o *Operation) WriteAccess(gid GoogleID) bool {
-	if len(o.Teams) == 0 {
-		o.PopulateTeams()
-	}
+	o.PopulateTeams() // do not cache -- force reset on uploads
 	if o.ID.IsOwner(gid) {
 		return true
 	}
