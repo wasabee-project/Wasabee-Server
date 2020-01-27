@@ -28,31 +28,31 @@ type Vresult struct {
 
 // vagent is set by the V API
 type vagent struct {
-	EnlID       EnlID  `json:"enlid"`
-	Gid	    GoogleID `json:"gid"`
-	Vlevel      int64  `json:"vlevel"`
-	Vpoints     int64  `json:"vpoints"`
-	Agent       string `json:"agent"`
-	Level       int64  `json:"level"`
-	Quarantine  bool   `json:"quarantine"`
-	Active      bool   `json:"active"`
-	Blacklisted bool   `json:"blacklisted"`
-	Verified    bool   `json:"verified"`
-	Flagged     bool   `json:"flagged"`
-	Banned      bool   `json:"banned_by_nia"`
-	Cellid      string `json:"cellid"`
+	EnlID       EnlID    `json:"enlid"`
+	Gid         GoogleID `json:"gid"`
+	Vlevel      int64    `json:"vlevel"`
+	Vpoints     int64    `json:"vpoints"`
+	Agent       string   `json:"agent"`
+	Level       int64    `json:"level"`
+	Quarantine  bool     `json:"quarantine"`
+	Active      bool     `json:"active"`
+	Blacklisted bool     `json:"blacklisted"`
+	Verified    bool     `json:"verified"`
+	Flagged     bool     `json:"flagged"`
+	Banned      bool     `json:"banned_by_nia"`
+	Cellid      string   `json:"cellid"`
 }
 
 // v team is set by the V API
 type vteam struct {
-	Status string `json:"status"`
+	Status string    `json:"status"`
 	Agents []vtagent `json:"data"`
 }
 
 // keep it simple
 type vtagent struct {
-	EnlID       EnlID  `json:"enlid"`
-	Gid	    GoogleID `json:"gid"`
+	EnlID EnlID    `json:"enlid"`
+	Gid   GoogleID `json:"gid"`
 }
 
 // SetVEnlOne is called from main() to initialize the config
@@ -115,7 +115,7 @@ func VSearch(id AgentID, vres *Vresult) error {
 		return err
 	}
 
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 	err = json.Unmarshal(body, &vres)
 	if err != nil {
 		Log.Error(err)
@@ -158,7 +158,7 @@ func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) err
 		Log.Error(err)
 		return err
 	}
-	if ! owns {
+	if !owns {
 		err := fmt.Errorf("not team owner")
 		Log.Error(err)
 		return err
@@ -187,7 +187,7 @@ func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) err
 		Log.Error(err)
 		return err
 	}
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 
 	var vt vteam
 	err = json.Unmarshal(body, &vt)
@@ -195,10 +195,10 @@ func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) err
 		Log.Error(err)
 		return err
 	}
-	Log.Debug(vt)
+	// Log.Debug(vt)
 
 	for _, agent := range vt.Agents {
-		Log.Debug(agent)
+		// Log.Debug(agent)
 		_, err := agent.Gid.InitAgent()
 		if err == nil {
 			teamID.AddAgent(agent.Gid)
@@ -314,7 +314,7 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 	var e EnlID
 	err := db.QueryRow("SELECT Vid FROM agent WHERE gid = ?", gid).Scan(&e)
 	if err != nil {
-		Log.Debug(err)
+		Log.Error(err)
 	}
 	return e, err
 }
@@ -323,7 +323,7 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 // It works, but more research is necessary on the settings required on the permissions.
 func StatusServerPoller() {
 	if !vc.configured {
-		Log.Debug("V not configures: not polling status.enl.one")
+		Log.Info("V not configures: not polling status.enl.one")
 		return
 	}
 

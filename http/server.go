@@ -348,6 +348,14 @@ func jsonError(e error) string {
 	return fmt.Sprintf("{\"status\":\"error\",\"error\":\"%s\"}", e.Error())
 }
 
+func wantsJSON(req *http.Request) bool {
+	sendjson := req.FormValue("json")
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
+		return true
+	}
+	return false
+}
+
 // func debugMW(next http.Handler) http.Handler {
 // 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 // 		dump, _ := httputil.DumpRequest(req, false)

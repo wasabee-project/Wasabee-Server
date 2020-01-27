@@ -7,7 +7,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 	"html"
 	"net/http"
-	"strings"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -30,6 +29,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if !safe {
+		// XXX this should be a nice screen
 		http.Error(res, "unauthorized: enable the team to access it", http.StatusUnauthorized)
 		return
 	}
@@ -42,19 +42,28 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
 
-	sendjson := req.FormValue("json")
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
+	// if this is expecting JSON, even if owner, send JSON
+	if wantsJSON(req) {
 		res.Header().Add("Content-Type", jsonType)
-		data, err := json.MarshalIndent(teamList, "", "\t")
-		if err != nil {
-			wasabee.Log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
+		data, _ := json.Marshal(teamList)
 		fmt.Fprint(res, string(data))
 		return
 	}
 
+	// if this is the team owner, redirect to the edit screen
+	isowner, err := gid.OwnsTeam(team)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if isowner {
+		url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
+		http.Redirect(res, req, url, http.StatusFound)
+		return
+	}
+
+	// otherwise use the simple display screen
 	if err = templateExecute(res, req, "team", teamList); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

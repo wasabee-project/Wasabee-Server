@@ -111,8 +111,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// JSON if referer is intel.ingress.com or the mobile app
-	sendjson := req.FormValue("json")
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
+	if wantsJSON(req) {
 		if skipsending {
 			// wasabee.Log.Debugf("sending 304 for %s", o.ID)
 			res.Header().Set("Content-Type", "")
@@ -120,7 +119,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		res.Header().Set("Content-Type", jsonType)
-		s, err := json.MarshalIndent(o, "", "\t")
+		s, err := json.Marshal(o)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -964,7 +963,13 @@ func pDrawPermsRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	op.PopulateTeams()
+	err = op.PopulateTeams()
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	var fp friendlyPerms
 	fp.ID = op.ID
 	fp.Gid = gid
@@ -1020,7 +1025,7 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	if wantsJSON(req) {
 		fmt.Fprint(res, jsonStatusOK)
 		return
 	}
@@ -1064,7 +1069,7 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	if wantsJSON(req) {
 		fmt.Fprint(res, jsonStatusOK)
 		return
 	}
@@ -1111,7 +1116,7 @@ func pDrawCopyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	if wantsJSON(req) {
 		fmt.Fprint(res, jsonStatusOK)
 		return
 	}

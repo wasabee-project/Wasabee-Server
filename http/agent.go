@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server"
 	"net/http"
-	"strings"
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
@@ -36,8 +35,8 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	agent.CanSendTo = gid.CanSendTo(togid)
 
 	// if the request comes from intel, just return JSON
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
-		data, _ := json.MarshalIndent(agent, "", "\t")
+	if wantsJSON(req) {
+		data, _ := json.Marshal(agent)
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
 		return

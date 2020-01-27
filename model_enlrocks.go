@@ -124,11 +124,10 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 		return err
 	}
 
-	Log.Debug(string(body))
+	// Log.Debug(string(body))
 	err = json.Unmarshal(body, &agent)
 	if err != nil {
 		Log.Error(err)
-		Log.Debug(string(body))
 		return err
 	}
 	return nil
@@ -190,7 +189,7 @@ func RocksCommunitySync(msg json.RawMessage) error {
 	if rc.Action == "onJoin" {
 		_, err = rc.User.Gid.IngressName()
 		if err != nil && err == sql.ErrNoRows {
-			Log.Debugf("Importing previously unknown agent: %s", rc.User.Gid)
+			Log.Infof("Importing previously unknown agent: %s", rc.User.Gid)
 			_, err = rc.User.Gid.InitAgent()
 			if err != nil {
 				Log.Error(err)
@@ -267,7 +266,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	for _, agent := range rr.Members {
 		_, err = agent.IngressName()
 		if err != nil && err == sql.ErrNoRows {
-			Log.Debugf("Importing previously unknown agent: %s", agent)
+			Log.Infof("Importing previously unknown agent: %s", agent)
 			_, err = agent.InitAgent() // add agent to system if they don't already exist
 			if err != nil {
 				Log.Notice(err)
@@ -369,7 +368,6 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 	}
 
 	apiurl := fmt.Sprintf("%s/%s?key=%s", rocks.CommunityEndpoint, gid, rc)
-	Log.Debug(apiurl)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
 	if err != nil {
 		Log.Error(err)
@@ -391,7 +389,6 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 		return err
 	}
 
-	Log.Debug(string(body))
 	var rr rocksPushResponse
 	err = json.Unmarshal(body, &rr)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server"
@@ -26,9 +25,8 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sendjson := req.FormValue("json")
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
-		data, _ := json.MarshalIndent(ud, "", "\t")
+	if wantsJSON(req) {
+		data, _ := json.Marshal(ud)
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
 		return
@@ -78,8 +76,8 @@ func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
-		data, _ := json.MarshalIndent(ud.Ops, "", "\t")
+	if wantsJSON(req) {
+		data, _ := json.Marshal(ud.Ops)
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, string(data))
 		return
@@ -109,7 +107,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	if wantsJSON(req) {
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, jsonStatusOK)
 		return
@@ -134,7 +132,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	if wantsJSON(req) {
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, jsonStatusOK)
 		return
@@ -161,7 +159,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	if wantsJSON(req) {
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, jsonStatusOK)
 		return
@@ -216,7 +214,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	gid.Logout("user requested logout")
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+	if wantsJSON(req) {
 		res.Header().Add("Content-Type", jsonType)
 		fmt.Fprint(res, jsonStatusOK)
 		return

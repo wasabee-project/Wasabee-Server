@@ -443,7 +443,12 @@ func (gid GoogleID) IngressNameTeam(teamID TeamID) (string, error) {
 
 func (gid GoogleID) IngressNameOperation(o *Operation) (string, error) {
 	var iname string
-	o.PopulateTeams()
+
+	err := o.PopulateTeams()
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
 
 	for _, t := range o.Teams {
 		iname, err := gid.IngressNameTeam(t.TeamID)
