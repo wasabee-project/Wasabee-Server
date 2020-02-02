@@ -257,3 +257,12 @@ func (gid GoogleID) FirebaseRemoveToken(token string) error {
 	}
 	return nil
 }
+
+func (gid GoogleID) FirebaseRemoveAllTokens() error {
+	_, err := db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
