@@ -94,6 +94,7 @@ func RISC(configfile string) {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
 			wasabee.Log.Criticalf("locking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			_ = gid.Lock(e.Reason)
+			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
 			wasabee.Log.Criticalf("unlocking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
@@ -104,12 +105,15 @@ func RISC(configfile string) {
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
 			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
 			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
 			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// no need to do anything
@@ -177,7 +181,7 @@ func validateToken(rawjwt []byte) error {
 			e.Reason = "ping requsted"
 			riscchan <- e
 		} else if keyOK {
-			wasabee.Log.Criticalf("verified RISC event: (%s) %s", k, v)
+			wasabee.Log.Noticef("verified RISC event: (%s) %s", k, v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
@@ -187,7 +191,16 @@ func validateToken(rawjwt []byte) error {
 			e.Subject = y["sub"].(string)
 			riscchan <- e
 		} else {
-			wasabee.Log.Noticef("non-ping, non-verified request: (%s) %s", k, v)
+			wasabee.Log.Criticalf("non-verified request: (%s) %s", k, v)
+
+			// XXX this is ugly and brittle - use a map parser
+			x := v.(map[string]interface{})
+			e.Reason = x["reason"].(string)
+			y := x["subject"].(map[string]interface{})
+			e.Issuer = y["iss"].(string)
+			e.Subject = y["sub"].(string)
+			wasabee.Log.Debug(e)
+			riscchan <- e
 		}
 	}
 	return nil
