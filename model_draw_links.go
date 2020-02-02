@@ -112,6 +112,10 @@ func (l LinkID) String() string {
 
 // AssignLink assigns a link to an agent, sending them a message that they have an assignment
 func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) error {
+	if gid == "0" {
+		gid = ""
+	}
+
 	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, o.ID)
 	if err != nil {
 		Log.Error(err)

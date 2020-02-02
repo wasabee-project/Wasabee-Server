@@ -1120,6 +1120,6 @@ func pDrawCopyRoute(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(res, jsonStatusOK)
 		return
 	}
-	url := fmt.Sprintf("%s/draw", apipath, newid)
+	url := fmt.Sprintf("%s/draw/%s", apipath, newid)
 	http.Redirect(res, req, url, http.StatusFound)
 }
