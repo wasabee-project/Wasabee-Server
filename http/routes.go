@@ -288,7 +288,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		ses.Options = &sessions.Options{
 			Path:     "/",
 			MaxAge:   -1,
-			SameSite: http.SameSiteDefaultMode, // requires go 1.13
+			SameSite: http.SameSiteNoneMode, // requires go 1.13
 			Secure:   true,
 		}
 		// don't stomp on err since we are currently in an error path
@@ -495,7 +495,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		ses.Options = &sessions.Options{
 			Path:     "/",
 			MaxAge:   -1,                       // force delete
-			SameSite: http.SameSiteDefaultMode, // requires go 1.13
+			SameSite: http.SameSiteNoneMode, // requires go 1.13
 			Secure:   true,
 		}
 		_ = ses.Save(req, res)
