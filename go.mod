@@ -14,7 +14,7 @@ require (
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/sessions v1.2.0
 	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/lestrrat-go/jwx v0.9.0
@@ -25,7 +25,7 @@ require (
 	github.com/unrolled/logger v0.0.0-20190327162521-be1a2406c7c9
 	github.com/urfave/cli v1.22.1
 	go.opencensus.io v0.22.1 // indirect
-	golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d
+	golang.org/x/crypto v0.0.0-20200221170553-0f24fbd83dfb
 	golang.org/x/exp v0.0.0-20191014171548-69215a2ee97e // indirect
 	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
