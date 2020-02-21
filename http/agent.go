@@ -88,6 +88,51 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, jsonStatusOK)
 }
 
+func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
+	_, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	id := vars["id"]
+	togid, err := wasabee.ToGid(id)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	portal := req.FormValue("portal")
+	if portal == "" {
+		http.Error(res, "portal not set", http.StatusNotAcceptable)
+		return
+	}
+
+	ll := req.FormValue("ll")
+	if ll == "" {
+		http.Error(res, "ll not set", http.StatusNotAcceptable)
+		return
+	}
+
+        message := fmt.Sprintf(
+	  "[%s](https://intel.ingress.com/intel?ll=%s&z=12&pll=%s): [Google Maps](http://maps.google.com/?q=%s) | [Apple Maps](http://maps.apple.com/?q=%s)",
+	  portal, ll, ll, ll, ll);
+
+	ok, err := togid.SendMessage(message)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		http.Error(res, "message did not send", http.StatusInternalServerError)
+		return
+	}
+	res.Header().Add("Content-Type", jsonType)
+	fmt.Fprintf(res, jsonStatusOK)
+}
+
 func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	_, err := getAgentID(req)
 	if err != nil {

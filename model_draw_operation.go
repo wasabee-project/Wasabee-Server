@@ -22,6 +22,7 @@ type Operation struct {
 	OpPortals []Portal       `json:"opportals"`
 	Anchors   []PortalID     `json:"anchors"`
 	Links     []Link         `json:"links"`
+	Blockers  []Link         `json:"blockers"`
 	Markers   []Marker       `json:"markers"`
 	TeamIDdep TeamID         `json:"teamid"`
 	Teams     []ExtendedTeam `json:"teamlist"`
@@ -589,6 +590,7 @@ func (o *Operation) Copy(gid GoogleID, complete bool) (OperationID, error) {
 	copy(new.Anchors, o.Anchors)
 	copy(new.Links, o.Links)
 	copy(new.Markers, o.Markers)
+	// should this be in the complete section?
 	copy(new.Teams, o.Teams)
 
 	if !complete {
@@ -608,7 +610,7 @@ func (o *Operation) Copy(gid GoogleID, complete bool) (OperationID, error) {
 			return "", err
 		}
 	} else { // complete
-		// XXX copy over permissions
+		// XXX copy Teams?
 	}
 
 	return new.ID, nil

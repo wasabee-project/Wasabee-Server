@@ -28,6 +28,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	if wantsJSON(req) {
 		data, _ := json.Marshal(ud)
 		res.Header().Add("Content-Type", jsonType)
+		res.Header().Set("Cache-Control", "no-store")
 		fmt.Fprint(res, string(data))
 		return
 	}
@@ -109,6 +110,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if wantsJSON(req) {
 		res.Header().Add("Content-Type", jsonType)
+		res.Header().Set("Cache-Control", "no-store")
 		fmt.Fprint(res, jsonStatusOK)
 		return
 	}

@@ -130,7 +130,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// pretty output for everyone else -- based on access... or expressed preference
-	res.Header().Set("Cache-Control", "no-cache") // if the HTML version gets cached, IITC freaks
+	res.Header().Set("Cache-Control", "no-store") // if the HTML version gets cached, IITC freaks
 	// default to "opinfo" (user view)
 	template := "opinfo"
 	if o.WriteAccess(gid) {
@@ -761,7 +761,11 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	if onhand < 0 { // @Robely42 .... sigh
 		onhand = 0
 	}
-	err = op.KeyOnHand(gid, portalID, int32(onhand))
+	capsule := req.FormValue("capsule")
+
+	wasabee.Log.Debugf("noting keys: %s, %s, %d, %s", op.ID, portalID, onhand, capsule);
+
+	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

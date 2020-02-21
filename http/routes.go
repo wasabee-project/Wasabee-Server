@@ -159,6 +159,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/agent/{id}/image", agentPictureRoute).Methods("GET")
 	// send a message to a agent
 	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")
+	r.HandleFunc("/agent/{id}/target", agentTargetRoute).Methods("POST")
 
 	// teams
 	// create a new team
@@ -534,6 +535,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
+
+	res.Header().Set("Cache-Control", "no-store")
 	wasabee.Log.Infof("%s app login", iname)
 	fmt.Fprint(res, jsonStatusOK)
 }
