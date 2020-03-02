@@ -83,16 +83,11 @@ func GenerateSafeName() (string, error) {
 			return "", err
 		}
 		databaseID := sha256.Sum256([]byte(name))
-		err := db.QueryRow("SELECT COUNT(id) FROM document WHERE id = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
+		err := db.QueryRow("SELECT COUNT(lockey) FROM agent WHERE lockey = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
 		if err != nil {
 			return "", err
 		}
 		total = i
-		err = db.QueryRow("SELECT COUNT(lockey) FROM agent WHERE lockey = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
-		if err != nil {
-			return "", err
-		}
-		total += i
 		err = db.QueryRow("SELECT COUNT(teamID) FROM team WHERE teamID = ?", hex.EncodeToString(databaseID[:])).Scan(&i)
 		if err != nil {
 			return "", err

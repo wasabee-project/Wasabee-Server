@@ -9,7 +9,6 @@ import (
 func BackgroundTasks(c chan os.Signal) {
 	Log.Debug("running initial tasks")
 	locationClean()
-	simpleDocClean()
 
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
@@ -21,7 +20,6 @@ func BackgroundTasks(c chan os.Signal) {
 			return
 		case <-ticker.C:
 			locationClean()
-			simpleDocClean()
 		}
 	}
 }

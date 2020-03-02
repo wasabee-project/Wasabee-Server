@@ -20,7 +20,7 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 		return err
 	}
 
-	webpush := webpushConfig()
+	// webpush := webpushConfig()
 	data := map[string]string{
 		"gid": string(fb.Gid),
 		"msg": fb.Msg,
@@ -30,7 +30,7 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 	msg := messaging.Message{
 		Topic:   string(fb.TeamID),
 		Data:    data,
-		Webpush: &webpush,
+		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -49,7 +49,7 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		return err
 	}
 
-	webpush := webpushConfig()
+	// webpush := webpushConfig()
 	data := map[string]string{
 		"opID":     string(fb.OpID),
 		"markerID": fb.ObjID,
@@ -59,7 +59,7 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 	msg := messaging.Message{
 		Topic:   string(fb.TeamID),
 		Data:    data,
-		Webpush: &webpush,
+		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -87,7 +87,7 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 			continue
 		}
 
-		webpush := webpushConfig()
+		// webpush := webpushConfig()
 		data := map[string]string{
 			"opID":     string(fb.OpID),
 			"markerID": fb.ObjID,
@@ -98,7 +98,7 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 		msg := messaging.Message{
 			Token:   token,
 			Data:    data,
-			Webpush: &webpush,
+			// Webpush: &webpush,
 		}
 
 		_, err = c.Send(ctx, &msg)
@@ -118,7 +118,7 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 		return err
 	}
 
-	webpush := webpushConfig()
+	// webpush := webpushConfig()
 	data := map[string]string{
 		"opID": string(fb.OpID),
 		"msg":  fb.Msg,
@@ -128,7 +128,7 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 	msg := messaging.Message{
 		Topic:   string(fb.TeamID),
 		Data:    data,
-		Webpush: &webpush,
+		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -147,7 +147,7 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 		return err
 	}
 
-	webpush := webpushConfig()
+	// webpush := webpushConfig()
 	data := map[string]string{
 		"opID":   string(fb.OpID),
 		"linkID": fb.ObjID,
@@ -157,7 +157,7 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 	msg := messaging.Message{
 		Topic:   string(fb.TeamID),
 		Data:    data,
-		Webpush: &webpush,
+		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -190,7 +190,7 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 		//	Body:  "You have been assigned a new link",
 		//}
 
-		webpush := webpushConfig()
+		// webpush := webpushConfig()
 		data := map[string]string{
 			"opID":   string(fb.OpID),
 			"linkID": fb.ObjID,
@@ -201,7 +201,7 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 		msg := messaging.Message{
 			Token:   token,
 			Data:    data,
-			Webpush: &webpush,
+			// Webpush: &webpush,
 			// Notification: &notif,
 		}
 

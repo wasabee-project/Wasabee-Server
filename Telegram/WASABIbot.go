@@ -237,10 +237,12 @@ func keyboards(c *TGConfiguration) {
 			tgbotapi.NewKeyboardButton("Teams"),
 			tgbotapi.NewKeyboardButton("Teammates Nearby"),
 		),
+		/* -- disable until can be brought up to current 
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("My Assignments"),
 			tgbotapi.NewKeyboardButton("Nearby Tasks"),
 		),
+		*/
 	)
 }
 
@@ -276,12 +278,12 @@ func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.Go
 
 func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.GoogleID) {
 	switch inMsg.Message.Text {
-	case "My Assignments":
+	/* case "My Assignments":
 		msg.ReplyMarkup = assignmentKeyboard(gid)
 		msg.Text = "My Assignments"
 	case "Nearby Tasks":
 		msg.ReplyMarkup = nearbyAssignmentKeyboard(gid)
-		msg.Text = "Nearby Tasks"
+		msg.Text = "Nearby Tasks" */
 	case "Teams":
 		msg.ReplyMarkup = teamKeyboard(gid)
 		msg.Text = "Your Teams"

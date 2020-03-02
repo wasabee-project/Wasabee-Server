@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	//"net/http/httputil"
+	"net/http/httputil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -183,6 +183,7 @@ func StartHTTP(initialConfig Configuration) {
 		},
 		// ErrorLog: wasabee.Log, // XXX need to write an interface for this
 	}
+
 	wasabee.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
 	if err := config.srv.ListenAndServeTLS(config.CertDir+"/wasabee.fullchain.pem", config.CertDir+"/wasabee.key"); err != nil {
 		wasabee.Log.Errorf("HTTPS server error: %s", err)
@@ -249,12 +250,19 @@ func logRequestMW(next http.Handler) http.Handler {
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ses, err := config.store.Get(req, config.sessionName)
+		ses.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   0,
+			SameSite: http.SameSiteNoneMode,
+			Secure:   true,
+		}
 		if err != nil {
-			wasabee.Log.Debug(err)
+			wasabee.Log.Notice(err)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
 			_ = ses.Save(req, res)
+			res.Header().Set("Connection", "close")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -264,6 +272,8 @@ func authMW(next http.Handler) http.Handler {
 			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
 			ses.Values["loginReq"] = req.URL.String()
 			_ = ses.Save(req, res)
+			res.Header().Set("Connection", "close")
+			wasabee.Log.Debug("not logged in")
 			redirectOrError(res, req)
 			return
 		}
@@ -286,12 +296,14 @@ func authMW(next http.Handler) http.Handler {
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				// wasabee.Log.Debug("Session timed out for", gid.String())
+				wasabee.Log.Debug("Session timed out for", gid.String())
 				ses.Values["nonce"] = "unset"
+				res.Header().Set("Connection", "close")
 				_ = ses.Save(req, res)
 			} else {
-				// wasabee.Log.Debug("Updating to new nonce")
+				wasabee.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
+				res.Header().Set("Connection", "close")
 				_ = ses.Save(req, res)
 			}
 		}
@@ -334,9 +346,15 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		ses.Values["loginReq"] = me
 	}
+	ses.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   0,
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
+	}
 	_ = ses.Save(req, res)
 
-	// the server may have several names/ports ; redirect back to the one the user caled
+	// the server may have several names/ports ; redirect back to the one the user called
 	tmpOC := config.OauthConfig
 	tmpOC.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
 	// wasabee.Log.Debugf("callback URL: %s", tmpOC.RedirectURL)
@@ -356,10 +374,10 @@ func wantsJSON(req *http.Request) bool {
 	return false
 }
 
-// func debugMW(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-// 		dump, _ := httputil.DumpRequest(req, false)
-// 		wasabee.Log.Debug(string(dump))
-// 		next.ServeHTTP(res, req)
-// 	})
-// }
+func debugMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		dump, _ := httputil.DumpRequest(req, false)
+		wasabee.Log.Debug(string(dump))
+		next.ServeHTTP(res, req)
+	})
+}

@@ -23,39 +23,32 @@ func setupRouter() *mux.Router {
 	// apply to all
 	router.Use(headersMW)
 	router.Use(scannerMW)
-	//router.Use(logRequestMW)
-	//router.Use(debugMW)
+	// router.Use(logRequestMW)
+	// router.Use(debugMW)
+	router.Use(config.unrolled.Handler)
+	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
-	// 404 error page
-	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
-
-	// establish subrouters -- these each have different middleware requirements
-	// if we want to disable logging on /simple, these need to be on a subrouter
-	notauthed := wasabee.Subrouter("")
 	// Google Oauth2 stuff (constants defined in server.go)
-	notauthed.HandleFunc(login, googleRoute).Methods("GET")
-	notauthed.HandleFunc(callback, callbackRoute).Methods("GET")
-	notauthed.HandleFunc(aptoken, apTokenRoute).Methods("POST")
+	router.HandleFunc(login, googleRoute).Methods("GET")
+	router.HandleFunc(callback, callbackRoute).Methods("GET")
+	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")
 	// common files that live under /static
-	notauthed.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
-	notauthed.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
-	notauthed.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
-	notauthed.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
+	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
+	router.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
+	router.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
+	router.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
 	// this cannot be a redirect -- sent it raw
-	notauthed.HandleFunc("/firebase-messaging-sw.js", fbmswRoute).Methods("GET")
+	router.HandleFunc("/firebase-messaging-sw.js", fbmswRoute).Methods("GET")
 	// do not make these static -- they should be translated via the templates system
-	notauthed.HandleFunc("/privacy", privacyRoute).Methods("GET")
-	notauthed.HandleFunc("/", frontRoute).Methods("GET")
-	notauthed.Use(config.unrolled.Handler)
-	notauthed.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+	router.HandleFunc("/privacy", privacyRoute).Methods("GET")
+	router.HandleFunc("/", frontRoute).Methods("GET")
 
 	// /api/v1/... route
 	api := wasabee.Subrouter(apipath)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	setupAuthRoutes(api)
 	api.Use(authMW)
-	api.Use(config.unrolled.Handler)
 	api.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 
 	// /me route
@@ -63,39 +56,19 @@ func setupRouter() *mux.Router {
 	me.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	me.HandleFunc("", meShowRoute).Methods("GET")
 	me.Use(authMW)
-	me.Use(config.unrolled.Handler)
 	me.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
-	// /rocks route
+	// /rocks route -- why a subrouter? for JSON error messages
 	rocks := wasabee.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
-	// internal API-key based auth
-	rocks.Use(config.unrolled.Handler)
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-
-	// /simple route
-	simple := wasabee.Subrouter("/simple")
-	setupSimpleRoutes(simple)
-	// no auth
-	// no log
-	simple.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 
 	// /static files
 	static := wasabee.Subrouter("/static")
 	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
-	// no auth
-	static.Use(config.unrolled.Handler)
-	static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+	// static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
 	return router
-}
-
-// implied /simple
-// do not log lest encryption key leaks
-func setupSimpleRoutes(r *mux.Router) {
-	// Simple -- the old-style, encrypted, unauthenticated/authorized documents
-	r.HandleFunc("", uploadRoute).Methods("POST")
-	r.HandleFunc("/{document}", getRoute).Methods("GET")
 }
 
 // implied /api/v1
@@ -183,6 +156,9 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")
 
+	r.HandleFunc("/d", getDefensiveKeys).Methods("GET")
+	r.HandleFunc("/d", setDefensiveKey).Methods("POST")
+
 	// server control functions
 	// trigger the server refresh of the template files
 	r.HandleFunc("/templates/refresh", templateUpdateRoute).Methods("GET")
@@ -190,9 +166,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 }
 
-// probably useless now, but need to test before committing a removal
 func optionsRoute(res http.ResponseWriter, req *http.Request) {
-	// I think this is now taken care of in the middleware
 	res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
 	res.WriteHeader(200)
 }
@@ -249,6 +223,7 @@ func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		config.scanners[req.RemoteAddr] = 1
 	}
+	wasabee.Log.Debugf("404: %s", req.URL)
 	http.Error(res, jsonError(err), http.StatusNotFound)
 }
 
@@ -336,7 +311,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   0,
 		SameSite: http.SameSiteNoneMode, // requires go 1.13
 		Secure:   true,
 	}
@@ -495,11 +469,12 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
-			MaxAge:   -1,                       // force delete
+			MaxAge:   -1,                    // force delete
 			SameSite: http.SameSiteNoneMode, // requires go 1.13
 			Secure:   true,
 		}
 		_ = ses.Save(req, res)
+		res.Header().Set("Connection", "close")
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -521,7 +496,6 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   0,
 		SameSite: http.SameSiteNoneMode, // requires go 1.13
 		Secure:   true,
 	}
@@ -536,7 +510,19 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Error(err)
 	}
 
+	var ud wasabee.AgentData
+	if err = m.Gid.GetAgentData(&ud); err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data, _ := json.Marshal(ud)
+
+	// cookie := res.Header().Get("set-cookie")
+	// wasabee.Log.Debugf("Sending Cookie: %s", cookie);
+	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, does this work in HTTP/2?
+	// https://go-review.googlesource.com/c/net/+/121415/
 	res.Header().Set("Cache-Control", "no-store")
 	wasabee.Log.Infof("%s app login", iname)
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, string(data))
 }

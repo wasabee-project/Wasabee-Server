@@ -36,7 +36,7 @@ func (o *Operation) PopulateKeys() error {
 	}
 	defer rows.Close()
 
-	var cap sql.NullString;
+	var cap sql.NullString
 	for rows.Next() {
 		err := rows.Scan(&k.ID, &k.Gid, &k.Onhand, &cap)
 		if err != nil {
@@ -54,9 +54,9 @@ func (o *Operation) PopulateKeys() error {
 // KeyOnHand updates a user's key-count for linking
 func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, capsule string) error {
 	k := KeyOnHand{
-		ID:     portalID,
-		Gid:    gid,
-		Onhand: count,
+		ID:      portalID,
+		Gid:     gid,
+		Onhand:  count,
 		Capsule: capsule,
 	}
 	if err := o.insertKey(k); err != nil {

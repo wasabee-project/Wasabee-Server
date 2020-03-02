@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/wasabee-project/Wasabee-Server"
-	"strconv"
 	"net/http"
+	"strconv"
 )
 
 func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
@@ -16,7 +16,7 @@ func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	dkl, err := gid.ListDefensiveKeys();
+	dkl, err := gid.ListDefensiveKeys()
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

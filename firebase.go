@@ -209,7 +209,7 @@ func (gid GoogleID) FirebaseTokens() ([]string, error) {
 	var token string
 	var toks []string
 
-	rows, err := db.Query("SELECT token FROM firebase WHERE gid = ?", gid)
+	rows, err := db.Query("SELECT DISTINCT token FROM firebase WHERE gid = ?", gid)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
 		return toks, err
@@ -234,6 +234,7 @@ func (gid GoogleID) FirebaseTokens() ([]string, error) {
 // FirebaseInsertToken updates a token in the database for an agent
 // gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers) -- need a cleaning mechanism
 func (gid GoogleID) FirebaseInsertToken(token string) error {
+	// XXX ensure the token is unique, maybe add a unique key for it?
 	_, err := db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		Log.Error(err)

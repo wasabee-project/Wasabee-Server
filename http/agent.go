@@ -116,9 +116,9 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-        message := fmt.Sprintf(
-	  "[%s](https://intel.ingress.com/intel?ll=%s&z=12&pll=%s): [Google Maps](http://maps.google.com/?q=%s) | [Apple Maps](http://maps.apple.com/?q=%s)",
-	  portal, ll, ll, ll, ll);
+	message := fmt.Sprintf(
+		"[%s](https://intel.ingress.com/intel?ll=%s&z=12&pll=%s): [Google Maps](http://maps.google.com/?q=%s) | [Apple Maps](http://maps.apple.com/?q=%s)",
+		portal, ll, ll, ll, ll)
 
 	ok, err := togid.SendMessage(message)
 	if err != nil {

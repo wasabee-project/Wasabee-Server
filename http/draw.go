@@ -763,7 +763,7 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	capsule := req.FormValue("capsule")
 
-	wasabee.Log.Debugf("noting keys: %s, %s, %d, %s", op.ID, portalID, onhand, capsule);
+	wasabee.Log.Debugf("noting keys: %s, %s, %d, %s", op.ID, portalID, onhand, capsule)
 
 	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
