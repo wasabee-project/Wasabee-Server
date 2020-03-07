@@ -44,7 +44,6 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	jRaw := json.RawMessage(jBlob)
-	// wasabee.Log.Debugf("sent json: %s", string(jRaw))
 	if err = wasabee.DrawInsert(jRaw, gid); err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -60,6 +59,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	data, _ := json.Marshal(ad)
+	res.Header().Set("Cache-Control", "no-store")
 	fmt.Fprint(res, string(data))
 }
 
@@ -110,6 +110,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	res.Header().Set("Cache-Control", "no-store")
 	// JSON if referer is intel.ingress.com or the mobile app
 	if wantsJSON(req) {
 		if skipsending {
@@ -130,7 +131,6 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// pretty output for everyone else -- based on access... or expressed preference
-	res.Header().Set("Cache-Control", "no-store") // if the HTML version gets cached, IITC freaks
 	// default to "opinfo" (user view)
 	template := "opinfo"
 	if o.WriteAccess(gid) {
@@ -1120,6 +1120,7 @@ func pDrawCopyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	res.Header().Set("Cache-Control", "no-store")
 	if wantsJSON(req) {
 		fmt.Fprint(res, jsonStatusOK)
 		return

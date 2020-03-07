@@ -254,6 +254,10 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if gid == togid {
+		http.Error(res, "Cannot remove owner", http.StatusUnauthorized)
+		return
+	}
 	if !safe {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
