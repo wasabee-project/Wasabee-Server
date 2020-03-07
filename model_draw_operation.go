@@ -3,6 +3,7 @@ package wasabee
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"strings"
@@ -52,6 +53,14 @@ const (
 	etRoleWrite        etRole = "write"
 	etRoleAssignedOnly etRole = "assignedonly"
 )
+
+func (et etRole) isValid() error {
+	switch et {
+	case etRoleRead, etRoleWrite, etRoleAssignedOnly:
+		return nil
+	}
+	return errors.New("Invalid etRole")
+}
 
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
 // use ONLY for initial op creation -- team is created

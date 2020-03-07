@@ -143,14 +143,22 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 		return err
 	}
 
-	// XXX validate perm. invalid values will store as ""
-	// XXX make sure it is not already there -- duplicates don't hurt... but...
+	et := etRole(perm)
+	err = et.isValid()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?)", teamID, o.ID, perm)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
+	if err = o.Touch(); err != nil {
+		Log.Error(err)
+		return err
+	}
 	return nil
 }
 
@@ -163,6 +171,10 @@ func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm string) error {
 
 	_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o.ID, perm)
 	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err = o.Touch(); err != nil {
 		Log.Error(err)
 		return err
 	}
