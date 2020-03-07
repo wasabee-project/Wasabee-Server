@@ -16,9 +16,7 @@ RES have RESwue. Every RES agent who wants it has access to it. ENL has great to
 
 ## But... opsec? My data?
 
-If you use the "simple" mode of transfering draws, your data is enccoded in IITC, sent to the server and never decoded. It is stored encrypted in such a way that it is only decryptable upon request. The URL is the key. We don't know the URL. If you lose the URL, the draw is inaccessible. 
-
-If you use the normal method, many more features will be enabled (proximity to marker notifications). Access to your data is controlled by teams you define. By default each op gets a unique team, but you can transfer multiple ops to the same team. Only your team members can see your op plans and locations. Each agent controls their own status (active/inactive) on the team. Team owners control who is on the teams. Trust is always bidirectional (with a minor qualification for teams linked to open .rocks communities).
+Access to your data is controlled by teams you define. By default each op gets a unique team, but you can transfer multiple ops to the same team. Only your team members can see your op plans and locations. Each agent controls their own status (active/inactive) on the team. Team owners control who is on the teams. Trust is always bidirectional (with a minor qualification for teams linked to open .rocks communities).
 
 ## My personal data, GDPR and such!
 
