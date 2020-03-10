@@ -25,7 +25,6 @@ type Operation struct {
 	Links     []Link         `json:"links"`
 	Blockers  []Link         `json:"blockers"`
 	Markers   []Marker       `json:"markers"`
-	TeamIDdep TeamID         `json:"teamid"`
 	Teams     []ExtendedTeam `json:"teamlist"`
 	Modified  string         `json:"modified"`
 	Comment   string         `json:"comment"`
@@ -84,22 +83,29 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
+
+	if err = drawOpInsertWorker(o, gid); err != nil {
+		Log.Error(err)
+		return err
+	}
+
 	// do not even look at the teamID in the data, just create a new one for this op
 	teamID, err := gid.NewTeam(o.Name)
 	if err != nil {
 		Log.Error(err)
 	}
-
-	if err = drawOpInsertWorker(o, gid, teamID); err != nil {
+	err = o.AddPerm(gid, teamID, "read")
+	if err != nil {
 		Log.Error(err)
 		return err
 	}
+
 	return nil
 }
 
-func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
+func drawOpInsertWorker(o Operation, gid GoogleID) error {
 	// start the insert process
-	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, teamID, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, teamID.String(), MakeNullString(o.Comment))
+	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -159,12 +165,6 @@ func drawOpInsertWorker(o Operation, gid GoogleID, teamID TeamID) error {
 			Log.Error(err)
 			continue
 		}
-	}
-
-	err = o.AddPerm(gid, teamID, "read")
-	if err != nil {
-		Log.Error(err)
-		return err
 	}
 
 	return nil
@@ -333,6 +333,8 @@ func drawOpUpdateWorker(o Operation) error {
 	}
 
 	// anchors are easy, just delete and re-add them all.
+	// do we even need to store them or can we just build them at send-time? 
+	// honestly, the client can build their own list ...
 	_, err = db.Exec("DELETE FROM anchor WHERE OpID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
@@ -356,16 +358,13 @@ func drawOpUpdateWorker(o Operation) error {
 }
 
 // Delete removes an operation and all associated data
-// if any associated team has no other associated ops AND the deleter owns it, it is deleted as well
+// Delete no longer removes unused teams ... the GUI is good enough now, the users can do that themselves
+// following the principle of least surprise
 func (o *Operation) Delete(gid GoogleID) error {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied")
 		Log.Error(err)
 		return err
-	}
-
-	if len(o.Teams) == 0 {
-		o.PopulateTeams()
 	}
 
 	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
@@ -381,31 +380,6 @@ func (o *Operation) Delete(gid GoogleID) error {
 	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM opteams WHERE opID = ?", o.ID)
 
-	for _, t := range o.Teams {
-		owns, err := gid.OwnsTeam(t.TeamID)
-		if err != nil {
-			Log.Error(err)
-			return nil
-		}
-		if !owns {
-			return nil
-		}
-
-		var teamOps int
-		err = db.QueryRow("SELECT COUNT(*) FROM operation WHERE teamID = ?", t.TeamID).Scan(&teamOps)
-		if err != nil {
-			Log.Error(err)
-			teamOps = 0
-		}
-		if teamOps == 0 { // 0 because the op has already been deleted
-			Log.Debugf("deleting team %s since this was the only op assigned to it", t.TeamID)
-			err = t.TeamID.Delete()
-			if err != nil {
-				Log.Error(err)
-				return err
-			}
-		}
-	}
 	return nil
 }
 
@@ -414,8 +388,8 @@ func (o *Operation) Delete(gid GoogleID) error {
 func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
 	// permission check and populate Operation top level
-	r := db.QueryRow("SELECT name, gid, color, teamID, modified, comment FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.TeamIDdep, &o.Modified, &comment)
+	r := db.QueryRow("SELECT name, gid, color, modified, comment FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment)
 
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")
@@ -610,11 +584,7 @@ func (o *Operation) Copy(gid GoogleID, complete bool) (OperationID, error) {
 			m.AssignedTo = ""
 		}
 
-		teamID, err := gid.NewTeam(new.Name)
-		if err != nil {
-			Log.Error(err)
-		}
-		if err = drawOpInsertWorker(new, gid, teamID); err != nil {
+		if err = drawOpInsertWorker(new, gid); err != nil {
 			Log.Error(err)
 			return "", err
 		}
