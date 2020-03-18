@@ -398,22 +398,22 @@ func (gid GoogleID) adAssignments(ud *AgentData) error {
 // AgentLocation updates the database to reflect a agent's current location
 func (gid GoogleID) AgentLocation(lat, lon string) error {
 	if lat == "" || lon == "" {
-		return nil;
+		return nil
 	}
 
 	// convert to float64 and back to reduce the garbage input
-	var flat, flon float64;
-	
+	var flat, flon float64
+
 	flat, err := strconv.ParseFloat(lat, 64)
 	if err != nil {
 		Log.Notice(err)
-        	flat = float64(0);
+		flat = float64(0)
 	}
 
 	flon, err = strconv.ParseFloat(lon, 64)
 	if err != nil {
 		Log.Notice(err)
-       		flon = float64(0);
+		flon = float64(0)
 	}
 	point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?", point, gid); err != nil {

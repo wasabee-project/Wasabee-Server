@@ -150,6 +150,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}")
 	// broadcast a message to the team
 	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")
+	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT")
 	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")
 	r.HandleFunc("/team/{team}/{gid}/squad", setAgentTeamSquadRoute).Methods("POST")
 	r.HandleFunc("/team/{team}/{gid}/displayname", setAgentTeamDisplaynameRoute).Methods("POST")

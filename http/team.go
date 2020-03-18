@@ -368,3 +368,38 @@ func setAgentTeamDisplaynameRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprint(res, jsonStatusOK)
 }
+
+func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	teamID := wasabee.TeamID(vars["team"])
+
+	if owns, _ := gid.OwnsTeam(teamID); !owns {
+		err = fmt.Errorf("only the team owner can rename a team")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	teamname := req.FormValue("teamname")
+	if teamname == "" {
+		err = fmt.Errorf("empty team name")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	if err := teamID.Rename(teamname); err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonStatusOK)
+}

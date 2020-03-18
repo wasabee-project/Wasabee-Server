@@ -62,7 +62,7 @@ func (et etRole) isValid() error {
 }
 
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
-// use ONLY for initial op creation -- team is created
+// use ONLY for initial op creation
 func DrawInsert(op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
@@ -83,14 +83,13 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-
 	if err = drawOpInsertWorker(o, gid); err != nil {
 		Log.Error(err)
 		return err
 	}
 
 	// do not even look at the teamID in the data, just create a new one for this op
-	teamID, err := gid.NewTeam(o.Name)
+	/* teamID, err := gid.NewTeam(o.Name)
 	if err != nil {
 		Log.Error(err)
 	}
@@ -98,14 +97,14 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 	if err != nil {
 		Log.Error(err)
 		return err
-	}
+	} */
 
 	return nil
 }
 
 func drawOpInsertWorker(o Operation, gid GoogleID) error {
 	// start the insert process
-	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
+	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -333,7 +332,7 @@ func drawOpUpdateWorker(o Operation) error {
 	}
 
 	// anchors are easy, just delete and re-add them all.
-	// do we even need to store them or can we just build them at send-time? 
+	// do we even need to store them or can we just build them at send-time?
 	// honestly, the client can build their own list ...
 	_, err = db.Exec("DELETE FROM anchor WHERE OpID = ?", o.ID)
 	if err != nil {

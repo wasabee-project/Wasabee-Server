@@ -185,7 +185,9 @@ func validateToken(rawjwt []byte) error {
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
-			e.Reason = x["reason"].(string)
+			if x["reason"] != nil  {
+				e.Reason = x["reason"].(string)
+			}
 			y := x["subject"].(map[string]interface{})
 			e.Issuer = y["iss"].(string)
 			e.Subject = y["sub"].(string)
@@ -195,7 +197,9 @@ func validateToken(rawjwt []byte) error {
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
-			e.Reason = x["reason"].(string)
+			if x["reason"] != nil {
+				e.Reason = x["reason"].(string)
+			}
 			y := x["subject"].(map[string]interface{})
 			e.Issuer = y["iss"].(string)
 			e.Subject = y["sub"].(string)
