@@ -91,16 +91,18 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		}
 		if state == "On" {
 			tmpU.State = true
+			tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
+			tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		} else {
 			tmpU.State = false
+			tmpU.Lat = 0;
+			tmpU.Lon = 0;
 		}
 		if enlID.Valid {
 			tmpU.EnlID = EnlID(enlID.String)
 		} else {
 			tmpU.EnlID = ""
 		}
-		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
-		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		tmpU.PictureURL = tmpU.Gid.GetPicture()
 		if dn.Valid {
 			tmpU.Name = dn.String

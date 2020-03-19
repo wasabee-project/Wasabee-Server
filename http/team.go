@@ -22,6 +22,13 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := wasabee.TeamID(vars["team"])
 
+	isowner, err := gid.OwnsTeam(team)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	safe, err := gid.AgentInTeam(team, false)
 	if err != nil {
 		wasabee.Log.Notice(err)
@@ -33,7 +40,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "unauthorized: enable the team to access it", http.StatusUnauthorized)
 		return
 	}
-	err = team.FetchTeam(&teamList, false)
+	err = team.FetchTeam(&teamList, isowner) // send all to owner?
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -51,12 +58,6 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// if this is the team owner, redirect to the edit screen
-	isowner, err := gid.OwnsTeam(team)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	if isowner {
 		url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
 		http.Redirect(res, req, url, http.StatusFound)
