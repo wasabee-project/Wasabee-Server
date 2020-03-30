@@ -147,27 +147,15 @@ func (o *Operation) PortalComment(portalID PortalID, comment string) error {
 func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, error) {
 	var p Portal
 	p.ID = portalID
-	var teamID TeamID
 
-	err := db.QueryRow("SELECT teamID FROM operation WHERE ID = ?", o.ID).Scan(&teamID)
-	if err != nil {
-		Log.Error(err)
-		return p, err
-	}
-	var inteam bool
-	inteam, err = gid.AgentInTeam(teamID, false)
-	if err != nil {
-		Log.Error(err)
-		return p, err
-	}
-	if !inteam {
-		err := fmt.Errorf("unauthorized: you are not on a team authorized to see this operation")
+	if !o.ReadAccess(gid) {
+		err := fmt.Errorf("unauthorized: unable to get portal details")
 		Log.Error(err)
 		return p, err
 	}
 
 	var comment, hardness sql.NullString
-	err = db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", o.ID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
+	err := db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", o.ID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
 	if err != nil {
 		Log.Error(err)
 		return p, err

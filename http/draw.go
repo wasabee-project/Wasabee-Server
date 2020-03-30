@@ -621,7 +621,7 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
-	var friendlyPortal struct {
+	var displayPortal struct {
 		ID       wasabee.PortalID
 		OpID     wasabee.OperationID
 		OpOwner  bool
@@ -649,25 +649,25 @@ func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-
+	
 	portalID := wasabee.PortalID(vars["portal"])
 	portal, err := op.PortalDetails(portalID, gid)
-	friendlyPortal.ID = portal.ID
-	friendlyPortal.OpID = op.ID
-	friendlyPortal.OpOwner = op.ID.IsOwner(gid)
-	friendlyPortal.Name = portal.Name
-	friendlyPortal.Lat = portal.Lat
-	friendlyPortal.Lon = portal.Lon
-	friendlyPortal.Comment = portal.Comment
-	friendlyPortal.Hardness = portal.Hardness
-
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if err = templateExecute(res, req, "portaldata", friendlyPortal); err != nil {
+	displayPortal.ID = portal.ID
+	displayPortal.OpID = op.ID
+	displayPortal.OpOwner = op.ID.IsOwner(gid)
+	displayPortal.Name = portal.Name
+	displayPortal.Lat = portal.Lat
+	displayPortal.Lon = portal.Lon
+	displayPortal.Comment = portal.Comment
+	displayPortal.Hardness = portal.Hardness
+
+	if err = templateExecute(res, req, "portaldata", displayPortal); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
@@ -1078,53 +1078,5 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	url := fmt.Sprintf("%s/draw/%s/perms", apipath, op.ID)
-	http.Redirect(res, req, url, http.StatusFound)
-}
-
-func pDrawCopyRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-	c, ok := vars["complete"]
-	var complete bool
-	if ok && c == "true" {
-		complete = true
-	}
-	if !op.ID.IsOwner(gid) {
-		err := fmt.Errorf("permission to duplicate operation denied")
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
-		return
-	}
-
-	// need the full op in place
-	if err = op.Populate(gid); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	newid, err := op.Copy(gid, complete)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	res.Header().Set("Cache-Control", "no-store")
-	if wantsJSON(req) {
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	url := fmt.Sprintf("%s/draw/%s", apipath, newid)
 	http.Redirect(res, req, url, http.StatusFound)
 }

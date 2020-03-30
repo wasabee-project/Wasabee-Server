@@ -252,6 +252,11 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		return err
 	}
 
+	if err = gid.adOwnedOps(ud); err != nil {
+		Log.Error(err)
+		return err
+	}
+
 	if err = gid.adAssignments(ud); err != nil {
 		Log.Error(err)
 	}
@@ -333,25 +338,40 @@ func (gid GoogleID) adTelegram(ud *AgentData) error {
 
 func (gid GoogleID) adOps(ud *AgentData) error {
 	var op AdOperation
-	var g GoogleID
 
-	row2, err := db.Query("SELECT o.ID, o.Name, o.Gid, o.Color, t.Name, p.teamID FROM operation=o, team=t, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID AND x.teamID = t.teamID AND x.state = 'On' ORDER BY o.Name, t.Name", gid)
+	row2, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, p.teamID FROM operation=o, team=t, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID AND x.teamID = t.teamID AND x.state = 'On' ORDER BY o.Name, t.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer row2.Close()
 	for row2.Next() {
-		err := row2.Scan(&op.ID, &op.Name, &g, &op.Color, &op.TeamName, &op.TeamID)
+		err := row2.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		if gid == g {
-			op.IsOwner = true
-		} else {
-			op.IsOwner = false
+		ud.Ops = append(ud.Ops, op)
+	}
+	return nil
+}
+
+func (gid GoogleID) adOwnedOps(ud *AgentData) error {
+	var op AdOperation
+
+	row, err := db.Query("SELECT ID, Name, Color, 'owned', 'owned' FROM operation WHERE gid = ? ORDER BY Name", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer row.Close()
+	for row.Next() {
+		err := row.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
+		if err != nil {
+			Log.Error(err)
+			return err
 		}
+		op.IsOwner = true
 		ud.Ops = append(ud.Ops, op)
 	}
 	return nil

@@ -40,6 +40,10 @@ type Agent struct {
 // AgentInTeam checks to see if a agent is in a team and enabled.
 // allowOff == true will report if a agent is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling agent.
 func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
+	if team == "owned" { // faked team
+		return true, nil
+	}
+
 	var count string
 
 	var err error
@@ -61,6 +65,11 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 // fetchAll includes agent for whom their state == off, should only be used to display lists to the calling agent
 func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
+	if teamID == "owned" {
+		fakedTeam(teamList)
+		return nil
+	}
+
 	var state, lat, lon string
 	var tmpU Agent
 
@@ -95,8 +104,8 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 			tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		} else {
 			tmpU.State = false
-			tmpU.Lat = 0;
-			tmpU.Lon = 0;
+			tmpU.Lat = 0
+			tmpU.Lon = 0
 		}
 		if enlID.Valid {
 			tmpU.EnlID = EnlID(enlID.String)
@@ -129,9 +138,18 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	return nil
 }
 
+func fakedTeam(teamList *TeamData) error {
+	Log.Debug("owned team queried")
+	return nil
+}
+
 // OwnsTeam returns true if the GoogleID owns the team identified by teamID
 func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	var owner GoogleID
+
+	if teamID == "owned" { // faked team
+		return true, nil
+	}
 
 	err := db.QueryRow("SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
 	if err != nil {
