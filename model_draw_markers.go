@@ -120,37 +120,44 @@ func (m MarkerID) String() string {
 }
 
 // AssignMarker assigns a marker to an agent, sending them a message
-func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID) error {
+func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bool) error {
+	// unassign
+	if gid == "0" {
+		gid = ""
+	}
+
 	_, err := db.Exec("UPDATE marker SET gid = ?, state = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), "assigned", markerID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if gid.String() != "" {
-		o.ID.firebaseAssignMarker(gid, markerID)
-
-		marker := struct {
-			OpID     OperationID
-			MarkerID MarkerID
-		}{
-			OpID:     o.ID,
-			MarkerID: markerID,
-		}
-
-		msg, err := gid.ExecuteTemplate("assignMarker", marker)
-		if err != nil {
-			Log.Error(err)
-			msg = fmt.Sprintf("assigned a marker for op %s", o.ID)
-			// do not report send errors up the chain, just log
-		}
-		_, err = gid.SendMessage(msg)
-		if err != nil {
-			Log.Errorf("%s %s %s", gid, err, msg)
-			// do not report send errors up the chain, just log
-		}
+	// we are done if not sending messages or unassignming
+	if !sendMessage || gid.String() == "" {
+		return nil
 	}
 
+	o.ID.firebaseAssignMarker(gid, markerID)
+
+	marker := struct {
+		OpID     OperationID
+		MarkerID MarkerID
+	}{
+		OpID:     o.ID,
+		MarkerID: markerID,
+	}
+
+	msg, err := gid.ExecuteTemplate("assignMarker", marker)
+	if err != nil {
+		Log.Error(err)
+		msg = fmt.Sprintf("assigned a marker for op %s", o.ID)
+		// do not report send errors up the chain, just log
+	}
+	_, err = gid.SendMessage(msg)
+	if err != nil {
+		Log.Errorf("%s %s %s", gid, err, msg)
+		// do not report send errors up the chain, just log
+	}
 	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
@@ -288,6 +295,7 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 
 func (o *Operation) PopulateAssignedOnly(gid GoogleID) error {
 	// get all marker assignments
+	// XXX ZZZ TODO FINISH THIS
 
 	return nil
 }

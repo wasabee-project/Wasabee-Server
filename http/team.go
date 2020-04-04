@@ -7,6 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 	"html"
 	"net/http"
+	"database/sql"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -40,7 +41,13 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "unauthorized: enable the team to access it", http.StatusUnauthorized)
 		return
 	}
-	err = team.FetchTeam(&teamList, isowner) // send all to owner?
+	err = team.FetchTeam(&teamList, isowner) // send all to owner
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("Team %s not found", team);
+		wasabee.Log.Debug(err)
+		http.Error(res, err.Error(), http.StatusNotFound)
+		return
+	}
 	if err != nil {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -48,6 +55,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
+	teamList.JoinLinkToken = ""
 
 	// if this is expecting JSON, even if owner, send JSON
 	if wantsJSON(req) {
@@ -58,6 +66,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// if this is the team owner, redirect to the edit screen
+	// must go after the JSON check
 	if isowner {
 		url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
 		http.Redirect(res, req, url, http.StatusFound)
@@ -403,4 +412,93 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
+}
+
+func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	teamID := wasabee.TeamID(vars["team"])
+
+	if owns, _ := gid.OwnsTeam(teamID); owns {
+		err := teamID.GenerateJoinToken()
+		if err != nil {
+			wasabee.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the team owner can create join links")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	if wantsJSON(req) {
+		fmt.Fprint(res, jsonStatusOK)
+		return
+	}
+	url := fmt.Sprintf("%s/team/%s/edit", apipath, teamID)
+	http.Redirect(res, req, url, http.StatusFound)
+}
+
+func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	teamID := wasabee.TeamID(vars["team"])
+
+	if owns, _ := gid.OwnsTeam(teamID); owns {
+		err := teamID.DeleteJoinToken()
+		if err != nil {
+			wasabee.Log.Notice(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = fmt.Errorf("only the team owner can remove join links")
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+
+	if wantsJSON(req) {
+		fmt.Fprint(res, jsonStatusOK)
+		return
+	}
+	url := fmt.Sprintf("%s/team/%s/edit", apipath, teamID)
+	http.Redirect(res, req, url, http.StatusFound)
+}
+
+func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	teamID := wasabee.TeamID(vars["team"])
+	key := vars["key"]
+
+	err = teamID.JoinToken(gid, key)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	url := fmt.Sprintf("%s/team/%s", apipath, teamID)
+	http.Redirect(res, req, url, http.StatusFound)
 }

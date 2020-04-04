@@ -12,6 +12,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 	"time"
 )
@@ -141,6 +142,9 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")
 	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE")
 	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}")
+	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET") 
+	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET") 
+	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET") 
 	// GUI to do basic edit (owner)
 	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")
 	// (re)import the team from rocks
@@ -320,7 +324,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabee.Log.Debug("no iname at end of login? %n", m.Gid)
 	}
-	wasabee.Log.Infof("%s login", iname)
+	wasabee.Log.Infof("%s webview login", iname)
+	dump, _ := httputil.DumpRequest(req, false)
+	wasabee.Log.Debug(string(dump))
 	http.Redirect(res, req, location, http.StatusFound)
 }
 

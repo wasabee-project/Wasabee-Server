@@ -335,7 +335,7 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	if op.WriteAccess(gid) {
 		link := wasabee.LinkID(vars["link"])
 		agent := wasabee.GoogleID(req.FormValue("agent"))
-		err := op.AssignLink(link, agent)
+		err := op.AssignLink(link, agent, true)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -506,7 +506,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	if op.WriteAccess(gid) {
 		marker := wasabee.MarkerID(vars["marker"])
 		agent := wasabee.GoogleID(req.FormValue("agent"))
-		err := op.AssignMarker(marker, agent)
+		err := op.AssignMarker(marker, agent, true)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)

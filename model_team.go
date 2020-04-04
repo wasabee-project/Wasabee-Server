@@ -15,6 +15,7 @@ type TeamData struct {
 	Agent     []Agent `json:"agents"`
 	RocksComm string  `json:"rc,omitempty"`
 	RocksKey  string  `json:"rk,omitempty"`
+	JoinLinkToken string `json:"jlt,omitempty"`
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams
@@ -122,8 +123,8 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 
-	var rockscomm, rockskey sql.NullString
-	if err := db.QueryRow("SELECT name, rockscomm, rockskey FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey); err != nil {
+	var rockscomm, rockskey, joinlinktoken  sql.NullString
+	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -133,6 +134,9 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	}
 	if rockskey.Valid {
 		teamList.RocksKey = rockskey.String
+	}
+	if joinlinktoken.Valid {
+		teamList.JoinLinkToken = joinlinktoken.String
 	}
 
 	return nil
@@ -472,5 +476,62 @@ func (teamID TeamID) SetDisplaname(gid GoogleID, displayname string) error {
 		Log.Notice(err)
 		return err
 	}
+	return nil
+}
+
+func (teamID TeamID) GenerateJoinToken() error {
+	key, err := GenerateSafeName();
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+
+	_, err = db.Exec("UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID);
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	return nil;
+}
+
+func (teamID TeamID) DeleteJoinToken() error {
+	_, err := db.Exec("UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID);
+	if err != nil {
+		Log.Notice(err)
+		return err
+	}
+	return nil;
+}
+
+func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
+	var count string
+
+	err := db.QueryRow("SELECT COUNT(*) FROM team WHERE teamID = ? AND joinLinkToken= ?", teamID, key).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	i, err := strconv.Atoi(count)
+	if err != nil {
+		return err
+	}
+	if i != 1 {
+		err = fmt.Errorf("Invalid team join token")
+		return err
+	}
+
+	err = teamID.AddAgent(gid)
+	if err != nil {
+		return err
+	}
+	err = teamID.SetSquad(gid, "joined via link")
+	if err != nil {
+		return err
+	}
+	err = gid.SetTeamState(teamID, "On")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -301,7 +301,7 @@ func authMW(next http.Handler) http.Handler {
 				res.Header().Set("Connection", "close")
 				_ = ses.Save(req, res)
 			} else {
-				wasabee.Log.Debug("Updating to new nonce")
+				// wasabee.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
 				res.Header().Set("Connection", "close")
 				_ = ses.Save(req, res)

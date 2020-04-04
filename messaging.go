@@ -33,7 +33,7 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 	// XXX loop through valid, trying until one works
 	ok, err := gid.SendMessageVia(message, bus)
 	if err != nil {
-		Log.Notice("unable to send message")
+		Log.Debug("unable to send message")
 		return false, err
 	}
 	if !ok {
