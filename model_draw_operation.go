@@ -93,7 +93,7 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 
 func drawOpInsertWorker(o Operation, gid GoogleID) error {
 	// start the insert process
-	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, NOW(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
+	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -500,7 +500,7 @@ func (o *Operation) SetInfo(info string, gid GoogleID) error {
 
 // Touch updates the modified timestamp on an operation
 func (o *Operation) Touch() error {
-	_, err := db.Exec("UPDATE operation SET modified = NOW() WHERE ID = ?", o.ID)
+	_, err := db.Exec("UPDATE operation SET modified = UTC_TIMESTAMP() WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err

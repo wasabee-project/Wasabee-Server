@@ -25,7 +25,7 @@ func BackgroundTasks(c chan os.Signal) {
 }
 
 func locationClean() {
-	r, err := db.Query("SELECT gid FROM locations WHERE loc != POINTFROMTEXT(?) AND upTime < DATE_SUB(NOW(), INTERVAL 3 HOUR)", "POINT(0 0)")
+	r, err := db.Query("SELECT gid FROM locations WHERE loc != POINTFROMTEXT(?) AND upTime < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)", "POINT(0 0)")
 	if err != nil {
 		Log.Error(err)
 		return
@@ -39,7 +39,7 @@ func locationClean() {
 			Log.Error(err)
 			continue
 		}
-		_, err = db.Exec("UPDATE locations SET loc = POINTFROMTEXT(?), upTime = NOW() WHERE gid = ?", "POINT(0 0)", gid)
+		_, err = db.Exec("UPDATE locations SET loc = POINTFROMTEXT(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", "POINT(0 0)", gid)
 		if err != nil {
 			Log.Error(err)
 			continue

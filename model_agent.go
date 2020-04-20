@@ -187,7 +187,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		_, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,NOW(),POINT(0,0))", gid)
+		_, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", gid)
 		if err != nil {
 			Log.Error(err)
 			return false, err
@@ -436,7 +436,7 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 		flon = float64(0)
 	}
 	point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
-	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = NOW() WHERE gid = ?", point, gid); err != nil {
+	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", point, gid); err != nil {
 		Log.Notice(err)
 		return err
 	}

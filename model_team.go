@@ -317,7 +317,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
 		"FROM agentteams=x, agent=u, locations=l "+
 		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
-		"AND x.state = 'On' AND x.gid = u.gid AND x.gid = l.gid AND l.upTime > SUBTIME(NOW(), '12:00:00') "+
+		"AND x.state = 'On' AND x.gid = u.gid AND x.gid = l.gid AND l.upTime > SUBTIME(UTC_TIMESTAMP(), '12:00:00') "+
 		"HAVING distance < ? AND distance > 0 ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
 	if err != nil {
 		Log.Error(err)
@@ -525,10 +525,6 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 		return err
 	}
 	err = teamID.SetSquad(gid, "joined via link")
-	if err != nil {
-		return err
-	}
-	err = gid.SetTeamState(teamID, "On")
 	if err != nil {
 		return err
 	}
