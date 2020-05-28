@@ -2,10 +2,10 @@ package wasabee
 
 import (
 	"database/sql"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
-	"fmt"
 )
 
 // LinkID wrapper to ensure type safety

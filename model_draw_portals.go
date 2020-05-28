@@ -29,16 +29,6 @@ func (opID OperationID) insertPortal(p Portal) error {
 	return nil
 }
 
-// insertAnchor adds an anchor to the database
-func (opID OperationID) insertAnchor(p PortalID) error {
-	_, err := db.Exec("INSERT IGNORE INTO anchor (opID, portalID) VALUES (?, ?)", opID, p)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	return nil
-}
-
 func (opID OperationID) updatePortal(p Portal) error {
 	_, err := db.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
 		p.ID, opID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
@@ -93,21 +83,29 @@ func (o *Operation) PopulatePortals() error {
 }
 
 // PopulateAnchors fills in the Anchors list for the Operation. No authorization takes place.
+// XXX the clients _should_ build this themselves, but don't, yet.
 func (o *Operation) PopulateAnchors() error {
-	var anchor PortalID
-	rows, err := db.Query("SELECT portalID FROM anchor WHERE opID = ?", o.ID)
+	var fromPortalID, toPortalID PortalID
+	rows, err := db.Query("SELECT fromPortalID, toPortalID FROM link WHERE opID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
+
+	set := make(map[PortalID]bool)
 	for rows.Next() {
-		err := rows.Scan(&anchor)
+		err := rows.Scan(&fromPortalID, &toPortalID)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
-		o.Anchors = append(o.Anchors, anchor)
+		set[fromPortalID] = true
+		set[toPortalID] = true
+	}
+
+	for key, _ := range set {
+		o.Anchors = append(o.Anchors, key)
 	}
 	return nil
 }

@@ -1,13 +1,13 @@
 package wasabeehttps
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server"
 	"html"
 	"net/http"
-	"database/sql"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -43,7 +43,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.FetchTeam(&teamList, isowner) // send all to owner
 	if err == sql.ErrNoRows {
-		err = fmt.Errorf("Team %s not found", team);
+		err = fmt.Errorf("Team %s not found", team)
 		wasabee.Log.Debug(err)
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return

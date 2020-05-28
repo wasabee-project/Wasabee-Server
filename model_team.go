@@ -10,12 +10,12 @@ import (
 
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
-	Name      string  `json:"name"`
-	ID        TeamID  `json:"id"`
-	Agent     []Agent `json:"agents"`
-	RocksComm string  `json:"rc,omitempty"`
-	RocksKey  string  `json:"rk,omitempty"`
-	JoinLinkToken string `json:"jlt,omitempty"`
+	Name          string  `json:"name"`
+	ID            TeamID  `json:"id"`
+	Agent         []Agent `json:"agents"`
+	RocksComm     string  `json:"rc,omitempty"`
+	RocksKey      string  `json:"rk,omitempty"`
+	JoinLinkToken string  `json:"jlt,omitempty"`
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams
@@ -123,7 +123,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 
-	var rockscomm, rockskey, joinlinktoken  sql.NullString
+	var rockscomm, rockskey, joinlinktoken sql.NullString
 	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken); err != nil {
 		Log.Error(err)
 		return err
@@ -480,27 +480,27 @@ func (teamID TeamID) SetDisplaname(gid GoogleID, displayname string) error {
 }
 
 func (teamID TeamID) GenerateJoinToken() error {
-	key, err := GenerateSafeName();
+	key, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	_, err = db.Exec("UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID);
+	_, err = db.Exec("UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID)
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
-	return nil;
+	return nil
 }
 
 func (teamID TeamID) DeleteJoinToken() error {
-	_, err := db.Exec("UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID);
+	_, err := db.Exec("UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID)
 	if err != nil {
 		Log.Notice(err)
 		return err
 	}
-	return nil;
+	return nil
 }
 
 func (teamID TeamID) JoinToken(gid GoogleID, key string) error {

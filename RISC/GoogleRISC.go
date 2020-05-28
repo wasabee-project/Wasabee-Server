@@ -145,23 +145,19 @@ func validateToken(rawjwt []byte) error {
 			err = fmt.Errorf("multiple matching keys found, using the first")
 			wasabee.Log.Notice(err)
 		}
-		r, err := key[0].Materialize()
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
+		var pKey interface{}
+		if err := key[0].Raw(&key); err != nil {
+			wasabee.Log.Debugf("failed to lookup key: %s", err)
+		} else {
+			wasabee.Log.Debug("JWx key sent")
+			wasabee.Log.Debug(pKey)
 
-		// this checks iss, iat, aud and others
-		err = token.Verify(jwt.WithAudience(config.clientemail), jwt.WithAcceptableSkew(60), jwt.WithIssuer(config.Issuer), jwt.WithVerify(jwa.RS256, r))
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
-		// this checks the signature
-		_, err = jws.Verify(rawjwt, jwa.RS256, r)
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
+			// this checks the signature
+			_, err = jws.Verify(rawjwt, jwa.RS256, pKey)
+			if err != nil {
+				wasabee.Log.Error(err)
+				return err
+			}
 		}
 	}
 
@@ -185,7 +181,7 @@ func validateToken(rawjwt []byte) error {
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
-			if x["reason"] != nil  {
+			if x["reason"] != nil {
 				e.Reason = x["reason"].(string)
 			}
 			y := x["subject"].(map[string]interface{})

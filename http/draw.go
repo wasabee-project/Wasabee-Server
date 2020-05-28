@@ -649,7 +649,7 @@ func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	
+
 	portalID := wasabee.PortalID(vars["portal"])
 	portal, err := op.PortalDetails(portalID, gid)
 	if err != nil {

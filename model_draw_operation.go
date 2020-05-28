@@ -16,21 +16,21 @@ type OperationID string
 // Operation is defined by the Wasabee IITC plugin.
 // It is the top level item in the JSON file.
 type Operation struct {
-	ID        OperationID    `json:"ID"`
-	Name      string         `json:"name"`
-	Gid       GoogleID       `json:"creator"` // IITC plugin sending agent name, need to convert to GID
-	Color     string         `json:"color"`   // could be an enum, but freeform is fine for now
-	OpPortals []Portal       `json:"opportals"`
-	Anchors   []PortalID     `json:"anchors"` // We should let the clients build this themselves
-	Links     []Link         `json:"links"`
-	Blockers  []Link         `json:"blockers"` // we ignore this for now
-	Markers   []Marker       `json:"markers"`
-	Teams     []ExtendedTeam `json:"teamlist"`
-	Modified  string         `json:"modified"`
-	Comment   string         `json:"comment"`
-	Keys      []KeyOnHand    `json:"keysonhand"`
-	Fetched   string         `json:"fetched"`
-	UpdateMode string	 `json:"mode,omitempty"`
+	ID         OperationID    `json:"ID"`
+	Name       string         `json:"name"`
+	Gid        GoogleID       `json:"creator"` // IITC plugin sending agent name, need to convert to GID
+	Color      string         `json:"color"`   // could be an enum, but freeform is fine for now
+	OpPortals  []Portal       `json:"opportals"`
+	Anchors    []PortalID     `json:"anchors"` // We should let the clients build this themselves
+	Links      []Link         `json:"links"`
+	Blockers   []Link         `json:"blockers"` // we ignore this for now
+	Markers    []Marker       `json:"markers"`
+	Teams      []ExtendedTeam `json:"teamlist"`
+	Modified   string         `json:"modified"`
+	Comment    string         `json:"comment"`
+	Keys       []KeyOnHand    `json:"keysonhand"`
+	Fetched    string         `json:"fetched"`
+	UpdateMode string         `json:"mode,omitempty"`
 }
 
 // OpStat is a minimal struct to determine if the op has been updated
@@ -136,17 +136,6 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 			continue
 		}
 	}
-	for _, a := range o.Anchors {
-		_, ok := portalMap[a]
-		if !ok {
-			Log.Debugf("anchor portalID %s missing from portal list for op %s", a, o.ID)
-			continue
-		}
-		if err = o.ID.insertAnchor(a); err != nil {
-			Log.Error(err)
-			continue
-		}
-	}
 
 	for _, k := range o.Keys {
 		if err = o.insertKey(k); err != nil {
@@ -170,7 +159,6 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 // Markers are added/removed as necessary -- assignments _are_ overwritten
 
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
-// Anchors can simply be deleted and rebuilt
 
 func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	var o Operation
@@ -332,26 +320,6 @@ func drawOpUpdateWorker(o Operation) error {
 		}
 	}
 
-	// anchors are easy, just delete and re-add them all.
-	// do we even need to store them or can we just build them at send-time?
-	// honestly, the client can build their own list ...
-	_, err = db.Exec("DELETE FROM anchor WHERE OpID = ?", o.ID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	for _, a := range o.Anchors {
-		_, ok := portalMap[a]
-		if !ok {
-			Log.Debugf("anchor portalID %s missing from portal list for op %s", a, o.ID)
-			continue
-		}
-		if err = o.ID.insertAnchor(a); err != nil {
-			Log.Error(err)
-			continue
-		}
-	}
-
 	// XXX TBD remove unused opkey portals?
 
 	return nil
@@ -376,6 +344,7 @@ func (o *Operation) Delete(gid GoogleID) error {
 	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
+	// XXX not needed going forward, but leaving for now
 	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
 	_, _ = db.Exec("DELETE FROM opteams WHERE opID = ?", o.ID)

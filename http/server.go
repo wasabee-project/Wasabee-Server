@@ -359,7 +359,8 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	tmpOC.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
 	// wasabee.Log.Debugf("callback URL: %s", tmpOC.RedirectURL)
 	url := tmpOC.AuthCodeURL(config.oauthStateString)
-	http.Redirect(res, req, url, http.StatusFound)
+	// http.Redirect(res, req, url, http.StatusFound)
+	http.Redirect(res, req, url, http.StatusSeeOther)
 }
 
 func jsonError(e error) string {
@@ -367,10 +368,21 @@ func jsonError(e error) string {
 }
 
 func wantsJSON(req *http.Request) bool {
+	// if specified, use what is requested
 	sendjson := req.FormValue("json")
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) || sendjson == "y" {
+	if sendjson == "y" {
 		return true
 	}
+	if sendjson == "n" {
+		return false
+	}
+
+	// not specified, look for clues
+	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
+		return true
+	}
+
+	// default to false
 	return false
 }
 

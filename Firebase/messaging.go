@@ -28,8 +28,8 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 	}
 
 	msg := messaging.Message{
-		Topic:   string(fb.TeamID),
-		Data:    data,
+		Topic: string(fb.TeamID),
+		Data:  data,
 		// Webpush: &webpush,
 	}
 
@@ -57,8 +57,8 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		"cmd":      fb.Cmd.String(),
 	}
 	msg := messaging.Message{
-		Topic:   string(fb.TeamID),
-		Data:    data,
+		Topic: string(fb.TeamID),
+		Data:  data,
 		// Webpush: &webpush,
 	}
 
@@ -96,8 +96,8 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 		}
 
 		msg := messaging.Message{
-			Token:   token,
-			Data:    data,
+			Token: token,
+			Data:  data,
 			// Webpush: &webpush,
 		}
 
@@ -126,8 +126,8 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 	}
 
 	msg := messaging.Message{
-		Topic:   string(fb.TeamID),
-		Data:    data,
+		Topic: string(fb.TeamID),
+		Data:  data,
 		// Webpush: &webpush,
 	}
 
@@ -155,8 +155,8 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 		"cmd":    fb.Cmd.String(),
 	}
 	msg := messaging.Message{
-		Topic:   string(fb.TeamID),
-		Data:    data,
+		Topic: string(fb.TeamID),
+		Data:  data,
 		// Webpush: &webpush,
 	}
 
@@ -199,8 +199,8 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 		}
 
 		msg := messaging.Message{
-			Token:   token,
-			Data:    data,
+			Token: token,
+			Data:  data,
 			// Webpush: &webpush,
 			// Notification: &notif,
 		}
