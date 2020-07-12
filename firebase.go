@@ -23,6 +23,7 @@ const (
 	FbccLinkStatusChange
 	FbccLinkAssignmentChange
 	FbccSubscribeTeam
+	FbccAgentLogin
 )
 
 // FirebaseCmd is the struct passed to the Firebase module to take actions -- required params depend on the FBCC
@@ -54,7 +55,7 @@ func FirebaseClose() {
 }
 
 func (cc FirebaseCommandCode) String() string {
-	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe"}[cc]
+	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe","Login"}[cc]
 }
 
 // Functions called from Wasabee to message the firebase subsystem
@@ -201,6 +202,23 @@ func (gid GoogleID) firebaseUnsubscribeTeam(teamID TeamID) {
 	})
 }
 
+// FirebaseAgentLogin sends a notification to teammates when an agent logs in
+func (gid GoogleID) FirebaseAgentLogin() {
+	if !fb.running {
+		return
+	}
+
+	tl := gid.teamList();
+	for _, teamID := range tl {
+		fbPush(FirebaseCmd{
+			Cmd:    FbccAgentLogin,
+			Gid:    gid,
+			TeamID: teamID,
+			Msg:    "Login",
+		})
+	}
+}
+
 // Functions called from Firebase to use Wasabee resources
 
 // FirebaseTokens gets an agents FirebaseToken from the database
@@ -234,8 +252,23 @@ func (gid GoogleID) FirebaseTokens() ([]string, error) {
 // FirebaseInsertToken updates a token in the database for an agent
 // gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers) -- need a cleaning mechanism
 func (gid GoogleID) FirebaseInsertToken(token string) error {
-	// XXX ensure the token is unique, maybe add a unique key for it?
-	_, err := db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
+	var count int;
+	err := db.QueryRow("SELECT COUNT(gid) FROM firebase WHERE token = ? AND gid = ?", token, gid).Scan(&count)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	if count == 1 {
+		return nil
+	}
+
+	// XXX if we have duplicates, prune -- TODO: add unique key after this has been in place a while
+	if count > 1 {
+		gid.FirebaseRemoveToken(token)
+	}
+
+	_, err = db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -259,6 +292,7 @@ func (gid GoogleID) FirebaseRemoveToken(token string) error {
 	return nil
 }
 
+// FirebaseRemoveToken removes all tokens for a given user
 func (gid GoogleID) FirebaseRemoveAllTokens() error {
 	_, err := db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
 	if err != nil {
