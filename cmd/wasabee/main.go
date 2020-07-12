@@ -14,6 +14,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/http"
+	"github.com/wasabee-project/Wasabee-Server/PubSub"
 
 	"golang.org/x/oauth2"
 	
@@ -91,6 +92,7 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "enliokey", EnvVar: "ENLIO_API_KEY", Value: "",
 		Usage: "enl.io API token. It is recommended to pass this parameter as an environment variable"},
+	// cli.StringField{ Name: "pubsub", Env
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output"},
@@ -229,6 +231,17 @@ func run(c *cli.Context) error {
 		go wasabeefirebase.ServeFirebase(firebasePath)
 	}
 
+	pubsubPath := path.Join(c.String("certs"), "pubsub.json")
+	if _, err := os.Stat(pubsubPath); err != nil {
+		wasabee.Log.Noticef("%s does not exist, not enabling PubSub", pubsubPath)
+	} else {
+		go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
+			Cert: pubsubPath,
+			Project: "PhDevBin",
+			Topic: "wasabee-main",
+		})
+	}
+
 	// Serve Telegram
 	if c.String("tgkey") != "" {
 		go wasabeetelegram.WasabeeBot(wasabeetelegram.TGConfiguration{
@@ -248,6 +261,9 @@ func run(c *cli.Context) error {
 	wasabee.Log.Info("Shutdown Requested: ", sig)
 	if _, err := os.Stat(firebasePath); err == nil {
 		wasabee.FirebaseClose()
+	}
+	if _, err := os.Stat(pubsubPath); err == nil {
+		wasabee.PubSubClose()
 	}
 	if _, err := os.Stat(riscPath); err == nil {
 		risc.DisableWebhook()
