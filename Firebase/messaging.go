@@ -215,6 +215,32 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 	return nil
 }
 
+func agentLogin(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
+	if fb.TeamID == "" {
+		err := fmt.Errorf("only send status changes to teams")
+		wasabee.Log.Error(err)
+		return err
+	}
+
+	data := map[string]string{
+		"gid": 	    string(fb.Gid),
+		"msg":      fb.Msg,
+		"cmd":      fb.Cmd.String(),
+	}
+	msg := messaging.Message{
+		Topic: string(fb.TeamID),
+		Data:  data,
+		// Webpush: &webpush,
+	}
+
+	_, err := c.Send(ctx, &msg)
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	return nil
+}
+
 func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
 	if fb.Gid == "" {
 		return nil

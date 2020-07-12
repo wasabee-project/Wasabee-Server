@@ -13,6 +13,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 )
 
+// rate limit map
 var rlmap map[wasabee.TeamID]rlt
 
 type rlt struct {
@@ -43,7 +44,7 @@ func ServeFirebase(keypath string) error {
 
 	fbchan := wasabee.FirebaseInit()
 	for fb := range fbchan {
-		// wasabee.Log.Debugf("processing %s", fb.Cmd.String())
+		// wasabee.Log.Debugf("firebase processing %s", fb.Cmd.String())
 		switch fb.Cmd {
 		case wasabee.FbccAgentLocationChange:
 			if rateLimit(fb.TeamID) {
@@ -67,6 +68,8 @@ func ServeFirebase(keypath string) error {
 			_ = linkAssignmentChange(ctx, msg, fb)
 		case wasabee.FbccSubscribeTeam:
 			_ = subscribeToTeam(ctx, msg, fb)
+		case wasabee.FbccAgentLogin:
+			_ = agentLogin(ctx, msg, fb)
 		default:
 			wasabee.Log.Debugf("Unknown Firebase command %d", fb.Cmd)
 		}
