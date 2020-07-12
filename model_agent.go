@@ -468,6 +468,7 @@ func (gid GoogleID) IngressNameTeam(teamID TeamID) (string, error) {
 	return displayname.String, nil
 }
 
+// IngressNameOperation returns an agent's display name on a given operation
 func (gid GoogleID) IngressNameOperation(o *Operation) (string, error) {
 	var iname string
 
