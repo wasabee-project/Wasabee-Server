@@ -11,12 +11,13 @@ import (
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	var teamList wasabee.TeamData
 
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -26,14 +27,14 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	isowner, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	safe, err := gid.AgentInTeam(team, false)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
@@ -45,46 +46,28 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if err == sql.ErrNoRows {
 		err = fmt.Errorf("Team %s not found", team)
 		wasabee.Log.Debug(err)
-		http.Error(res, err.Error(), http.StatusNotFound)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	teamList.RocksComm = ""
 	teamList.RocksKey = ""
 	teamList.JoinLinkToken = ""
 
-	// if this is expecting JSON, even if owner, send JSON
-	if wantsJSON(req) {
-		res.Header().Add("Content-Type", jsonType)
-		data, _ := json.Marshal(teamList)
-		fmt.Fprint(res, string(data))
-		return
-	}
-
-	// if this is the team owner, redirect to the edit screen
-	// must go after the JSON check
-	if isowner {
-		url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-		http.Redirect(res, req, url, http.StatusFound)
-		return
-	}
-
-	// otherwise use the simple display screen
-	if err = templateExecute(res, req, "team", teamList); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
+	data, _ := json.Marshal(teamList)
+	fmt.Fprint(res, string(data))
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -94,17 +77,18 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	_, err = gid.NewTeam(name)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -113,7 +97,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
@@ -122,17 +106,18 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if err = team.Delete(); err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -141,7 +126,7 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
@@ -152,23 +137,24 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	to, ok := vars["to"]
 	if !ok { // this should not happen unless the router gets misconfigured
 		err = fmt.Errorf("to unset")
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	togid, err := wasabee.ToGid(to)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if err = team.Chown(togid); err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(res, req, me, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
+/*
 func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -200,13 +186,14 @@ func editTeamRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Notice(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-}
+} */
 
 func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -217,7 +204,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
@@ -229,24 +216,24 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		togid, err := wasabee.ToGid(key)
 		if err != nil {
 			wasabee.Log.Notice(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 		if err = team.AddAgent(togid); err != nil {
 			wasabee.Log.Notice(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	}
-	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -255,13 +242,13 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	togid, err := wasabee.ToGid(vars["key"])
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if gid == togid {
@@ -274,11 +261,10 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if err = team.RemoveAgent(togid); err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -311,7 +297,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	err = team.SendAnnounce(gid, message)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -415,6 +401,7 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
@@ -439,15 +426,11 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if wantsJSON(req) {
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	url := fmt.Sprintf("%s/team/%s/edit", apipath, teamID)
-	http.Redirect(res, req, url, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
@@ -471,16 +454,11 @@ func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-
-	if wantsJSON(req) {
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	url := fmt.Sprintf("%s/team/%s/edit", apipath, teamID)
-	http.Redirect(res, req, url, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
+	// redirects to the app interface for the user to manage the team
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
@@ -499,6 +477,5 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	url := fmt.Sprintf("%s/team/%s", apipath, teamID)
-	http.Redirect(res, req, url, http.StatusFound)
+	http.Redirect(res, req, me, http.StatusFound)
 }

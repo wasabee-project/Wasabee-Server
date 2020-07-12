@@ -9,13 +9,14 @@ import (
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	var agent wasabee.Agent
 
 	// must be authenticated
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -24,36 +25,26 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	err = wasabee.FetchAgent(togid, &agent)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	agent.CanSendTo = gid.CanSendTo(togid)
 
-	// if the request comes from intel, just return JSON
-	if wantsJSON(req) {
-		data, _ := json.Marshal(agent)
-		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprint(res, string(data))
-		return
-	}
-
-	// TemplateExecute prints directly to the result writer
-	if err := templateExecute(res, req, "agent", agent); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
+	data, _ := json.Marshal(agent)
+	fmt.Fprint(res, string(data))
 }
 
 func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -61,7 +52,7 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -77,22 +68,22 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	ok, err = togid.SendMessage(message)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
 		http.Error(res, "message did not send", http.StatusInternalServerError)
 		return
 	}
-	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprintf(res, jsonStatusOK)
 }
 
 func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	_, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -100,7 +91,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -122,14 +113,13 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 
 	ok, err := togid.SendMessage(message)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
 		http.Error(res, "message did not send", http.StatusInternalServerError)
 		return
 	}
-	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprintf(res, jsonStatusOK)
 }
 
@@ -137,7 +127,7 @@ func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	_, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -145,7 +135,7 @@ func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 

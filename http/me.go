@@ -40,61 +40,12 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func meSettingsRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var ud wasabee.AgentData
-	if err = gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err = templateExecute(res, req, "settings", ud); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func meOperationsRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// XXX this gets too much -- but works for now; if it is slow, then use the deeper calls
-	var ud wasabee.AgentData
-	if err = gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if wantsJSON(req) {
-		data, _ := json.Marshal(ud.Ops)
-		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprint(res, string(data))
-		return
-	}
-
-	if err = templateExecute(res, req, "operations", ud.Ops); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-}
-
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -104,24 +55,20 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if err = gid.SetTeamState(team, state); err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	if wantsJSON(req) {
-		res.Header().Add("Content-Type", jsonType)
-		res.Header().Set("Cache-Control", "no-store")
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	http.Redirect(res, req, me, http.StatusSeeOther)
+	res.Header().Set("Cache-Control", "no-store")
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -130,23 +77,19 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if err = team.RemoveAgent(gid); err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	if wantsJSON(req) {
-		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	http.Redirect(res, req, me, http.StatusSeeOther)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -157,16 +100,11 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	// do the work
 	if err = gid.AgentLocation(lat, lon); err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	if wantsJSON(req) {
-		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	http.Redirect(res, req, me, http.StatusSeeOther)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -190,10 +128,11 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -205,23 +144,20 @@ func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 	} else {
 		_ = gid.StatusLocationDisable()
 	}
-	http.Redirect(res, req, me, http.StatusSeeOther)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	gid.Logout("user requested logout")
-	if wantsJSON(req) {
-		res.Header().Add("Content-Type", jsonType)
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	http.Redirect(res, req, "/", http.StatusSeeOther)
+	res.Header().Add("Content-Type", jsonType)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {

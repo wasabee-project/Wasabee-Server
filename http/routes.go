@@ -51,24 +51,30 @@ func setupRouter() *mux.Router {
 	setupAuthRoutes(api)
 	api.Use(authMW)
 	api.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
 
 	// /me route
-	me := wasabee.Subrouter(me)
-	me.Methods("OPTIONS").HandlerFunc(optionsRoute)
-	me.HandleFunc("", meShowRoute).Methods("GET")
-	me.Use(authMW)
-	me.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+	meRouter := wasabee.Subrouter(me)
+	meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
+	meRouter.HandleFunc("", meShowRoute).Methods("GET", "POST", "HEAD")
+	meRouter.Use(authMW)
+	meRouter.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
 	// /rocks route -- why a subrouter? for JSON error messages
 	rocks := wasabee.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
 	static := wasabee.Subrouter("/static")
 	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
 	// static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
+	// catch all others -- jacks up later subrouters (e.g. Telegram and GoogleRISC)
+	// router.PathPrefix("/").HandlerFunc(notFoundRoute)
+	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 	return router
 }
 
@@ -85,7 +91,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/order", pDrawOrderRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/info", pDrawInfoRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/stat", pDrawStatRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/perms", pDrawPermsRoute).Methods("GET")
+	// r.HandleFunc("/draw/{document}/perms", pDrawPermsRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/perms", pDrawPermsAddRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/perms", pDrawPermsDeleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}/delperm", pDrawPermsDeleteRoute).Methods("GET") // .Queries("team", "{team}", "role", "{role}")
@@ -109,16 +115,16 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", pDrawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", pDrawPortalHardnessRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", pDrawPortalKeysRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/portal/{portal}", pDrawPortalRoute).Methods("GET")
+	// r.HandleFunc("/draw/{document}/portal/{portal}", pDrawPortalRoute).Methods("GET")
 
 	// manual location post
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
 	// -- do not use, just here for safety
-	r.HandleFunc("/me", meShowRoute).Methods("GET")
+	r.HandleFunc("/me", meShowRoute).Methods("GET", "POST", "HEAD")
 	// r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
 	// toggle RAID/JEAH polling
-	r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")
-	r.HandleFunc("/me/operations", meOperationsRoute).Methods("GET")
+	// r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")
+	// r.HandleFunc("/me/operations", meOperationsRoute).Methods("GET")
 	r.HandleFunc("/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
@@ -146,7 +152,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET")
 	// GUI to do basic edit (owner)
-	r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")
+	// r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")
 	// (re)import the team from rocks
 	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")
 	// configure team link to enl.rocks community
@@ -281,19 +287,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	location := me + "?a=0"
-	if ses.Values["loginReq"] != nil {
-		rr := ses.Values["loginReq"].(string)
-		if rr[:len(me)] == me || rr[:len(login)] == login { // leave /me check in place
-			location = me + "?postlogin=1"
-			wasabee.Log.Debugf("webview login redirect to %s", location)
-		} else {
-			location = rr
-			wasabee.Log.Debugf("webview login redirect to %s", location)
-		}
-		delete(ses.Values, "loginReq")
-	}
-
 	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
 	if !authorized {
 		http.Error(res, "Smurf go away!", http.StatusForbidden)
@@ -326,11 +319,28 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabee.Log.Debug("no iname at end of login? %n", m.Gid)
 	}
-	wasabee.Log.Infof("%s webview login", iname)
+	m.Gid.FirebaseAgentLogin();
 	// dump, _ := httputil.DumpRequest(req, false)
 	// wasabee.Log.Debug(string(dump))
-	// http.Redirect(res, req, location, http.StatusFound)
-	http.Redirect(res, req, location, http.StatusSeeOther)
+
+	// add random value to help curb login loops
+	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
+	h := hex.EncodeToString(sha[:])
+	location := fmt.Sprintf("%s?r=%s", me, h)
+	wasabee.Log.Infof("%s webview login", iname)
+	if ses.Values["loginReq"] != nil {
+		rr := ses.Values["loginReq"].(string)
+		if rr[:len(me)] == me || rr[:len(login)] == login {
+			// -- need to invert this logic now
+		} else {
+			wasabee.Log.Debugf("loginReq set to %s", rr)
+			location = rr
+		}
+		delete(ses.Values, "loginReq")
+	}
+
+	wasabee.Log.Debugf("redirecting to %s", location)
+	http.Redirect(res, req, location, http.StatusFound) // http.StatusSeeOther
 }
 
 // the secret value exchanged / verified each request
@@ -528,11 +538,11 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	data, _ := json.Marshal(ud)
 
 	wasabee.Log.Infof("%s apTok login", iname)
+	m.Gid.FirebaseAgentLogin();
 
 	// cookie := res.Header().Get("set-cookie")
 	// wasabee.Log.Debugf("Sending Cookie: %s", cookie);
-	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, does this work in HTTP/2?
-	// https://go-review.googlesource.com/c/net/+/121415/
+	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
 	res.Header().Set("Cache-Control", "no-store")
 
 	fmt.Fprint(res, string(data))

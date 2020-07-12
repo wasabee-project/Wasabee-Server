@@ -48,10 +48,11 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -61,7 +62,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
@@ -72,18 +73,19 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	err = team.RocksCommunityMemberPull()
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusSeeOther)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -95,7 +97,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
@@ -105,10 +107,9 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	err = team.SetRocks(rk, rc)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	url := fmt.Sprintf("%s/team/%s/edit", apipath, team.String())
-	http.Redirect(res, req, url, http.StatusSeeOther)
+	fmt.Fprint(res, jsonStatusOK)
 }

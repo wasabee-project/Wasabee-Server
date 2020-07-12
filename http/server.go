@@ -308,9 +308,6 @@ func authMW(next http.Handler) http.Handler {
 			}
 		}
 
-		// TBD: if request is from app or IITC, just return http.StatusXXX
-		// @Phtiv built the app to handle the HTML screen, no worries
-
 		if ses.Values["nonce"] == "unset" {
 			redirectOrError(res, req)
 			return
@@ -367,6 +364,7 @@ func jsonError(e error) string {
 	return fmt.Sprintf("{\"status\":\"error\",\"error\":\"%s\"}", e.Error())
 }
 
+// almost everything should return JSON now. The few things that do not redirect elsewhere.
 func wantsJSON(req *http.Request) bool {
 	// if specified, use what is requested
 	sendjson := req.FormValue("json")

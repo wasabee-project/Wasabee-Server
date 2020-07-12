@@ -111,39 +111,20 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Set("Cache-Control", "no-store")
-	// JSON if referer is intel.ingress.com or the mobile app
-	if wantsJSON(req) {
-		if skipsending {
-			// wasabee.Log.Debugf("sending 304 for %s", o.ID)
-			res.Header().Set("Content-Type", "")
-			http.Redirect(res, req, "", http.StatusNotModified)
-			return
-		}
-		res.Header().Set("Content-Type", jsonType)
-		s, err := json.Marshal(o)
-		if err != nil {
-			wasabee.Log.Notice(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprint(res, string(s))
+	if skipsending {
+		// wasabee.Log.Debugf("sending 304 for %s", o.ID)
+		res.Header().Set("Content-Type", "")
+		http.Redirect(res, req, "", http.StatusNotModified)
 		return
 	}
-
-	// pretty output for everyone else -- based on access... or expressed preference
-	// default to "opinfo" (user view)
-	template := "opinfo"
-	if o.WriteAccess(gid) {
-		lite := req.FormValue("lite")
-		if lite != "y" { // use admin view if has write access and lite was not requested
-			template = "opdata"
-		}
+	res.Header().Set("Content-Type", jsonType)
+	s, err := json.Marshal(o)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
 	}
-
-	if err = templateExecute(res, req, template, o); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
+	fmt.Fprint(res, string(s))
 }
 
 func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -313,7 +294,7 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// wasabee.Log.Debugf("redirecting to :%s", url)
+	wasabee.Log.Debugf("requested stock intel -- redirecting to :%s", url)
 	http.Redirect(res, req, url, http.StatusFound)
 }
 
@@ -620,65 +601,12 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
-func pDrawPortalRoute(res http.ResponseWriter, req *http.Request) {
-	var displayPortal struct {
-		ID       wasabee.PortalID
-		OpID     wasabee.OperationID
-		OpOwner  bool
-		Name     string
-		Lat      string
-		Lon      string
-		Comment  string
-		Hardness string
-	}
-
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-
-	if !op.ReadAccess(gid) {
-		err = fmt.Errorf("read access required to view portal details")
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
-		return
-	}
-
-	portalID := wasabee.PortalID(vars["portal"])
-	portal, err := op.PortalDetails(portalID, gid)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	displayPortal.ID = portal.ID
-	displayPortal.OpID = op.ID
-	displayPortal.OpOwner = op.ID.IsOwner(gid)
-	displayPortal.Name = portal.Name
-	displayPortal.Lat = portal.Lat
-	displayPortal.Lon = portal.Lon
-	displayPortal.Comment = portal.Comment
-	displayPortal.Hardness = portal.Hardness
-
-	if err = templateExecute(res, req, "portaldata", displayPortal); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-}
-
 func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -715,7 +643,7 @@ func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -746,7 +674,7 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -763,7 +691,7 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	capsule := req.FormValue("capsule")
 
-	wasabee.Log.Debugf("noting keys: %s, %s, %d, %s", op.ID, portalID, onhand, capsule)
+	// wasabee.Log.Debugf("noting keys: %s, %s, %d, %s", op.ID, portalID, onhand, capsule)
 
 	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
@@ -780,7 +708,7 @@ func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -803,7 +731,7 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -826,7 +754,7 @@ func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -837,7 +765,7 @@ func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	err = markerID.Reject(&op, gid)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -848,7 +776,7 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -859,7 +787,7 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	err = markerID.Acknowledge(&op, gid)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -870,7 +798,7 @@ func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
 	_, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -880,7 +808,7 @@ func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
 	s, err := op.ID.Stat()
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	data, _ := json.Marshal(s)
@@ -892,7 +820,7 @@ func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -904,7 +832,7 @@ func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 	err = gid.Assignments(op.ID, &a)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -936,70 +864,13 @@ func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, lls, http.StatusFound)
 }
 
-type friendlyPerms struct {
-	ID          wasabee.OperationID
-	Gid         wasabee.GoogleID // needed for TeamMenu GUI
-	Permissions []friendlyPerm
-}
-
-type friendlyPerm struct {
-	TeamID   wasabee.TeamID
-	Role     string
-	TeamName string
-}
-
-func pDrawPermsRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-
-	if !op.ReadAccess(gid) {
-		err = fmt.Errorf("permission to view permissions denied")
-		wasabee.Log.Notice(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
-		return
-	}
-
-	err = op.PopulateTeams()
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var fp friendlyPerms
-	fp.ID = op.ID
-	fp.Gid = gid
-	for _, v := range op.Teams {
-		tmp, _ := v.TeamID.Name()
-		tmpFp := friendlyPerm{
-			TeamID:   v.TeamID,
-			Role:     string(v.Role),
-			TeamName: string(tmp),
-		}
-		fp.Permissions = append(fp.Permissions, tmpFp)
-	}
-
-	if err = templateExecute(res, req, "opperms", fp); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-}
-
 func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -1029,12 +900,7 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if wantsJSON(req) {
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	url := fmt.Sprintf("%s/draw/%s/perms", apipath, op.ID)
-	http.Redirect(res, req, url, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -1043,7 +909,7 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -1073,10 +939,5 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if wantsJSON(req) {
-		fmt.Fprint(res, jsonStatusOK)
-		return
-	}
-	url := fmt.Sprintf("%s/draw/%s/perms", apipath, op.ID)
-	http.Redirect(res, req, url, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK)
 }
