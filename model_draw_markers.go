@@ -14,15 +14,17 @@ type MarkerType string
 
 // Marker is defined by the Wasabee IITC plugin.
 type Marker struct {
-	ID          MarkerID   `json:"ID"`
-	PortalID    PortalID   `json:"portalId"`
-	Type        MarkerType `json:"type"`
-	Comment     string     `json:"comment"`
-	AssignedTo  GoogleID   `json:"assignedTo"`
-	IngressName string     `json:"assignedNickname"`
-	CompletedBy string     `json:"completedBy"`
-	State       string     `json:"state"`
-	Order       int        `json:"order"`
+	ID           MarkerID   `json:"ID"`
+	PortalID     PortalID   `json:"portalId"`
+	Type         MarkerType `json:"type"`
+	Comment      string     `json:"comment"`
+	AssignedTo   GoogleID   `json:"assignedTo"`
+	AssignedTeam TeamID     `json:"assignedTeam"`
+	IngressName  string     `json:"assignedNickname"`
+	CompletedBy  string     `json:"completedBy"`
+	CompletedID  GoogleID   `json:"completedID"`
+	State        string     `json:"state"`
+	Order        int        `json:"order"`
 }
 
 // insertMarkers adds a marker to the database
@@ -66,17 +68,20 @@ func (opID OperationID) deleteMarker(mid MarkerID) error {
 // PopulateMarkers fills in the Markers list for the Operation. No authorization takes place.
 func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
-	var assignedGid, comment, assignedNick, completedBy sql.NullString
+
+	// original version used GID for completed, changed to name for early version of the app
+	// need to change back to just passing around the GID
+	var assignedGid, comment, assignedNick, completedBy, completedID sql.NullString
 
 	// XXX join with portals table, get name and order by name, don't expose it in this json -- will make the friendly in the https module easier
-	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
+	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order, &completedID)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -103,6 +108,11 @@ func (o *Operation) PopulateMarkers() error {
 			tmpMarker.CompletedBy = completedBy.String
 		} else {
 			tmpMarker.CompletedBy = ""
+		}
+		if completedID.Valid {
+			tmpMarker.CompletedID = GoogleID(completedID.String)
+		} else {
+			tmpMarker.CompletedID = ""
 		}
 		o.Markers = append(o.Markers, tmpMarker)
 	}

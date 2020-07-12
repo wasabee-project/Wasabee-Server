@@ -441,12 +441,12 @@ func TeamMenu(gid GoogleID, teamID TeamID) (template.HTML, error) {
 	return template.HTML(b.String()), nil
 }
 
-// teamList is used for getting a list of all an agent's (active) teams
+// teamList is used for getting a list of all an agent's active teams
 func (gid GoogleID) teamList() []TeamID {
 	var tid TeamID
 	var x []TeamID
 
-	rows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ?", gid)
+	rows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On'", gid)
 	if err != nil {
 		Log.Error(err)
 		return x

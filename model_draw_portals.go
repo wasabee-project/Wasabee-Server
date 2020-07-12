@@ -104,7 +104,7 @@ func (o *Operation) PopulateAnchors() error {
 		set[toPortalID] = true
 	}
 
-	for key, _ := range set {
+	for key := range set {
 		o.Anchors = append(o.Anchors, key)
 	}
 	return nil
