@@ -96,7 +96,14 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	var vdata Vresult
 	var rocks RocksAgent
 
-	// query both rocks and V at the same time
+	// If the ENL APIs are not configured/enabled
+	// ask the pub/sub federation if anyone else knows about the agent
+	// the data will be updated in the background if/when anyone responds
+	if !GetvEnlOne() && !GetEnlRocks() {
+		gid.PSRequest()
+	}
+
+	// query both rocks and V at the same time -- returns quickly if the API is not enabled
 	channel := make(chan error, 2)
 	go func() {
 		channel <- VSearch(gid, &vdata)
@@ -116,6 +123,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	if vdata.Data.Agent != "" {
+		// if we got data, and the user already exists (not first login) update if necessary
 		err = gid.VUpdate(&vdata)
 		if err != nil {
 			Log.Notice(err)
@@ -143,6 +151,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	if rocks.Agent != "" {
+		// if we got data, and the user already exists (not first login) update if necessary
 		err = RocksUpdate(gid, &rocks)
 		if err != nil {
 			Log.Notice(err)
@@ -163,14 +172,14 @@ func (gid GoogleID) InitAgent() (bool, error) {
 
 	if tmpName == "" {
 		// use enlio only for agent name, only if .rocks and V fail
+		// XXX make sure the user doesn't already exist, don't bother enl.io if we don't need to
+		Log.Debugf("querying enlio for agent name for gid: %s", gid.String())
 		tmpName, _ = gid.enlioQuery()
 	}
 
 	if tmpName == "" {
-		// err := fmt.Errorf("gid %s not found at rocks or V", gid.String())
-		// Log.Error(err)
-		// return false, err
 		tmpName = "UnverifiedAgent_" + gid.String()[:15]
+		Log.Debugf("using %s for gid: %s", tmpName, gid.String())
 	}
 
 	// if the agent doesn't exist, prepopulate everything
@@ -218,9 +227,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	var Vid sql.NullString
 	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ud.VVerified, &ud.VBlacklisted, &Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
 	if err != nil && err == sql.ErrNoRows {
-		// if you delete yourself and don't wait for your session cookie to expire to rejoin...
-		err = fmt.Errorf("unknown GoogleID: [%s] try restarting your browser", gid)
-		gid.Logout("broken cookie")
+		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
 	}
 	if err != nil {

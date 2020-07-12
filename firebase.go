@@ -55,7 +55,7 @@ func FirebaseClose() {
 }
 
 func (cc FirebaseCommandCode) String() string {
-	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe","Login"}[cc]
+	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe", "Login"}[cc]
 }
 
 // Functions called from Wasabee to message the firebase subsystem
@@ -208,7 +208,7 @@ func (gid GoogleID) FirebaseAgentLogin() {
 		return
 	}
 
-	tl := gid.teamList();
+	tl := gid.teamList()
 	for _, teamID := range tl {
 		fbPush(FirebaseCmd{
 			Cmd:    FbccAgentLogin,
@@ -252,7 +252,7 @@ func (gid GoogleID) FirebaseTokens() ([]string, error) {
 // FirebaseInsertToken updates a token in the database for an agent
 // gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers) -- need a cleaning mechanism
 func (gid GoogleID) FirebaseInsertToken(token string) error {
-	var count int;
+	var count int
 	err := db.QueryRow("SELECT COUNT(gid) FROM firebase WHERE token = ? AND gid = ?", token, gid).Scan(&count)
 	if err != nil {
 		Log.Error(err)

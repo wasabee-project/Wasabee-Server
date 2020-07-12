@@ -2,9 +2,10 @@ package wasabeepubsub
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"time"
 	"os"
+	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/wasabee-project/Wasabee-Server"
@@ -16,9 +17,9 @@ var topic *pubsub.Topic
 var cancel context.CancelFunc
 
 type Configuration struct {
-	Cert	string
-	Topic	string
-	Project	string
+	Cert         string
+	Topic        string
+	Project      string
 	Subscription string
 }
 
@@ -74,7 +75,7 @@ func StartPubSub(config Configuration) error {
 
 	if config.Subscription == "" {
 		hostname, _ := os.Hostname()
-		config.Subscription = fmt.Sprintf("%s-%s", config.Topic, hostname);
+		config.Subscription = fmt.Sprintf("%s-%s", config.Topic, hostname)
 	}
 
 	mainsub := client.Subscription(config.Subscription)
@@ -88,9 +89,9 @@ func StartPubSub(config Configuration) error {
 
 		duration, _ := time.ParseDuration("11m")
 		mainsub, err = client.CreateSubscription(context.Background(), config.Subscription, pubsub.SubscriptionConfig{
-			Topic: topic,
+			Topic:               topic,
 			RetainAckedMessages: false,
-			RetentionDuration: duration,
+			RetentionDuration:   duration,
 		})
 		if err != nil {
 			wasabee.Log.Error(err)
@@ -107,21 +108,10 @@ func StartPubSub(config Configuration) error {
 	defer close(mainchan)
 
 	// spin up listener to listen for messages on the main channel
-	go func() {
-		for msg := range mainchan {
-			wasabee.Log.Debugf("Got pubsub message on topic %s: %q\n", config.Topic, string(msg.Data))
-			msg.Ack()
-		}
-	}()
+	go listenForPubSubMessages(mainchan)
 
 	// spin up listener for commands from wasabee
-	go func () {
-		cmdchan := wasabee.PubSubInit()
-		for cmd := range cmdchan {
-			wasabee.Log.Debugf("PubSub cmd from wasabee %s", cmd);
-		}
-		Shutdown()
-	}()
+	go listenForWasabeeCommands()
 
 	// Receive blocks until the context is cancelled or an error occurs.
 	err = mainsub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
@@ -132,8 +122,60 @@ func StartPubSub(config Configuration) error {
 		wasabee.Log.Errorf("Receive: %v", err)
 		return err
 	}
+	wasabee.Log.Notice("PubSub exiting")
 
 	return nil
+}
+
+func listenForPubSubMessages(mainchan chan *pubsub.Message) {
+	hostname, _ := os.Hostname()
+
+	for msg := range mainchan {
+		wasabee.Log.Debugf("Got pubsub message: %q\n", string(msg.Data))
+		msg.Ack()
+		if msg.Attributes["Sender"] == hostname {
+			// wasabee.Log.Debug("ignoring message from me")
+			continue
+		}
+		switch msg.Attributes["Type"] {
+		case "request":
+			wasabee.Log.Debugf("requesing %s", msg.Attributes["Gid"])
+			respond(msg.Attributes["Gid"])
+			break
+		case "agent":
+			wasabee.Log.Debugf("response for %s", msg.Attributes["Gid"])
+			var ad wasabee.AgentData
+			err := json.Unmarshal(msg.Data, &ad)
+			if err != nil {
+				wasabee.Log.Error(err)
+				continue
+			}
+			// XXX TODO FIXME save the Agent
+			break
+		default:
+			wasabee.Log.Debug("unknown message type %s", msg.Attributes["Type"])
+		}
+	}
+
+}
+
+func listenForWasabeeCommands() {
+	cmdchan := wasabee.PubSubInit()
+	for cmd := range cmdchan {
+		switch cmd.Command {
+		case "request":
+			wasabee.Log.Debugf("request cmd from wasabee %s(%s)", cmd.Command, cmd.Param)
+			err := request(cmd.Param)
+			if err != nil {
+				wasabee.Log.Error(err)
+			}
+			break
+		default:
+			wasabee.Log.Notice("unknown pub/sub command", cmd.Command)
+		}
+
+	}
+	Shutdown()
 }
 
 // shutdown calls the subscription receive cancel function, triggering Start() to return
@@ -142,29 +184,75 @@ func Shutdown() error {
 	return nil
 }
 
-func Send() error {
+func request(gid string) error {
 	ctx := context.Background()
+	hostname, _ := os.Hostname()
 
-	var results []*pubsub.PublishResult
-	r := topic.Publish(ctx, &pubsub.Message{
-		Data: []byte("hello world"),
+	var atts map[string]string
+	atts = make(map[string]string)
+	atts["Type"] = "request"
+	atts["Gid"] = gid
+	atts["Sender"] = hostname
+
+	topic.Publish(ctx, &pubsub.Message{
+		Attributes: atts,
+		Data:       []byte("."),
 	})
-	results = append(results, r)
-	for _, r := range results {
-		id, err := r.Get(ctx)
-		if err != nil {
-			wasabee.Log.Notice(err)
-			//break
-		}
-		wasabee.Log.Debugf("Published a message with a message ID: %s\n", id)
+
+	return nil
+}
+
+func respond(g string) error {
+	// if the APIs are not running, don't respond
+	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
+		return nil
 	}
 
+	ctx := context.Background()
+	hostname, _ := os.Hostname()
+
+	gid := wasabee.GoogleID(g)
+
+	// make sure we have the most current info from the APIs
+	_, err := gid.InitAgent()
+
+	var ad wasabee.AgentData
+	err = gid.GetAgentData(&ad)
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	// we do not need to send team/op data across
+	ad.OwnedTeams = nil
+	ad.Teams = nil
+	ad.Ops = nil
+	ad.OwnedOps = nil
+	ad.Assignments = nil
+
+	d, err := json.Marshal(ad)
+	if err != nil {
+		wasabee.Log.Error(err)
+	}
+
+	var atts map[string]string
+	atts = make(map[string]string)
+	atts["Type"] = "agent"
+	atts["Gid"] = g
+	atts["Sender"] = hostname
+	if wasabee.GetvEnlOne() || wasabee.GetEnlRocks() {
+		atts["Authoratative"] = "true"
+	}
+
+	topic.Publish(ctx, &pubsub.Message{
+		Attributes: atts,
+		Data:       d,
+	})
 	return nil
 }
 
 func removeTopicIfNoSubscriptions() {
 	i := 0
-	for subs := topic.Subscriptions(context.Background()) ; ;  {
+	for subs := topic.Subscriptions(context.Background()); ; {
 		sub, err := subs.Next()
 		if err == iterator.Done {
 			break
@@ -175,8 +263,9 @@ func removeTopicIfNoSubscriptions() {
 		wasabee.Log.Debugf("Remaining subscription: %s", sub)
 		i++
 	}
-	// 1 because our own subscription might be still around 
-	if i <= 1  {
+	// 1 because our own subscription might be still around
+	if i <= 1 {
+		wasabee.Log.Debug("No remaining subscriptions, shutting down topic")
 		err := topic.Delete(context.Background())
 		if err != nil {
 			wasabee.Log.Error(err)
