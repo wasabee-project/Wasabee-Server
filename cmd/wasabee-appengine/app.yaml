@@ -1,0 +1,13 @@
+runtime: go1.14
+env: flex
+# instance_class: F1
+#main: ./cmd/wasabee-appengine
+service: wasabee-appengine
+
+# limit system size
+manual_scaling:
+  instances: 1
+resources:
+  cpu: 1
+  memory_gb: 0.5
+  disk_size_gb: 10
