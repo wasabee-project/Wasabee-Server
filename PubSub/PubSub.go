@@ -26,6 +26,7 @@ type Configuration struct {
 // StartPubSub is the main startup function for the PubSub subsystem
 func StartPubSub(config Configuration) error {
 	wasabee.Log.Debugf("starting PubSub: %s %s %s", config.Cert, config.Project, config.Topic)
+	hostname, _ := os.Hostname()
 
 	// var err error
 	// var client *pubsub.Client
@@ -74,7 +75,6 @@ func StartPubSub(config Configuration) error {
 	defer removeTopicIfNoSubscriptions()
 
 	if config.Subscription == "" {
-		hostname, _ := os.Hostname()
 		config.Subscription = fmt.Sprintf("%s-%s", config.Topic, hostname)
 	}
 
@@ -86,19 +86,26 @@ func StartPubSub(config Configuration) error {
 	}
 	if !ok {
 		wasabee.Log.Debugf("Creating subscription: %s", config.Subscription)
+		// if I do not have the ENL APIs enabled, only listen for responses to me
+		var filter string
+		if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
+			filter = fmt.Sprintf("attributes:\"RespondingTo\" AND attributes.RespondingTo = \"%s\"", hostname)
+			wasabee.Log.Debug("only listening to responses to my requests: %s", filter)
+		}
 
 		duration, _ := time.ParseDuration("11m")
 		mainsub, err = client.CreateSubscription(context.Background(), config.Subscription, pubsub.SubscriptionConfig{
 			Topic:               topic,
 			RetainAckedMessages: false,
 			RetentionDuration:   duration,
+			// Filter:              filter, // this is an alpha API and might not work
 		})
 		if err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
 	} else {
-		wasabee.Log.Infof("found subscription: %s - lingering from unclean shutdown?", config.Subscription)
+		wasabee.Log.Infof("found subscription: %s (lingering from unclean shutdown?)", config.Subscription)
 	}
 	mainsub.ReceiveSettings.Synchronous = false
 	mainsub.ReceiveSettings.NumGoroutines = 2
@@ -131,18 +138,21 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 	hostname, _ := os.Hostname()
 
 	for msg := range mainchan {
-		wasabee.Log.Debugf("Got pubsub message: %q\n", string(msg.Data))
-		msg.Ack()
 		if msg.Attributes["Sender"] == hostname {
 			// wasabee.Log.Debug("ignoring message from me")
 			continue
 		}
+		msg.Ack()
 		switch msg.Attributes["Type"] {
 		case "request":
 			wasabee.Log.Debugf("requesing %s", msg.Attributes["Gid"])
-			respond(msg.Attributes["Gid"])
+			respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
 			break
 		case "agent":
+			if msg.Attributes["RespondingTo"] != hostname {
+				wasabee.Log.Debug("ignoring response not intended for me")
+				break
+			}
 			wasabee.Log.Debugf("response for %s", msg.Attributes["Gid"])
 			var ad wasabee.AgentData
 			err := json.Unmarshal(msg.Data, &ad)
@@ -150,13 +160,16 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 				wasabee.Log.Error(err)
 				continue
 			}
-			// XXX TODO FIXME save the Agent
+			err = ad.Save()
+			if err != nil {
+				wasabee.Log.Error(err)
+				continue
+			}
 			break
 		default:
 			wasabee.Log.Debug("unknown message type %s", msg.Attributes["Type"])
 		}
 	}
-
 }
 
 func listenForWasabeeCommands() {
@@ -164,14 +177,13 @@ func listenForWasabeeCommands() {
 	for cmd := range cmdchan {
 		switch cmd.Command {
 		case "request":
-			wasabee.Log.Debugf("request cmd from wasabee %s(%s)", cmd.Command, cmd.Param)
 			err := request(cmd.Param)
 			if err != nil {
 				wasabee.Log.Error(err)
 			}
 			break
 		default:
-			wasabee.Log.Notice("unknown pub/sub command", cmd.Command)
+			wasabee.Log.Notice("unknown PubSub command: %s", cmd.Command)
 		}
 
 	}
@@ -196,13 +208,13 @@ func request(gid string) error {
 
 	topic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
-		Data:       []byte("."),
+		Data:       []byte(""),
 	})
 
 	return nil
 }
 
-func respond(g string) error {
+func respond(g string, sender string) error {
 	// if the APIs are not running, don't respond
 	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
 		return nil
@@ -239,6 +251,7 @@ func respond(g string) error {
 	atts["Type"] = "agent"
 	atts["Gid"] = g
 	atts["Sender"] = hostname
+	atts["RespondingTo"] = sender
 	if wasabee.GetvEnlOne() || wasabee.GetEnlRocks() {
 		atts["Authoratative"] = "true"
 	}
@@ -260,12 +273,11 @@ func removeTopicIfNoSubscriptions() {
 		if err != nil {
 			wasabee.Log.Error(err)
 		}
-		wasabee.Log.Debugf("Remaining subscription: %s", sub)
+		wasabee.Log.Debugf("remaining subscription: %s", sub)
 		i++
 	}
-	// 1 because our own subscription might be still around
-	if i <= 1 {
-		wasabee.Log.Debug("No remaining subscriptions, shutting down topic")
+	if i == 0 {
+		wasabee.Log.Debug("no remaining subscriptions, shutting down topic")
 		err := topic.Delete(context.Background())
 		if err != nil {
 			wasabee.Log.Error(err)
