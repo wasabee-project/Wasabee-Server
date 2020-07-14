@@ -90,7 +90,7 @@ func StartPubSub(config Configuration) error {
 		var filter string
 		if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
 			filter = fmt.Sprintf("attributes:\"RespondingTo\" AND attributes.RespondingTo = \"%s\"", hostname)
-			wasabee.Log.Debug("only listening to responses to my requests: %s", filter)
+			wasabee.Log.Debugf("only listening to responses to my requests: %s", filter)
 		}
 
 		duration, _ := time.ParseDuration("11m")
