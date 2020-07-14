@@ -1,7 +1,6 @@
 package wasabeetelegram
 
 import (
-	// "errors"
 	"encoding/json"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -53,7 +52,6 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	jRaw := json.RawMessage(jBlob)
-	// wasabee.Log.Debug(string(jRaw))
 
 	var update tgbotapi.Update
 	err = json.Unmarshal(jRaw, &update)
@@ -63,9 +61,9 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// put the update into the subsystem update channel for processing by the bot logic
 	config.upChan <- update
 
-	// XXX probably not needed
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(res, "{Status: 'OK'}")
 }

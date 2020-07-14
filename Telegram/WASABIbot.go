@@ -237,7 +237,7 @@ func keyboards(c *TGConfiguration) {
 			tgbotapi.NewKeyboardButton("Teams"),
 			tgbotapi.NewKeyboardButton("Teammates Nearby"),
 		),
-		/* -- disable until can be brought up to current 
+		/* -- disable until can be brought up to current
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("My Assignments"),
 			tgbotapi.NewKeyboardButton("Nearby Tasks"),

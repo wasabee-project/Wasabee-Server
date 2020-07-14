@@ -99,7 +99,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	// If the ENL APIs are not configured/enabled
 	// ask the pub/sub federation if anyone else knows about the agent
 	// the data will be updated in the background if/when anyone responds
-	if !GetvEnlOne() && !GetEnlRocks() {
+	if !GetvEnlOne() || !GetEnlRocks() {
 		gid.PSRequest()
 	}
 
@@ -742,4 +742,9 @@ func ToGid(in string) (GoogleID, error) {
 		Log.Info(err, in)
 	}
 	return gid, err
+}
+
+func (ad AgentData) Save() error {
+	err := fmt.Errorf("saving agent data not implemented yet")
+	return err
 }

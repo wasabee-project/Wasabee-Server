@@ -1,2 +1,5 @@
-// rebuild location table if it gets trashed again
-// insert into locations (gid, upTime, loc) SELECT gid, NOW(), POINT(0,0) FROM user;
+Assign multiple agents to marker
+Assign squad to marker (same as above, but wrapped in foreach...)
+Update/improve telegram bot
+finish pub/sub ad.Save()
+
