@@ -146,8 +146,8 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 			continue
 		}
 		switch msg.Attributes["Type"] {
-		case "hearbeat":
-			wasabee.Log.Debug("[%s] sent heartbeat", msg.Attributes["Sender"])
+		case "heartbeat":
+			wasabee.Log.Debug("[%s] received heartbeat", msg.Attributes["Sender"])
 			msg.Ack()
 			break
 		case "request":
@@ -175,7 +175,7 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 			msg.Ack()
 			break
 		default:
-			wasabee.Log.Debugf("unknown message type %s", msg.Attributes["Type"])
+			wasabee.Log.Debugf("unknown message type [%s]", msg.Attributes["Type"])
 			msg.Ack()
 		}
 	}
