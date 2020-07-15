@@ -178,7 +178,12 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	if tmpName == "" {
-		tmpName = "UnverifiedAgent_" + gid.String()[:15]
+		// triggered this in testing -- should never happen IRL
+	 	length := 15
+	        if tmp := len(gid); tmp < length {
+			length = tmp
+		}
+		tmpName = "UnverifiedAgent_" + gid.String()[:length]
 		Log.Debugf("using %s for gid: %s", tmpName, gid.String())
 	}
 

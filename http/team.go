@@ -54,9 +54,12 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	teamList.RocksComm = ""
-	teamList.RocksKey = ""
-	teamList.JoinLinkToken = ""
+
+	if !isowner {
+		teamList.RocksComm = ""
+		teamList.RocksKey = ""
+		teamList.JoinLinkToken = ""
+	}
 
 	data, _ := json.Marshal(teamList)
 	fmt.Fprint(res, string(data))

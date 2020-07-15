@@ -90,7 +90,7 @@ func StartPubSub(config Configuration) error {
 		var filter string
 		if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
 			filter = fmt.Sprintf("attributes:\"RespondingTo\" AND attributes.RespondingTo = \"%s\"", hostname)
-			wasabee.Log.Debugf("only listening to responses to my requests: %s", filter)
+			wasabee.Log.Debugf("only listening to responses to my requests: %s [not active yet]", filter)
 		}
 
 		duration, _ := time.ParseDuration("11m")
@@ -120,6 +120,9 @@ func StartPubSub(config Configuration) error {
 	// spin up listener for commands from wasabee
 	go listenForWasabeeCommands()
 
+	// send some heartbeats for testing
+	go heartbeats()
+
 	// Receive blocks until the context is cancelled or an error occurs.
 	err = mainsub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
 		// push any messages received into the main channel
@@ -142,11 +145,15 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 			// wasabee.Log.Debug("ignoring message from me")
 			continue
 		}
-		msg.Ack()
 		switch msg.Attributes["Type"] {
+		case "hearbeat":
+			wasabee.Log.Debug("[%s] sent heartbeat", msg.Attributes["Sender"])
+			msg.Ack()
+			break
 		case "request":
-			wasabee.Log.Debugf("requesing %s", msg.Attributes["Gid"])
+			wasabee.Log.Debugf("[%s] requesing [%s]", msg.Attributes["Sender"], msg.Attributes["Gid"])
 			respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
+			msg.Ack()
 			break
 		case "agent":
 			if msg.Attributes["RespondingTo"] != hostname {
@@ -165,9 +172,11 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 				wasabee.Log.Error(err)
 				continue
 			}
+			msg.Ack()
 			break
 		default:
-			wasabee.Log.Debug("unknown message type %s", msg.Attributes["Type"])
+			wasabee.Log.Debugf("unknown message type %s", msg.Attributes["Type"])
+			msg.Ack()
 		}
 	}
 }
@@ -222,11 +231,17 @@ func respond(g string, sender string) error {
 
 	ctx := context.Background()
 	hostname, _ := os.Hostname()
+	wasabee.Log.Debug(hostname)
 
 	gid := wasabee.GoogleID(g)
+	wasabee.Log.Debug(gid.String)
 
 	// make sure we have the most current info from the APIs
 	_, err := gid.InitAgent()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
 
 	var ad wasabee.AgentData
 	err = gid.GetAgentData(&ad)
@@ -252,15 +267,36 @@ func respond(g string, sender string) error {
 	atts["Gid"] = g
 	atts["Sender"] = hostname
 	atts["RespondingTo"] = sender
-	if wasabee.GetvEnlOne() || wasabee.GetEnlRocks() {
+	if wasabee.GetvEnlOne() && wasabee.GetEnlRocks() {
 		atts["Authoratative"] = "true"
 	}
 
+	wasabee.Log.Debug("work done, publishing...")
 	topic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       d,
 	})
 	return nil
+}
+
+func heartbeats() {
+	ticker := time.NewTicker(120 * time.Second)
+	defer ticker.Stop()
+
+	var atts map[string]string
+	atts = make(map[string]string)
+	atts["Type"] = "heartbeat"
+	atts["Sender"], _ = os.Hostname()
+
+	// loop, sending a ping every 120 seconds
+	for {
+		t := <-ticker.C
+		atts["Time"] = t.String()
+
+		topic.Publish(context.Background(), &pubsub.Message{
+			Attributes: atts,
+		})
+	}
 }
 
 func removeTopicIfNoSubscriptions() {
