@@ -147,20 +147,28 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 		}
 		switch msg.Attributes["Type"] {
 		case "heartbeat":
-			wasabee.Log.Debug("[%s] received heartbeat", msg.Attributes["Sender"])
+			wasabee.Log.Debugf("received heartbeat from [%s]", msg.Attributes["Sender"])
 			msg.Ack()
 			break
 		case "request":
 			wasabee.Log.Debugf("[%s] requesing [%s]", msg.Attributes["Sender"], msg.Attributes["Gid"])
-			respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
-			msg.Ack()
+			ack, err := respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
+			if err != nil {
+				wasabee.Log.Debug(err)
+			}
+			if ack {
+				msg.Ack()
+			}
 			break
 		case "agent":
 			if msg.Attributes["RespondingTo"] != hostname {
 				wasabee.Log.Debug("ignoring response not intended for me")
 				break
 			}
-			wasabee.Log.Debugf("response for %s", msg.Attributes["Gid"])
+			wasabee.Log.Debugf("response for [%s]", msg.Attributes["Gid"])
+			if msg.Attributes["Authorative"] == "true" {
+				wasabee.Log.Debugf("authoritative")
+			}
 			var ad wasabee.AgentData
 			err := json.Unmarshal(msg.Data, &ad)
 			if err != nil {
@@ -223,10 +231,10 @@ func request(gid string) error {
 	return nil
 }
 
-func respond(g string, sender string) error {
+func respond(g string, sender string) (bool, error) {
 	// if the APIs are not running, don't respond
 	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
-		return nil
+		return false, nil
 	}
 
 	ctx := context.Background()
@@ -240,14 +248,14 @@ func respond(g string, sender string) error {
 	_, err := gid.InitAgent()
 	if err != nil {
 		wasabee.Log.Error(err)
-		return err
+		return false, err
 	}
 
 	var ad wasabee.AgentData
 	err = gid.GetAgentData(&ad)
 	if err != nil {
 		wasabee.Log.Error(err)
-		return err
+		return false, err
 	}
 	// we do not need to send team/op data across
 	ad.OwnedTeams = nil
@@ -259,6 +267,7 @@ func respond(g string, sender string) error {
 	d, err := json.Marshal(ad)
 	if err != nil {
 		wasabee.Log.Error(err)
+		return false, err
 	}
 
 	var atts map[string]string
@@ -276,11 +285,11 @@ func respond(g string, sender string) error {
 		Attributes: atts,
 		Data:       d,
 	})
-	return nil
+	return true, nil
 }
 
 func heartbeats() {
-	ticker := time.NewTicker(120 * time.Second)
+	ticker := time.NewTicker(30 * time.Minute)
 	defer ticker.Stop()
 
 	var atts map[string]string
@@ -288,7 +297,6 @@ func heartbeats() {
 	atts["Type"] = "heartbeat"
 	atts["Sender"], _ = os.Hostname()
 
-	// loop, sending a ping every 120 seconds
 	for {
 		t := <-ticker.C
 		atts["Time"] = t.String()
