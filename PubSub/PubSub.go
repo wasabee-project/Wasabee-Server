@@ -20,13 +20,13 @@ type Configuration struct {
 	Cert         string
 	Topic        string
 	Project      string
-	Subscription string
+	subscription string
+	responder    bool
 }
 
 // StartPubSub is the main startup function for the PubSub subsystem
 func StartPubSub(config Configuration) error {
 	wasabee.Log.Debugf("starting PubSub: %s %s %s", config.Cert, config.Project, config.Topic)
-	hostname, _ := os.Hostname()
 
 	// var err error
 	// var client *pubsub.Client
@@ -68,44 +68,40 @@ func StartPubSub(config Configuration) error {
 		if err != nil {
 			wasabee.Log.Error(err)
 		}
-	} else {
-		wasabee.Log.Debugf("Using existing topic: %s", config.Topic)
 	}
 	defer topic.Stop()
-	defer removeTopicIfNoSubscriptions()
+	// defer removeTopicIfNoSubscriptions()
 
-	if config.Subscription == "" {
-		config.Subscription = fmt.Sprintf("%s-%s", config.Topic, hostname)
+	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
+		// use the subscription for those who only request
+		config.subscription = fmt.Sprintf("%s-requester", config.Topic)
+		config.responder = false
+	} else {
+		// use the subscription for those who respond to requests
+		config.subscription = fmt.Sprintf("%s-responder", config.Topic)
+		config.responder = true
 	}
 
-	mainsub := client.Subscription(config.Subscription)
+	mainsub := client.Subscription(config.subscription)
 	ok, err = mainsub.Exists(context.Background())
 	if err != nil {
 		wasabee.Log.Error(err)
 		return err
 	}
 	if !ok {
-		wasabee.Log.Debugf("Creating subscription: %s", config.Subscription)
-		// if I do not have the ENL APIs enabled, only listen for responses to me
-		var filter string
-		if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
-			filter = fmt.Sprintf("attributes:\"RespondingTo\" AND attributes.RespondingTo = \"%s\"", hostname)
-			wasabee.Log.Debugf("only listening to responses to my requests: %s [not active yet]", filter)
-		}
-
+		wasabee.Log.Debugf("Creating subscription: %s", config.subscription)
 		duration, _ := time.ParseDuration("11m")
-		mainsub, err = client.CreateSubscription(context.Background(), config.Subscription, pubsub.SubscriptionConfig{
+		mainsub, err = client.CreateSubscription(context.Background(), config.subscription, pubsub.SubscriptionConfig{
 			Topic:               topic,
 			RetainAckedMessages: false,
 			RetentionDuration:   duration,
-			// Filter:              filter, // this is an alpha API and might not work
 		})
 		if err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
 	} else {
-		wasabee.Log.Infof("found subscription: %s (lingering from unclean shutdown?)", config.Subscription)
+		wasabee.Log.Infof("using subscription: %s", config.subscription)
 	}
 	mainsub.ReceiveSettings.Synchronous = false
 	mainsub.ReceiveSettings.NumGoroutines = 2
@@ -115,7 +111,7 @@ func StartPubSub(config Configuration) error {
 	defer close(mainchan)
 
 	// spin up listener to listen for messages on the main channel
-	go listenForPubSubMessages(mainchan)
+	go listenForPubSubMessages(mainchan, config)
 
 	// spin up listener for commands from wasabee
 	go listenForWasabeeCommands()
@@ -137,7 +133,7 @@ func StartPubSub(config Configuration) error {
 	return nil
 }
 
-func listenForPubSubMessages(mainchan chan *pubsub.Message) {
+func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration) {
 	hostname, _ := os.Hostname()
 
 	for msg := range mainchan {
@@ -147,22 +143,38 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 		}
 		switch msg.Attributes["Type"] {
 		case "heartbeat":
+			// these can safely be Ack'd by anyone
 			wasabee.Log.Debugf("received heartbeat from [%s]", msg.Attributes["Sender"])
 			msg.Ack()
 			break
 		case "request":
+			if !config.responder {
+				// anyone on the requester subscription can Ack it
+				msg.Ack()
+				break;
+			}
 			wasabee.Log.Debugf("[%s] requesing [%s]", msg.Attributes["Sender"], msg.Attributes["Gid"])
 			ack, err := respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
 			if err != nil {
 				wasabee.Log.Debug(err)
+				msg.Nack()
+				break
 			}
 			if ack {
 				msg.Ack()
+			} else {
+				msg.Nack()
 			}
 			break
 		case "agent":
+			if config.responder {
+				// anyone on the responder subscription can Ack it
+				msg.Ack()
+				break;
+			}
 			if msg.Attributes["RespondingTo"] != hostname {
 				wasabee.Log.Debug("ignoring response not intended for me")
+				msg.Nack() // let other requesters see it
 				break
 			}
 			wasabee.Log.Debugf("response for [%s]", msg.Attributes["Gid"])
@@ -184,6 +196,7 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message) {
 			break
 		default:
 			wasabee.Log.Debugf("unknown message type [%s]", msg.Attributes["Type"])
+			// get it off the subscription quickly
 			msg.Ack()
 		}
 	}
