@@ -70,7 +70,6 @@ func StartPubSub(config Configuration) error {
 		}
 	}
 	defer topic.Stop()
-	// defer removeTopicIfNoSubscriptions()
 
 	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
 		// use the subscription for those who only request
@@ -105,7 +104,6 @@ func StartPubSub(config Configuration) error {
 	}
 	mainsub.ReceiveSettings.Synchronous = false
 	mainsub.ReceiveSettings.NumGoroutines = 2
-	defer mainsub.Delete(context.Background())
 
 	mainchan := make(chan *pubsub.Message)
 	defer close(mainchan)
@@ -317,27 +315,5 @@ func heartbeats() {
 		topic.Publish(context.Background(), &pubsub.Message{
 			Attributes: atts,
 		})
-	}
-}
-
-func removeTopicIfNoSubscriptions() {
-	i := 0
-	for subs := topic.Subscriptions(context.Background()); ; {
-		sub, err := subs.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			wasabee.Log.Error(err)
-		}
-		wasabee.Log.Debugf("remaining subscription: %s", sub)
-		i++
-	}
-	if i == 0 {
-		wasabee.Log.Debug("no remaining subscriptions, shutting down topic")
-		err := topic.Delete(context.Background())
-		if err != nil {
-			wasabee.Log.Error(err)
-		}
 	}
 }
