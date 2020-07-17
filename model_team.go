@@ -3,9 +3,7 @@ package wasabee
 import (
 	"database/sql"
 	"fmt"
-	"html/template"
 	"strconv"
-	"strings"
 )
 
 // TeamData is the wrapper type containing all the team info
@@ -407,38 +405,6 @@ func (teamID TeamID) Name() (string, error) {
 		return "", err
 	}
 	return name, nil
-}
-
-// TeamMenu is used for html templates {{TeamMenu .Gid .TeamID}} .Gid is the user's GoogleID, TeamID is the current Op's teamID (for setting selected)
-func TeamMenu(gid GoogleID, teamID TeamID) (template.HTML, error) {
-	rows, err := db.Query("SELECT t.name, t.teamID FROM agentteams=x, team=t WHERE x.gid = ? AND x.teamID = t.teamID", gid)
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
-	defer rows.Close()
-
-	var b strings.Builder
-	var name string
-	var tid string
-
-	_, _ = b.WriteString(`<select name="team">`)
-	for rows.Next() {
-		err := rows.Scan(&name, &tid)
-		if err != nil {
-			Log.Error(err)
-			continue
-		}
-		if tid == string(teamID) {
-			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\" selected=\"selected\">%s</option>", tid, name))
-		} else {
-			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\">%s</option>", tid, name))
-		}
-	}
-	_, _ = b.WriteString(`</select>`)
-	// #nosec
-	return template.HTML(b.String()), nil
 }
 
 // teamList is used for getting a list of all an agent's active teams
