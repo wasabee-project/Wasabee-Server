@@ -191,6 +191,22 @@ func StartHTTP(initialConfig Configuration) {
 	}
 }
 
+// StartAppEngine is used in Google App Engine in place of StartHTTP
+func StartAppEngine(ic Configuration) {
+	initializeConfig(ic)
+
+	router := setupRouter()
+	config.srv = &http.Server{
+		Handler: router,
+		Addr: config.ListenHTTPS,
+	}
+
+        if err := config.srv.ListenAndServe(); err != nil {
+		wasabee.Log.Errorf("HTTPS server error: %s", err)
+		panic(err)
+	}
+}
+
 // Shutdown forces a graceful shutdown of the https server
 func Shutdown() error {
 	wasabee.Log.Info("Shutting down HTTPS server")
