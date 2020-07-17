@@ -117,6 +117,7 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 			if ack {
 				msg.Ack()
 			} else {
+				wasabee.Log.Debugf("Nacking response for [%s] requested by [%s]", msg.Attributes["Gid"], msg.Attributes["Sender"])
 				msg.Nack()
 			}
 			break
@@ -128,7 +129,7 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 			}
 			if msg.Attributes["RespondingTo"] != hostname {
 				wasabee.Log.Debug("ignoring response not intended for me")
-				msg.Nack() // let other requesters see it
+				msg.Ack()
 				break
 			}
 			wasabee.Log.Debugf("response for [%s]", msg.Attributes["Gid"])
