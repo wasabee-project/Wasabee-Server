@@ -1,13 +1,14 @@
-runtime: go1.14
-env: flex
-# instance_class: F1
-#main: ./cmd/wasabee-appengine
+runtime: go114
 service: wasabee-appengine
+# configure as JP node for now
+env_variables:
+  OAUTH_CLIENT_SECRET: "EKXwyE1XIPWmVmwCJdOTDHU2"
+  OAUTH_CLIENT_ID: "269534461245-sfc20vmosho74numq84psdplj397t3hd.apps.googleusercontent.com"
+  BUCKET: "us.artifacts.phdevbin.appspot.com"
+  FRONTEND_PATH: "wasabee/frontend"
+  WORDS_PATH: "wasabee/words.txt"
+  DATABASE: "wasabee:rrytGHrrs@tcp(10.27.224.3)/wasabee"
+  SESSION_KEY: "faVRiva;uUInva9fanv9934nV902@3nv"
 
-# limit system size
-manual_scaling:
-  instances: 1
-resources:
-  cpu: 1
-  memory_gb: 0.5
-  disk_size_gb: 10
+basic_scaling:
+  max_instances: 1
