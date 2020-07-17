@@ -26,7 +26,7 @@ type Configuration struct {
 
 // StartPubSub is the main startup function for the PubSub subsystem
 func StartPubSub(config Configuration) error {
-	wasabee.Log.Debugf("starting PubSub: %s %s %s", config.Cert, config.Project, config.Topic)
+	wasabee.Log.Debugf("starting PubSub: [%s] %s %s", config.Cert, config.Project, config.Topic)
 
 	// var err error
 	// var client *pubsub.Client
@@ -35,7 +35,9 @@ func StartPubSub(config Configuration) error {
 	ctx := context.Background()
 	cctx, cancel = context.WithCancel(ctx)
 
-	client, err := pubsub.NewClient(ctx, config.Project, option.WithCredentialsFile(config.Cert))
+	opt := option.WithCredentialsFile(config.Cert)
+
+	client, err := pubsub.NewClient(ctx, config.Project, opt)
 	if err != nil {
 		err := fmt.Errorf("error initializing pubsub: %v", err)
 		wasabee.Log.Error(err)
