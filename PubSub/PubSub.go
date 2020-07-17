@@ -9,7 +9,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/wasabee-project/Wasabee-Server"
-	"google.golang.org/api/iterator"
+	// "google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
@@ -39,39 +39,13 @@ func StartPubSub(config Configuration) error {
 
 	client, err := pubsub.NewClient(ctx, config.Project, opt)
 	if err != nil {
-		err := fmt.Errorf("error initializing pubsub: %v", err)
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorf("error initializing pubsub: %v", err)
 		return err
 	}
 	defer client.Close()
 
-	topics := client.Topics(ctx)
-	for {
-		t, err := topics.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			wasabee.Log.Error(err)
-			break
-		}
-		wasabee.Log.Debugf("Found pubsub topic: %s", t)
-	}
-
 	topic = client.Topic(config.Topic)
-	ok, err := topic.Exists(ctx)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	if !ok {
-		wasabee.Log.Noticef("Creating topic: %s", config.Topic)
-		topic, err = client.CreateTopic(ctx, config.Topic)
-		if err != nil {
-			wasabee.Log.Error(err)
-		}
-	}
-	defer topic.Stop()
+	// defer topic.Stop()
 
 	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
 		// use the subscription for those who only request
@@ -83,27 +57,8 @@ func StartPubSub(config Configuration) error {
 		config.responder = true
 	}
 
+	wasabee.Log.Infof("using subscription: %s", config.subscription)
 	mainsub := client.Subscription(config.subscription)
-	ok, err = mainsub.Exists(context.Background())
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	if !ok {
-		wasabee.Log.Debugf("Creating subscription: %s", config.subscription)
-		duration, _ := time.ParseDuration("11m")
-		mainsub, err = client.CreateSubscription(context.Background(), config.subscription, pubsub.SubscriptionConfig{
-			Topic:               topic,
-			RetainAckedMessages: false,
-			RetentionDuration:   duration,
-		})
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
-	} else {
-		wasabee.Log.Infof("using subscription: %s", config.subscription)
-	}
 	mainsub.ReceiveSettings.Synchronous = false
 	mainsub.ReceiveSettings.NumGoroutines = 2
 
@@ -125,11 +80,10 @@ func StartPubSub(config Configuration) error {
 		mainchan <- msg
 	})
 	if err != nil {
-		wasabee.Log.Errorf("Receive: %v", err)
+		wasabee.Log.Errorf("receive: %v", err)
 		return err
 	}
 	wasabee.Log.Notice("PubSub exiting")
-
 	return nil
 }
 
@@ -151,7 +105,7 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 			if !config.responder {
 				// anyone on the requester subscription can Ack it
 				msg.Ack()
-				break;
+				break
 			}
 			wasabee.Log.Debugf("[%s] requesing [%s]", msg.Attributes["Sender"], msg.Attributes["Gid"])
 			ack, err := respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
@@ -170,7 +124,7 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 			if config.responder {
 				// anyone on the responder subscription can Ack it
 				msg.Ack()
-				break;
+				break
 			}
 			if msg.Attributes["RespondingTo"] != hostname {
 				wasabee.Log.Debug("ignoring response not intended for me")

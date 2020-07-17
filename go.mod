@@ -3,7 +3,7 @@ module github.com/wasabee-project/Wasabee-Server
 go 1.14
 
 require (
-	cloud.google.com/go v0.60.0
+	cloud.google.com/go v0.61.0
 	cloud.google.com/go/firestore v1.2.0 // indirect
 	cloud.google.com/go/pubsub v1.5.0
 	cloud.google.com/go/storage v1.10.0
@@ -28,9 +28,9 @@ require (
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	golang.org/x/tools v0.0.0-20200713160548-f739c553ea89 // indirect
+	golang.org/x/tools v0.0.0-20200717024301-6ddee64345a6 // indirect
 	google.golang.org/api v0.29.0
-	google.golang.org/genproto v0.0.0-20200711021454-869866162049 // indirect
+	google.golang.org/genproto v0.0.0-20200715011427-11fb19a81f2c // indirect
 	google.golang.org/grpc v1.30.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
