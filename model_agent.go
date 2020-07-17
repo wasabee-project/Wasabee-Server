@@ -179,8 +179,8 @@ func (gid GoogleID) InitAgent() (bool, error) {
 
 	if tmpName == "" {
 		// triggered this in testing -- should never happen IRL
-	 	length := 15
-	        if tmp := len(gid); tmp < length {
+		length := 15
+		if tmp := len(gid); tmp < length {
 			length = tmp
 		}
 		tmpName = "UnverifiedAgent_" + gid.String()[:length]
@@ -716,8 +716,9 @@ func (gid GoogleID) GetPicture() string {
 	err := db.QueryRow("SELECT picurl FROM agentextras WHERE gid = ?", gid).Scan(&url)
 	if err != nil {
 		// Log.Info(err)
-		wr, _ := GetWebroot()
-		return fmt.Sprintf("%s/static/android-chrome-512x512.png", wr)
+		// wr, _ := GetWebroot()
+		// XXX do not hardcode this URL
+		return fmt.Sprint("https://cdn.wasabee.rocks/android-chrome-512x512.png")
 	}
 
 	return url
@@ -750,6 +751,17 @@ func ToGid(in string) (GoogleID, error) {
 }
 
 func (ad AgentData) Save() error {
-	err := fmt.Errorf("saving agent data not implemented yet")
+	_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
+		ad.GoogleID, ad.IngressName, ad.Level, ad.LocationKey, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID, ad.RISC,
+		ad.IngressName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID, ad.RISC)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	_, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
 	return err
 }
