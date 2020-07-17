@@ -2,6 +2,7 @@ package wasabee
 
 import (
 	"bytes"
+	"cloud.google.com/go/storage"
 	"html/template"
 	"io/ioutil"
 	"path"
@@ -10,6 +11,10 @@ import (
 
 // XXX this is a kludge
 var ts map[string]*template.Template
+var funcMap = template.FuncMap{
+	"TGGetBotName": TGGetBotName,
+	"TGGetBotID":   TGGetBotID,
+}
 
 // TemplateConfig should be called once from main to establish the templates.
 // Individual subsystems should provide their own execution function since requirements will vary
@@ -24,19 +29,6 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 	}
 
 	templateSet := make(map[string]*template.Template)
-
-	funcMap := template.FuncMap{
-		"TGGetBotName": TGGetBotName,
-		"TGGetBotID":   TGGetBotID,
-		"TGRunning":    TGRunning,
-		"Webroot":      GetWebroot,
-		"WebAPIPath":   GetWebAPIPath,
-		"VEnlOne":      GetvEnlOne,
-		"EnlRocks":     GetEnlRocks,
-		"TeamMenu":     TeamMenu,
-		"OpUserMenu":   OpUserMenu,
-		"OpColorMenu":  OpColorMenu,
-	}
 
 	Log.Info("Including frontend templates from: ", fp)
 	files, err := ioutil.ReadDir(fp)
@@ -64,6 +56,18 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 			Log.Debugf("Templates for lang [%s] %s", lang, templateSet[lang].DefinedTemplates())
 		}
 	}
+	ts = templateSet
+	return templateSet, nil
+}
+
+// TemplateConfigAppengine is the same as TemplateConfig, but uses a Google Cloud Storage bucket instead of the local filesystem
+func TemplateConfigAppengine(bucket *storage.BucketHandle, path string) (map[string]*template.Template, error) {
+	templateSet := make(map[string]*template.Template)
+
+	Log.Info("Including frontend templates from: %s", path)
+
+	// XXX NOT DONE YET
+
 	ts = templateSet
 	return templateSet, nil
 }
