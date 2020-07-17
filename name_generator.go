@@ -3,6 +3,7 @@ package wasabee
 import (
 	"crypto/rand"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"strings"
@@ -29,22 +30,49 @@ func randomWord(array []string, try int, err error) string {
 func LoadWordsFile(filename string) error {
 	// #nosec
 	content, err := ioutil.ReadFile(filename)
-	if err == nil {
-		source := strings.Split(string(content), "\n")
-		words = make([]string, 0)
-		for _, word := range source {
-			word = strings.ToLower(strings.TrimSpace(word))
-			if len(word) > 0 && !strings.HasPrefix(word, "#") {
-				words = append(words, word)
-			}
-		}
-		if len(words) == 0 {
-			err = fmt.Errorf("file doesn't contain any words")
-			return err
-		}
-		Log.Debugf("%d words loaded.", len(words))
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
-	return err
+
+	err = loadWords(content)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func LoadWordsStream(r io.Reader) error {
+	content, err := ioutil.ReadAll(r)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	err = loadWords(content)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func loadWords(content []byte) error {
+	source := strings.Split(string(content), "\n")
+	words = make([]string, 0)
+	for _, word := range source {
+		word = strings.ToLower(strings.TrimSpace(word))
+		if len(word) > 0 && !strings.HasPrefix(word, "#") {
+			words = append(words, word)
+		}
+	}
+	if len(words) == 0 {
+		err := fmt.Errorf("file doesn't contain any words")
+		return err
+	}
+	Log.Debugf("%d words loaded.", len(words))
+	return nil
 }
 
 // GenerateName generates a slug in the format "cornflake-peddling-bp0q". Note that this function will return an empty string if an error occurs along the way!
