@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -142,10 +143,17 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 		_, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
 			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid)
 
-		if err != nil {
+		// doppelkeks error
+		if err != nil && strings.Contains(err.Error(), "Error 1062") {
+			iname := "%s-doppel"
+			Log.Error("dupliate ingress agent name detected for [%], storing as [%]", vres.Data.Agent, iname)
+			db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
+				iname, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid)
+		} else if err != nil {
 			Log.Error(err)
 			return err
 		}
+
 	}
 	return nil
 }

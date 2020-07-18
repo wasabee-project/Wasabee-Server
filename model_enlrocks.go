@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -149,7 +150,12 @@ func RocksUpdate(id AgentID, agent *RocksAgent) error {
 		// Log.Debug("Updating Rocks data for ", agent.Agent)
 		_, err := db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", agent.Agent, agent.Verified, gid)
 
-		if err != nil {
+		// doppelkeks error
+		if err != nil && strings.Contains(err.Error(), "Error 1062") {
+			iname := "%s-doppel"
+			Log.Error("dupliate ingress agent name detected for [%], storing as [%]", agent.Agent, iname)
+			db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", iname, agent.Verified, gid)
+		} else if err != nil {
 			Log.Error(err)
 			return err
 		}

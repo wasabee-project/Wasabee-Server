@@ -170,38 +170,36 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		return false, authError
 	}
 
-	if tmpName == "" {
-		// use enlio only for agent name, only if .rocks and V fail
-		// XXX make sure the user doesn't already exist, don't bother enl.io if we don't need to
-		Log.Debugf("querying enlio for agent name for gid: %s", gid.String())
-		tmpName, _ = gid.enlioQuery()
-	}
-
-	if tmpName == "" {
-		// triggered this in testing -- should never happen IRL
-		length := 15
-		if tmp := len(gid); tmp < length {
-			length = tmp
-		}
-		tmpName = "UnverifiedAgent_" + gid.String()[:length]
-		Log.Debugf("using %s for gid: %s", tmpName, gid.String())
-	}
-
 	// if the agent doesn't exist, prepopulate everything
-	_, err = gid.IngressName()
+	realname, err := gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
-		lockey, err := GenerateSafeName()
-		if err != nil {
-			Log.Error(err)
-			return false, err
+		if tmpName == "" {
+			Log.Debugf("querying enlio for agent name for gid: %s", gid.String())
+			tmpName, _ = gid.enlioQuery()
 		}
-		_, err = db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0)",
-			gid, MakeNullString(tmpName), vdata.Data.Level, lockey, vdata.Data.Verified, vdata.Data.Blacklisted, MakeNullString(vdata.Data.EnlID), rocks.Verified, 0)
-		if err != nil {
-			Log.Error(err)
-			return false, err
+
+		// still no name? last resort
+		if tmpName == "" {
+			// triggered this in testing -- should never happen IRL
+			length := 15
+			if tmp := len(gid); tmp < length {
+				length = tmp
+			}
+			tmpName = "UnverifiedAgent_" + gid.String()[:length]
+			Log.Debugf("using %s for gid: %s", tmpName, gid.String())
 		}
-		_, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", gid)
+
+		ad := AgentData{
+			GoogleID:      gid,
+			IngressName:   tmpName,
+			Level:         vdata.Data.Level,
+			VVerified:     vdata.Data.Verified,
+			VBlacklisted:  vdata.Data.Blacklisted,
+			Vid:           vdata.Data.EnlID,
+			RocksVerified: rocks.Verified,
+		}
+
+		err = ad.Save()
 		if err != nil {
 			Log.Error(err)
 			return false, err
@@ -212,11 +210,10 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	if gid.RISC() {
-		err := fmt.Errorf("%s locked due to Google RISC", gid)
+		err := fmt.Errorf("%s [%s] locked due to Google RISC", realname, gid)
 		Log.Error(err)
 		return false, err
 	}
-
 	return true, nil
 }
 

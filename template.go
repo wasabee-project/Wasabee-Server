@@ -14,7 +14,7 @@ var ts map[string]*template.Template
 var funcMap = template.FuncMap{
 	"TGGetBotName": TGGetBotName,
 	"TGGetBotID":   TGGetBotID,
-	"Webroot":	GetWebroot,
+	"Webroot":      GetWebroot,
 	"WebAPIPath":   GetWebAPIPath,
 }
 

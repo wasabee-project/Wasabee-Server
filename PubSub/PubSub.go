@@ -60,7 +60,7 @@ func StartPubSub(config Configuration) error {
 	wasabee.Log.Infof("using subscription: %s", config.subscription)
 	mainsub := client.Subscription(config.subscription)
 	mainsub.ReceiveSettings.Synchronous = false
-	mainsub.ReceiveSettings.NumGoroutines = 2
+	// mainsub.ReceiveSettings.NumGoroutines = 2 // let the library auto-determine
 
 	mainchan := make(chan *pubsub.Message)
 	defer close(mainchan)
@@ -92,12 +92,12 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 
 	for msg := range mainchan {
 		if msg.Attributes["Sender"] == hostname {
-			// wasabee.Log.Debug("ignoring message from me")
+			wasabee.Log.Debug("ignoring message from me")
 			continue
 		}
 		switch msg.Attributes["Type"] {
 		case "heartbeat":
-			// these can safely be Ack'd by anyone
+			// anyone on the subscription can ack it
 			wasabee.Log.Debugf("received heartbeat from [%s]", msg.Attributes["Sender"])
 			msg.Ack()
 			break
@@ -128,24 +128,26 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 				break
 			}
 			if msg.Attributes["RespondingTo"] != hostname {
-				wasabee.Log.Debug("ignoring response not intended for me")
-				msg.Ack()
+				wasabee.Log.Debug("Nacking response not intended for me")
+				msg.Nack()
 				break
 			}
 			wasabee.Log.Debugf("response for [%s]", msg.Attributes["Gid"])
 			if msg.Attributes["Authorative"] == "true" {
-				wasabee.Log.Debugf("authoritative")
+				wasabee.Log.Debug("authoritative")
 			}
 			var ad wasabee.AgentData
 			err := json.Unmarshal(msg.Data, &ad)
 			if err != nil {
 				wasabee.Log.Error(err)
-				continue
+				msg.Nack()
+				break
 			}
 			err = ad.Save()
 			if err != nil {
 				wasabee.Log.Error(err)
-				continue
+				msg.Nack()
+				break
 			}
 			msg.Ack()
 			break
@@ -207,10 +209,8 @@ func respond(g string, sender string) (bool, error) {
 
 	ctx := context.Background()
 	hostname, _ := os.Hostname()
-	wasabee.Log.Debug(hostname)
 
 	gid := wasabee.GoogleID(g)
-	wasabee.Log.Debug(gid.String)
 
 	// make sure we have the most current info from the APIs
 	_, err := gid.InitAgent()
@@ -225,6 +225,7 @@ func respond(g string, sender string) (bool, error) {
 		wasabee.Log.Error(err)
 		return false, err
 	}
+
 	// we do not need to send team/op data across
 	ad.OwnedTeams = nil
 	ad.Teams = nil
@@ -248,7 +249,7 @@ func respond(g string, sender string) (bool, error) {
 		atts["Authoratative"] = "true"
 	}
 
-	wasabee.Log.Debug("work done, publishing...")
+	wasabee.Log.Debugf("publishing GoogleID %s [%s]", ad.GoogleID, ad.IngressName)
 	topic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       d,
