@@ -65,7 +65,6 @@ func main() {
 	go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
 		Cert:    creds,
 		Project: "PhDevBin",
-		Topic:   "wasabee-main",
 	})
 	defer wasabee.PubSubClose()
 

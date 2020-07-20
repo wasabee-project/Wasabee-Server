@@ -238,7 +238,6 @@ func run(c *cli.Context) error {
 		go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
 			Cert: pubsubPath,
 			Project: "PhDevBin",
-			Topic: "wasabee-main",
 		})
 	}
 
