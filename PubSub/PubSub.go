@@ -13,71 +13,78 @@ import (
 	"google.golang.org/api/option"
 )
 
-var topic *pubsub.Topic
 var cancel context.CancelFunc
 
 type Configuration struct {
 	Cert         string
-	Topic        string
 	Project      string
+	hostname     string
 	subscription string
 	responder    bool
+	requestTopic *pubsub.Topic
+	responseTopic *pubsub.Topic
+	sub	*pubsub.Subscription
+	mc	chan *pubsub.Message
 }
+
+var c Configuration
 
 // StartPubSub is the main startup function for the PubSub subsystem
 func StartPubSub(config Configuration) error {
-	wasabee.Log.Debugf("starting PubSub: [%s] %s %s", config.Cert, config.Project, config.Topic)
+	c = config
+	wasabee.Log.Debugf("starting PubSub: [%s] %s", c.Cert, c.Project)
+	c.hostname, _ = os.Hostname()
 
-	// var err error
-	// var client *pubsub.Client
 	var cctx context.Context
 
 	ctx := context.Background()
 	cctx, cancel = context.WithCancel(ctx)
 
-	opt := option.WithCredentialsFile(config.Cert)
+	opt := option.WithCredentialsFile(c.Cert)
 
-	client, err := pubsub.NewClient(ctx, config.Project, opt)
+	client, err := pubsub.NewClient(ctx, c.Project, opt)
 	if err != nil {
 		wasabee.Log.Errorf("error initializing pubsub: %v", err)
 		return err
 	}
 	defer client.Close()
-
-	topic = client.Topic(config.Topic)
-	// defer topic.Stop()
+	c.responseTopic = client.Topic("responses")
+	c.requestTopic = client.Topic("requests")
+	// defer c.requestTopic.Stop()
+	// defer c.responseTopic.Stop()
 
 	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
 		// use the subscription for those who only request
-		config.subscription = fmt.Sprintf("%s-requester", config.Topic)
+		config.subscription = fmt.Sprintf("%s", c.hostname)
 		config.responder = false
 	} else {
-		// use the subscription for those who respond to requests
-		config.subscription = fmt.Sprintf("%s-responder", config.Topic)
+		// use the topic/subscription for those who respond to requests
 		config.responder = true
+		config.subscription = "requests"
+		wasabee.Log.Infof("using subscription: %s", config.subscription)
 	}
 
-	wasabee.Log.Infof("using subscription: %s", config.subscription)
-	mainsub := client.Subscription(config.subscription)
-	mainsub.ReceiveSettings.Synchronous = false
-	// mainsub.ReceiveSettings.NumGoroutines = 2 // let the library auto-determine
+	c.sub = client.Subscription(config.subscription)
+	c.sub.ReceiveSettings.Synchronous = false
 
-	mainchan := make(chan *pubsub.Message)
-	defer close(mainchan)
+	c.mc = make(chan *pubsub.Message)
+	defer close(c.mc)
 
 	// spin up listener to listen for messages on the main channel
-	go listenForPubSubMessages(mainchan, config)
+	go listenForPubSubMessages()
 
 	// spin up listener for commands from wasabee
-	go listenForWasabeeCommands()
+	if !c.responder {
+		go listenForWasabeeCommands()
+	}
 
 	// send some heartbeats for testing
 	go heartbeats()
 
 	// Receive blocks until the context is cancelled or an error occurs.
-	err = mainsub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
+	err = c.sub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
 		// push any messages received into the main channel
-		mainchan <- msg
+		c.mc <- msg
 	})
 	if err != nil {
 		wasabee.Log.Errorf("receive: %v", err)
@@ -87,12 +94,11 @@ func StartPubSub(config Configuration) error {
 	return nil
 }
 
-func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration) {
-	hostname, _ := os.Hostname()
-
-	for msg := range mainchan {
-		if msg.Attributes["Sender"] == hostname {
-			wasabee.Log.Debug("ignoring message from me")
+func listenForPubSubMessages() {
+	for msg := range c.mc {
+		if msg.Attributes["Sender"] == c.hostname {
+			wasabee.Log.Debug("acking message from me")
+			msg.Ack()
 			continue
 		}
 		switch msg.Attributes["Type"] {
@@ -102,8 +108,9 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 			msg.Ack()
 			break
 		case "request":
-			if !config.responder {
+			if !c.responder {
 				// anyone on the requester subscription can Ack it
+				wasabee.Log.Error("request on the response topic?")
 				msg.Ack()
 				break
 			}
@@ -122,14 +129,15 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 			}
 			break
 		case "agent":
-			if config.responder {
+			if c.responder {
 				// anyone on the responder subscription can Ack it
+				wasabee.Log.Error("agent response on the request topic?")
 				msg.Ack()
 				break
 			}
-			if msg.Attributes["RespondingTo"] != hostname {
-				wasabee.Log.Debug("ignoring response not intended for me")
-				// msg.Nack() // if we nack, it just keeps trying the same server
+			if msg.Attributes["RespondingTo"] != c.hostname {
+				wasabee.Log.Debug("acking response not intended for me")
+				msg.Ack()
 				break
 			}
 			wasabee.Log.Debugf("response for [%s]", msg.Attributes["Gid"])
@@ -185,15 +193,14 @@ func Shutdown() error {
 
 func request(gid string) error {
 	ctx := context.Background()
-	hostname, _ := os.Hostname()
 
 	var atts map[string]string
 	atts = make(map[string]string)
 	atts["Type"] = "request"
 	atts["Gid"] = gid
-	atts["Sender"] = hostname
+	atts["Sender"] = c.hostname
 
-	topic.Publish(ctx, &pubsub.Message{
+	c.requestTopic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       []byte(""),
 	})
@@ -208,7 +215,6 @@ func respond(g string, sender string) (bool, error) {
 	}
 
 	ctx := context.Background()
-	hostname, _ := os.Hostname()
 
 	gid := wasabee.GoogleID(g)
 
@@ -243,14 +249,14 @@ func respond(g string, sender string) (bool, error) {
 	atts = make(map[string]string)
 	atts["Type"] = "agent"
 	atts["Gid"] = g
-	atts["Sender"] = hostname
+	atts["Sender"] = c.hostname
 	atts["RespondingTo"] = sender
 	if wasabee.GetvEnlOne() && wasabee.GetEnlRocks() {
 		atts["Authoratative"] = "true"
 	}
 
 	wasabee.Log.Debugf("publishing GoogleID %s [%s]", ad.GoogleID, ad.IngressName)
-	topic.Publish(ctx, &pubsub.Message{
+	c.responseTopic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       d,
 	})
@@ -264,13 +270,23 @@ func heartbeats() {
 	var atts map[string]string
 	atts = make(map[string]string)
 	atts["Type"] = "heartbeat"
-	atts["Sender"], _ = os.Hostname()
+	atts["Sender"] = c.hostname
+
+	c.requestTopic.Publish(context.Background(), &pubsub.Message{
+		Attributes: atts,
+	})
+	c.responseTopic.Publish(context.Background(), &pubsub.Message{
+		Attributes: atts,
+	})
 
 	for {
 		t := <-ticker.C
 		atts["Time"] = t.String()
 
-		topic.Publish(context.Background(), &pubsub.Message{
+		c.requestTopic.Publish(context.Background(), &pubsub.Message{
+			Attributes: atts,
+		})
+		c.responseTopic.Publish(context.Background(), &pubsub.Message{
 			Attributes: atts,
 		})
 	}
