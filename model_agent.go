@@ -87,8 +87,9 @@ type Assignment struct {
 	Type          string
 }
 
-// InitAgent is called from Oauth callback to set up a agent for the first time.
-// It also checks and updates V and enl.rocks data. It returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked at V or enl.rocks.
+// InitAgent is called from Oauth callback to set up a agent for the first time or revalidate them on subsequent logins.
+// It also updates the local V and enl.rocks data, if configured.
+// Returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked.
 func (gid GoogleID) InitAgent() (bool, error) {
 	var authError error
 	var tmpName string
@@ -173,6 +174,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	// if the agent doesn't exist, prepopulate everything
 	realname, err := gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
+		Log.Debugf("running first login process for [%s]", gid)
 		if tmpName == "" {
 			Log.Debugf("querying enlio for agent name for gid: %s", gid.String())
 			tmpName, _ = gid.enlioQuery()
@@ -189,9 +191,16 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Debugf("using %s for gid: %s", tmpName, gid.String())
 		}
 
+		lockey, err := GenerateSafeName()
+		if err != nil {
+			Log.Error(err)
+			return false, err
+		}
+
 		ad := AgentData{
 			GoogleID:      gid,
 			IngressName:   tmpName,
+			LocationKey:   lockey,
 			Level:         vdata.Data.Level,
 			VVerified:     vdata.Data.Verified,
 			VBlacklisted:  vdata.Data.Blacklisted,
@@ -199,18 +208,19 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			RocksVerified: rocks.Verified,
 		}
 
-		err = ad.Save()
-		if err != nil {
+		if err := ad.Save(); err != nil {
 			Log.Error(err)
 			return false, err
 		}
 	} else if err != nil {
 		Log.Error(err)
 		return false, err
+	} else {
+		Log.Debugf("InitAgent: %s", realname)
 	}
 
 	if gid.RISC() {
-		err := fmt.Errorf("%s [%s] locked due to Google RISC", realname, gid)
+		err := fmt.Errorf("%s locked due to Google RISC", gid)
 		Log.Error(err)
 		return false, err
 	}
@@ -691,7 +701,9 @@ func (gid GoogleID) RISC() bool {
 	var RISC bool
 
 	err := db.QueryRow("SELECT RISC FROM agent WHERE gid = ?", gid).Scan(&RISC)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		Log.Noticef("[%s] does not exist", gid)
+	} else if err != nil {
 		Log.Notice(err)
 	}
 	return RISC
@@ -747,16 +759,33 @@ func ToGid(in string) (GoogleID, error) {
 	return gid, err
 }
 
+// called by InitAgent and from the Pub/Sub system to write a new agent
+// also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
-	_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
-		ad.GoogleID, ad.IngressName, ad.Level, ad.LocationKey, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID,
-		ad.IngressName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID, ad.RISC)
+	Log.Debugf("saving %s/%s", ad.GoogleID, ad.IngressName)
+
+	result, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
+		ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID,
+		MakeNullString(ad.IngressName), ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID, ad.RISC)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	_, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID)
-	if err != nil {
+
+	ra, _ := result.RowsAffected()
+	if ra != 1 {
+		err = fmt.Errorf("insert did not affect a row: %d -- potentially a duplicate IngressName", ra)
+		Log.Error(err)
+		/* _, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0)",
+			ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID)
+		if err != nil {
+			Log.Error(err)
+			return err
+		} */
+		return err
+	}
+
+	if _, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID); err != nil {
 		Log.Error(err)
 		return err
 	}
