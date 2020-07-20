@@ -54,17 +54,17 @@ func StartPubSub(config Configuration) error {
 	// defer c.responseTopic.Stop()
 
 	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
-		// use the subscription for those who only request
-		config.subscription = fmt.Sprintf("%s", c.hostname)
-		config.responder = false
+		// use a subscription for one who requests
+		c.subscription = fmt.Sprintf("%s", c.hostname)
+		c.responder = false
 	} else {
-		// use the topic/subscription for those who respond to requests
-		config.responder = true
-		config.subscription = "requests"
-		wasabee.Log.Infof("using subscription: %s", config.subscription)
+		// use the topic/subscription for all those who respond to requests
+		c.responder = true
+		c.subscription = "requests"
 	}
 
-	c.sub = client.Subscription(config.subscription)
+	wasabee.Log.Infof("using subscription: %s", c.subscription)
+	c.sub = client.Subscription(c.subscription)
 	c.sub.ReceiveSettings.Synchronous = false
 
 	c.mc = make(chan *pubsub.Message)
