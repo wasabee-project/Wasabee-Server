@@ -128,8 +128,8 @@ func listenForPubSubMessages(mainchan chan *pubsub.Message, config Configuration
 				break
 			}
 			if msg.Attributes["RespondingTo"] != hostname {
-				wasabee.Log.Debug("Nacking response not intended for me")
-				msg.Nack()
+				wasabee.Log.Debug("ignoring response not intended for me")
+				// msg.Nack() // if we nack, it just keeps trying the same server
 				break
 			}
 			wasabee.Log.Debugf("response for [%s]", msg.Attributes["Gid"])

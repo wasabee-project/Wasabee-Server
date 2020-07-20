@@ -764,25 +764,12 @@ func ToGid(in string) (GoogleID, error) {
 func (ad AgentData) Save() error {
 	Log.Debugf("saving %s/%s", ad.GoogleID, ad.IngressName)
 
-	result, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
+	_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
 		ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID,
 		MakeNullString(ad.IngressName), ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID, ad.RISC)
 	if err != nil {
 		Log.Error(err)
 		return err
-	}
-
-	ra, _ := result.RowsAffected()
-	if ra != 1 {
-		err = fmt.Errorf("insert did not affect a row: %d -- potentially a duplicate IngressName", ra)
-		Log.Error(err)
-		_, err := db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0)",
-			ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		// return err
 	}
 
 	if _, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID); err != nil {
