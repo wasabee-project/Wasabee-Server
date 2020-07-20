@@ -776,7 +776,7 @@ func (ad AgentData) Save() error {
 	if ra != 1 {
 		err = fmt.Errorf("insert did not affect a row: %d -- potentially a duplicate IngressName", ra)
 		Log.Error(err)
-		_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0)",
+		_, err := db.Exec("INSERT IGNORE INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0)",
 			ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID)
 		if err != nil {
 			Log.Error(err)
