@@ -727,7 +727,7 @@ func (gid GoogleID) GetPicture() string {
 		// Log.Info(err)
 		// wr, _ := GetWebroot()
 		// XXX do not hardcode this URL
-		return fmt.Sprint("https://cdn.wasabee.rocks/android-chrome-512x512.png")
+		return fmt.Sprint("https://cdn2.wasabee.rocks/android-chrome-512x512.png")
 	}
 
 	return url

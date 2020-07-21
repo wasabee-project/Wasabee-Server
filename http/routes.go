@@ -438,6 +438,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	// passed in from Android/iOS app
 	type token struct {
 		AccessToken string `json:"accessToken"`
+		BadAT       string `json:"access_token"` // some APIs use this name, have it here for logging
 	}
 	var t token
 
@@ -476,6 +477,14 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if err = json.Unmarshal(contents, &m); err != nil {
 		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// yes, we've seen this with a bad accessToken
+	if m.Gid == "" {
+		wasabee.Log.Debugf("from client: %v\nfrom google: %v", t, m);
+		err = fmt.Errorf("No GoogleID set")
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

@@ -368,10 +368,10 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	_ = ses.Save(req, res)
 
 	// the server may have several names/ports ; redirect back to the one the user called
-	tmpOC := config.OauthConfig
-	tmpOC.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
-	// wasabee.Log.Debugf("callback URL: %s", tmpOC.RedirectURL)
-	url := tmpOC.AuthCodeURL(config.oauthStateString)
+	oc := config.OauthConfig
+	oc.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
+	// wasabee.Log.Debugf("callback URL: %s", oc.RedirectURL)
+	url := oc.AuthCodeURL(config.oauthStateString)
 	// http.Redirect(res, req, url, http.StatusFound)
 	http.Redirect(res, req, url, http.StatusSeeOther)
 }
