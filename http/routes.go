@@ -339,7 +339,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		delete(ses.Values, "loginReq")
 	}
 
-	wasabee.Log.Debugf("redirecting to %s", location)
+	// wasabee.Log.Debugf("redirecting to %s", location)
 	http.Redirect(res, req, location, http.StatusFound) // http.StatusSeeOther
 }
 

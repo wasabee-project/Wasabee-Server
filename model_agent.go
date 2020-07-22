@@ -172,7 +172,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	// if the agent doesn't exist, prepopulate everything
-	realname, err := gid.IngressName()
+	_, err = gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
 		Log.Debugf("running first login process for [%s]", gid)
 		if tmpName == "" {
@@ -215,9 +215,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	} else if err != nil {
 		Log.Error(err)
 		return false, err
-	} else {
-		Log.Debugf("InitAgent: %s", realname)
-	}
+	} 
 
 	if gid.RISC() {
 		err := fmt.Errorf("%s locked due to Google RISC", gid)
@@ -762,7 +760,7 @@ func ToGid(in string) (GoogleID, error) {
 // called by InitAgent and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
-	Log.Debugf("saving %s/%s", ad.GoogleID, ad.IngressName)
+	// Log.Debugf("saving %s/%s", ad.GoogleID, ad.IngressName)
 
 	_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
 		ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID,

@@ -97,14 +97,14 @@ func StartPubSub(config Configuration) error {
 func listenForPubSubMessages() {
 	for msg := range c.mc {
 		if msg.Attributes["Sender"] == c.hostname {
-			wasabee.Log.Debug("acking message from me")
+			// wasabee.Log.Debug("acking message from me")
 			msg.Ack()
 			continue
 		}
 		switch msg.Attributes["Type"] {
 		case "heartbeat":
 			// anyone on the subscription can ack it
-			wasabee.Log.Debugf("received heartbeat from [%s]", msg.Attributes["Sender"])
+			// wasabee.Log.Debugf("received heartbeat from [%s]", msg.Attributes["Sender"])
 			msg.Ack()
 			break
 		case "request":
@@ -124,7 +124,7 @@ func listenForPubSubMessages() {
 			if ack {
 				msg.Ack()
 			} else {
-				wasabee.Log.Debugf("Nacking response for [%s] requested by [%s]", msg.Attributes["Gid"], msg.Attributes["Sender"])
+				wasabee.Log.Infof("Nacking response for [%s] requested by [%s]", msg.Attributes["Gid"], msg.Attributes["Sender"])
 				msg.Nack()
 			}
 			break
@@ -136,7 +136,7 @@ func listenForPubSubMessages() {
 				break
 			}
 			if msg.Attributes["RespondingTo"] != c.hostname {
-				wasabee.Log.Debug("acking response not intended for me")
+				// wasabee.Log.Debug("acking response not intended for me")
 				msg.Ack()
 				break
 			}
@@ -160,7 +160,7 @@ func listenForPubSubMessages() {
 			msg.Ack()
 			break
 		default:
-			wasabee.Log.Debugf("unknown message type [%s]", msg.Attributes["Type"])
+			wasabee.Log.Noticef("unknown message type [%s]", msg.Attributes["Type"])
 			// get it off the subscription quickly
 			msg.Ack()
 		}
