@@ -415,8 +415,9 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	teamID := wasabee.TeamID(vars["team"])
 
+	var key string
 	if owns, _ := gid.OwnsTeam(teamID); owns {
-		err := teamID.GenerateJoinToken()
+		key, err = teamID.GenerateJoinToken()
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -429,7 +430,18 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprint(res, jsonStatusOK)
+	type Out struct {
+		Ok string
+		Key string
+	}
+
+	o := Out{
+		Ok: "OK",
+		Key: key,
+	}
+	jo, _ := json.Marshal(o)
+
+	fmt.Fprint(res, string(jo))
 }
 
 func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {

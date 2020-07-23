@@ -445,19 +445,19 @@ func (teamID TeamID) SetDisplaname(gid GoogleID, displayname string) error {
 	return nil
 }
 
-func (teamID TeamID) GenerateJoinToken() error {
+func (teamID TeamID) GenerateJoinToken() (string, error) {
 	key, err := GenerateSafeName()
 	if err != nil {
 		Log.Notice(err)
-		return err
+		return key, err
 	}
 
 	_, err = db.Exec("UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID)
 	if err != nil {
 		Log.Notice(err)
-		return err
+		return key, err
 	}
-	return nil
+	return key, nil
 }
 
 func (teamID TeamID) DeleteJoinToken() error {
