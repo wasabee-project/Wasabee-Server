@@ -44,8 +44,10 @@ func ServeFirebase(keypath string) error {
 
 	fbchan := wasabee.FirebaseInit()
 	for fb := range fbchan {
-		// wasabee.Log.Debugf("firebase processing %s", fb.Cmd.String())
+		// wasabee.Log.Debugf("%s", fb.Cmd.String())
 		switch fb.Cmd {
+		case wasabee.FbccGenericMessage:
+			_ = genericMessage(ctx, msg, fb)
 		case wasabee.FbccAgentLocationChange:
 			if rateLimit(fb.TeamID) {
 				_ = agentLocationChange(ctx, msg, fb)
@@ -71,7 +73,7 @@ func ServeFirebase(keypath string) error {
 		case wasabee.FbccAgentLogin:
 			_ = agentLogin(ctx, msg, fb)
 		default:
-			wasabee.Log.Debugf("Unknown Firebase command %d", fb.Cmd)
+			wasabee.Log.Debugf("unknown firebase command %d", fb.Cmd)
 		}
 	}
 	return nil
