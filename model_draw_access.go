@@ -114,6 +114,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
 		o.PopulateTeams()
 	}
+
 	for _, t := range o.Teams {
 		if t.Role != etRoleAssignedOnly {
 			continue
