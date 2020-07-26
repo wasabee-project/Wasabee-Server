@@ -84,6 +84,19 @@ func (gid GoogleID) firebaseAgentLocation() {
 	}
 }
 
+// send a free-form message to a single agent
+func (gid GoogleID) firebaseGenericMessage(msg string) {
+	if !fb.running {
+		return
+	}
+
+	fbPush(FirebaseCmd{
+		Cmd:    FbccGenericMessage,
+		Gid:    gid,
+		Msg:    msg,
+	})
+}
+
 // notifiy the agent that they have a new assigned marker in a given op
 func (opID OperationID) firebaseAssignMarker(gid GoogleID, markerID MarkerID) {
 	if !fb.running {
