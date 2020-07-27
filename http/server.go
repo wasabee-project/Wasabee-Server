@@ -198,10 +198,10 @@ func StartAppEngine(ic Configuration) {
 	router := setupRouter()
 	config.srv = &http.Server{
 		Handler: router,
-		Addr: config.ListenHTTPS,
+		Addr:    config.ListenHTTPS,
 	}
 
-        if err := config.srv.ListenAndServe(); err != nil {
+	if err := config.srv.ListenAndServe(); err != nil {
 		wasabee.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
 	}

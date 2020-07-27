@@ -319,7 +319,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabee.Log.Debug("no iname at end of login? %n", m.Gid)
 	}
-	m.Gid.FirebaseAgentLogin();
+	m.Gid.FirebaseAgentLogin()
 	// dump, _ := httputil.DumpRequest(req, false)
 	// wasabee.Log.Debug(string(dump))
 
@@ -483,7 +483,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	// yes, we've seen this with a bad accessToken
 	if m.Gid == "" {
-		wasabee.Log.Debugf("from client: %v\nfrom google: %v", t, m);
+		wasabee.Log.Debugf("from client: %v\nfrom google: %v", t, m)
 		err = fmt.Errorf("No GoogleID set")
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -547,7 +547,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	data, _ := json.Marshal(ud)
 
 	wasabee.Log.Infof("%s apTok login", iname)
-	m.Gid.FirebaseAgentLogin();
+	m.Gid.FirebaseAgentLogin()
 
 	// cookie := res.Header().Get("set-cookie")
 	// wasabee.Log.Debugf("Sending Cookie: %s", cookie);

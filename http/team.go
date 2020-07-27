@@ -431,12 +431,12 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	type Out struct {
-		Ok string
+		Ok  string
 		Key string
 	}
 
 	o := Out{
-		Ok: "OK",
+		Ok:  "OK",
 		Key: key,
 	}
 	jo, _ := json.Marshal(o)
