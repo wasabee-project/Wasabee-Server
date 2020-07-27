@@ -87,9 +87,9 @@ func run(c *cli.Context) error {
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
 		wasabee.SetEnlRocks(wasabee.Rocksconfig{
-			APIKey: c.String("enlrockskey"),
+			APIKey:            c.String("enlrockskey"),
 			CommunityEndpoint: c.String("enlrockscommurl"),
-			StatusEndpoint: c.String("enlrocksstatusurl"),
+			StatusEndpoint:    c.String("enlrocksstatusurl"),
 		})
 	}
 

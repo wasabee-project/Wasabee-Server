@@ -143,10 +143,10 @@ func preload() {
 
 	// Bob
 	gids["548578457485962"] = GoogleData{
-		Gid: "548578457485962",
-		Name: "Bob Bob",
+		Gid:   "548578457485962",
+		Name:  "Bob Bob",
 		Email: "bob@bob.com",
-		Pic: "https://is5-ssl.mzstatic.com/image/thumb/Purple113/v4/cd/04/e3/cd04e3d3-c209-231c-a82a-22923808ec8a/source/256x256bb.jpg",
+		Pic:   "https://is5-ssl.mzstatic.com/image/thumb/Purple113/v4/cd/04/e3/cd04e3d3-c209-231c-a82a-22923808ec8a/source/256x256bb.jpg",
 	}
 	rocks["548578457485962"] = RocksAgent{
 		Gid:      "548578457485962",

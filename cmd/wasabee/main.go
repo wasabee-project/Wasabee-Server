@@ -11,13 +11,13 @@ import (
 	"github.com/urfave/cli"
 	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server/PubSub"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/http"
-	"github.com/wasabee-project/Wasabee-Server/PubSub"
 
 	"golang.org/x/oauth2"
-	
+
 	"golang.org/x/oauth2/google"
 	// "runtime/pprof"
 )
@@ -145,7 +145,6 @@ func run(c *cli.Context) error {
 	}
 
 	wasabee.SetupDebug(c.Bool("longtimeouts"))
-	
 
 	// Load words
 	err := wasabee.LoadWordsFile(c.String("wordlist"))
@@ -170,8 +169,8 @@ func run(c *cli.Context) error {
 	// setup V
 	if c.String("venlonekey") != "" {
 		wasabee.SetVEnlOne(wasabee.Vconfig{
-			APIKey: c.String("venlonekey"),
-			APIEndpoint: c.String("venloneapiurl"),
+			APIKey:         c.String("venlonekey"),
+			APIEndpoint:    c.String("venloneapiurl"),
 			StatusEndpoint: c.String("venlonestatusurl"),
 		})
 		if c.Bool("venlonepoller") {
@@ -182,9 +181,9 @@ func run(c *cli.Context) error {
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
 		wasabee.SetEnlRocks(wasabee.Rocksconfig{
-			APIKey: c.String("enlrockskey"),
+			APIKey:            c.String("enlrockskey"),
 			CommunityEndpoint: c.String("enlrockscommurl"),
-			StatusEndpoint: c.String("enlrocksstatusurl"),
+			StatusEndpoint:    c.String("enlrocksstatusurl"),
 		})
 	}
 
@@ -196,17 +195,17 @@ func run(c *cli.Context) error {
 	// Serve HTTPS
 	if c.String("https") != "none" {
 		go wasabeehttps.StartHTTP(wasabeehttps.Configuration{
-			ListenHTTPS:      c.String("https"),
-			FrontendPath:     c.String("frontend-path"),
-			Root:             c.String("root"),
-			CertDir:          c.String("certs"),
-			OauthConfig:  &oauth2.Config {
-				ClientID: c.String("oauth-clientid"),
+			ListenHTTPS:  c.String("https"),
+			FrontendPath: c.String("frontend-path"),
+			Root:         c.String("root"),
+			CertDir:      c.String("certs"),
+			OauthConfig: &oauth2.Config{
+				ClientID:     c.String("oauth-clientid"),
 				ClientSecret: c.String("oauth-secret"),
-				Scopes: []string{"profile email"},
-				Endpoint: oauth2.Endpoint {
-					AuthURL: c.String("oauth-authurl"),
-					TokenURL: c.String("oauth-tokenurl"),
+				Scopes:       []string{"profile email"},
+				Endpoint: oauth2.Endpoint{
+					AuthURL:   c.String("oauth-authurl"),
+					TokenURL:  c.String("oauth-tokenurl"),
 					AuthStyle: oauth2.AuthStyleInParams,
 				},
 			},
@@ -236,7 +235,7 @@ func run(c *cli.Context) error {
 		wasabee.Log.Noticef("%s does not exist, not enabling PubSub", pubsubPath)
 	} else {
 		go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
-			Cert: pubsubPath,
+			Cert:    pubsubPath,
 			Project: "PhDevBin",
 		})
 	}

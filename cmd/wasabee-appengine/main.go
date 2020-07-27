@@ -27,7 +27,7 @@ func main() {
 	words := os.Getenv("WORDS_PATH")
 	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
-	wasabee.Log.Infof("Using Creds: %s", creds);
+	wasabee.Log.Infof("Using Creds: %s", creds)
 
 	ctx := context.Background()
 
