@@ -573,13 +573,13 @@ func OpValidColor(color string) string {
 	}
 
 	ocm := map[string]opColor{
-		"main":   opColor{"Op Color", "ff0000"},
-		"groupa": opColor{"Orange", "ff6600"},
-		"groupb": opColor{"Light Orange", "ff9900"},
-		"groupc": opColor{"Tan", "bb9900"},
-		"groupd": opColor{"Purple", "bb22cc"},
-		"groupe": opColor{"Teal", "33cccc"},
-		"groupf": opColor{"Pink", "ff55ff"},
+		"main":   {"Op Color", "ff0000"},
+		"groupa": {"Orange", "ff6600"},
+		"groupb": {"Light Orange", "ff9900"},
+		"groupc": {"Tan", "bb9900"},
+		"groupd": {"Purple", "bb22cc"},
+		"groupe": {"Teal", "33cccc"},
+		"groupf": {"Pink", "ff55ff"},
 	}
 
 	if _, ok := ocm[color]; ok {

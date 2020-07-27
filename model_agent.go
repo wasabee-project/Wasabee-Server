@@ -215,7 +215,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	} else if err != nil {
 		Log.Error(err)
 		return false, err
-	} 
+	}
 
 	if gid.RISC() {
 		err := fmt.Errorf("%s locked due to Google RISC", gid)

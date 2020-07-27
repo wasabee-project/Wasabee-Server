@@ -91,9 +91,9 @@ func (gid GoogleID) firebaseGenericMessage(msg string) {
 	}
 
 	fbPush(FirebaseCmd{
-		Cmd:    FbccGenericMessage,
-		Gid:    gid,
-		Msg:    msg,
+		Cmd: FbccGenericMessage,
+		Gid: gid,
+		Msg: msg,
 	})
 }
 
