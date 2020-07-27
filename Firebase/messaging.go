@@ -30,8 +30,8 @@ func genericMessage(ctx context.Context, c *messaging.Client, fb wasabee.Firebas
 		}
 
 		data := map[string]string{
-			"msg":    fb.Msg,
-			"cmd":    fb.Cmd.String(),
+			"msg": fb.Msg,
+			"cmd": fb.Cmd.String(),
 		}
 
 		msg := messaging.Message{
@@ -259,9 +259,9 @@ func agentLogin(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd
 	}
 
 	data := map[string]string{
-		"gid": 	    string(fb.Gid),
-		"msg":      fb.Msg,
-		"cmd":      fb.Cmd.String(),
+		"gid": string(fb.Gid),
+		"msg": fb.Msg,
+		"cmd": fb.Cmd.String(),
 	}
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
