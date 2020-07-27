@@ -141,8 +141,8 @@ func listenForPubSubMessages() {
 				break
 			}
 			wasabee.Log.Debugf("response for [%s]", msg.Attributes["Gid"])
-			if msg.Attributes["Authorative"] == "true" {
-				wasabee.Log.Debug("authoritative")
+			if msg.Attributes["Authoritative"] == "true" {
+				wasabee.Log.Debug("Authoritative")
 			}
 			var ad wasabee.AgentData
 			err := json.Unmarshal(msg.Data, &ad)
@@ -252,7 +252,7 @@ func respond(g string, sender string) (bool, error) {
 	atts["Sender"] = c.hostname
 	atts["RespondingTo"] = sender
 	if wasabee.GetvEnlOne() && wasabee.GetEnlRocks() {
-		atts["Authoratative"] = "true"
+		atts["Authoritative"] = "true"
 	}
 
 	wasabee.Log.Debugf("publishing GoogleID %s [%s]", ad.GoogleID, ad.IngressName)
