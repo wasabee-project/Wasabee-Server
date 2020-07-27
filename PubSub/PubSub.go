@@ -16,15 +16,15 @@ import (
 var cancel context.CancelFunc
 
 type Configuration struct {
-	Cert         string
-	Project      string
-	hostname     string
-	subscription string
-	responder    bool
-	requestTopic *pubsub.Topic
+	Cert          string
+	Project       string
+	hostname      string
+	subscription  string
+	responder     bool
+	requestTopic  *pubsub.Topic
 	responseTopic *pubsub.Topic
-	sub	*pubsub.Subscription
-	mc	chan *pubsub.Message
+	sub           *pubsub.Subscription
+	mc            chan *pubsub.Message
 }
 
 var c Configuration
