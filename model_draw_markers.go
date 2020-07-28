@@ -69,11 +69,8 @@ func (opID OperationID) deleteMarker(mid MarkerID) error {
 func (o *Operation) PopulateMarkers() error {
 	var tmpMarker Marker
 
-	// original version used GID for completed, changed to name for early version of the app
-	// need to change back to just passing around the GID
 	var assignedGid, comment, assignedNick, completedBy, completedID sql.NullString
 
-	// XXX join with portals table, get name and order by name, don't expose it in this json -- will make the friendly in the https module easier
 	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
 	if err != nil {
 		Log.Error(err)
@@ -116,6 +113,7 @@ func (o *Operation) PopulateMarkers() error {
 		}
 		o.Markers = append(o.Markers, tmpMarker)
 	}
+
 	return nil
 }
 
@@ -163,8 +161,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		msg = fmt.Sprintf("assigned a marker for op %s", o.ID)
 		// do not report send errors up the chain, just log
 	}
-	_, err = gid.SendMessage(msg)
-	if err != nil {
+	if _, err = gid.SendMessage(msg); err != nil {
 		Log.Errorf("%s %s %s", gid, err, msg)
 		// do not report send errors up the chain, just log
 	}
@@ -176,12 +173,11 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 
 // MarkerComment updates the comment on a marker
 func (o *Operation) MarkerComment(markerID MarkerID, comment string) error {
-	_, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), markerID, o.ID)
-	if err != nil {
+	if _, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), markerID, o.ID); err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -212,8 +208,7 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	_, err = db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "acknowledged", m, o.ID)
-	if err != nil {
+	if _, err = db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "acknowledged", m, o.ID); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -232,12 +227,11 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	_, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, o.ID)
-	if err != nil {
+	if _, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, o.ID); err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -252,12 +246,11 @@ func (m MarkerID) Incomplete(o Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	_, err := db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, o.ID)
-	if err != nil {
+	if _, err := db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, o.ID); err != nil {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -290,8 +283,7 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	_, err = db.Exec("UPDATE marker SET state = 'pending', gid = NULL WHERE ID = ? AND opID = ?", m, o.ID)
-	if err != nil {
+	if _, err = db.Exec("UPDATE marker SET state = 'pending', gid = NULL WHERE ID = ? AND opID = ?", m, o.ID); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -304,8 +296,78 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 }
 
 func (o *Operation) PopulateAssignedOnly(gid GoogleID) error {
-	// get all marker assignments
-	// XXX ZZZ TODO FINISH THIS
+	var tmpMarker Marker
+
+	var comment, assignedNick, completedBy, completedID sql.NullString
+
+	// XXX this can probably be simplified since the gid is constant
+	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? AND m.gid = ? ORDER BY m.oporder, m.type", o.ID, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order, &completedID)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		if tmpMarker.State == "" { // enums in sql default to "" if invalid, WTF?
+			tmpMarker.State = "pending"
+		}
+		tmpMarker.AssignedTo = gid
+		if assignedNick.Valid {
+			tmpMarker.IngressName = assignedNick.String
+		} else {
+			tmpMarker.IngressName = ""
+		}
+		if comment.Valid {
+			tmpMarker.Comment = comment.String
+		} else {
+			tmpMarker.Comment = ""
+		}
+		if completedBy.Valid {
+			tmpMarker.CompletedBy = completedBy.String
+		} else {
+			tmpMarker.CompletedBy = ""
+		}
+		if completedID.Valid {
+			tmpMarker.CompletedID = GoogleID(completedID.String)
+		} else {
+			tmpMarker.CompletedID = ""
+		}
+		o.Markers = append(o.Markers, tmpMarker)
+	}
+
+	var tmpLink Link
+	var description, iname sql.NullString
+
+	rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.throworder, l.completed, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? AND l.gid = ? ORDER BY l.throworder", o.ID, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname, &tmpLink.Color)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		if description.Valid {
+			tmpLink.Desc = description.String
+		} else {
+			tmpLink.Desc = ""
+		}
+		tmpLink.AssignedTo = gid
+		if iname.Valid {
+			tmpLink.Iname = iname.String
+		} else {
+			tmpLink.Iname = ""
+		}
+		o.Links = append(o.Links, tmpLink)
+	}
 
 	return nil
 }

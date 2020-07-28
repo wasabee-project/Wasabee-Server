@@ -373,6 +373,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
+
 	if !o.ReadAccess(gid) {
 		if o.AssignedOnlyAccess(gid) {
 			return o.PopulateAssignedOnly(gid)
