@@ -207,10 +207,12 @@ func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) err
 
 	for _, agent := range vt.Agents {
 		// Log.Debug(agent)
-		_, err := agent.Gid.InitAgent()
-		if err == nil {
-			teamID.AddAgent(agent.Gid)
-		} else {
+		if _, err := agent.Gid.InitAgent(); err != nil {
+			Log.Error(err)
+			return err
+		}
+		if err = teamID.AddAgent(agent.Gid); err != nil {
+			Log.Error(err)
 			return err
 		}
 	}
