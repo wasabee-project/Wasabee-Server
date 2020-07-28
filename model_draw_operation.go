@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
-	"strings"
+	// "html/template"
+	// "strings"
 	"time"
 )
 
@@ -186,6 +186,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
+	Log.Debugf("op [%s] updated", opID)
 	if err := o.Touch(); err != nil {
 		Log.Error(err)
 		return err
@@ -326,8 +327,6 @@ func drawOpUpdateWorker(o Operation) error {
 }
 
 // Delete removes an operation and all associated data
-// Delete no longer removes unused teams ... the GUI is good enough now, the users can do that themselves
-// following the principle of least surprise
 func (o *Operation) Delete(gid GoogleID) error {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied")
@@ -414,43 +413,6 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 type objectID interface {
 	fmt.Stringer
-}
-
-// OpUserMenu is used in html templates to draw the menus to assign targets/links
-func OpUserMenu(currentGid GoogleID, opID OperationID, objID objectID, function string) (template.HTML, error) {
-	rows, err := db.Query("SELECT DISTINCT a.iname, a.gid, x.displayname FROM agentteams=x, agent=a, opteams=p WHERE x.teamID = p.teamID AND p.opID =  ? AND x.gid = a.gid ORDER BY a.iname", opID)
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
-	defer rows.Close()
-
-	var b strings.Builder
-	var iname, gid string
-	var dn sql.NullString
-
-	_, _ = b.WriteString(`<select name="agent" onchange="` + function + `('` + objID.String() + `', this);">`)
-	_, _ = b.WriteString(`<option value="">-- unassigned--</option>`)
-	for rows.Next() {
-		err := rows.Scan(&iname, &gid, &dn)
-		if err != nil {
-			Log.Error(err)
-			continue
-		}
-		if dn.Valid {
-			iname = dn.String
-		}
-
-		if gid == string(currentGid) {
-			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\" selected=\"selected\">%s</option>", gid, iname))
-		} else {
-			_, _ = b.WriteString(fmt.Sprintf("<option value=\"%s\">%s</option>", gid, iname))
-		}
-	}
-	_, _ = b.WriteString(`</select>`)
-	// #nosec
-	return template.HTML(b.String()), nil
 }
 
 // SetInfo changes the description of an operation
