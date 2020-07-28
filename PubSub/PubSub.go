@@ -186,9 +186,8 @@ func listenForWasabeeCommands() {
 }
 
 // shutdown calls the subscription receive cancel function, triggering Start() to return
-func Shutdown() error {
+func Shutdown() {
 	cancel()
-	return nil
 }
 
 func request(gid string) error {
