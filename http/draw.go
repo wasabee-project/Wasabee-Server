@@ -690,6 +690,11 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	if onhand < 0 { // @Robely42 .... sigh
 		onhand = 0
 	}
+	// cap out at 3k, even though 2600 is the one-user absolute limit
+	// because Niantic will Niantic
+	if onhand > 3000 {
+		onhand = 3000
+	}
 	capsule := req.FormValue("capsule")
 
 	// wasabee.Log.Debugf("noting keys: %s, %s, %d, %s", op.ID, portalID, onhand, capsule)
