@@ -109,18 +109,17 @@ func Shutdown() {
 
 func runUpdate(update tgbotapi.Update) error {
 	if update.CallbackQuery != nil {
+		wasabee.Log.Debugf("incoming telegram callback: %v", update)
 		msg, err := callback(&update)
 		if err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
-		_, err = bot.Send(msg)
-		if err != nil {
+		if _, err = bot.Send(msg); err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
-		_, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID))
-		if err != nil {
+		if _, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)); err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
@@ -128,7 +127,6 @@ func runUpdate(update tgbotapi.Update) error {
 	}
 
 	if update.Message != nil && update.Message.Chat.Type == "private" {
-		// XXX move more of this into message() ?
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		defaultReply, err := templateExecute("default", update.Message.From.LanguageCode, nil)
 		if err != nil {
@@ -146,7 +144,7 @@ func runUpdate(update tgbotapi.Update) error {
 		}
 
 		if gid == "" {
-			wasabee.Log.Debugf("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
+			wasabee.Log.Infof("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
 			fgid, err := runRocks(tgid)
 			if fgid != "" && err == nil {
 				tmp, _ := templateExecute("InitTwoSuccess", update.Message.From.LanguageCode, nil)
@@ -157,26 +155,48 @@ func runUpdate(update tgbotapi.Update) error {
 					wasabee.Log.Error(err)
 				}
 			}
-		} else if !verified {
-			wasabee.Log.Debugf("unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
+			if _, err = bot.Send(msg); err != nil {
+				wasabee.Log.Error(err)
+				return err
+			}
+			return nil
+		}
+
+		if !verified {
+			wasabee.Log.Infof("unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
 			err = newUserVerify(&msg, &update)
 			if err != nil {
 				wasabee.Log.Error(err)
 			}
-		} else { // verified user, process message
-			message(&msg, &update, gid)
+			if _, err = bot.Send(msg); err != nil {
+				wasabee.Log.Error(err)
+				return err
+			}
+			return nil
 		}
 
-		_, err = bot.Send(msg)
+		// verified user, process message
+		processMessage(&msg, &update, gid)
+
+	}
+
+	if update.EditedMessage != nil && update.EditedMessage.Location != nil {
+		tgid := wasabee.TelegramID(update.EditedMessage.From.ID)
+		gid, verified, err := tgid.GidV()
 		if err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
-		_, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
+		if !verified {
+			wasabee.Log.Infof("%s not verified, ignoring location update", gid)
+			return nil
 		}
+
+		// wasabee.Log.Debugf("processing live location update for %s", gid)
+		_ = gid.AgentLocation(
+			strconv.FormatFloat(update.EditedMessage.Location.Latitude, 'f', -1, 64),
+			strconv.FormatFloat(update.EditedMessage.Location.Longitude, 'f', -1, 64),
+		)
 	}
 
 	return nil
@@ -247,7 +267,7 @@ func keyboards(c *TGConfiguration) {
 }
 
 // This is where command processing takes place
-func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.GoogleID) {
+func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.GoogleID) error {
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
 		case "start":
@@ -263,37 +283,45 @@ func message(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.Go
 			msg.Text = tmp
 			msg.ReplyMarkup = config.baseKbd
 		}
+
+		if _, err := bot.DeleteMessage(tgbotapi.NewDeleteMessage(inMsg.Message.Chat.ID, inMsg.Message.MessageID)); err != nil {
+			wasabee.Log.Error(err)
+			return err
+		}
 	} else if inMsg.Message.Text != "" {
-		messageText(msg, inMsg, gid)
+		switch inMsg.Message.Text {
+		/* case "My Assignments":
+			msg.ReplyMarkup = assignmentKeyboard(gid)
+			msg.Text = "My Assignments"
+		case "Nearby Tasks":
+			msg.ReplyMarkup = nearbyAssignmentKeyboard(gid)
+			msg.Text = "Nearby Tasks" */
+		case "Teams":
+			msg.ReplyMarkup = teamKeyboard(gid)
+			msg.Text = "Your Teams"
+		case "Teammates Nearby":
+			msg.Text, _ = teammatesNear(gid, inMsg)
+			msg.ReplyMarkup = config.baseKbd
+			msg.DisableWebPagePreview = true
+		default:
+			msg.ReplyMarkup = config.baseKbd
+		}
 	}
 
-	if inMsg.Message.Location != nil {
+	if inMsg.Message != nil && inMsg.Message.Location != nil {
+		// wasabee.Log.Debugf("processing inital location for %s", gid)
 		_ = gid.AgentLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
 		)
-		msg.Text = "Location Processed"
 	}
-}
 
-func messageText(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.GoogleID) {
-	switch inMsg.Message.Text {
-	/* case "My Assignments":
-		msg.ReplyMarkup = assignmentKeyboard(gid)
-		msg.Text = "My Assignments"
-	case "Nearby Tasks":
-		msg.ReplyMarkup = nearbyAssignmentKeyboard(gid)
-		msg.Text = "Nearby Tasks" */
-	case "Teams":
-		msg.ReplyMarkup = teamKeyboard(gid)
-		msg.Text = "Your Teams"
-	case "Teammates Nearby":
-		msg.Text, _ = teammatesNear(gid, inMsg)
-		msg.ReplyMarkup = config.baseKbd
-		msg.DisableWebPagePreview = true
-	default:
-		msg.ReplyMarkup = config.baseKbd
+	if _, err := bot.Send(msg); err != nil {
+		wasabee.Log.Error(err)
+		return err
 	}
+
+	return nil
 }
 
 // SendMessage is registered with Wasabee-Server as a message bus to allow other modules to send messages via Telegram
