@@ -21,6 +21,9 @@ var mc messagingConfig
 // SendMessage sends a message to the available message destinations for agent specified by "gid"
 // currently only Telegram is supported, but more can be added
 func (gid GoogleID) SendMessage(message string) (bool, error) {
+	// Always send via Firebase
+	gid.FirebaseGenericMessage(message);
+
 	// determine which messaging protocols are enabled for gid
 	// pick optimal
 	bus := "Telegram"
@@ -40,6 +43,7 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 		err = fmt.Errorf("unable to send message")
 		return false, err
 	}
+
 	return true, nil
 }
 
@@ -75,7 +79,7 @@ func (gid GoogleID) CanSendTo(to GoogleID) bool {
 
 // SendAnnounce sends a message to everyone on the team, determining what is the best route per agent
 func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
-	if x, _ := sender.OwnsTeam(teamID); !x {
+	if owns, _ := sender.OwnsTeam(teamID); !owns {
 		err := fmt.Errorf("permission denied: %s sending to team %s", sender, teamID)
 		Log.Error(err)
 		return err
@@ -91,13 +95,6 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 	var gid GoogleID
 	for rows.Next() {
 		err := rows.Scan(&gid)
-		if !sender.CanSendTo(gid) {
-			continue
-		}
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
 		ok, err := gid.SendMessage(message)
 		if err != nil {
 			Log.Error(err)
