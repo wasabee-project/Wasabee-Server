@@ -154,7 +154,10 @@ func RocksUpdate(id AgentID, agent *RocksAgent) error {
 		if err != nil && strings.Contains(err.Error(), "Error 1062") {
 			iname := "%s-doppel"
 			Log.Error("dupliate ingress agent name detected for [%], storing as [%]", agent.Agent, iname)
-			db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", iname, agent.Verified, gid)
+			if _, err := db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", iname, agent.Verified, gid); err != nil {
+				Log.Error(err)
+				return err
+			}
 		} else if err != nil {
 			Log.Error(err)
 			return err
@@ -162,8 +165,7 @@ func RocksUpdate(id AgentID, agent *RocksAgent) error {
 
 		// we trust .rocks to verify telegram info; if it is not already set for a agent, just import it.
 		if agent.TGId > 0 { // negative numbers are group chats, 0 is invalid
-			_, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, 'unused', ?, 1)", agent.TGId, gid)
-			if err != nil {
+			if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, 'unused', ?, 1)", agent.TGId, gid); err != nil {
 				Log.Error(err)
 				return err
 			}

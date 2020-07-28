@@ -34,8 +34,7 @@ func (o *Operation) PopulateTeams() error {
 // ReadAccess determines if an agent has read acces to an op
 func (o *Operation) ReadAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
-		err := o.PopulateTeams()
-		if err != nil {
+		if err := o.PopulateTeams(); err != nil {
 			Log.Notice(err)
 			return false
 		}
@@ -56,7 +55,11 @@ func (o *Operation) ReadAccess(gid GoogleID) bool {
 
 // WriteAccess determines if an agent has write access to an op
 func (o *Operation) WriteAccess(gid GoogleID) bool {
-	o.PopulateTeams() // do not cache -- force reset on uploads
+	// do not cache -- force reset on uploads
+	if err := o.PopulateTeams(); err != nil {
+		Log.Notice(err)
+		return false
+	}
 	if o.ID.IsOwner(gid) {
 		return true
 	}
@@ -116,7 +119,10 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 
 func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
-		o.PopulateTeams()
+		if err := o.PopulateTeams(); err != nil {
+			Log.Error(err)
+			return false
+		}
 	}
 
 	for _, t := range o.Teams {

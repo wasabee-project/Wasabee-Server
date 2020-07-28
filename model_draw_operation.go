@@ -369,7 +369,10 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	o.PopulateTeams()
+	if err := o.PopulateTeams(); err != nil {
+		Log.Error(err)
+		return err
+	}
 	if !o.ReadAccess(gid) {
 		if o.AssignedOnlyAccess(gid) {
 			return o.PopulateAssignedOnly(gid)

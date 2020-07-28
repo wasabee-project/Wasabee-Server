@@ -85,7 +85,7 @@ func (gid GoogleID) firebaseAgentLocation() {
 }
 
 // send a free-form message to a single agent
-func (gid GoogleID) firebaseGenericMessage(msg string) {
+func (gid GoogleID) FirebaseGenericMessage(msg string) {
 	if !fb.running {
 		return
 	}
@@ -187,6 +187,7 @@ func (o *Operation) firebaseMapChange() {
 			Msg:    "changed",
 		})
 	}
+	Log.Debugf("sending mapchange via firebase for [%s]", o.ID)
 }
 
 func (gid GoogleID) firebaseSubscribeTeam(teamID TeamID) {
@@ -278,9 +279,11 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 
 	// XXX if we have duplicates, prune -- TODO: add unique key after this has been in place a while
 	if count > 1 {
+		Log.Debugf("removing duplicate tokens from %s [%s]", gid, token)
 		gid.FirebaseRemoveToken(token)
 	}
 
+	Log.Debugf("adding token for %s [%s]", gid, token)
 	_, err = db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		Log.Error(err)
@@ -296,21 +299,17 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 }
 
 // FirebaseRemoveToken removes known token for a given user
-func (gid GoogleID) FirebaseRemoveToken(token string) error {
+func (gid GoogleID) FirebaseRemoveToken(token string) {
 	_, err := db.Exec("DELETE FROM firebase WHERE gid = ? AND token = ?", gid, token)
 	if err != nil {
 		Log.Error(err)
-		return err
 	}
-	return nil
 }
 
 // FirebaseRemoveToken removes all tokens for a given user
-func (gid GoogleID) FirebaseRemoveAllTokens() error {
+func (gid GoogleID) FirebaseRemoveAllTokens() {
 	_, err := db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
 	if err != nil {
 		Log.Error(err)
-		return err
 	}
-	return nil
 }

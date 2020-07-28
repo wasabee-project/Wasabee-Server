@@ -140,9 +140,8 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	return nil
 }
 
-func fakedTeam(teamList *TeamData) error {
-	Log.Debug("owned team queried")
-	return nil
+func fakedTeam(teamList *TeamData) {
+	Log.Debug("owned team queried: OLD IITC plugin?")
 }
 
 // OwnsTeam returns true if the GoogleID owns the team identified by teamID
