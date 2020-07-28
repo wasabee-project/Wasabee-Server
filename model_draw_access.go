@@ -34,7 +34,11 @@ func (o *Operation) PopulateTeams() error {
 // ReadAccess determines if an agent has read acces to an op
 func (o *Operation) ReadAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
-		o.PopulateTeams()
+		err := o.PopulateTeams()
+		if err != nil {
+			Log.Notice(err)
+			return false
+		}
 	}
 	if o.ID.IsOwner(gid) {
 		return true
