@@ -157,40 +157,6 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
-/*
-func editTeamRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
-	safe, err := gid.OwnsTeam(team)
-	if err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if !safe {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	var teamList wasabee.TeamData
-	if err = team.FetchTeam(&teamList, true); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err = templateExecute(res, req, "teamedit", teamList); err != nil {
-		wasabee.Log.Notice(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-} */
-
 func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
