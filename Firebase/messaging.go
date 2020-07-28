@@ -9,7 +9,8 @@ import (
 
 // SendMessage is registered with Wasabee for sending messages
 func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
-	wasabee.Log.Debugf("sent to %s", gid)
+	gid.FirebaseGenericMessage(message);
+	wasabee.Log.Debugf("sent to %s via firebase", gid)
 	return false, nil
 }
 
@@ -103,7 +104,7 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		wasabee.Log.Error(err)
 		return err
 	}
-	// wasabee.Log.Debugf("sent to %s", fb.TeamID)
+	wasabee.Log.Debugf("sending marker status change to team %s for op [%s] %s %s", fb.TeamID, fb.OpID, fb.Msg, fb.Cmd.String());
 	return nil
 }
 
@@ -142,8 +143,8 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 			wasabee.Log.Error(err)
 			return err
 		}
+		wasabee.Log.Debugf("sending marker assignment change to %s for op [%s] %s %s", fb.Gid, fb.OpID, fb.Msg, fb.Cmd.String());
 	}
-	// wasabee.Log.Debugf("sent to %s", fb.Gid)
 	return nil
 }
 
@@ -172,7 +173,8 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 		wasabee.Log.Error(err)
 		return err
 	}
-	// wasabee.Log.Debugf("sent to %s", fb.TeamID)
+
+	wasabee.Log.Debugf("sending map change to team %s for op [%s] %s %s", fb.TeamID, fb.OpID, fb.Msg, fb.Cmd.String());
 	return nil
 }
 
@@ -297,10 +299,10 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 	var tmr *messaging.TopicManagementResponse
 	if fb.Msg == "subscribe" {
 		tmr, err = c.SubscribeToTopic(ctx, tokens, string(fb.TeamID))
-		// wasabee.Log.Debugf("subscribed %s to %s (%s)", fb.Gid, fb.TeamID, tokens)
+		wasabee.Log.Debugf("subscribed %s to %s (%s)", fb.Gid, fb.TeamID, tokens)
 	} else {
 		tmr, err = c.UnsubscribeFromTopic(ctx, tokens, string(fb.TeamID))
-		// wasabee.Log.Debugf("unsubscribed %s from %s (%s)", fb.Gid, fb.TeamID, tokens)
+		wasabee.Log.Debugf("unsubscribed %s from %s (%s)", fb.Gid, fb.TeamID, tokens)
 	}
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -309,11 +311,7 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
 			wasabee.Log.Debugf("[un]subscribe failed for %s: %s ; deleting token", tokens[f.Index], f.Reason)
-			err = fb.Gid.FirebaseRemoveToken(tokens[f.Index])
-			if err != nil {
-				wasabee.Log.Notice(err)
-				// keep going
-			}
+			fb.Gid.FirebaseRemoveToken(tokens[f.Index])
 		}
 	}
 	return nil

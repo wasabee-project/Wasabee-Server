@@ -22,7 +22,7 @@ type rlt struct {
 
 // ServeFirebase is the main startup function for the Firebase integration
 func ServeFirebase(keypath string) error {
-	wasabee.Log.Debug("starting Firebase")
+	wasabee.Log.Debugf("starting Firebase (version %s)", firebase.Version)
 
 	ctx := context.Background()
 	opt := option.WithCredentialsFile(keypath)
@@ -80,6 +80,9 @@ func ServeFirebase(keypath string) error {
 }
 
 func rateLimit(teamID wasabee.TeamID) bool {
+	// disable for now
+	return true
+
 	rl, ok := rlmap[teamID]
 	now := time.Now()
 
@@ -93,7 +96,7 @@ func rateLimit(teamID wasabee.TeamID) bool {
 
 	waituntil := rl.t.Add(15 * time.Second)
 	if now.Before(waituntil) {
-		// wasabee.Log.Debugf("skipping firebase send to team %s", teamID)
+		wasabee.Log.Debugf("skipping firebase send to team %s", teamID)
 		return false
 	}
 
