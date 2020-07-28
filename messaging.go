@@ -22,7 +22,7 @@ var mc messagingConfig
 // currently only Telegram is supported, but more can be added
 func (gid GoogleID) SendMessage(message string) (bool, error) {
 	// Always send via Firebase
-	gid.FirebaseGenericMessage(message);
+	gid.FirebaseGenericMessage(message)
 
 	// determine which messaging protocols are enabled for gid
 	// pick optimal
