@@ -24,16 +24,16 @@ before_install:
      - echo "CREATE DATABASE wasabi" | mysql -u root --password="" 
 
 install:
-    - go get -t -v $(go list ./... | grep -v integration)
-    #- go get golang.org/x/tools/cmd/cover
-    #- go get github.com/mattn/goveralls
+    # - go get -t -v $(go list ./... | grep -v integration)
+    - go get golang.org/x/tools/cmd/cover
+    - go get github.com/mattn/goveralls
+    - go build -v ./...
     - go install -v ./...
 
 script:
-    - ls ~
-    - ls $GOPATH
+    - ls $GOPATH/bin
     #- go test -v -race -test.short ./...        # Run tests with the race detector.
     # - go get -v ./...                           # Run Go static analyzer.
     #- go test -v -covermode=count -coverprofile=coverage.out
-    - $GOPATH/bin/wasabi-userupdate
-    #- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+    - wasabi-userupdate
+    #- goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
