@@ -21,7 +21,7 @@ addons:
 go_import_path: github.com/wasabee-project/Wasabee-Server
 
 before_install:
-     - echo "CREATE DATABASE wasabi" | mysql -u root --password="" 
+     - echo "CREATE DATABASE wasabee" | mysql -u root --password="" 
 
 install:
     # - go get -t -v $(go list ./... | grep -v integration)
@@ -35,5 +35,5 @@ script:
     #- go test -v -race -test.short ./...        # Run tests with the race detector.
     # - go get -v ./...                           # Run Go static analyzer.
     #- go test -v -covermode=count -coverprofile=coverage.out
-    - wasabi-userupdate
+    - wasabee-userupdate
     #- goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
