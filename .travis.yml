@@ -30,8 +30,10 @@ install:
     - go install -v ./...
 
 script:
+    - ls ~
+    - ls $GOPATH
     #- go test -v -race -test.short ./...        # Run tests with the race detector.
-    - go get -v ./...                           # Run Go static analyzer.
+    # - go get -v ./...                           # Run Go static analyzer.
     #- go test -v -covermode=count -coverprofile=coverage.out
-    - $HOME/gopath/bin/wasabi-userupdate
+    - $GOPATH/bin/wasabi-userupdate
     #- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
