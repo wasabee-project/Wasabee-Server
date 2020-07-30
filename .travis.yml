@@ -16,7 +16,7 @@ matrix:
   fast_finish: true
 
 addons:
-    mariadb: "10.5"
+    mariadb: "10.3"
 
 go_import_path: github.com/wasabee-project/Wasabee-Server
 
