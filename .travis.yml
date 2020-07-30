@@ -16,7 +16,7 @@ matrix:
   fast_finish: true
 
 addons:
-    mariadb: "10.3"
+    mariadb: "10.5"
 
 go_import_path: github.com/wasabee-project/Wasabee-Server
 
@@ -31,9 +31,9 @@ install:
     - go install -v ./...
 
 script:
-    - ls $GOPATH/bin
-    #- go test -v -race -test.short ./...        # Run tests with the race detector.
+    # - ls $GOPATH/bin
+    - go test -v -race -test.short ./...        # Run tests with the race detector.
     # - go get -v ./...                           # Run Go static analyzer.
-    #- go test -v -covermode=count -coverprofile=coverage.out
+    - go test -v -covermode=count -coverprofile=coverage.out
     - wasabee-userupdate
-    #- goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+    - goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
