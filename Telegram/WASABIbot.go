@@ -181,6 +181,7 @@ func runUpdate(update tgbotapi.Update) error {
 	}
 
 	if update.EditedMessage != nil && update.EditedMessage.Location != nil {
+		wasabee.Log.Debug("processing live location upate")
 		tgid := wasabee.TelegramID(update.EditedMessage.From.ID)
 		gid, verified, err := tgid.GidV()
 		if err != nil {
@@ -309,7 +310,7 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 	}
 
 	if inMsg.Message != nil && inMsg.Message.Location != nil {
-		// wasabee.Log.Debugf("processing inital location for %s", gid)
+		wasabee.Log.Debugf("processing inital location for %s", gid)
 		_ = gid.AgentLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
