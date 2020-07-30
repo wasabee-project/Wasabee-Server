@@ -40,8 +40,8 @@ func TestOperation(t *testing.T) {
 	fmt.Print(string(newj))
 
 	// make some changes
-	opp.KeyOnHand(gid, "83c4d2bee503409cbfc76db98af4d749.16", 7)
-	opp.KeyOnHand(gid, "2aa9e865ab8a4bb9896fb371281dcb7b.16", 99)
+	opp.KeyOnHand(gid, wasabee.PortalID("83c4d2bee503409cbfc76db98af4d749.16"), 7, "")
+	opp.KeyOnHand(gid, wasabee.PortalID("2aa9e865ab8a4bb9896fb371281dcb7b.16"), 99, "cap")
 	opp.PortalHardness("2aa9e865ab8a4bb9896fb371281dcb7b.16", "booster required")
 	opp.PortalHardness("83c4d2bee503409cbfc76db98af4d749.16", "BGAN only")
 	opp.PortalComment("83c4d2bee503409cbfc76db98af4d749.16", "testing a comment")
@@ -117,7 +117,7 @@ func TestDamagedOperation(t *testing.T) {
 
 	opp := &in
 	// does not print error for invalid portals
-	opp.KeyOnHand(gid, "83c4d2bee503409cbfc76db98af4d749.xx", 7)
+	opp.KeyOnHand(gid, wasabee.PortalID("83c4d2bee503409cbfc76db98af4d749.xx"), 7, "")
 
 	content, err = ioutil.ReadFile("testdata/test3-update.json")
 	if err != nil {
