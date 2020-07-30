@@ -57,6 +57,7 @@ const callback = "/callback"
 const aptoken = "/aptok"
 const apipath = "/api/v1"
 const appUserAgent = "(dart:io)"
+const oneTimeToken = "/oneTimeToken"
 
 // initializeConfig will normalize the options and create the "config" object.
 func initializeConfig(initialConfig Configuration) {
@@ -377,7 +378,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func jsonError(e error) string {
-	return fmt.Sprintf("{\"status\":\"error\",\"error\":\"%s\"}", e.Error())
+	return fmt.Sprintf(`{"status":"error","error":"%s"}`, e.Error())
 }
 
 // almost everything should return JSON now. The few things that do not redirect elsewhere.

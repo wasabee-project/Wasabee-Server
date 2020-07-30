@@ -187,7 +187,7 @@ func (o *Operation) firebaseMapChange() {
 			Msg:    "changed",
 		})
 	}
-	Log.Debugf("sending mapchange via firebase for [%s]", o.ID)
+	// Log.Debugf("sending mapchange via firebase for [%s]", o.ID)
 }
 
 func (gid GoogleID) firebaseSubscribeTeam(teamID TeamID) {
@@ -283,7 +283,7 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 		gid.FirebaseRemoveToken(token)
 	}
 
-	Log.Debugf("adding token for %s [%s]", gid, token)
+	// Log.Debugf("adding token for %s [%s]", gid, token)
 	_, err = db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		Log.Error(err)

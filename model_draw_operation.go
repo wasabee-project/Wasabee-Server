@@ -186,7 +186,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	Log.Debugf("op [%s] updated", opID)
+	// Log.Debugf("op [%s] updated", opID)
 	if err := o.Touch(); err != nil {
 		Log.Error(err)
 		return err

@@ -776,3 +776,25 @@ func (ad AgentData) Save() error {
 	}
 	return nil
 }
+
+func OneTimeToken(token string) (GoogleID, error) {
+	var gid GoogleID
+
+	err := db.QueryRow("SELECT gid FROM agent WHERE LocKey = ?", token).Scan(&gid)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	newTok, err := GenerateSafeName()
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	if _, err = db.Exec("UPDATE agent SET LocKey = ? WHERE gid = ?", newTok, gid); err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	return gid, nil
+}

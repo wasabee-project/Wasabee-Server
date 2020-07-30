@@ -34,6 +34,8 @@ func setupRouter() *mux.Router {
 	router.HandleFunc(login, googleRoute).Methods("GET")
 	router.HandleFunc(callback, callbackRoute).Methods("GET")
 	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")
+	router.HandleFunc(oneTimeToken, oneTimeTokenRoute).Methods("POST")
+
 	// common files that live under /static
 	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 	router.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
@@ -548,6 +550,103 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	wasabee.Log.Infof("%s apTok login", iname)
 	m.Gid.FirebaseAgentLogin()
+
+	// cookie := res.Header().Get("set-cookie")
+	// wasabee.Log.Debugf("Sending Cookie: %s", cookie);
+	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
+	res.Header().Set("Cache-Control", "no-store")
+
+	fmt.Fprint(res, string(data))
+}
+
+// the user must first log in to the web interface -- satisfying the google pull for InitAgent to get this token
+// which they use to log in via Wasabee-IITC
+func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
+	if contentType != "multipart/form-data" {
+		err := fmt.Errorf("invalid content-type %s (needs to be multipart/form-data)", contentType)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		wasabee.Log.Notice(err)
+		return
+	}
+
+	token := req.FormValue("token")
+	if token == "" {
+		err := fmt.Errorf("token not set")
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		wasabee.Log.Notice(err)
+		return
+	}
+
+	gid, err := wasabee.OneTimeToken(token)
+	if err != nil {
+		err := fmt.Errorf("invalid one-time token")
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		wasabee.Log.Notice(err)
+		return
+	}
+
+	// session cookie
+	ses, err := config.store.Get(req, config.sessionName)
+	if err != nil {
+		// cookie is borked, maybe sessionName or key changed
+		wasabee.Log.Notice("Cookie error: ", err)
+		ses = sessions.NewSession(config.store, config.sessionName)
+		ses.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   -1,                    // force delete
+			SameSite: http.SameSiteNoneMode, // requires go 1.13
+			Secure:   true,
+		}
+		_ = ses.Save(req, res)
+		res.Header().Set("Connection", "close")
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	authorized, err := gid.InitAgent() // V & .rocks authorization takes place here
+	if !authorized {
+		err = fmt.Errorf("access denied: %s", err)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		return
+	}
+	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	ses.Values["id"] = gid.String()
+	nonce, _ := calculateNonce(gid)
+	ses.Values["nonce"] = nonce
+	ses.Options = &sessions.Options{
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode, // requires go 1.13
+		Secure:   true,
+	}
+	err = ses.Save(req, res)
+	if err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	iname, err := gid.IngressName()
+	if err != nil {
+		wasabee.Log.Error(err)
+	}
+
+	var ud wasabee.AgentData
+	if err = gid.GetAgentData(&ud); err != nil {
+		wasabee.Log.Notice(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data, _ := json.Marshal(ud)
+
+	wasabee.Log.Infof("%s oneTimeToken login", iname)
+	gid.FirebaseAgentLogin()
 
 	// cookie := res.Header().Get("set-cookie")
 	// wasabee.Log.Debugf("Sending Cookie: %s", cookie);
