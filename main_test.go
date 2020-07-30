@@ -17,13 +17,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
-	/* -- don't run these for now
 	wasabee.SetVEnlOne(wasabee.Vconfig{
 		APIKey: os.Getenv("VENLONE_API_KEY"),
 	})
 	wasabee.SetEnlRocks(wasabee.Rocksconfig{
 		APIKey: os.Getenv("ENLROCKS_API_KEY"),
-	}) */
+	})
 
 	// flag.Parse()
 	exitCode := m.Run()
