@@ -176,7 +176,7 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 	return nil
 }
 
-// DelPerm removes a permisssion from an op
+// DelPerm removes a permission from an op
 func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm string) error {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("%s not current owner of op %s", gid, o.ID)

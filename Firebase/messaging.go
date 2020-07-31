@@ -9,7 +9,7 @@ import (
 
 // SendMessage is registered with Wasabee for sending messages
 func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
-	gid.FirebaseGenericMessage(message);
+	gid.FirebaseGenericMessage(message)
 	wasabee.Log.Debugf("generic message sent to %s via firebase", gid)
 	return false, nil
 }

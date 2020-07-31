@@ -312,7 +312,7 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 	}
 
 	if inMsg.Message != nil && inMsg.Message.Location != nil {
-		wasabee.Log.Debugf("processing inital location for %s", gid)
+		wasabee.Log.Debugf("processing initial location for %s", gid)
 		_ = gid.AgentLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),

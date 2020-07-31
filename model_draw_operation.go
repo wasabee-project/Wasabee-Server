@@ -524,7 +524,7 @@ func (o *Operation) Copy(gid GoogleID, complete bool) (OperationID, error) {
 			Log.Error(err)
 			return "", err
 		}
-	} 
+	}
 
 	return new.ID, nil
 }
