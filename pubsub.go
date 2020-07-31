@@ -5,6 +5,7 @@ var ps struct {
 	c       chan PSCommand
 }
 
+// PSCommand is the command passed over the channel
 type PSCommand struct {
 	Command string
 	Param   string

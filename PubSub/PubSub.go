@@ -3,7 +3,6 @@ package wasabeepubsub
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 
 var cancel context.CancelFunc
 
+// Configuration is the data passed into StartPubSub
 type Configuration struct {
 	Cert          string
 	Project       string
@@ -55,7 +55,7 @@ func StartPubSub(config Configuration) error {
 
 	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
 		// use a subscription for one who requests
-		c.subscription = fmt.Sprintf("%s", c.hostname)
+		c.subscription = c.hostname
 		c.responder = false
 	} else {
 		// use the topic/subscription for all those who respond to requests
@@ -106,7 +106,6 @@ func listenForPubSubMessages() {
 			// anyone on the subscription can ack it
 			// wasabee.Log.Debugf("received heartbeat from [%s]", msg.Attributes["Sender"])
 			msg.Ack()
-			break
 		case "request":
 			if !c.responder {
 				// anyone on the requester subscription can Ack it
@@ -127,7 +126,6 @@ func listenForPubSubMessages() {
 				wasabee.Log.Infof("Nacking response for [%s] requested by [%s]", msg.Attributes["Gid"], msg.Attributes["Sender"])
 				msg.Nack()
 			}
-			break
 		case "agent":
 			if c.responder {
 				// anyone on the responder subscription can Ack it
@@ -158,7 +156,6 @@ func listenForPubSubMessages() {
 				break
 			}
 			msg.Ack()
-			break
 		default:
 			wasabee.Log.Noticef("unknown message type [%s]", msg.Attributes["Type"])
 			// get it off the subscription quickly
@@ -176,7 +173,6 @@ func listenForWasabeeCommands() {
 			if err != nil {
 				wasabee.Log.Error(err)
 			}
-			break
 		default:
 			wasabee.Log.Notice("unknown PubSub command: %s", cmd.Command)
 		}
@@ -185,7 +181,7 @@ func listenForWasabeeCommands() {
 	Shutdown()
 }
 
-// shutdown calls the subscription receive cancel function, triggering Start() to return
+// Shutdown calls the subscription receive cancel function, triggering Start() to return
 func Shutdown() {
 	cancel()
 }
@@ -193,8 +189,7 @@ func Shutdown() {
 func request(gid string) error {
 	ctx := context.Background()
 
-	var atts map[string]string
-	atts = make(map[string]string)
+	atts := make(map[string]string)
 	atts["Type"] = "request"
 	atts["Gid"] = gid
 	atts["Sender"] = c.hostname
@@ -244,8 +239,7 @@ func respond(g string, sender string) (bool, error) {
 		return false, err
 	}
 
-	var atts map[string]string
-	atts = make(map[string]string)
+	atts := make(map[string]string)
 	atts["Type"] = "agent"
 	atts["Gid"] = g
 	atts["Sender"] = c.hostname
@@ -266,8 +260,7 @@ func heartbeats() {
 	ticker := time.NewTicker(30 * time.Minute)
 	defer ticker.Stop()
 
-	var atts map[string]string
-	atts = make(map[string]string)
+	atts := make(map[string]string)
 	atts["Type"] = "heartbeat"
 	atts["Sender"] = c.hostname
 

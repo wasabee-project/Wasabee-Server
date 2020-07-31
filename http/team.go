@@ -44,7 +44,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.FetchTeam(&teamList, isowner) // send all to owner
 	if err == sql.ErrNoRows {
-		err = fmt.Errorf("Team %s not found", team)
+		err = fmt.Errorf("team %s not found", team)
 		wasabee.Log.Debug(err)
 		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
@@ -319,7 +319,7 @@ func setAgentTeamDisplaynameRoute(res http.ResponseWriter, req *http.Request) {
 	if owns, _ := gid.OwnsTeam(teamID); owns {
 		inGid := wasabee.GoogleID(vars["gid"])
 		displayname := req.FormValue("displayname")
-		err := teamID.SetDisplaname(inGid, displayname)
+		err := teamID.SetDisplayname(inGid, displayname)
 		if err != nil {
 			wasabee.Log.Notice(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)

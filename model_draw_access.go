@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// PopulateTeams loads the permissions from the database into the op data
 func (o *Operation) PopulateTeams() error {
 	// start empty, trust only what is in the database
 	o.Teams = nil
@@ -117,6 +118,7 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 	return nil
 }
 
+// AssignedOnlyAccess verifies if an agent has AO access to an op
 func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
 		if err := o.PopulateTeams(); err != nil {
@@ -136,6 +138,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 	return false
 }
 
+// AddPerm adds a new permission to an op
 func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("%s not current owner of op %s", gid, o.ID)
@@ -173,6 +176,7 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 	return nil
 }
 
+// DelPerm removes a permisssion from an op
 func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm string) error {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("%s not current owner of op %s", gid, o.ID)

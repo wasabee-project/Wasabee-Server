@@ -27,7 +27,7 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 }
 
 // PopulateKeys fills in the Keys on hand list for the Operation. No authorization takes place.
-func (o *Operation) PopulateKeys() error {
+func (o *Operation) populateKeys() error {
 	var k KeyOnHand
 	rows, err := db.Query("SELECT portalID, gid, onhand, capsule FROM opkeys WHERE opID = ?", o.ID)
 	if err != nil {

@@ -49,7 +49,7 @@ func (opID OperationID) deletePortal(p PortalID) error {
 }
 
 // PopulatePortals fills in the OpPortals list for the Operation. No authorization takes place.
-func (o *Operation) PopulatePortals() error {
+func (o *Operation) populatePortals() error {
 	var tmpPortal Portal
 
 	var comment, hardness sql.NullString
@@ -84,7 +84,7 @@ func (o *Operation) PopulatePortals() error {
 
 // PopulateAnchors fills in the Anchors list for the Operation. No authorization takes place.
 // XXX the clients _should_ build this themselves, but don't, yet.
-func (o *Operation) PopulateAnchors() error {
+func (o *Operation) populateAnchors() error {
 	var fromPortalID, toPortalID PortalID
 	rows, err := db.Query("SELECT fromPortalID, toPortalID FROM link WHERE opID = ?", o.ID)
 	if err != nil {

@@ -84,7 +84,7 @@ func (gid GoogleID) firebaseAgentLocation() {
 	}
 }
 
-// send a free-form message to a single agent
+// FirebaseGenericMessage sends a free-form message to a single agent
 func (gid GoogleID) FirebaseGenericMessage(msg string) {
 	if !fb.running {
 		return
@@ -306,7 +306,7 @@ func (gid GoogleID) FirebaseRemoveToken(token string) {
 	}
 }
 
-// FirebaseRemoveToken removes all tokens for a given user
+// FirebaseRemoveAllTokens removes all tokens for a given user
 func (gid GoogleID) FirebaseRemoveAllTokens() {
 	_, err := db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
 	if err != nil {

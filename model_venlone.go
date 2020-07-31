@@ -161,7 +161,7 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 	return nil
 }
 
-// Pull a V team's member list into a WASABEE team
+// VPullTeam pulls a V team's member list into a WASABEE team
 // do not use the server's api key, this is per-team... we do not want to store this key info
 func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) error {
 	owns, err := gid.OwnsTeam(teamID)

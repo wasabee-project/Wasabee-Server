@@ -66,7 +66,7 @@ func (opID OperationID) deleteMarker(mid MarkerID) error {
 }
 
 // PopulateMarkers fills in the Markers list for the Operation. No authorization takes place.
-func (o *Operation) PopulateMarkers() error {
+func (o *Operation) populateMarkers() error {
 	var tmpMarker Marker
 
 	var assignedGid, comment, assignedNick, completedBy, completedID sql.NullString
@@ -295,7 +295,8 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 	return nil
 }
 
-func (o *Operation) PopulateAssignedOnly(gid GoogleID) error {
+// PopulateAssignedOnly creates a specific version of the op for the given agent
+func (o *Operation) populateAssignedOnly(gid GoogleID) error {
 	var tmpMarker Marker
 
 	var comment, assignedNick, completedBy, completedID sql.NullString

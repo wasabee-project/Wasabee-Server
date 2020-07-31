@@ -725,7 +725,7 @@ func (gid GoogleID) GetPicture() string {
 		// Log.Info(err)
 		// wr, _ := GetWebroot()
 		// XXX do not hardcode this URL
-		return fmt.Sprint("https://cdn2.wasabee.rocks/android-chrome-512x512.png")
+		return "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
 	}
 
 	return url
@@ -757,7 +757,7 @@ func ToGid(in string) (GoogleID, error) {
 	return gid, err
 }
 
-// called by InitAgent and from the Pub/Sub system to write a new agent
+// Save is called by InitAgent and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
 	// Log.Debugf("saving %s/%s", ad.GoogleID, ad.IngressName)
@@ -777,6 +777,7 @@ func (ad AgentData) Save() error {
 	return nil
 }
 
+// OneTimeToken attempts to verify a submitted OTT and updates it if valid
 func OneTimeToken(token string) (GoogleID, error) {
 	var gid GoogleID
 

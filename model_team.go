@@ -426,6 +426,7 @@ func (gid GoogleID) teamList() []TeamID {
 	return x
 }
 
+// SetSquad sets an agent's squad on a given team
 func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", MakeNullString(squad), teamID, gid)
 	if err != nil {
@@ -435,7 +436,8 @@ func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 	return nil
 }
 
-func (teamID TeamID) SetDisplaname(gid GoogleID, displayname string) error {
+// SetDisplayname sets an agent's display name on a given team
+func (teamID TeamID) SetDisplayname(gid GoogleID, displayname string) error {
 	_, err := db.Exec("UPDATE agentteams SET displayname = ? WHERE teamID = ? and gid = ?", MakeNullString(displayname), teamID, gid)
 	if err != nil {
 		Log.Notice(err)
@@ -444,6 +446,7 @@ func (teamID TeamID) SetDisplaname(gid GoogleID, displayname string) error {
 	return nil
 }
 
+// GenerateJoinToken sets a team's join link token
 func (teamID TeamID) GenerateJoinToken() (string, error) {
 	key, err := GenerateSafeName()
 	if err != nil {
@@ -459,6 +462,7 @@ func (teamID TeamID) GenerateJoinToken() (string, error) {
 	return key, nil
 }
 
+// DeleteJoinToken removes a team's join link token
 func (teamID TeamID) DeleteJoinToken() error {
 	_, err := db.Exec("UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID)
 	if err != nil {
@@ -468,6 +472,7 @@ func (teamID TeamID) DeleteJoinToken() error {
 	return nil
 }
 
+// JoinToken verifies a join link
 func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 	var count string
 
@@ -481,7 +486,7 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 		return err
 	}
 	if i != 1 {
-		err = fmt.Errorf("Invalid team join token")
+		err = fmt.Errorf("invalid team join token")
 		return err
 	}
 

@@ -43,6 +43,7 @@ func LoadWordsFile(filename string) error {
 	return nil
 }
 
+// LoadWordsStream reads the words file from a stream such as Google Cloud Storage
 func LoadWordsStream(r io.Reader) error {
 	content, err := ioutil.ReadAll(r)
 	if err != nil {

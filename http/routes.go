@@ -486,7 +486,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	// yes, we've seen this with a bad accessToken
 	if m.Gid == "" {
 		wasabee.Log.Debugf("from client: %v\nfrom google: %v", t, m)
-		err = fmt.Errorf("No GoogleID set")
+		err = fmt.Errorf("no GoogleID set")
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

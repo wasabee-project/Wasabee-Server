@@ -41,6 +41,7 @@ type OpStat struct {
 	Modified string      `json:"modified"`
 }
 
+// ExtendedTeam is the form of permission
 type ExtendedTeam struct {
 	TeamID TeamID `json:"teamid"`
 	Role   etRole `json:"role"`
@@ -59,7 +60,7 @@ func (et etRole) isValid() error {
 	case etRoleRead, etRoleWrite, etRoleAssignedOnly:
 		return nil
 	}
-	return errors.New("Invalid etRole")
+	return errors.New("invalid etRole")
 }
 
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
@@ -149,17 +150,16 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 
 // DrawUpdate is called to UPDATE an existing draw
 // in order to minimize races between the various writers, the following conditions are enforced
-
+//
 // Active mode
 // Links are added/removed as necessary -- assignments and status are not overwritten (deleting a link removes the assignment/status)
 // Markers are added/removed as necessary -- assignments and status are not overwritten (deleting the marker removes the assignment/status)
-
+//
 // Design mode: default
 // Links are added/removed as necessary -- assignments _are_ overwritten
 // Markers are added/removed as necessary -- assignments _are_ overwritten
-
+//
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
-
 func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
@@ -376,7 +376,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 	if !o.ReadAccess(gid) {
 		if o.AssignedOnlyAccess(gid) {
-			return o.PopulateAssignedOnly(gid)
+			return o.populateAssignedOnly(gid)
 		}
 		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation (%s: %s)", gid, o.ID)
 	}
@@ -385,27 +385,27 @@ func (o *Operation) Populate(gid GoogleID) error {
 		o.Comment = comment.String
 	}
 
-	if err = o.PopulatePortals(); err != nil {
+	if err = o.populatePortals(); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	if err = o.PopulateMarkers(); err != nil {
+	if err = o.populateMarkers(); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	if err = o.PopulateLinks(); err != nil {
+	if err = o.populateLinks(); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	if err = o.PopulateAnchors(); err != nil {
+	if err = o.populateAnchors(); err != nil {
 		Log.Notice(err)
 		return err
 	}
 
-	if err = o.PopulateKeys(); err != nil {
+	if err = o.populateKeys(); err != nil {
 		Log.Notice(err)
 		return err
 	}
@@ -415,9 +415,10 @@ func (o *Operation) Populate(gid GoogleID) error {
 	return nil
 }
 
+/*
 type objectID interface {
 	fmt.Stringer
-}
+} */
 
 // SetInfo changes the description of an operation
 func (o *Operation) SetInfo(info string, gid GoogleID) error {
@@ -523,16 +524,14 @@ func (o *Operation) Copy(gid GoogleID, complete bool) (OperationID, error) {
 			Log.Error(err)
 			return "", err
 		}
-	} else { // complete
-		// XXX copy Teams?
-	}
+	} 
 
 	return new.ID, nil
 }
 
-// OpColorMap just returns a prebuilt color list for drawing color menus in the UI
+// OpValidColor just returns a prebuilt color list for drawing color menus in the UI
 // XXX this is now completely overkill
-func OpValidColor(color string) string {
+func opValidColor(color string) string {
 	type opColor struct {
 		Name string
 		Hex  string

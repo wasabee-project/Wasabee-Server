@@ -75,7 +75,7 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "message did not send", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
@@ -120,7 +120,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "message did not send", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(res, jsonStatusOK)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func agentPictureRoute(res http.ResponseWriter, req *http.Request) {

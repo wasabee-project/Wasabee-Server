@@ -95,6 +95,10 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 	var gid GoogleID
 	for rows.Next() {
 		err := rows.Scan(&gid)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
 		ok, err := gid.SendMessage(message)
 		if err != nil {
 			Log.Error(err)

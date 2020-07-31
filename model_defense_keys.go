@@ -10,7 +10,7 @@ type DefensiveKeyList struct {
 	Fetched       string
 }
 
-// AdOwnedTeam is a sub-struct of AgentData
+// DefensiveKey is a sub-struct of DefensiveKeyList
 type DefensiveKey struct {
 	GID      GoogleID
 	PortalID PortalID
@@ -41,6 +41,7 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 	return dkl, nil
 }
 
+// InsertDefensiveKey adds a new key to the list
 func (gid GoogleID) InsertDefensiveKey(portalID PortalID, capID string, count int32) error {
 	if count < 1 {
 		if _, err := db.Exec("DELETE FROM defensivekeys WHERE gid = ? AND portalID = ?", gid, portalID); err != nil {

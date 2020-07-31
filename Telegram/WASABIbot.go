@@ -176,8 +176,10 @@ func runUpdate(update tgbotapi.Update) error {
 		}
 
 		// verified user, process message
-		processMessage(&msg, &update, gid)
-
+		if err := processMessage(&msg, &update, gid); err != nil {
+			wasabee.Log.Error(err)
+			return err
+		}
 	}
 
 	if update.EditedMessage != nil && update.EditedMessage.Location != nil {
