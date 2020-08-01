@@ -257,29 +257,35 @@ func respond(g string, sender string) (bool, error) {
 }
 
 func heartbeats() {
-	ticker := time.NewTicker(30 * time.Minute)
+	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
 	atts := make(map[string]string)
 	atts["Type"] = "heartbeat"
 	atts["Sender"] = c.hostname
 
-	c.requestTopic.Publish(context.Background(), &pubsub.Message{
-		Attributes: atts,
-	})
-	c.responseTopic.Publish(context.Background(), &pubsub.Message{
-		Attributes: atts,
-	})
+	if c.responder {
+		c.responseTopic.Publish(context.Background(), &pubsub.Message{
+			Attributes: atts,
+		})
+	} else {
+		c.requestTopic.Publish(context.Background(), &pubsub.Message{
+			Attributes: atts,
+		})
+	}
 
 	for {
 		t := <-ticker.C
 		atts["Time"] = t.String()
 
-		c.requestTopic.Publish(context.Background(), &pubsub.Message{
-			Attributes: atts,
-		})
-		c.responseTopic.Publish(context.Background(), &pubsub.Message{
-			Attributes: atts,
-		})
+		if c.responder {
+			c.responseTopic.Publish(context.Background(), &pubsub.Message{
+				Attributes: atts,
+			})
+		} else {
+			c.requestTopic.Publish(context.Background(), &pubsub.Message{
+				Attributes: atts,
+			})
+		}
 	}
 }
