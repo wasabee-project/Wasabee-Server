@@ -4,14 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"sync"
 )
 
-// logoutlist is used by the RISC system
-var logoutlist map[GoogleID]bool
+type logoutList struct {
+ 	logoutlist map[GoogleID]bool
+	mux sync.Mutex
+}
+var ll logoutList;
 
 // init is bad magic; need a proper constructor
 func init() {
-	logoutlist = make(map[GoogleID]bool)
+	ll.logoutlist = make(map[GoogleID]bool)
 }
 
 // GoogleID is the primary location for interfacing with the agent type
@@ -677,19 +681,23 @@ func (gid GoogleID) Logout(reason string) {
 	}
 
 	Log.Debugf("adding %s to logout list: %s", gid, reason)
-	logoutlist[gid] = true
+	ll.mux.Lock()
+	defer ll.mux.Unlock()
+	ll.logoutlist[gid] = true
 }
 
 // CheckLogout looks to see if the user is on the force logout list
 func (gid GoogleID) CheckLogout() bool {
-	logout, ok := logoutlist[gid]
+	ll.mux.Lock()
+	defer ll.mux.Unlock()
+	logout, ok := ll.logoutlist[gid]
 	if !ok { // not in the list
 		return false
 	}
 	if logout {
-		logoutlist[gid] = false
+		ll.logoutlist[gid] = false
 		Log.Debugf("clearing %s from logoutlist", gid)
-		delete(logoutlist, gid)
+		delete(ll.logoutlist, gid)
 	}
 	return logout
 }
