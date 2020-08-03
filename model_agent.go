@@ -89,7 +89,6 @@ type AgentID interface {
 type Assignment struct {
 	OpID          OperationID
 	OperationName string
-	Type          string
 }
 
 // InitAgent is called from Oauth callback to set up a agent for the first time or revalidate them on subsequent logins.
@@ -399,10 +398,13 @@ func (gid GoogleID) adOwnedOps(ud *AgentData) error {
 	return nil
 }
 
-func (gid GoogleID) adAssignments(ud *AgentData) error {
-	var a Assignment
+// adAssignments lists operations in which one has assignments
+func (gid GoogleID) adAssignments(ad *AgentData) error {
+	assignMap := make(map[OperationID]string)
 
-	a.Type = "Marker"
+	var opID OperationID
+	var opName string
+
 	row, err := db.Query("SELECT DISTINCT o.Name, o.ID FROM marker=m, operation=o WHERE m.gid = ? AND m.opID = o.ID ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
@@ -410,15 +412,14 @@ func (gid GoogleID) adAssignments(ud *AgentData) error {
 	}
 	defer row.Close()
 	for row.Next() {
-		err := row.Scan(&a.OperationName, &a.OpID)
+		err := row.Scan(&opName, &opID)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		ud.Assignments = append(ud.Assignments, a)
+		assignMap[opID] = opName
 	}
 
-	a.Type = "Link"
 	row2, err := db.Query("SELECT DISTINCT o.Name, o.ID FROM link=l, operation=o WHERE l.gid = ? AND l.opID = o.ID ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
@@ -426,14 +427,20 @@ func (gid GoogleID) adAssignments(ud *AgentData) error {
 	}
 	defer row2.Close()
 	for row2.Next() {
-		err := row2.Scan(&a.OperationName, &a.OpID)
+		err := row2.Scan(&opName, &opID)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
-		ud.Assignments = append(ud.Assignments, a)
+		assignMap[opID] = opName
 	}
 
+	for k, v := range assignMap {
+		ad.Assignments = append(ad.Assignments, Assignment{
+			OpID: k,
+			OperationName: v,
+		})
+	}
 	return nil
 }
 
