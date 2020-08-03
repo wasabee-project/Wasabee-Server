@@ -40,11 +40,10 @@ type AgentData struct {
 	RocksVerified bool
 	RAID          bool
 	RISC          bool
+	// XXX owned teams needs to go away, merge into teams
 	OwnedTeams    []AdOwnedTeam
 	Teams         []AdTeam
 	Ops           []AdOperation
-	// OwnedOps is deprecated use Ops.IsOwner -- now empty, remove after client is updated
-	OwnedOps []AdOperation
 	Telegram struct {
 		ID        int64
 		Verified  bool
@@ -273,11 +272,6 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		return err
 	}
 
-	if err = gid.adOwnedOps(ud); err != nil {
-		Log.Error(err)
-		return err
-	}
-
 	if err = gid.adAssignments(ud); err != nil {
 		Log.Error(err)
 	}
@@ -372,27 +366,6 @@ func (gid GoogleID) adOps(ud *AgentData) error {
 			Log.Error(err)
 			return err
 		}
-		ud.Ops = append(ud.Ops, op)
-	}
-	return nil
-}
-
-func (gid GoogleID) adOwnedOps(ud *AgentData) error {
-	var op AdOperation
-
-	row, err := db.Query("SELECT ID, Name, Color, 'owned', 'owned' FROM operation WHERE gid = ? ORDER BY Name", gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer row.Close()
-	for row.Next() {
-		err := row.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		op.IsOwner = true
 		ud.Ops = append(ud.Ops, op)
 	}
 	return nil
