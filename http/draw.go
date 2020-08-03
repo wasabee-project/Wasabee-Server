@@ -683,6 +683,7 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	portalID := wasabee.PortalID(vars["portal"])
+	// #nosec 
 	onhand, err := strconv.Atoi(req.FormValue("onhand"))
 	if err != nil { // user supplied non-numeric value
 		onhand = 0
@@ -885,7 +886,7 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	op.ID = wasabee.OperationID(vars["document"])
 
 	if !op.ID.IsOwner(gid) {
-		err = fmt.Errorf("permission to edit permissions permissions denied")
+		err = fmt.Errorf("permission to edit permissions denied")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
@@ -924,7 +925,7 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	op.ID = wasabee.OperationID(vars["document"])
 
 	if !op.ID.IsOwner(gid) {
-		err = fmt.Errorf("permission to edit permissions permissions denied")
+		err = fmt.Errorf("permission to edit permissions denied")
 		wasabee.Log.Notice(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
