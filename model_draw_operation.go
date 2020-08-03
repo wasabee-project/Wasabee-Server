@@ -376,7 +376,23 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 	if !o.ReadAccess(gid) {
 		if o.AssignedOnlyAccess(gid) {
-			return o.populateAssignedOnly(gid)
+			var a Assignments
+			err = gid.Assignments(o.ID, &a)
+			if err != nil {
+				Log.Notice(err)
+				return err
+			}
+			for _, p := range a.Portals {
+				o.OpPortals = append(o.OpPortals, p)
+			}
+			for _, m := range a.Markers {
+				o.Markers = append(o.Markers, m)
+			}
+			for _, l := range a.Links {
+				o.Links = append(o.Links, l)
+			}
+
+			return nil
 		}
 		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation (%s: %s)", gid, o.ID)
 	}
