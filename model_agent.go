@@ -8,10 +8,11 @@ import (
 )
 
 type logoutList struct {
- 	logoutlist map[GoogleID]bool
-	mux sync.Mutex
+	logoutlist map[GoogleID]bool
+	mux        sync.Mutex
 }
-var ll logoutList;
+
+var ll logoutList
 
 // init is bad magic; need a proper constructor
 func init() {
