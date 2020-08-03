@@ -35,6 +35,7 @@ func (gid GoogleID) Assignments(opID OperationID, assignments *Assignments) erro
 		} else {
 			tmpLink.Desc = ""
 		}
+		tmpLink.AssignedTo = gid
 		assignments.Links = append(assignments.Links, tmpLink)
 	}
 
@@ -60,7 +61,7 @@ func (gid GoogleID) Assignments(opID OperationID, assignments *Assignments) erro
 
 	// XXX this gets way too much, but good enough for now
 	assignments.Portals = make(map[PortalID]Portal)
-	rows3, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon FROM portal WHERE opID = ? ORDER BY name", opID)
+	rows3, err := db.Query("SELECT p.ID, p.name, Y(p.loc) AS lat, X(p.loc) AS lon FROM portal=p JOIN marker=m ON m.PortalID=p.ID AND p.opID=m.opID WHERE p.opID = ? AND m.gid = ? ORDER BY name", opID, gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -68,6 +69,36 @@ func (gid GoogleID) Assignments(opID OperationID, assignments *Assignments) erro
 	defer rows3.Close()
 	for rows3.Next() {
 		err := rows3.Scan(&tmpPortal.ID, &tmpPortal.Name, &tmpPortal.Lat, &tmpPortal.Lon)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		assignments.Portals[tmpPortal.ID] = tmpPortal
+	}
+
+	rows4, err := db.Query("SELECT p.ID, p.name, Y(p.loc) AS lat, X(p.loc) AS lon FROM portal=p JOIN link=l ON l.fromPortalID=p.ID AND p.opID=l.opID WHERE p.opID = ? AND l.gid = ? ORDER BY name", opID, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows4.Close()
+	for rows4.Next() {
+		err := rows4.Scan(&tmpPortal.ID, &tmpPortal.Name, &tmpPortal.Lat, &tmpPortal.Lon)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		assignments.Portals[tmpPortal.ID] = tmpPortal
+	}
+
+	rows5, err := db.Query("SELECT p.ID, p.name, Y(p.loc) AS lat, X(p.loc) AS lon FROM portal=p JOIN link=l ON l.toPortalID=p.ID AND p.opID=l.opID WHERE p.opID = ? AND l.gid = ? ORDER BY name", opID, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rows5.Close()
+	for rows5.Next() {
+		err := rows5.Scan(&tmpPortal.ID, &tmpPortal.Name, &tmpPortal.Lat, &tmpPortal.Lon)
 		if err != nil {
 			Log.Error(err)
 			continue
