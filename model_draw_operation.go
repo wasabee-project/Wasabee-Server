@@ -385,12 +385,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 			for _, p := range a.Portals {
 				o.OpPortals = append(o.OpPortals, p)
 			}
-			for _, m := range a.Markers {
-				o.Markers = append(o.Markers, m)
-			}
-			for _, l := range a.Links {
-				o.Links = append(o.Links, l)
-			}
+			o.Markers = append(o.Markers, a.Markers...)
+			o.Links = append(o.Links, a.Links...)
 
 			return nil
 		}
