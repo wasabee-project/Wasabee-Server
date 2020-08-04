@@ -32,7 +32,7 @@ var c Configuration
 // StartPubSub is the main startup function for the PubSub subsystem
 func StartPubSub(config Configuration) error {
 	c = config
-	wasabee.Log.Debugf("starting PubSub: [%s] %s", c.Cert, c.Project)
+	wasabee.Log.Infof("starting PubSub: [%s] %s", c.Cert, c.Project)
 	c.hostname, _ = os.Hostname()
 
 	var cctx context.Context

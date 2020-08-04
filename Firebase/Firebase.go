@@ -22,7 +22,7 @@ type rlt struct {
 
 // ServeFirebase is the main startup function for the Firebase integration
 func ServeFirebase(keypath string) error {
-	wasabee.Log.Debugf("starting Firebase (version %s)", firebase.Version)
+	wasabee.Log.Infof("starting Firebase (version %s)", firebase.Version)
 
 	ctx := context.Background()
 	opt := option.WithCredentialsFile(keypath)

@@ -32,6 +32,7 @@ func SetupLogging(c LogConfiguration) {
 		atom := zap.NewAtomicLevel()
 		atom.SetLevel(c.ConsoleLevel)
 		encoderCfg := zap.NewDevelopmentEncoderConfig()
+		encoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		consoleCore := zapcore.NewCore(
 			zapcore.NewConsoleEncoder(encoderCfg),
 			zapcore.Lock(os.Stdout),

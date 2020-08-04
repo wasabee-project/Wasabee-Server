@@ -329,7 +329,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
 	location := fmt.Sprintf("%s?r=%s", me, h)
-	wasabee.Log.Infof("%s webview login", iname)
+	wasabee.Log.Infow("webview login", "GID", m.Gid, "name", iname)
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		if rr[:len(me)] == me || rr[:len(login)] == login {
@@ -548,7 +548,11 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	data, _ := json.Marshal(ud)
 
-	wasabee.Log.Infof("%s apTok login", iname)
+	defer wasabee.Log.Sync()
+	wasabee.Log.Infow("iitc/app login",
+		"GID", m.Gid,
+		"name", iname,
+	)
 	m.Gid.FirebaseAgentLogin()
 
 	// cookie := res.Header().Get("set-cookie")
@@ -645,7 +649,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	data, _ := json.Marshal(ud)
 
-	wasabee.Log.Infof("%s oneTimeToken login", iname)
+	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", iname)
 	gid.FirebaseAgentLogin()
 
 	// cookie := res.Header().Get("set-cookie")

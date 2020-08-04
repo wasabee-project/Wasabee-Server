@@ -114,7 +114,7 @@ func initializeConfig(initialConfig Configuration) {
 	if config.Logfile == "" {
 		config.Logfile = "wasabee-https.log"
 	}
-	wasabee.Log.Infof("https logfile: %s", config.Logfile)
+	wasabee.Log.Debugf("https logfile: %s", config.Logfile)
 	// #nosec
 	config.logfileHandle, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
