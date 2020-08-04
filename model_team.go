@@ -173,17 +173,17 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 	}
 	team, err := GenerateSafeName()
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return "", err
 	}
 	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm) VALUES (?,?,?,NULL,NULL)", team, gid, name)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return "", err
 	}
 	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color, displayname) VALUES (?,?,'On','operator',NULL)", team, gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return TeamID(team), err
 	}
 	return TeamID(team), nil
@@ -194,7 +194,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 func (teamID TeamID) Rename(name string) error {
 	_, err := db.Exec("UPDATE team SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 	}
 	return err
 }
@@ -214,24 +214,24 @@ func (teamID TeamID) Delete() error {
 	for rows.Next() {
 		err = rows.Scan(&gid)
 		if err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 			continue
 		}
 		err = teamID.RemoveAgent(gid)
 		if err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 			continue
 		}
 	}
 
 	_, err = db.Exec("DELETE FROM opteams WHERE teamID = ?", teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	_, err = db.Exec("DELETE FROM team WHERE teamID = ?", teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	return nil
@@ -247,12 +247,12 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 
 	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color, displayname) VALUES (?, ?, 'Off', 'boots', NULL)", teamID, gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
 	if err = gid.AddToRemoteRocksCommunity(teamID); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		// return err
 	}
 	return nil
@@ -268,12 +268,12 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 
 	_, err = db.Exec("DELETE FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
 	if err = gid.RemoveFromRemoteRocksCommunity(teamID); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		// return err
 	}
 	return nil
@@ -290,7 +290,7 @@ func (teamID TeamID) Chown(to AgentID) error {
 
 	_, err = db.Exec("UPDATE team SET owner = ? WHERE teamID = ?", gid, teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return (err)
 	}
 	return nil
@@ -347,7 +347,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 func (teamID TeamID) SetRocks(key, community string) error {
 	_, err := db.Exec("UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", key, community, teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 	}
 	return err
 }
@@ -363,7 +363,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 	}
 
 	if _, err := db.Exec("UPDATE agentteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	if state == "On" {
@@ -430,7 +430,7 @@ func (gid GoogleID) teamList() []TeamID {
 func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", MakeNullString(squad), teamID, gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	return nil
@@ -440,7 +440,7 @@ func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 func (teamID TeamID) SetDisplayname(gid GoogleID, displayname string) error {
 	_, err := db.Exec("UPDATE agentteams SET displayname = ? WHERE teamID = ? and gid = ?", MakeNullString(displayname), teamID, gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	return nil
@@ -450,13 +450,13 @@ func (teamID TeamID) SetDisplayname(gid GoogleID, displayname string) error {
 func (teamID TeamID) GenerateJoinToken() (string, error) {
 	key, err := GenerateSafeName()
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return key, err
 	}
 
 	_, err = db.Exec("UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return key, err
 	}
 	return key, nil
@@ -466,7 +466,7 @@ func (teamID TeamID) GenerateJoinToken() (string, error) {
 func (teamID TeamID) DeleteJoinToken() error {
 	_, err := db.Exec("UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	return nil

@@ -1,7 +1,6 @@
 package wasabee_test
 
 import (
-	"github.com/op/go-logging"
 	"github.com/wasabee-project/Wasabee-Server"
 	"os"
 	"testing"
@@ -12,7 +11,7 @@ var gid wasabee.GoogleID
 func TestMain(m *testing.M) {
 	gid = wasabee.GoogleID("118281765050946915735")
 
-	wasabee.SetLogLevel(logging.DEBUG)
+	wasabee.SetLogDebug()
 	err := wasabee.Connect(os.Getenv("DATABASE"))
 	if err != nil {
 		wasabee.Log.Error(err)

@@ -169,7 +169,7 @@ func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *t
 	t := wasabee.TeamID(team)
 	name, err := t.Name()
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		return err
 	}
 
@@ -181,7 +181,7 @@ func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *t
 		})
 		err = gid.SetTeamState(t, "On")
 		if err != nil {
-			wasabee.Log.Notice(err)
+			wasabee.Log.Info(err)
 		}
 	case "deactivate":
 		msg.Text, _ = templateExecute("TeamStateChange", lang, tStruct{
@@ -190,7 +190,7 @@ func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *t
 		})
 		err = gid.SetTeamState(t, "Off")
 		if err != nil {
-			wasabee.Log.Notice(err)
+			wasabee.Log.Info(err)
 		}
 	default:
 		err = fmt.Errorf("unknown team state: %s", action)

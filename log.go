@@ -1,46 +1,117 @@
 package wasabee
 
 import (
+	"context"
+	"fmt"
+	"io/ioutil"
 	"os"
 
-	"github.com/op/go-logging"
+	"cloud.google.com/go/logging"
+	"github.com/jonstaryuk/gcloudzap"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"google.golang.org/api/option"
+	// "github.com/blendle/zapdriver"
 )
 
-// Log refers to the main logger instance used by the server.
-var Log = logging.MustGetLogger("wasabee-server")
-var leveled logging.LeveledBackend
+var Log *zap.SugaredLogger
 
-// SetLogLevel changes how much information is printed to Stdout.
-func SetLogLevel(level logging.Level) {
-	leveled.SetLevel(level, "")
+type LogConfiguration struct {
+	Console            bool
+	ConsoleLevel       zapcore.Level
+	GoogleCloudProject string
+	GoogleCloudCreds   string
+	FilePath           string
+	FileLevel          zapcore.Level
 }
 
-func init() {
-	backend := logging.NewLogBackend(os.Stdout, "", 0)
-	format := logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{shortfunc}: %{level:.4s} %{color:reset} %{message}`)
-	formatter := logging.NewBackendFormatter(backend, format)
-	leveled = logging.AddModuleLevel(formatter)
-	leveled.SetLevel(logging.NOTICE, "")
+func SetupLogging(c LogConfiguration) {
+	var cores []zapcore.Core
 
-	logging.SetBackend(leveled)
+	if c.Console {
+		atom := zap.NewAtomicLevel()
+		atom.SetLevel(c.ConsoleLevel)
+		encoderCfg := zap.NewDevelopmentEncoderConfig()
+		consoleCore := zapcore.NewCore(
+			zapcore.NewConsoleEncoder(encoderCfg),
+			zapcore.Lock(os.Stdout),
+			atom,
+		)
+		cores = append(cores, consoleCore)
+	}
+
+	if c.FilePath != "" {
+		fileCore, err := addFileLog(c.FilePath, c.FileLevel)
+		if err != nil {
+			fmt.Printf("Unable to open log file, %s: %v\n", c.FilePath, err)
+		} else {
+			cores = append(cores, fileCore)
+		}
+	}
+
+	if c.GoogleCloudProject != "" && c.GoogleCloudCreds != "" {
+		gcCore, err := addGoogleCloud(c.GoogleCloudProject, c.GoogleCloudCreds)
+		if err != nil {
+			fmt.Printf("unable to start cloud logging to project %s with creds %s: %v\n", c.GoogleCloudProject, c.GoogleCloudCreds, err)
+		} else {
+			cores = append(cores, gcCore)
+		}
+	}
+
+	tee := zapcore.NewTee(cores...)
+	sugarfree := zap.New(tee)
+	undo, err := zap.RedirectStdLogAt(sugarfree, zap.DebugLevel)
+	if err != nil {
+		undo()
+	}
+
+	Log = sugarfree.Sugar()
+	Log.Sync()
+}
+
+func addGoogleCloud(project string, jsonPath string) (zapcore.Core, error) {
+	ctx := context.Background()
+	opt := option.WithCredentialsFile(jsonPath)
+
+	atom := zap.NewAtomicLevel()
+	atom.SetLevel(zap.InfoLevel)
+	encoderCfg := zap.NewProductionEncoderConfig()
+	inCore := zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderCfg),
+		zapcore.AddSync(ioutil.Discard),
+		atom,
+	)
+
+	client, err := logging.NewClient(ctx, project, opt)
+	if err != nil {
+		return nil, err
+	}
+
+	hn, err := os.Hostname()
+	if err != nil {
+		hn = "wasabee-server"
+	}
+	gcore := gcloudzap.Tee(inCore, client, hn)
+	return gcore, nil
 }
 
 // AddFileLog duplicates the console log to a file
-func AddFileLog(lf string, level logging.Level) error {
+func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 	// #nosec
-	logfile, err := os.OpenFile(lf, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	lf, err := os.OpenFile(logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		Log.Critical("unable to open log file")
-		return err
+		return nil, err
 	}
 
-	backend := logging.NewLogBackend(logfile, "", 0)
-	format := logging.MustStringFormatter(`%{time:15:04:05.000} %{shortfunc}: %{level:.4s} %{message}`)
-	formatter := logging.NewBackendFormatter(backend, format)
-	leveled2 := logging.AddModuleLevel(formatter)
-	leveled2.SetLevel(level, "")
+	atom := zap.NewAtomicLevel()
+	atom.SetLevel(level)
 
-	multi := logging.MultiLogger(leveled, leveled2)
-	logging.SetBackend(multi)
-	return nil
+	encoderCfg := zap.NewDevelopmentEncoderConfig()
+	fileCore := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(encoderCfg),
+		zapcore.Lock(lf),
+		atom,
+	)
+
+	return fileCore, nil
 }

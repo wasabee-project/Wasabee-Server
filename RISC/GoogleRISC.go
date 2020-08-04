@@ -92,33 +92,33 @@ func RISC(configfile string) {
 		gid := wasabee.GoogleID(e.Subject)
 		switch e.Type {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
-			wasabee.Log.Criticalf("locking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Errorf("locking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			_ = gid.Lock(e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
-			wasabee.Log.Criticalf("unlocking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Errorf("unlocking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			_ = gid.Unlock(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
-			wasabee.Log.Criticalf("deleting %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Errorf("deleting %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
 			gid.Logout(e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
-			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Infof("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
-			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Infof("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
-			wasabee.Log.Noticef("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Infof("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// no need to do anything
 		default:
-			wasabee.Log.Noticef("Unknown event %s (%s)", e.Type, e.Reason)
+			wasabee.Log.Infof("Unknown event %s (%s)", e.Type, e.Reason)
 		}
 	}
 }
@@ -143,7 +143,7 @@ func validateToken(rawjwt []byte) error {
 		if len(key) != 1 {
 			// pick the first that is RS256?
 			err = fmt.Errorf("multiple matching keys found, using the first")
-			wasabee.Log.Notice(err)
+			wasabee.Log.Info(err)
 		}
 		var pKey interface{}
 		if err := key[0].Raw(&key); err != nil {
@@ -177,7 +177,7 @@ func validateToken(rawjwt []byte) error {
 			e.Reason = "ping requsted"
 			riscchan <- e
 		} else if keyOK {
-			wasabee.Log.Noticef("verified RISC event: (%s) %s", k, v)
+			wasabee.Log.Info("verified RISC event: (%s) %s", k, v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
@@ -189,7 +189,7 @@ func validateToken(rawjwt []byte) error {
 			e.Subject = y["sub"].(string)
 			riscchan <- e
 		} else {
-			wasabee.Log.Criticalf("non-verified request: (%s) %s", k, v)
+			wasabee.Log.Errorf("non-verified request: (%s) %s", k, v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})

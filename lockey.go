@@ -12,7 +12,7 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 
 	err := db.QueryRow("SELECT gid FROM agent WHERE lockey = ?", lockey).Scan(&gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return "", err
 	}
 

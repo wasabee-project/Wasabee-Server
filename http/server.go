@@ -106,8 +106,8 @@ func initializeConfig(initialConfig Configuration) {
 	certdir, err := filepath.Abs(config.CertDir)
 	config.CertDir = certdir
 	if err != nil {
-		wasabee.Log.Critical("certificate path could not be resolved.")
-		panic(err)
+		wasabee.Log.Fatal("certificate path could not be resolved.")
+		// panic(err)
 	}
 	wasabee.Log.Debugf("Certificate Directory: " + config.CertDir)
 
@@ -148,7 +148,7 @@ func templateExecute(res http.ResponseWriter, req *http.Request, name string, da
 	}
 
 	if err := config.TemplateSet[lang].ExecuteTemplate(res, name, data); err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		return err
 	}
 	return nil
@@ -185,7 +185,7 @@ func StartHTTP(initialConfig Configuration) {
 		// ErrorLog: wasabee.Log, // XXX need to write an interface for this
 	}
 
-	wasabee.Log.Noticef("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
+	wasabee.Log.Infof("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
 	if err := config.srv.ListenAndServeTLS(config.CertDir+"/wasabee.fullchain.pem", config.CertDir+"/wasabee.key"); err != nil {
 		wasabee.Log.Errorf("HTTPS server error: %s", err)
 		panic(err)
@@ -274,7 +274,7 @@ func authMW(next http.Handler) http.Handler {
 			Secure:   true,
 		}
 		if err != nil {
-			wasabee.Log.Notice(err)
+			wasabee.Log.Info(err)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
@@ -297,7 +297,7 @@ func authMW(next http.Handler) http.Handler {
 
 		gid := wasabee.GoogleID(id.(string))
 		if gid.CheckLogout() {
-			wasabee.Log.Notice("requested logout")
+			wasabee.Log.Info("requested logout")
 			http.Redirect(res, req, "/", http.StatusFound)
 			return
 		}

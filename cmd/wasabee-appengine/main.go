@@ -27,6 +27,11 @@ func main() {
 	words := os.Getenv("WORDS_PATH")
 	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
+	logconf := wasabee.LogConfiguration{
+		Console: true,
+	}
+	wasabee.SetupLogging(logconf)
+
 	wasabee.Log.Infof("Using Creds: %s", creds)
 
 	ctx := context.Background()

@@ -32,25 +32,25 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 
 	if !config.running {
 		err = fmt.Errorf("RISC not configured, yet somehow a message was received")
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 
 	raw, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(raw) == "" {
 		err = fmt.Errorf("empty JWT")
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 	if err := validateToken(raw); err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
@@ -61,7 +61,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 	err := checkWebhook()
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -70,7 +70,7 @@ func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 }
 
 func riscRegisterWebhook() {
-	wasabee.Log.Notice("establishing RISC webhook with Google")
+	wasabee.Log.Info("establishing RISC webhook with Google")
 	err := googleLoadKeys()
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -236,7 +236,7 @@ func checkWebhook() error {
 		return err
 	}
 	raw, _ := ioutil.ReadAll(response.Body)
-	wasabee.Log.Notice(string(raw))
+	wasabee.Log.Info(string(raw))
 
 	return nil
 }

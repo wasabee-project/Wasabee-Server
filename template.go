@@ -26,8 +26,8 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 	// Transform frontendPath to an absolute path
 	fp, err := filepath.Abs(frontendPath)
 	if err != nil {
-		Log.Critical("frontend path could not be resolved.")
-		panic(err)
+		Log.Fatal("frontend path could not be resolved.")
+		// panic(err)
 	}
 
 	templateSet := make(map[string]*template.Template)
@@ -82,7 +82,7 @@ func (gid GoogleID) ExecuteTemplate(name string, data interface{}) (string, erro
 
 	var tpBuffer bytes.Buffer
 	if err := ts[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return "", err
 	}
 	return tpBuffer.String(), nil

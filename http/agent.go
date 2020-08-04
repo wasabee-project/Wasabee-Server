@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server"
+	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
@@ -79,6 +81,94 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	_, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
+
+	if contentType == "multipart/form-data" {
+		wasabee.Log.Info("using old format for sending targets")
+		agentTargetRouteOld(res, req)
+		return
+	}
+
+	if contentType != jsonTypeShort {
+		err := fmt.Errorf("must use content-type: %s", jsonTypeShort)
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	vars := mux.Vars(req)
+	id := vars["id"]
+	togid, err := wasabee.ToGid(id)
+	if err != nil {
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	jBlob, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		wasabee.Log.Info(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if string(jBlob) == "" {
+		wasabee.Log.Info("empty JSON")
+		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
+		return
+	}
+
+	jRaw := json.RawMessage(jBlob)
+
+	type T struct {
+		Name string
+		Lat  string
+		Lng  string
+		ll   string
+	}
+	var target T
+	json.Unmarshal(jRaw, &target)
+
+	if target.Name == "" {
+		http.Error(res, "portal not set", http.StatusNotAcceptable)
+		return
+	}
+
+	if target.Lat == "" || target.Lng == "" {
+		http.Error(res, "lat/ng not set", http.StatusNotAcceptable)
+		return
+	}
+	target.ll = fmt.Sprintf("%s,%s", target.Lat, target.Lng)
+
+	message := fmt.Sprintf(
+		"[%s](https://intel.ingress.com/intel?ll=%s&z=12&pll=%s): [Google Maps](http://maps.google.com/?q=%s) | [Apple Maps](http://maps.apple.com/?q=%s)",
+		target.Name, target.ll, target.ll, target.ll, target.ll)
+
+	/* ok := gid.CanSendTo(togid)
+	if !ok {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	} */
+	ok, err := togid.SendMessage(message)
+	if err != nil {
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		http.Error(res, "message did not send", http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonStatusOK)
+}
+
+func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	_, err := getAgentID(req)
 	if err != nil {

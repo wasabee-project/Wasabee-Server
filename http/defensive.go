@@ -12,14 +12,14 @@ func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	dkl, err := gid.ListDefensiveKeys()
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -32,7 +32,7 @@ func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -41,14 +41,14 @@ func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
 	capID := req.FormValue("capID")
 	count, err := strconv.ParseInt(req.FormValue("count"), 10, 32)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	err = gid.InsertDefensiveKey(portalID, capID, int32(count))
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

@@ -189,7 +189,7 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
 	var ns sql.NullString
 	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, o.ID).Scan(&ns)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	if err != nil && err == sql.ErrNoRows {
@@ -264,7 +264,7 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 	var ns sql.NullString
 	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, o.ID).Scan(&ns)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
+		Log.Error(err)
 		return err
 	}
 	if err != nil && err == sql.ErrNoRows {

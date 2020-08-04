@@ -41,10 +41,10 @@ type AgentData struct {
 	RAID          bool
 	RISC          bool
 	// XXX owned teams needs to go away, merge into teams
-	OwnedTeams    []AdOwnedTeam
-	Teams         []AdTeam
-	Ops           []AdOperation
-	Telegram struct {
+	OwnedTeams []AdOwnedTeam
+	Teams      []AdTeam
+	Ops        []AdOperation
+	Telegram   struct {
 		ID        int64
 		Verified  bool
 		Authtoken string
@@ -120,17 +120,17 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	// would be better to start processing when either returned rather than waiting for both to be done, still better than serial calls
 	e1, e2 := <-channel, <-channel
 	if e1 != nil {
-		Log.Notice(e1)
+		Log.Info(e1)
 	}
 	if e2 != nil {
-		Log.Notice(e2)
+		Log.Info(e2)
 	}
 
 	if vdata.Data.Agent != "" {
 		// if we got data, and the user already exists (not first login) update if necessary
 		err = gid.VUpdate(&vdata)
 		if err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 			return false, err
 		}
 		if tmpName == "" {
@@ -138,19 +138,19 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		}
 		if vdata.Data.Quarantine {
 			authError = fmt.Errorf("%s %s quarantined at V", gid, vdata.Data.Agent)
-			Log.Notice(authError)
+			Log.Info(authError)
 		}
 		if vdata.Data.Flagged {
 			authError = fmt.Errorf("%s %s flagged at V", gid, vdata.Data.Agent)
-			Log.Notice(authError)
+			Log.Info(authError)
 		}
 		if vdata.Data.Blacklisted {
 			authError = fmt.Errorf("%s %s blacklisted at V", gid, vdata.Data.Agent)
-			Log.Notice(authError)
+			Log.Info(authError)
 		}
 		if vdata.Data.Banned {
 			authError = fmt.Errorf("%s %s banned at V", gid, vdata.Data.Agent)
-			Log.Notice(authError)
+			Log.Info(authError)
 		}
 	}
 
@@ -158,7 +158,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		// if we got data, and the user already exists (not first login) update if necessary
 		err = RocksUpdate(gid, &rocks)
 		if err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 			return false, err
 		}
 		if tmpName == "" {
@@ -166,7 +166,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		}
 		if rocks.Smurf {
 			authError = fmt.Errorf("%s %s listed as a smurf at enl.rocks", gid, rocks.Agent)
-			Log.Notice(authError)
+			Log.Info(authError)
 		}
 	}
 
@@ -244,7 +244,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		return err
 	}
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
@@ -410,7 +410,7 @@ func (gid GoogleID) adAssignments(ad *AgentData) error {
 
 	for k, v := range assignMap {
 		ad.Assignments = append(ad.Assignments, Assignment{
-			OpID: k,
+			OpID:          k,
 			OperationName: v,
 		})
 	}
@@ -428,18 +428,18 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 
 	flat, err := strconv.ParseFloat(lat, 64)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		flat = float64(0)
 	}
 
 	flon, err = strconv.ParseFloat(lon, 64)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		flon = float64(0)
 	}
 	point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", point, gid); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
@@ -532,10 +532,10 @@ func RevalidateEveryone() error {
 			channel <- RocksSearch(gid, &r)
 		}()
 		if err = <-channel; err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 		}
 		if err = <-channel; err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 		}
 
 		if err = gid.VUpdate(&v); err != nil {
@@ -563,7 +563,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
 	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(iname) LIKE LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
+		Log.Info(err)
 		return "", err
 	}
 	return gid, nil
@@ -610,7 +610,7 @@ func (gid GoogleID) Delete() error {
 	// brute force delete everyhing else
 	_, err = db.Exec("DELETE FROM agent WHERE gid = ?", gid)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
@@ -689,9 +689,9 @@ func (gid GoogleID) RISC() bool {
 
 	err := db.QueryRow("SELECT RISC FROM agent WHERE gid = ?", gid).Scan(&RISC)
 	if err == sql.ErrNoRows {
-		Log.Noticef("[%s] does not exist", gid)
+		Log.Infof("[%s] does not exist", gid)
 	} else if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 	}
 	return RISC
 }

@@ -12,7 +12,7 @@ func (o *Operation) PopulateTeams() error {
 
 	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	defer rows.Close()
@@ -21,7 +21,7 @@ func (o *Operation) PopulateTeams() error {
 	for rows.Next() {
 		err := rows.Scan(&tid, &role)
 		if err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 			continue
 		}
 		o.Teams = append(o.Teams, ExtendedTeam{
@@ -36,7 +36,7 @@ func (o *Operation) PopulateTeams() error {
 func (o *Operation) ReadAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
 		if err := o.PopulateTeams(); err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 			return false
 		}
 	}
@@ -58,7 +58,7 @@ func (o *Operation) ReadAccess(gid GoogleID) bool {
 func (o *Operation) WriteAccess(gid GoogleID) bool {
 	// do not cache -- force reset on uploads
 	if err := o.PopulateTeams(); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return false
 	}
 	if o.ID.IsOwner(gid) {

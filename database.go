@@ -84,12 +84,12 @@ func setupTables() {
 	defer func() {
 		err := tx.Rollback()
 		if err != nil && err != sql.ErrTxDone {
-			Log.Critical(err)
+			Log.Warn(err)
 		}
 		// tx is complete, use db
 		_, err = db.Exec("SET FOREIGN_KEY_CHECKS=1")
 		if err != nil {
-			Log.Critical(err)
+			Log.Warn(err)
 		}
 	}()
 	for _, v := range t {
@@ -100,20 +100,20 @@ func setupTables() {
 			continue
 		}
 		if err == sql.ErrNoRows || table == "" {
-			Log.Noticef("Setting up '%s' table...", v.tablename)
+			Log.Infof("Setting up '%s' table...", v.tablename)
 			_, err = tx.Exec(v.creation)
 			if err != nil {
-				Log.Critical(err)
+				Log.Warn(err)
 			}
 		}
 	}
 	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS=1")
 	if err != nil {
-		Log.Critical(err)
+		Log.Warn(err)
 	}
 	err = tx.Commit() // the defer'd rollback will not have anything to rollback...
 	if err != nil {
-		Log.Critical(err)
+		Log.Warn(err)
 	}
 	// defer'd func runs here
 }

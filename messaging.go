@@ -57,7 +57,7 @@ func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 
 	ok, err := mc.senders[bus](gid, message)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return false, err
 	}
 	return ok, nil

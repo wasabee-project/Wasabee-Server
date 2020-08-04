@@ -379,7 +379,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 			var a Assignments
 			err = gid.Assignments(o.ID, &a)
 			if err != nil {
-				Log.Notice(err)
+				Log.Info(err)
 				return err
 			}
 			for _, p := range a.Portals {
@@ -398,27 +398,27 @@ func (o *Operation) Populate(gid GoogleID) error {
 	}
 
 	if err = o.populatePortals(); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
 	if err = o.populateMarkers(); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
 	if err = o.populateLinks(); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
 	if err = o.populateAnchors(); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
 	if err = o.populateKeys(); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	t := time.Now()
@@ -464,7 +464,7 @@ func (opID OperationID) Stat() (OpStat, error) {
 	s.ID = opID
 	err := db.QueryRow("SELECT name, gid, modified FROM operation WHERE ID = ?", opID).Scan(&s.Name, &s.Gid, &s.Modified)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Notice(err)
+		Log.Info(err)
 		return s, err
 	}
 	if err != nil && err == sql.ErrNoRows {

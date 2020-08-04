@@ -59,7 +59,7 @@ type vtagent struct {
 // SetVEnlOne is called from main() to initialize the config
 func SetVEnlOne(w Vconfig) {
 	if w.APIKey == "" {
-		Log.Notice("api key not set, not enabling V support")
+		Log.Info("api key not set, not enabling V support")
 	}
 	Log.Debugf("V.enl.one API Key: %s", w.APIKey)
 	vc.APIKey = w.APIKey

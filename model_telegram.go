@@ -54,7 +54,7 @@ func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 		return "", false, nil
 	}
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return "", false, err
 	}
 	return gid, verified, nil
@@ -82,7 +82,7 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 		return 0, nil
 	}
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return 0, err
 	}
 	return tgid, nil
@@ -95,17 +95,17 @@ func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 	gid, err := lockey.Gid()
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("location Share Key (%s) is not recognized", lockey)
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
 	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, 'unused', ?, 0, ?)", tgid, gid, authtoken)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 
@@ -116,12 +116,12 @@ func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 func (tgid TelegramID) VerifyAgent(authtoken string) error {
 	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", tgid, authtoken)
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 	i, err := res.RowsAffected()
 	if err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		return err
 	}
 

@@ -59,7 +59,6 @@ func (gid GoogleID) Assignments(opID OperationID, assignments *Assignments) erro
 		assignments.Markers = append(assignments.Markers, tmpMarker)
 	}
 
-	// XXX this gets way too much, but good enough for now
 	assignments.Portals = make(map[PortalID]Portal)
 	rows3, err := db.Query("SELECT p.ID, p.name, Y(p.loc) AS lat, X(p.loc) AS lon FROM portal=p JOIN marker=m ON m.PortalID=p.ID AND p.opID=m.opID WHERE p.opID = ? AND m.gid = ? ORDER BY name", opID, gid)
 	if err != nil {

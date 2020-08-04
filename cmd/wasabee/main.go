@@ -7,7 +7,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/op/go-logging"
+	"cloud.google.com/go/profiler"
+	"google.golang.org/api/option"
+
 	"github.com/urfave/cli"
 	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
@@ -18,8 +20,8 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
-	// "runtime/pprof"
 )
 
 var flags = []cli.Flag{
@@ -132,19 +134,44 @@ func main() {
 }
 
 func run(c *cli.Context) error {
+	project := os.Getenv("GCP_PROJECT")
+	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
 	if c.Bool("help") {
 		_ = cli.ShowAppHelp(c)
 		return nil
 	}
 
+	logconf := wasabee.LogConfiguration{
+		Console:      true,
+		ConsoleLevel: zap.InfoLevel,
+		FilePath:     c.String("log"),
+		FileLevel:    zap.InfoLevel,
+		GoogleCloudProject: project,
+		GoogleCloudCreds: creds,
+	}
 	if c.Bool("debug") {
-		wasabee.SetLogLevel(logging.DEBUG)
+		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	if c.String("log") != "" {
-		_ = wasabee.AddFileLog(c.String("log"), logging.INFO)
-	}
+	wasabee.SetupLogging(logconf)
 
 	wasabee.SetupDebug(c.Bool("longtimeouts"))
+
+	if creds != "" {
+		if _, err := os.Stat(creds); err == nil {
+			opts := option.WithCredentialsFile(creds)
+			cfg := profiler.Config{
+				Service:        "wasabee",
+				ServiceVersion: "0.0.1",
+				ProjectID:      "phdevbin",
+			}
+			if err := profiler.Start(cfg, opts); err != nil {
+				wasabee.Log.Errorf("unable to start profiler: %v", err)
+			} else {
+				wasabee.Log.Debugf("starting gcloud profiling")
+			}
+		}
+	}
 
 	// Load words
 	err := wasabee.LoadWordsFile(c.String("wordlist"))
@@ -216,27 +243,20 @@ func run(c *cli.Context) error {
 		})
 	}
 
+	// this one should not use GOOGLE_APPLICATION_CREDENTIALS because it requires odd privs
 	riscPath := path.Join(c.String("certs"), "risc.json")
 	if _, err := os.Stat(riscPath); err != nil {
-		wasabee.Log.Noticef("%s does not exist, not enabling RISC", riscPath)
+		wasabee.Log.Infof("%s does not exist, not enabling RISC", riscPath)
 	} else {
 		go risc.RISC(riscPath)
 	}
 
-	firebasePath := path.Join(c.String("certs"), "firebase.json")
-	if _, err := os.Stat(firebasePath); err != nil {
-		wasabee.Log.Noticef("%s does not exist, not enabling Firebase", firebasePath)
-	} else {
-		go wasabeefirebase.ServeFirebase(firebasePath)
-	}
-
-	pubsubPath := path.Join(c.String("certs"), "pubsub.json")
-	if _, err := os.Stat(pubsubPath); err != nil {
-		wasabee.Log.Noticef("%s does not exist, not enabling PubSub", pubsubPath)
-	} else {
+	// requires Firebase SDK and PubSub publisher & subscriber access
+	if creds != "" {
+		go wasabeefirebase.ServeFirebase(creds)
 		go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
-			Cert:    pubsubPath,
-			Project: "PhDevBin",
+			Cert:    creds,
+			Project: project,
 		})
 	}
 
@@ -253,14 +273,14 @@ func run(c *cli.Context) error {
 	sigch := make(chan os.Signal, 3)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
 
+	wasabee.Log.Sync()
+
 	// loop until signal sent
 	sig := <-sigch
 
 	wasabee.Log.Info("Shutdown Requested: ", sig)
-	if _, err := os.Stat(firebasePath); err == nil {
+	if creds == "" {
 		wasabee.FirebaseClose()
-	}
-	if _, err := os.Stat(pubsubPath); err == nil {
 		wasabee.PubSubClose()
 	}
 	if _, err := os.Stat(riscPath); err == nil {
@@ -275,5 +295,6 @@ func run(c *cli.Context) error {
 
 	// close database connection
 	wasabee.Disconnect()
+	wasabee.Log.Sync()
 	return nil
 }

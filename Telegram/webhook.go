@@ -17,7 +17,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 
 	if config.APIKey == "" || config.hook == "" {
 		err = fmt.Errorf("the Telegram API is not configured")
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -41,13 +41,13 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	}
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON")
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
@@ -56,7 +56,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	var update tgbotapi.Update
 	err = json.Unmarshal(jRaw, &update)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

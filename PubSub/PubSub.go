@@ -90,7 +90,7 @@ func StartPubSub(config Configuration) error {
 		wasabee.Log.Errorf("receive: %v", err)
 		return err
 	}
-	wasabee.Log.Notice("PubSub exiting")
+	wasabee.Log.Info("PubSub exiting")
 	return nil
 }
 
@@ -157,7 +157,7 @@ func listenForPubSubMessages() {
 			}
 			msg.Ack()
 		default:
-			wasabee.Log.Noticef("unknown message type [%s]", msg.Attributes["Type"])
+			wasabee.Log.Infof("unknown message type [%s]", msg.Attributes["Type"])
 			// get it off the subscription quickly
 			msg.Ack()
 		}
@@ -174,7 +174,7 @@ func listenForWasabeeCommands() {
 				wasabee.Log.Error(err)
 			}
 		default:
-			wasabee.Log.Notice("unknown PubSub command: %s", cmd.Command)
+			wasabee.Log.Info("unknown PubSub command: %s", cmd.Command)
 		}
 
 	}

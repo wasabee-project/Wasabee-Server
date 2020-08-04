@@ -62,7 +62,7 @@ func WasabeeBot(init TGConfiguration) {
 	}
 
 	// bot.Debug = true
-	wasabee.Log.Noticef("Authorized to Telegram on account %s", bot.Self.UserName)
+	wasabee.Log.Infof("Authorized to Telegram on account %s", bot.Self.UserName)
 	wasabee.TGSetBot(bot.Self.UserName, bot.Self.ID)
 
 	u := tgbotapi.NewUpdate(0)

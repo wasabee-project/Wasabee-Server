@@ -24,7 +24,7 @@ func templateExecute(name, lang string, data interface{}) (string, error) {
 
 	var tpBuffer bytes.Buffer
 	if err := config.TemplateSet[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		return "", err
 	}
 	return tpBuffer.String(), nil

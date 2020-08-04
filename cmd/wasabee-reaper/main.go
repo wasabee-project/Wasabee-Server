@@ -6,9 +6,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"github.com/wasabee-project/Wasabee-Server"
+	"go.uber.org/zap"
 )
 
 var flags = []cli.Flag{
@@ -55,12 +55,15 @@ func run(c *cli.Context) error {
 		return nil
 	}
 
+	logconf := wasabee.LogConfiguration{
+		Console:      true,
+		ConsoleLevel: zap.InfoLevel,
+		FilePath:     c.String("log"),
+	}
 	if c.Bool("debug") {
-		wasabee.SetLogLevel(logging.DEBUG)
+		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	if c.String("log") != "" {
-		_ = wasabee.AddFileLog(c.String("log"), logging.INFO)
-	}
+	wasabee.SetupLogging(logconf)
 
 	// Connect to database
 	err := wasabee.Connect(c.String("database"))

@@ -100,7 +100,7 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		// just keep going
 	}
 
@@ -238,7 +238,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		// just keep going
 	}
 
@@ -277,18 +277,18 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 			Log.Infof("Importing previously unknown agent: %s", agent)
 			_, err = agent.InitAgent() // add agent to system if they don't already exist
 			if err != nil {
-				Log.Notice(err)
+				Log.Info(err)
 				continue
 			}
 		}
 		if err != nil && err != sql.ErrNoRows {
-			Log.Notice(err)
+			Log.Info(err)
 			continue
 		}
 
 		err = teamID.AddAgent(agent)
 		if err != nil {
-			Log.Notice(err)
+			Log.Info(err)
 			continue
 		}
 	}
@@ -327,7 +327,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		// just keep going
 	}
 
@@ -371,7 +371,7 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
-		Log.Notice(err)
+		Log.Info(err)
 		// just keep going
 	}
 

@@ -23,13 +23,13 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
-		wasabee.Log.Notice("empty JSON")
+		wasabee.Log.Info("empty JSON")
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
@@ -39,7 +39,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	wasabee.Log.Debug(string(jBlob))
 	err = wasabee.RocksCommunitySync(jRaw)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -51,7 +51,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -61,7 +61,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -72,7 +72,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = team.RocksCommunityMemberPull()
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -84,7 +84,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -96,7 +96,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -106,7 +106,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.SetRocks(rk, rc)
 	if err != nil {
-		wasabee.Log.Notice(err)
+		wasabee.Log.Info(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
