@@ -11,7 +11,9 @@ var gid wasabee.GoogleID
 func TestMain(m *testing.M) {
 	gid = wasabee.GoogleID("118281765050946915735")
 
-	wasabee.SetLogDebug()
+	wasabee.SetupLogging(wasabee.LogConfiguration{
+		Console: true,
+	})
 	err := wasabee.Connect(os.Getenv("DATABASE"))
 	if err != nil {
 		wasabee.Log.Error(err)
