@@ -57,7 +57,7 @@ var rocks Rocksconfig
 
 // SetEnlRocks is called from main() to initialize the config
 func SetEnlRocks(input Rocksconfig) {
-	Log.Debugf("enl.rocks API Key: %s", input.APIKey)
+	Log.Debugw("startup", "enl.rocks API Key", input.APIKey)
 	rocks.APIKey = input.APIKey
 
 	if len(input.CommunityEndpoint) != 0 {
@@ -107,7 +107,9 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 	apiurl := fmt.Sprintf("%s/%s?apikey=%s", rocks.StatusEndpoint, searchID, rocks.APIKey)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
-		Log.Error(err)
+		// do not leak API key to logs
+		err := fmt.Errorf("error establishing .rocks request")
+		Log.Errorw(err.Error(), "search", searchID)
 		return err
 	}
 	client := &http.Client{
@@ -115,7 +117,9 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		Log.Error(err)
+		// do not leak API key to logs
+		err := fmt.Errorf("error executing .rocks request")
+		Log.Errorw(err.Error(), "search", searchID)
 		return err
 	}
 	defer resp.Body.Close()
@@ -125,7 +129,6 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 		return err
 	}
 
-	// Log.Debug(string(body))
 	err = json.Unmarshal(body, &agent)
 	if err != nil {
 		Log.Error(err)
@@ -153,7 +156,7 @@ func RocksUpdate(id AgentID, agent *RocksAgent) error {
 		// doppelkeks error
 		if err != nil && strings.Contains(err.Error(), "Error 1062") {
 			iname := "%s-doppel"
-			Log.Error("dupliate ingress agent name detected for [%], storing as [%]", agent.Agent, iname)
+			Log.Errorw("dupliate ingress agent name detected", "GID", agent.Agent, "new name", iname)
 			if _, err := db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", iname, agent.Verified, gid); err != nil {
 				Log.Error(err)
 				return err
@@ -197,7 +200,7 @@ func RocksCommunitySync(msg json.RawMessage) error {
 	if rc.Action == "onJoin" {
 		_, err = rc.User.Gid.IngressName()
 		if err != nil && err == sql.ErrNoRows {
-			Log.Infof("Importing previously unknown agent: %s", rc.User.Gid)
+			Log.Infof("importing previously unknown agent", "GID", rc.User.Gid)
 			_, err = rc.User.Gid.InitAgent()
 			if err != nil {
 				Log.Error(err)
@@ -245,6 +248,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	apiurl := fmt.Sprintf("%s?key=%s", rocks.CommunityEndpoint, rc)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
+		err := fmt.Errorf("error establishing community pull request")
 		Log.Error(err)
 		return err
 	}
@@ -253,6 +257,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
+		err := fmt.Errorf("error executing community pull request")
 		Log.Error(err)
 		return err
 	}
@@ -263,7 +268,6 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 		return err
 	}
 
-	// Log.Debug(string(body))
 	var rr RocksCommunityResponse
 	err = json.Unmarshal(body, &rr)
 	if err != nil {
@@ -274,7 +278,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	for _, agent := range rr.Members {
 		_, err = agent.IngressName()
 		if err != nil && err == sql.ErrNoRows {
-			Log.Infof("Importing previously unknown agent: %s", agent)
+			Log.Infow("Importing previously unknown agent", "GID", agent)
 			_, err = agent.InitAgent() // add agent to system if they don't already exist
 			if err != nil {
 				Log.Info(err)
@@ -327,7 +331,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
-		Log.Info(err)
+		Log.Infow("timeout waiting on .rocks rate limiter", "GID", gid)
 		// just keep going
 	}
 
@@ -336,7 +340,9 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	// #nosec
 	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid.String()}})
 	if err != nil {
-		Log.Error(err)
+		// default err leaks API key to logs
+		err := fmt.Errorf("error adding agent to .rocks community")
+		Log.Errorw(err.Error(), "GID", gid)
 		return err
 	}
 	defer resp.Body.Close()
@@ -350,7 +356,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 	err = json.Unmarshal(body, &rr)
 	if err != nil {
 		Log.Error(err)
-		Log.Error(string(body))
+		Log.Debug(string(body))
 	}
 	if !rr.Success {
 		Log.Error(rr.Error)
@@ -386,7 +392,9 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		Log.Error(err)
+		// default err leaks API key to logs
+		err := fmt.Errorf("error removing agent from .rocks community")
+		Log.Errorw(err.Error(), "GID", gid)
 		return err
 	}
 

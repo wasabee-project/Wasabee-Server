@@ -32,7 +32,7 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 
 	templateSet := make(map[string]*template.Template)
 
-	Log.Info("Including frontend templates from: ", fp)
+	Log.Debugw("frontend templates", "directory", fp)
 	files, err := ioutil.ReadDir(fp)
 	if err != nil {
 		Log.Error(err)
@@ -66,7 +66,7 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 func TemplateConfigAppengine(bucket *storage.BucketHandle, path string) (map[string]*template.Template, error) {
 	templateSet := make(map[string]*template.Template)
 
-	Log.Info("Including frontend templates from: %s", path)
+	Log.Debugw("frontend templates--function incomplete", "path", path)
 
 	// XXX NOT DONE YET
 

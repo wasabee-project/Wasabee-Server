@@ -59,9 +59,9 @@ type vtagent struct {
 // SetVEnlOne is called from main() to initialize the config
 func SetVEnlOne(w Vconfig) {
 	if w.APIKey == "" {
-		Log.Info("api key not set, not enabling V support")
+		Log.Infow("startup", "skipping", "api key not set, not enabling V support")
 	}
-	Log.Debugf("V.enl.one API Key: %s", w.APIKey)
+	Log.Debugw("startup", "V.enl.one API Key", w.APIKey)
 	vc.APIKey = w.APIKey
 
 	if w.APIEndpoint != "" {
@@ -139,14 +139,13 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 	}
 
 	if vres.Status == "ok" && vres.Data.Agent != "" {
-		// Log.Debug("Updating V data for ", vres.Data.Agent)
 		_, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
 			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid)
 
 		// doppelkeks error
 		if err != nil && strings.Contains(err.Error(), "Error 1062") {
 			iname := "%s-doppel"
-			Log.Error("dupliate ingress agent name detected for [%], storing as [%]", vres.Data.Agent, iname)
+			Log.Error("dupliate ingress agent name detected", "GID", vres.Data.Agent, "new name", iname)
 			if _, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
 				iname, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid); err != nil {
 				Log.Error(err)
@@ -198,7 +197,6 @@ func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) err
 		Log.Error(err)
 		return err
 	}
-	// Log.Debug(string(body))
 
 	var vt vteam
 	err = json.Unmarshal(body, &vt)
@@ -206,10 +204,8 @@ func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) err
 		Log.Error(err)
 		return err
 	}
-	// Log.Debug(vt)
 
 	for _, agent := range vt.Agents {
-		// Log.Debug(agent)
 		if _, err := agent.Gid.InitAgent(); err != nil {
 			Log.Error(err)
 			return err
@@ -336,12 +332,12 @@ func (gid GoogleID) EnlID() (EnlID, error) {
 // It works, but more research is necessary on the settings required on the permissions.
 func StatusServerPoller() {
 	if !vc.configured {
-		Log.Info("V not configures: not polling status.enl.one")
+		Log.Infow("startup", "status", "V not configures: not polling status.enl.one")
 		return
 	}
 
 	// loop forever
-	Log.Info("Starting status.enl.one Poller")
+	Log.Info("startup", "status", "Starting status.enl.one Poller")
 	for {
 		// get list of agents who say they use JEAH/RAID
 		row, err := db.Query("SELECT gid, Vid FROM agent WHERE RAID = 1")
@@ -360,9 +356,8 @@ func StatusServerPoller() {
 				Log.Error(err)
 				continue
 			}
-			// Log.Debugf("Polling status.enl.one for %s", gid.String)
 			if !vid.Valid {
-				Log.Info("agent requested RAID poll, but has not configured V")
+				Log.Error("agent requested RAID poll, but has not configured V", "GID", gid.String())
 				_ = gid.StatusLocationDisable()
 				continue
 			}

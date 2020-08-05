@@ -84,16 +84,16 @@ func initializeConfig(initialConfig Configuration) {
 		wasabee.Log.Error("OAUTH_SECRET unset: logins will fail")
 	}
 
-	wasabee.Log.Debugf("ClientID: %s", config.OauthConfig.ClientID)
-	wasabee.Log.Debugf("ClientSecret: %s", config.OauthConfig.ClientSecret)
+	wasabee.Log.Debugw("startup", "ClientID", config.OauthConfig.ClientID)
+	wasabee.Log.Debugw("startup", "ClientSecret", config.OauthConfig.ClientSecret)
 	config.oauthStateString = wasabee.GenerateName()
-	wasabee.Log.Debugf("oauthStateString: %s", config.oauthStateString)
+	wasabee.Log.Debugw("startup", "oauthStateString", config.oauthStateString)
 
 	if config.CookieSessionKey == "" {
 		wasabee.Log.Error("SESSION_KEY unset: logins will fail")
 	} else {
 		key := config.CookieSessionKey
-		wasabee.Log.Debugf("Session Key: %s", key)
+		wasabee.Log.Debugw("startup", "Session Key", key)
 		config.store = sessions.NewCookieStore([]byte(key))
 		config.sessionName = "wasabee"
 	}
@@ -109,12 +109,12 @@ func initializeConfig(initialConfig Configuration) {
 		wasabee.Log.Fatal("certificate path could not be resolved.")
 		// panic(err)
 	}
-	wasabee.Log.Debugf("Certificate Directory: " + config.CertDir)
+	wasabee.Log.Debugw("startup", "Certificate Directory", config.CertDir)
 
 	if config.Logfile == "" {
 		config.Logfile = "wasabee-https.log"
 	}
-	wasabee.Log.Debugf("https logfile: %s", config.Logfile)
+	wasabee.Log.Debugw("startup", "https logfile", config.Logfile)
 	// #nosec
 	config.logfileHandle, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -148,7 +148,7 @@ func templateExecute(res http.ResponseWriter, req *http.Request, name string, da
 	}
 
 	if err := config.TemplateSet[lang].ExecuteTemplate(res, name, data); err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		return err
 	}
 	return nil
@@ -185,10 +185,10 @@ func StartHTTP(initialConfig Configuration) {
 		// ErrorLog: wasabee.Log, // XXX need to write an interface for this
 	}
 
-	wasabee.Log.Infof("HTTPS server starting on %s, you should be able to reach it at %s", config.ListenHTTPS, config.Root)
+	wasabee.Log.Infow("startup", "port", config.ListenHTTPS, "url", config.Root)
 	if err := config.srv.ListenAndServeTLS(config.CertDir+"/wasabee.fullchain.pem", config.CertDir+"/wasabee.key"); err != nil {
-		wasabee.Log.Errorf("HTTPS server error: %s", err)
-		panic(err)
+		wasabee.Log.Fatal(err)
+		// panic(err)
 	}
 }
 
@@ -203,8 +203,8 @@ func StartAppEngine(ic Configuration) {
 	}
 
 	if err := config.srv.ListenAndServe(); err != nil {
-		wasabee.Log.Errorf("HTTPS server error: %s", err)
-		panic(err)
+		wasabee.Log.Fatal(err)
+		// panic(err)
 	}
 }
 
@@ -274,7 +274,7 @@ func authMW(next http.Handler) http.Handler {
 			Secure:   true,
 		}
 		if err != nil {
-			wasabee.Log.Info(err)
+			wasabee.Log.Error(err)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
@@ -290,21 +290,21 @@ func authMW(next http.Handler) http.Handler {
 			ses.Values["loginReq"] = req.URL.String()
 			_ = ses.Save(req, res)
 			res.Header().Set("Connection", "close")
-			wasabee.Log.Debug("not logged in")
+			// wasabee.Log.Debug("not logged in")
 			redirectOrError(res, req)
 			return
 		}
 
 		gid := wasabee.GoogleID(id.(string))
 		if gid.CheckLogout() {
-			wasabee.Log.Info("requested logout")
+			wasabee.Log.Debugw("requested logout", "GID", gid.String())
 			http.Redirect(res, req, "/", http.StatusFound)
 			return
 		}
 
 		in, ok := ses.Values["nonce"]
 		if !ok || in == nil {
-			wasabee.Log.Error("gid set, but nonce not")
+			wasabee.Log.Errorw("gid set, but no nonce", "GID", gid.String())
 			redirectOrError(res, req)
 			return
 		}
@@ -313,12 +313,11 @@ func authMW(next http.Handler) http.Handler {
 
 		if inNonce != nonce {
 			if inNonce != pNonce {
-				wasabee.Log.Debug("Session timed out for", gid.String())
+				wasabee.Log.Debugw("Session timed out", "GID", gid.String())
 				ses.Values["nonce"] = "unset"
 				res.Header().Set("Connection", "close")
 				_ = ses.Save(req, res)
 			} else {
-				// wasabee.Log.Debug("Updating to new nonce")
 				ses.Values["nonce"] = nonce
 				res.Header().Set("Connection", "close")
 				_ = ses.Save(req, res)
@@ -351,7 +350,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
-		wasabee.Log.Debug(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

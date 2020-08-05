@@ -15,8 +15,8 @@ var characters = strings.Split("abcdefghijklmnopqrstuvwxyz0123456789", "")
 func randomWord(array []string, try int, err error) string {
 	if try > 10 {
 		// We somehow tried 10 times to get a random value and it failed every time. Something is extremely wrong here.
-		Log.Errorf("crypto/rand issue - something is probably extremely wrong! %s", err)
-		panic(err)
+		Log.Fatalw("crypto/rand issue - something is probably extremely wrong!", "error", err)
+		// panic(err)
 	}
 
 	i, err := rand.Int(rand.Reader, big.NewInt(int64(len(array))))
@@ -69,10 +69,10 @@ func loadWords(content []byte) error {
 		}
 	}
 	if len(words) == 0 {
-		err := fmt.Errorf("file doesn't contain any words")
+		err := fmt.Errorf("empty word list")
 		return err
 	}
-	Log.Debugf("%d words loaded.", len(words))
+	// Log.Debugw("startup", "words loaded", len(words))
 	return nil
 }
 

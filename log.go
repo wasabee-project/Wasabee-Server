@@ -67,7 +67,6 @@ func SetupLogging(c LogConfiguration) {
 	}
 
 	Log = sugarfree.Sugar()
-	Log.Sync()
 }
 
 func addGoogleCloud(project string, jsonPath string) (zapcore.Core, error) {

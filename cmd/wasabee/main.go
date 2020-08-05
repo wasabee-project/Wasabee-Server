@@ -273,7 +273,7 @@ func run(c *cli.Context) error {
 	sigch := make(chan os.Signal, 3)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
 
-	wasabee.Log.Sync()
+	_ = wasabee.Log.Sync()
 
 	// loop until signal sent
 	sig := <-sigch
@@ -295,6 +295,5 @@ func run(c *cli.Context) error {
 
 	// close database connection
 	wasabee.Disconnect()
-	wasabee.Log.Sync()
 	return nil
 }
