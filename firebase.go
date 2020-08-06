@@ -48,7 +48,7 @@ func FirebaseInit() <-chan FirebaseCmd {
 // FirebaseClose shuts down the channel when done
 func FirebaseClose() {
 	if fb.running {
-		Log.Debug("shutting down firebase")
+		Log.Infow("shutdown", "message", "shutting down firebase")
 		fb.running = false
 		close(fb.c)
 	}
@@ -187,7 +187,7 @@ func (o *Operation) firebaseMapChange() {
 			Msg:    "changed",
 		})
 	}
-	// Log.Debugf("sending mapchange via firebase for [%s]", o.ID)
+	Log.Debugw("sending mapchange via firebase", "subsystem", "Firebase", "resource", o.ID)
 }
 
 func (gid GoogleID) firebaseSubscribeTeam(teamID TeamID) {
@@ -279,11 +279,11 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 
 	// XXX if we have duplicates, prune -- TODO: add unique key after this has been in place a while
 	if count > 1 {
-		Log.Debugf("removing duplicate tokens from %s [%s]", gid, token)
+		Log.Warnw("removing duplicate tokens", "subsystem", "Firebase", "GID", gid, "token", token)
 		gid.FirebaseRemoveToken(token)
 	}
 
-	// Log.Debugf("adding token for %s [%s]", gid, token)
+	Log.Debugw("adding token", "subsystem", "Firebase", "GID", gid, "token", token)
 	_, err = db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		Log.Error(err)

@@ -162,7 +162,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		// do not report send errors up the chain, just log
 	}
 	if _, err = gid.SendMessage(msg); err != nil {
-		Log.Errorf("%s %s %s", gid, err, msg)
+		Log.Errorw("send message", "GID", gid, "error", err, "themsg", msg)
 		// do not report send errors up the chain, just log
 	}
 	if err = o.Touch(); err != nil {
@@ -194,18 +194,18 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
 	}
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("no such marker")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
 		return err
 	}
 	if !ns.Valid {
 		err = fmt.Errorf("marker not assigned")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
 		return err
 	}
 	markerGid := GoogleID(ns.String)
 	if gid != markerGid {
 		err = fmt.Errorf("marker assigned to someone else")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
 		return err
 	}
 	if _, err = db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "acknowledged", m, o.ID); err != nil {
@@ -224,7 +224,7 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
 func (m MarkerID) Complete(o Operation, gid GoogleID) error {
 	if !o.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
-		Log.Error(err)
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return err
 	}
 	if _, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, o.ID); err != nil {
@@ -243,7 +243,7 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) error {
 func (m MarkerID) Incomplete(o Operation, gid GoogleID) error {
 	if !o.ReadAccess(gid) {
 		err := fmt.Errorf("permission denied")
-		Log.Error(err)
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return err
 	}
 	if _, err := db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, o.ID); err != nil {
@@ -269,18 +269,18 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 	}
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("no such marker")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return err
 	}
 	if !ns.Valid {
 		err = fmt.Errorf("marker not assigned")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return err
 	}
 	markerGid := GoogleID(ns.String)
 	if gid != markerGid {
 		err = fmt.Errorf("marker assigned to someone else")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return err
 	}
 	if _, err = db.Exec("UPDATE marker SET state = 'pending', gid = NULL WHERE ID = ? AND opID = ?", m, o.ID); err != nil {
@@ -306,7 +306,7 @@ func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
 	pos := 1
 	markers := strings.Split(order, ",")
 	for i := range markers {
-		if markers[i] == "000" { // the header, could be anyplace in the order if the user was being silly
+		if markers[i] == "000" { // the header, could be any place in the order if the user was being silly
 			continue
 		}
 		if _, err := stmt.Exec(pos, o.ID, markers[i]); err != nil {

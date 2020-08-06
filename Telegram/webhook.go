@@ -41,13 +41,13 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	}
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON")
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
@@ -56,7 +56,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	var update tgbotapi.Update
 	err = json.Unmarshal(jRaw, &update)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

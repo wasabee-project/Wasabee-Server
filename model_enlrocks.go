@@ -100,7 +100,7 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
-		Log.Info(err)
+		Log.Warn(err)
 		// just keep going
 	}
 
@@ -241,7 +241,7 @@ func (teamID TeamID) RocksCommunityMemberPull() error {
 	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
-		Log.Info(err)
+		Log.Warn(err)
 		// just keep going
 	}
 

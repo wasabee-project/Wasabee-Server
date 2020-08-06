@@ -27,11 +27,13 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	err = wasabee.FetchAgent(togid, &agent)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -54,6 +56,7 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -65,16 +68,21 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 
 	ok := gid.CanSendTo(togid)
 	if !ok {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden: only team owners can send to agents on the team")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", togid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	ok, err = togid.SendMessage(message)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
-		http.Error(res, "message did not send", http.StatusInternalServerError)
+		err := fmt.Errorf("message did not send")
+		wasabee.Log.Warnw(err.Error(), "from", gid, "to", togid, "contents", message)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -82,7 +90,7 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 
 func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
-	_, err := getAgentID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -92,14 +100,14 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 
 	if contentType == "multipart/form-data" {
-		wasabee.Log.Info("using old format for sending targets")
+		wasabee.Log.Infow("using old format for sending targets", "GID", gid)
 		agentTargetRouteOld(res, req)
 		return
 	}
 
 	if contentType != jsonTypeShort {
 		err := fmt.Errorf("must use content-type: %s", jsonTypeShort)
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -108,19 +116,20 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
+		wasabee.Log.Error(err.Error())
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
-		wasabee.Log.Info("empty JSON")
+		wasabee.Log.Warnw("empty JSON", "GID", gid)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
@@ -134,35 +143,50 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		ll   string
 	}
 	var target T
-	json.Unmarshal(jRaw, &target)
+	err = json.Unmarshal(jRaw, &target)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 
 	if target.Name == "" {
-		http.Error(res, "portal not set", http.StatusNotAcceptable)
+		err := fmt.Errorf("portal not set")
+		wasabee.Log.Warnw(err.Error(), "GID", gid)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	if target.Lat == "" || target.Lng == "" {
-		http.Error(res, "lat/ng not set", http.StatusNotAcceptable)
+		err := fmt.Errorf("lat/ng not set")
+		wasabee.Log.Warnw(err.Error(), "GID", gid)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	target.ll = fmt.Sprintf("%s,%s", target.Lat, target.Lng)
 
+	// XXX include sender's name
 	message := fmt.Sprintf(
 		"[%s](https://intel.ingress.com/intel?ll=%s&z=12&pll=%s): [Google Maps](http://maps.google.com/?q=%s) | [Apple Maps](http://maps.apple.com/?q=%s)",
 		target.Name, target.ll, target.ll, target.ll, target.ll)
 
 	/* ok := gid.CanSendTo(togid)
 	if !ok {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden")
+		wasabee.Log.Warnw(err.Error(), "from", gid, "to", togid,)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	} */
 	ok, err := togid.SendMessage(message)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
-		http.Error(res, "message did not send", http.StatusInternalServerError)
+		err := fmt.Errorf("message did not send")
+		wasabee.Log.Warnw(err.Error(), "from", gid, "to", togid)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -170,7 +194,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 
 func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
-	_, err := getAgentID(req)
+	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -181,19 +205,24 @@ func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	portal := req.FormValue("portal")
 	if portal == "" {
-		http.Error(res, "portal not set", http.StatusNotAcceptable)
+		err := fmt.Errorf("portal net set")
+		wasabee.Log.Warnw(err.Error(), "GID", gid)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	ll := req.FormValue("ll")
 	if ll == "" {
-		http.Error(res, "ll not set", http.StatusNotAcceptable)
+		err := fmt.Errorf("ll not set")
+		wasabee.Log.Warnw(err.Error(), "GID", gid)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
@@ -203,11 +232,14 @@ func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 
 	ok, err := togid.SendMessage(message)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
-		http.Error(res, "message did not send", http.StatusInternalServerError)
+		err := fmt.Errorf("message did not send")
+		wasabee.Log.Warnw(err.Error(), "from", gid, "to", togid)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -225,6 +257,7 @@ func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	togid, err := wasabee.ToGid(id)
 	if err != nil {
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

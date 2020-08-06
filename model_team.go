@@ -39,7 +39,8 @@ type Agent struct {
 // AgentInTeam checks to see if a agent is in a team and enabled.
 // allowOff == true will report if a agent is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling agent.
 func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
-	if team == "owned" { // faked team
+	if team == "owned" {
+		Log.Infow("owned team queried: old buggy IITC plugin", "GID", gid)
 		return true, nil
 	}
 
@@ -65,7 +66,7 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 // fetchAll includes agent for whom their state == off, should only be used to display lists to the calling agent
 func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	if teamID == "owned" {
-		fakedTeam(teamList)
+		Log.Info("owned team queried: old buggy IITC plugin")
 		return nil
 	}
 
@@ -140,15 +141,12 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 	return nil
 }
 
-func fakedTeam(teamList *TeamData) {
-	Log.Debug("owned team queried: OLD IITC plugin?")
-}
-
 // OwnsTeam returns true if the GoogleID owns the team identified by teamID
 func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	var owner GoogleID
 
-	if teamID == "owned" { // faked team
+	if teamID == "owned" {
+		Log.Infow("owned team queried: old buggy IITC plugin", "GID", gid)
 		return true, nil
 	}
 
@@ -168,22 +166,22 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 	var err error
 	if name == "" {
 		err = fmt.Errorf("attempting to create unnamed team")
-		Log.Debug(err)
+		Log.Warnw(err.Error(), "GID", gid)
 		return "", err
 	}
 	team, err := GenerateSafeName()
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return "", err
 	}
 	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm) VALUES (?,?,?,NULL,NULL)", team, gid, name)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return "", err
 	}
 	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color, displayname) VALUES (?,?,'On','operator',NULL)", team, gid)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return TeamID(team), err
 	}
 	return TeamID(team), nil
@@ -194,7 +192,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 func (teamID TeamID) Rename(name string) error {
 	_, err := db.Exec("UPDATE team SET name = ? WHERE teamID = ?", name, teamID)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 	}
 	return err
 }
@@ -214,24 +212,24 @@ func (teamID TeamID) Delete() error {
 	for rows.Next() {
 		err = rows.Scan(&gid)
 		if err != nil {
-			Log.Info(err)
+			Log.Warn(err)
 			continue
 		}
 		err = teamID.RemoveAgent(gid)
 		if err != nil {
-			Log.Info(err)
+			Log.Warn(err)
 			continue
 		}
 	}
 
 	_, err = db.Exec("DELETE FROM opteams WHERE teamID = ?", teamID)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 	_, err = db.Exec("DELETE FROM team WHERE teamID = ?", teamID)
 	if err != nil {
-		Log.Info(err)
+		Log.Warn(err)
 		return err
 	}
 	return nil
@@ -247,12 +245,12 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 
 	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color, displayname) VALUES (?, ?, 'Off', 'boots', NULL)", teamID, gid)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
 	if err = gid.AddToRemoteRocksCommunity(teamID); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		// return err
 	}
 	return nil
@@ -268,12 +266,12 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 
 	_, err = db.Exec("DELETE FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
 	if err = gid.RemoveFromRemoteRocksCommunity(teamID); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		// return err
 	}
 	return nil
@@ -290,7 +288,7 @@ func (teamID TeamID) Chown(to AgentID) error {
 
 	_, err = db.Exec("UPDATE team SET owner = ? WHERE teamID = ?", gid, teamID)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return (err)
 	}
 	return nil
@@ -347,7 +345,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 func (teamID TeamID) SetRocks(key, community string) error {
 	_, err := db.Exec("UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", key, community, teamID)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 	}
 	return err
 }
@@ -363,7 +361,7 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 	}
 
 	if _, err := db.Exec("UPDATE agentteams SET state = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 	if state == "On" {
@@ -430,7 +428,7 @@ func (gid GoogleID) teamList() []TeamID {
 func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", MakeNullString(squad), teamID, gid)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 	return nil
@@ -440,7 +438,7 @@ func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 func (teamID TeamID) SetDisplayname(gid GoogleID, displayname string) error {
 	_, err := db.Exec("UPDATE agentteams SET displayname = ? WHERE teamID = ? and gid = ?", MakeNullString(displayname), teamID, gid)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 	return nil
@@ -450,13 +448,13 @@ func (teamID TeamID) SetDisplayname(gid GoogleID, displayname string) error {
 func (teamID TeamID) GenerateJoinToken() (string, error) {
 	key, err := GenerateSafeName()
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return key, err
 	}
 
 	_, err = db.Exec("UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return key, err
 	}
 	return key, nil
@@ -466,7 +464,7 @@ func (teamID TeamID) GenerateJoinToken() (string, error) {
 func (teamID TeamID) DeleteJoinToken() error {
 	_, err := db.Exec("UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 	return nil
@@ -487,6 +485,7 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 	}
 	if i != 1 {
 		err = fmt.Errorf("invalid team join token")
+		Log.Errorw(err.Error(), "resource", teamID, "GID", gid)
 		return err
 	}
 

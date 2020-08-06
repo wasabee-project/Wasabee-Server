@@ -26,13 +26,13 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 	// Transform frontendPath to an absolute path
 	fp, err := filepath.Abs(frontendPath)
 	if err != nil {
-		Log.Fatal("frontend path could not be resolved.")
+		Log.Fatalw("startup", "error", "frontend path could not be resolved.")
 		// panic(err)
 	}
 
 	templateSet := make(map[string]*template.Template)
 
-	Log.Debugw("frontend templates", "directory", fp)
+	Log.Debugw("startup", "frontend template directory", fp)
 	files, err := ioutil.ReadDir(fp)
 	if err != nil {
 		Log.Error(err)
@@ -55,7 +55,7 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 			if err != nil {
 				Log.Error(err)
 			}
-			Log.Debugf("Templates for lang [%s] %s", lang, templateSet[lang].DefinedTemplates())
+			Log.Debugw("startup", "language", lang, "templates", templateSet[lang].DefinedTemplates())
 		}
 	}
 	ts = templateSet

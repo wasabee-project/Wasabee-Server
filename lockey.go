@@ -1,7 +1,11 @@
 package wasabee
 
-// This is now only used in Telegram for user setup; when I get a chance, I'll convert it over to using the GID
-// back when this was going to be an open/XFAC tool, the lockey was going to be the primary UID ; once we decided to have this an ENL only tool, the lockey became irrelevant
+/*
+ * The original play for Wasabee was to be an XFAC tool, but that was quickly scrapped
+ * the LocKey was to be a unique identifier that could be given to your operators
+ * much has changed since then, now it is used for setting up Telegram and one-time-tokens
+ * the GoogleID is the primary identifier
+ */
 
 // LocKey is the location share key
 type LocKey string

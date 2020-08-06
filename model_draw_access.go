@@ -12,7 +12,7 @@ func (o *Operation) PopulateTeams() error {
 
 	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
@@ -21,7 +21,7 @@ func (o *Operation) PopulateTeams() error {
 	for rows.Next() {
 		err := rows.Scan(&tid, &role)
 		if err != nil {
-			Log.Info(err)
+			Log.Error(err)
 			continue
 		}
 		o.Teams = append(o.Teams, ExtendedTeam{
@@ -36,7 +36,7 @@ func (o *Operation) PopulateTeams() error {
 func (o *Operation) ReadAccess(gid GoogleID) bool {
 	if len(o.Teams) == 0 {
 		if err := o.PopulateTeams(); err != nil {
-			Log.Info(err)
+			Log.Error(err)
 			return false
 		}
 	}
@@ -58,7 +58,7 @@ func (o *Operation) ReadAccess(gid GoogleID) bool {
 func (o *Operation) WriteAccess(gid GoogleID) bool {
 	// do not cache -- force reset on uploads
 	if err := o.PopulateTeams(); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return false
 	}
 	if o.ID.IsOwner(gid) {
@@ -92,8 +92,8 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 // Chown changes an operation's owner
 func (opID OperationID) Chown(gid GoogleID, to string) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("%s not current owner of op %s", gid, opID)
-		Log.Error(err)
+		err := fmt.Errorf("permission denied: not current owner")
+		Log.Error(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
 
@@ -104,8 +104,8 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 	}
 
 	if x, err := togid.IngressName(); x == "" || err != nil {
-		err := fmt.Errorf("unknown user: %s", to)
-		Log.Error(err)
+		err := fmt.Errorf("unknown user")
+		Log.Error(err.Error(), "to", to)
 		return err
 	}
 
@@ -141,8 +141,8 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 // AddPerm adds a new permission to an op
 func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 	if !o.ID.IsOwner(gid) {
-		err := fmt.Errorf("%s not current owner of op %s", gid, o.ID)
-		Log.Error(err)
+		err := fmt.Errorf("permission denied: not current owner of op")
+		Log.Error(err.Error(), "GID", gid, "resource", o.ID)
 		return err
 	}
 
@@ -152,8 +152,8 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 		return err
 	}
 	if !inteam {
-		err := fmt.Errorf("you must be on a team to add it as a permission: %s %s %s", gid, teamID, o.ID)
-		Log.Error(err)
+		err := fmt.Errorf("you must be on a team to add it as a permission")
+		Log.Error(err.Error(), "GID", gid, "team", teamID, "resource", o.ID)
 		return err
 	}
 
@@ -179,8 +179,8 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 // DelPerm removes a permission from an op
 func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm string) error {
 	if !o.ID.IsOwner(gid) {
-		err := fmt.Errorf("%s not current owner of op %s", gid, o.ID)
-		Log.Error(err)
+		err := fmt.Errorf("not current owner of op")
+		Log.Error(err.Error(), "GID", gid, "resource", o.ID)
 		return err
 	}
 

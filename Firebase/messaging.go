@@ -10,7 +10,7 @@ import (
 // SendMessage is registered with Wasabee for sending messages
 func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	gid.FirebaseGenericMessage(message)
-	wasabee.Log.Debugf("generic message sent to %s via firebase", gid)
+	wasabee.Log.Debugw("generic message", "subsystem", "Firebase", "GID", gid)
 	return false, nil
 }
 
@@ -46,7 +46,6 @@ func genericMessage(ctx context.Context, c *messaging.Client, fb wasabee.Firebas
 			return err
 		}
 	}
-	// wasabee.Log.Debugf("sent to %s", fb.Gid)
 	return nil
 }
 
@@ -75,7 +74,6 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 		wasabee.Log.Error(err)
 		return err
 	}
-	// wasabee.Log.Debugf("sent to %s", fb.TeamID)
 	return nil
 }
 
@@ -104,7 +102,6 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		wasabee.Log.Error(err)
 		return err
 	}
-	// wasabee.Log.Debugf("sending marker status change to team %s for op [%s] %s %s", fb.TeamID, fb.OpID, fb.Msg, fb.Cmd.String());
 	return nil
 }
 
@@ -173,8 +170,6 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 		wasabee.Log.Error(err)
 		return err
 	}
-
-	// wasabee.Log.Debugf("sending map change to team %s for op [%s] %s %s", fb.TeamID, fb.OpID, fb.Msg, fb.Cmd.String());
 	return nil
 }
 
@@ -203,7 +198,6 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 		wasabee.Log.Error(err)
 		return err
 	}
-	// wasabee.Log.Debugf("sent to %s", fb.TeamID)
 	return nil
 }
 
@@ -249,7 +243,6 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 			return err
 		}
 	}
-	// wasabee.Log.Debugf("sent to %s", fb.Gid)
 	return nil
 }
 
@@ -310,7 +303,7 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 	}
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
-			wasabee.Log.Infof("[un]subscribe failed for %s: %s ; deleting token", tokens[f.Index], f.Reason)
+			wasabee.Log.Warnw("[un]subscribe failed; deleting token", "subsystem", "Firebase", "token", tokens[f.Index], "reason", f.Reason)
 			fb.Gid.FirebaseRemoveToken(tokens[f.Index])
 		}
 	}

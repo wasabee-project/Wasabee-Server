@@ -94,7 +94,7 @@ type Assignment struct {
 // It also updates the local V and enl.rocks data, if configured.
 // Returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked.
 func (gid GoogleID) InitAgent() (bool, error) {
-	var authError error
+	var authError bool
 	var tmpName string
 	var err error
 	var vdata Vresult
@@ -120,37 +120,41 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	// would be better to start processing when either returned rather than waiting for both to be done, still better than serial calls
 	e1, e2 := <-channel, <-channel
 	if e1 != nil {
-		Log.Info(e1)
+		Log.Error(e1)
 	}
 	if e2 != nil {
-		Log.Info(e2)
+		Log.Error(e2)
 	}
 
 	if vdata.Data.Agent != "" {
 		// if we got data, and the user already exists (not first login) update if necessary
 		err = gid.VUpdate(&vdata)
 		if err != nil {
-			Log.Info(err)
+			Log.Error(err)
 			return false, err
 		}
 		if tmpName == "" {
 			tmpName = vdata.Data.Agent
 		}
 		if vdata.Data.Quarantine {
-			authError = fmt.Errorf("%s %s quarantined at V", gid, vdata.Data.Agent)
-			Log.Info(authError)
+			Log.Warnw("access denied", "GID", gid, "reason", "quarantined at V")
+			Log.Debug(vdata.Data.Agent)
+			authError = true
 		}
 		if vdata.Data.Flagged {
-			authError = fmt.Errorf("%s %s flagged at V", gid, vdata.Data.Agent)
-			Log.Info(authError)
+			Log.Warnw("access denied", "GID", gid, "reason", "flagged at V")
+			Log.Debug(vdata.Data.Agent)
+			authError = true
 		}
 		if vdata.Data.Blacklisted {
-			authError = fmt.Errorf("%s %s blacklisted at V", gid, vdata.Data.Agent)
-			Log.Info(authError)
+			Log.Warnw("access denied", "GID", gid, "reason", "blacklisted at V")
+			Log.Debug(vdata.Data.Agent)
+			authError = true
 		}
 		if vdata.Data.Banned {
-			authError = fmt.Errorf("%s %s banned at V", gid, vdata.Data.Agent)
-			Log.Info(authError)
+			Log.Warnw("access denied", "GID", gid, "reason", "blacklisted at V")
+			Log.Debug(vdata.Data.Agent)
+			authError = true
 		}
 	}
 
@@ -165,21 +169,22 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			tmpName = rocks.Agent
 		}
 		if rocks.Smurf {
-			authError = fmt.Errorf("%s %s listed as a smurf at enl.rocks", gid, rocks.Agent)
-			Log.Info(authError)
+			Log.Warnw("access denied", "GID", gid, "reason", "listed as smurf at enl.rocks")
+			Log.Debug(rocks.Agent)
+			authError = true
 		}
 	}
 
-	if authError != nil {
-		return false, authError
+	if authError {
+		return false, fmt.Errorf("access denied")
 	}
 
 	// if the agent doesn't exist, prepopulate everything
 	_, err = gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
-		Log.Debugf("running first login process for [%s]", gid)
+		Log.Infow("first login", "GID", gid.String(), "message", "first login for "+gid.String())
 		if tmpName == "" {
-			Log.Debugf("querying enlio for agent name for gid: %s", gid.String())
+			Log.Warnw("querying enlio for agent name", "GID", gid.String())
 			tmpName, _ = gid.enlioQuery()
 		}
 
@@ -191,7 +196,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 				length = tmp
 			}
 			tmpName = "UnverifiedAgent_" + gid.String()[:length]
-			Log.Debugf("using %s for gid: %s", tmpName, gid.String())
+			Log.Infow("using UnverifiedAgent name", "GID", gid.String(), "name", tmpName)
 		}
 
 		lockey, err := GenerateSafeName()
@@ -221,8 +226,8 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	if gid.RISC() {
-		err := fmt.Errorf("%s locked due to Google RISC", gid)
-		Log.Error(err)
+		err := fmt.Errorf("account locked by Google RISC")
+		Log.Warnw(err.Error(), "GID", gid.String)
 		return false, err
 	}
 	return true, nil
@@ -244,7 +249,7 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		return err
 	}
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
@@ -253,27 +258,28 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	}
 
 	if err = gid.adTeams(ud); err != nil {
-		Log.Error(err)
+		// Log.Error(err) // redundant
 		return err
 	}
 
 	if err = gid.adOwnedTeams(ud); err != nil {
-		Log.Error(err)
+		// Log.Error(err) // redundant
 		return err
 	}
 
 	if err = gid.adTelegram(ud); err != nil {
-		Log.Error(err)
+		// Log.Error(err) // redundant
 		return err
 	}
 
 	if err = gid.adOps(ud); err != nil {
-		Log.Error(err)
+		// Log.Error(err) // redundant
 		return err
 	}
 
 	if err = gid.adAssignments(ud); err != nil {
-		Log.Error(err)
+		// Log.Error(err) // redundant
+		return err
 	}
 
 	return nil
@@ -428,18 +434,18 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 
 	flat, err := strconv.ParseFloat(lat, 64)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		flat = float64(0)
 	}
 
 	flon, err = strconv.ParseFloat(lon, 64)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		flon = float64(0)
 	}
 	point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", point, gid); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
@@ -532,10 +538,10 @@ func RevalidateEveryone() error {
 			channel <- RocksSearch(gid, &r)
 		}()
 		if err = <-channel; err != nil {
-			Log.Info(err)
+			Log.Error(err)
 		}
 		if err = <-channel; err != nil {
-			Log.Info(err)
+			Log.Error(err)
 		}
 
 		if err = gid.VUpdate(&v); err != nil {
@@ -563,7 +569,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
 	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(iname) LIKE LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Info(err)
+		Log.Error(err)
 		return "", err
 	}
 	return gid, nil
@@ -610,7 +616,7 @@ func (gid GoogleID) Delete() error {
 	// brute force delete everyhing else
 	_, err = db.Exec("DELETE FROM agent WHERE gid = ?", gid)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
@@ -656,12 +662,7 @@ func (gid GoogleID) Unlock(reason string) error {
 // Logout sets a temporary logout token - not stored in DB since logout cases are not critical
 // and sessions are refreshed with google hourly
 func (gid GoogleID) Logout(reason string) {
-	if gid == "" {
-		err := fmt.Errorf("gid unset")
-		Log.Error(err)
-	}
-
-	Log.Debugf("adding %s to logout list: %s", gid, reason)
+	Log.Infow("logout", "GID", gid, "reason", reason)
 	ll.mux.Lock()
 	defer ll.mux.Unlock()
 	ll.logoutlist[gid] = true
@@ -677,7 +678,7 @@ func (gid GoogleID) CheckLogout() bool {
 	}
 	if logout {
 		ll.logoutlist[gid] = false
-		Log.Debugf("clearing %s from logoutlist", gid)
+		Log.Debugw("clearing from logoutlist", "GID", gid)
 		delete(ll.logoutlist, gid)
 	}
 	return logout
@@ -689,9 +690,9 @@ func (gid GoogleID) RISC() bool {
 
 	err := db.QueryRow("SELECT RISC FROM agent WHERE gid = ?", gid).Scan(&RISC)
 	if err == sql.ErrNoRows {
-		Log.Infof("[%s] does not exist", gid)
+		Log.Warnw("agent does not exist, checking RISC flag", "GID", gid)
 	} else if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 	}
 	return RISC
 }
@@ -707,14 +708,14 @@ func (gid GoogleID) UpdatePicture(picurl string) error {
 
 // GetPicture returns the agent's Google Picture URL
 func (gid GoogleID) GetPicture() string {
-	var url string
+	// XXX don't hardcode this
+	url := "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
 
 	err := db.QueryRow("SELECT picurl FROM agentextras WHERE gid = ?", gid).Scan(&url)
-	if err != nil {
-		// Log.Info(err)
-		// wr, _ := GetWebroot()
-		// XXX do not hardcode this URL
-		return "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
+	if err == sql.ErrNoRows {
+		// nothing
+	} else if err != nil {
+		Log.Error(err)
 	}
 
 	return url
@@ -735,13 +736,13 @@ func ToGid(in string) (GoogleID, error) {
 		gid, err = SearchAgentName(in)
 	}
 	if err == sql.ErrNoRows {
-		err = fmt.Errorf("unknown agent: %s", in)
+		err = fmt.Errorf("unknown agent")
 	}
 	if err == nil && gid == "" {
-		err = fmt.Errorf("unknown agent: %s", in)
+		err = fmt.Errorf("unknown agent")
 	}
 	if err != nil {
-		Log.Info(err, in)
+		Log.Errorw(err.Error(), "search", in)
 	}
 	return gid, err
 }

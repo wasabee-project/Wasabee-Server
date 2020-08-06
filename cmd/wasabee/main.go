@@ -143,12 +143,12 @@ func run(c *cli.Context) error {
 	}
 
 	logconf := wasabee.LogConfiguration{
-		Console:      true,
-		ConsoleLevel: zap.InfoLevel,
-		FilePath:     c.String("log"),
-		FileLevel:    zap.InfoLevel,
+		Console:            true,
+		ConsoleLevel:       zap.InfoLevel,
+		FilePath:           c.String("log"),
+		FileLevel:          zap.InfoLevel,
 		GoogleCloudProject: project,
-		GoogleCloudCreds: creds,
+		GoogleCloudCreds:   creds,
 	}
 	if c.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
@@ -166,9 +166,9 @@ func run(c *cli.Context) error {
 				ProjectID:      "phdevbin",
 			}
 			if err := profiler.Start(cfg, opts); err != nil {
-				wasabee.Log.Errorf("unable to start profiler: %v", err)
+				wasabee.Log.Errorw("startup", "message", "unable to start profiler", "error", err)
 			} else {
-				wasabee.Log.Debugf("starting gcloud profiling")
+				wasabee.Log.Infow("startup", "message", "starting gcloud profiling")
 			}
 		}
 	}
@@ -176,21 +176,22 @@ func run(c *cli.Context) error {
 	// Load words
 	err := wasabee.LoadWordsFile(c.String("wordlist"))
 	if err != nil {
-		wasabee.Log.Errorf("Error loading word list from '%s': %s", c.String("wordlist"), err)
+		wasabee.Log.Fatalw("startup", "message", "Error loading word list", "wordlist", c.String("wordlist"), "error", err.Error())
+		// panic(err)
 	}
 
 	// load the UI templates
 	ts, err := wasabee.TemplateConfig(c.String("frontend-path"))
 	if err != nil {
-		wasabee.Log.Errorf("unable to load frontend templates from %s; shutting down", c.String("frontend-path"))
-		panic(err)
+		wasabee.Log.Fatalw("startup", "message", "unable to load frontend templates; shutting down", "path", c.String("frontend-path"), "error", err.Error())
+		// panic(err)
 	}
 
 	// Connect to database
 	err = wasabee.Connect(c.String("database"))
 	if err != nil {
-		wasabee.Log.Errorf("Error connecting to database: %s", err)
-		panic(err)
+		wasabee.Log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
+		// panic(err)
 	}
 
 	// setup V
@@ -246,12 +247,13 @@ func run(c *cli.Context) error {
 	// this one should not use GOOGLE_APPLICATION_CREDENTIALS because it requires odd privs
 	riscPath := path.Join(c.String("certs"), "risc.json")
 	if _, err := os.Stat(riscPath); err != nil {
-		wasabee.Log.Infof("%s does not exist, not enabling RISC", riscPath)
+		wasabee.Log.Infof("startup", "message", "credentials do not exist, not enabling RISC", "credentials", riscPath)
 	} else {
 		go risc.RISC(riscPath)
 	}
 
 	// requires Firebase SDK and PubSub publisher & subscriber access
+	// XXX should have CLI/env args for these
 	if creds != "" {
 		go wasabeefirebase.ServeFirebase(creds)
 		go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
@@ -273,12 +275,10 @@ func run(c *cli.Context) error {
 	sigch := make(chan os.Signal, 3)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
 
-	_ = wasabee.Log.Sync()
-
 	// loop until signal sent
 	sig := <-sigch
 
-	wasabee.Log.Info("Shutdown Requested: ", sig)
+	wasabee.Log.Infow("shutdown", "requested by signal", sig)
 	if creds == "" {
 		wasabee.FirebaseClose()
 		wasabee.PubSubClose()
@@ -289,11 +289,15 @@ func run(c *cli.Context) error {
 	if r, _ := wasabee.TGRunning(); r {
 		wasabeetelegram.Shutdown()
 	}
+
+	_ = wasabee.Log.Sync()
+
+	// close database connection
+	wasabee.Disconnect()
+
 	if c.String("https") != "none" {
 		_ = wasabeehttps.Shutdown()
 	}
 
-	// close database connection
-	wasabee.Disconnect()
 	return nil
 }

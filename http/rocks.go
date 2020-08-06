@@ -23,24 +23,27 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
-		wasabee.Log.Info("empty JSON")
+		err := fmt.Errorf("empty JSON on rocks community sync")
+		wasabee.Log.Warnw(err.Error())
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
-
-	wasabee.Log.Debug(string(jBlob))
 	err = wasabee.RocksCommunitySync(jRaw)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Errorw(err.Error(), "content", jRaw)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
+
+		// XXX get the team owner
+		// XXX send a message to the team owner with relevant debug info
+
 		return
 	}
 
@@ -51,7 +54,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -61,18 +64,20 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		http.Error(res, "unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden: only the team owner can pull the .rocks community")
+		wasabee.Log.Warnw(err.Error(), "GID", gid.String(), "resource", team)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	err = team.RocksCommunityMemberPull()
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -84,7 +89,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -96,17 +101,19 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		http.Error(res, "unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden: only the team owner can configure the .rocks community")
+		wasabee.Log.Warnw(err.Error(), "GID", gid.String(), "resource", team)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	err = team.SetRocks(rk, rc)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

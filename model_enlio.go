@@ -69,7 +69,7 @@ func (gid GoogleID) enlioQuery() (string, error) {
 		return "", err
 	}
 	if n.Name == "<PRIVATE>" {
-		Log.Debugf("%s marked <PRIVATE>", gid)
+		Log.Errorw("account marked <PRIVATE> at enl.io", "GID", gid)
 		return "", nil
 	}
 

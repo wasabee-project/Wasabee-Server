@@ -27,7 +27,7 @@ type Link struct {
 // insertLink adds a link to the database
 func (opID OperationID) insertLink(l Link) error {
 	if l.To == l.From {
-		Log.Debug("source and destination the same, ignoring link")
+		Log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
 	}
 
@@ -53,7 +53,7 @@ func (opID OperationID) deleteLink(lid LinkID) error {
 
 func (opID OperationID) updateLink(l Link) error {
 	if l.To == l.From {
-		Log.Debug("source and destination the same, ignoring link")
+		Log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
 	}
 

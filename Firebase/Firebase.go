@@ -22,7 +22,7 @@ type rlt struct {
 
 // ServeFirebase is the main startup function for the Firebase integration
 func ServeFirebase(keypath string) error {
-	wasabee.Log.Infof("starting Firebase (version %s)", firebase.Version)
+	wasabee.Log.Infow("startup", "subsystem", "Firebase", "version", firebase.Version, "message", "Firebase starting")
 
 	ctx := context.Background()
 	opt := option.WithCredentialsFile(keypath)
@@ -44,7 +44,7 @@ func ServeFirebase(keypath string) error {
 
 	fbchan := wasabee.FirebaseInit()
 	for fb := range fbchan {
-		// wasabee.Log.Debugf("%s", fb.Cmd.String())
+		// wasabee.Log.Debug(fb.Cmd.String())
 		switch fb.Cmd {
 		case wasabee.FbccGenericMessage:
 			_ = genericMessage(ctx, msg, fb)
@@ -73,7 +73,7 @@ func ServeFirebase(keypath string) error {
 		case wasabee.FbccAgentLogin:
 			_ = agentLogin(ctx, msg, fb)
 		default:
-			wasabee.Log.Debugf("unknown firebase command %d", fb.Cmd)
+			wasabee.Log.Warnw("unknown command", "subsystem", "Firebase", "command", fb.Cmd)
 		}
 	}
 	return nil
@@ -81,7 +81,7 @@ func ServeFirebase(keypath string) error {
 
 func rateLimit(teamID wasabee.TeamID) bool {
 	// disable for now
-	return true
+	// return true
 
 	rl, ok := rlmap[teamID]
 	now := time.Now()
@@ -96,7 +96,7 @@ func rateLimit(teamID wasabee.TeamID) bool {
 
 	waituntil := rl.t.Add(15 * time.Second)
 	if now.Before(waituntil) {
-		wasabee.Log.Debugf("skipping firebase send to team %s", teamID)
+		wasabee.Log.Debugw("skipping firebase send to team", "subsystem", "Firebase", "resource", teamID)
 		return false
 	}
 

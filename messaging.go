@@ -36,11 +36,11 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 	// XXX loop through valid, trying until one works
 	ok, err := gid.SendMessageVia(message, bus)
 	if err != nil {
-		Log.Debug("unable to send message")
+		Log.Infow("error sending message", "GID", gid, "bus", bus, "error", err.Error(), "message", message)
 		return false, err
 	}
 	if !ok {
-		err = fmt.Errorf("unable to send message")
+		Log.Infow("unable to send message", "GID", gid, "bus", bus, "message", message)
 		return false, err
 	}
 
@@ -57,7 +57,7 @@ func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 
 	ok, err := mc.senders[bus](gid, message)
 	if err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return false, err
 	}
 	return ok, nil
@@ -99,14 +99,10 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 			Log.Error(err)
 			return err
 		}
-		ok, err := gid.SendMessage(message)
+		_, err = gid.SendMessage(message)
 		if err != nil {
 			Log.Error(err)
 			return err
-		}
-		if !ok {
-			Log.Debugf("unable to send to %s", gid)
-			// do not stop
 		}
 	}
 

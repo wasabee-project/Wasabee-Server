@@ -60,7 +60,7 @@ func SetupLogging(c LogConfiguration) {
 	}
 
 	tee := zapcore.NewTee(cores...)
-	sugarfree := zap.New(tee)
+	sugarfree := zap.New(tee, zap.AddCaller(), zap.AddStacktrace(zap.FatalLevel))
 	undo, err := zap.RedirectStdLogAt(sugarfree, zap.DebugLevel)
 	if err != nil {
 		undo()

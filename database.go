@@ -12,19 +12,18 @@ var db *sql.DB
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don"t exist yet.
 func Connect(uri string) error {
-	Log.Debugf("Connecting to database at %s", uri)
+	Log.Debugw("startup", "database uri", uri)
 	result, err := sql.Open("mysql", uri)
 	if err != nil {
 		return err
 	}
 	db = result
 
-	// Print database version
 	var version string
 	if err := db.QueryRow("SELECT VERSION()").Scan(&version); err != nil {
 		return err
 	}
-	Log.Infof("Database version: %s", version)
+	Log.Infow("startup", "database", "connected", "version", version, "message", "connected to database")
 
 	setupTables()
 	return nil
@@ -33,7 +32,7 @@ func Connect(uri string) error {
 // Disconnect closes the database connection
 // called only at server shutdown
 func Disconnect() {
-	Log.Debug("Disconnecting from database")
+	Log.Infow("shutdown", "message", "cleanly disconnected from database")
 	if err := db.Close(); err != nil {
 		Log.Error(err)
 	}
@@ -84,12 +83,12 @@ func setupTables() {
 	defer func() {
 		err := tx.Rollback()
 		if err != nil && err != sql.ErrTxDone {
-			Log.Warn(err)
+			Log.Error(err)
 		}
 		// tx is complete, use db
 		_, err = db.Exec("SET FOREIGN_KEY_CHECKS=1")
 		if err != nil {
-			Log.Warn(err)
+			Log.Error(err)
 		}
 	}()
 	for _, v := range t {
@@ -103,17 +102,17 @@ func setupTables() {
 			Log.Infof("Setting up '%s' table...", v.tablename)
 			_, err = tx.Exec(v.creation)
 			if err != nil {
-				Log.Warn(err)
+				Log.Error(err)
 			}
 		}
 	}
 	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS=1")
 	if err != nil {
-		Log.Warn(err)
+		Log.Error(err)
 	}
 	err = tx.Commit() // the defer'd rollback will not have anything to rollback...
 	if err != nil {
-		Log.Warn(err)
+		Log.Error(err)
 	}
 	// defer'd func runs here
 }

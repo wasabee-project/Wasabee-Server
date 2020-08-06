@@ -81,7 +81,7 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 	}
 	if count != 0 {
 		err := fmt.Errorf("attempt to POST to an existing opID; use PUT to update an existing op")
-		Log.Error(err)
+		Log.Errorw(err.Error(), "GID", gid)
 		return err
 	}
 
@@ -112,7 +112,7 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 	for _, m := range o.Markers {
 		_, ok := portalMap[m.PortalID]
 		if !ok {
-			Log.Debugf("portalID %s missing from portal list for op %s", m.PortalID, o.ID)
+			Log.Warnw("portalID missing from portal list", "portal", m.PortalID, "resource", o.ID)
 			continue
 		}
 		if err = o.ID.insertMarker(m); err != nil {
@@ -124,12 +124,12 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 	for _, l := range o.Links {
 		_, ok := portalMap[l.From]
 		if !ok {
-			Log.Debugf("source portalID %s missing from portal list for op %s", l.From, o.ID)
+			Log.Warnw("source portal missing from portal list", "portal", l.From, "resource", o.ID)
 			continue
 		}
 		_, ok = portalMap[l.To]
 		if !ok {
-			Log.Debugf("destination portalID %s missing from portal list for op %s", l.To, o.ID)
+			Log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
 			continue
 		}
 		if err = o.ID.insertLink(l); err != nil {
@@ -169,7 +169,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 
 	if opID != o.ID {
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
-		Log.Error(err)
+		Log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
 		return err
 	}
 
@@ -186,7 +186,6 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	// Log.Debugf("op [%s] updated", opID)
 	if err := o.Touch(); err != nil {
 		Log.Error(err)
 		return err
@@ -198,7 +197,7 @@ func drawOpUpdateWorker(o Operation) error {
 	// designMode := true
 	if o.UpdateMode == "active" {
 		// designMode = false
-		Log.Debug("activeMode update")
+		Log.Debugf("activeMode update")
 	}
 
 	_, err := db.Exec("UPDATE operation SET name = ?, color = ?, comment = ? WHERE ID = ?",
@@ -263,7 +262,7 @@ func drawOpUpdateWorker(o Operation) error {
 	for _, m := range o.Markers {
 		_, ok := portalMap[m.PortalID]
 		if !ok {
-			Log.Debugf("portalID %s missing from portal list for op %s", m.PortalID, o.ID)
+			Log.Warnw("portal missing from portal list", "marker", m.PortalID, "resource", o.ID)
 			continue
 		}
 		if err = o.ID.updateMarker(m); err != nil {
@@ -299,12 +298,12 @@ func drawOpUpdateWorker(o Operation) error {
 	for _, l := range o.Links {
 		_, ok := portalMap[l.From]
 		if !ok {
-			Log.Debugf("source portalID %s missing from portal list for op %s", l.From, o.ID)
+			Log.Warnw("source portal missing from portal list", "portal", l.From, "resource", o.ID)
 			continue
 		}
 		_, ok = portalMap[l.To]
 		if !ok {
-			Log.Debugf("destination portalID %s missing from portal list for op %s", l.To, o.ID)
+			Log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
 			continue
 		}
 		if err = o.ID.updateLink(l); err != nil {
@@ -361,7 +360,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")
-		Log.Error(err)
+		Log.Error(err.Error(), "resource", o.ID, "GID", gid)
 		return err
 	}
 	if err != nil {
@@ -379,7 +378,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 			var a Assignments
 			err = gid.Assignments(o.ID, &a)
 			if err != nil {
-				Log.Info(err)
+				Log.Error(err)
 				return err
 			}
 			for _, p := range a.Portals {
@@ -398,27 +397,27 @@ func (o *Operation) Populate(gid GoogleID) error {
 	}
 
 	if err = o.populatePortals(); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
 	if err = o.populateMarkers(); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
 	if err = o.populateLinks(); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
 	if err = o.populateAnchors(); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 
 	if err = o.populateKeys(); err != nil {
-		Log.Info(err)
+		Log.Error(err)
 		return err
 	}
 	t := time.Now()
@@ -464,12 +463,12 @@ func (opID OperationID) Stat() (OpStat, error) {
 	s.ID = opID
 	err := db.QueryRow("SELECT name, gid, modified FROM operation WHERE ID = ?", opID).Scan(&s.Name, &s.Gid, &s.Modified)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Info(err)
+		Log.Error(err)
 		return s, err
 	}
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("no such operation")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "resource", opID)
 		return s, err
 	}
 	return s, nil
@@ -479,13 +478,13 @@ func (opID OperationID) Stat() (OpStat, error) {
 func (opID OperationID) Rename(gid GoogleID, name string) error {
 	if !opID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
 
 	if name == "" {
 		err := fmt.Errorf("invalid name")
-		Log.Error(err)
+		Log.Warnw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
 

@@ -92,33 +92,34 @@ func RISC(configfile string) {
 		gid := wasabee.GoogleID(e.Subject)
 		switch e.Type {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
-			wasabee.Log.Errorf("locking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Errorw("locking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			_ = gid.Lock(e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
-			wasabee.Log.Errorf("unlocking %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			_ = gid.Unlock(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
-			wasabee.Log.Errorf("deleting %s because %s said: %s", e.Subject, e.Issuer, e.Reason)
+			wasabee.Log.Errorf("deleting account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			gid.Logout(e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
-			wasabee.Log.Infof("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
-			wasabee.Log.Infof("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
-			wasabee.Log.Infof("%s requested logout for %s: %s", e.Issuer, e.Subject, e.Reason)
+			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			gid.FirebaseRemoveAllTokens()
 			gid.Logout(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
+			// wasabee.Log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			// no need to do anything
 		default:
-			wasabee.Log.Infof("Unknown event %s (%s)", e.Type, e.Reason)
+			wasabee.Log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
 		}
 	}
 }
@@ -147,10 +148,9 @@ func validateToken(rawjwt []byte) error {
 		}
 		var pKey interface{}
 		if err := key[0].Raw(&key); err != nil {
-			wasabee.Log.Debugf("failed to lookup key: %s", err)
+			wasabee.Log.Warnw("failed to lookup key", "error", err.Error())
 		} else {
-			wasabee.Log.Debug("JWx key sent")
-			wasabee.Log.Debug(pKey)
+			wasabee.Log.Debugw("JWx key sent", "key", pKey)
 
 			// this checks the signature
 			_, err = jws.Verify(rawjwt, jwa.RS256, pKey)
@@ -163,6 +163,7 @@ func validateToken(rawjwt []byte) error {
 
 	tmp, ok := token.Get("events")
 	if !ok {
+		err := fmt.Errorf("unable to get events from token")
 		wasabee.Log.Error(err)
 		return err
 	}
@@ -177,7 +178,7 @@ func validateToken(rawjwt []byte) error {
 			e.Reason = "ping requsted"
 			riscchan <- e
 		} else if keyOK {
-			wasabee.Log.Info("verified RISC event: (%s) %s", k, v)
+			wasabee.Log.Infow("verified RISC event", "subsystem", "RISC", "type", k, "data", v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
@@ -189,7 +190,7 @@ func validateToken(rawjwt []byte) error {
 			e.Subject = y["sub"].(string)
 			riscchan <- e
 		} else {
-			wasabee.Log.Errorf("non-verified request: (%s) %s", k, v)
+			wasabee.Log.Warnw("non-verified RISC event", "subsystem", "RISC", "type", k, "data", v)
 
 			// XXX this is ugly and brittle - use a map parser
 			x := v.(map[string]interface{})
@@ -199,7 +200,6 @@ func validateToken(rawjwt []byte) error {
 			y := x["subject"].(map[string]interface{})
 			e.Issuer = y["iss"].(string)
 			e.Subject = y["sub"].(string)
-			wasabee.Log.Debug(e)
 			riscchan <- e
 		}
 	}

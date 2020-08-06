@@ -28,15 +28,13 @@ var config TGConfiguration
 // WasabeeBot is called from main() to start the bot.
 func WasabeeBot(init TGConfiguration) {
 	if init.APIKey == "" {
-		err := fmt.Errorf("the Telegram API Key not set")
-		wasabee.Log.Info(err)
+		wasabee.Log.Infow("startup", "subsystem", "Telegram", "message", "Telegram API key not set; not starting")
 		return
 	}
 	config.APIKey = init.APIKey
 
 	if init.TemplateSet == nil {
-		err := fmt.Errorf("the UI templates are not loaded, not starting Telegram bot")
-		wasabee.Log.Error(err)
+		wasabee.Log.Warnw("startup", "subsystem", "Telegram", "message", "the UI templates are not loaded; not starting Telegram bot")
 		return
 	}
 	config.TemplateSet = init.TemplateSet
@@ -62,7 +60,7 @@ func WasabeeBot(init TGConfiguration) {
 	}
 
 	// bot.Debug = true
-	wasabee.Log.Infof("Authorized to Telegram on account %s", bot.Self.UserName)
+	wasabee.Log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
 	wasabee.TGSetBot(bot.Self.UserName, bot.Self.ID)
 
 	u := tgbotapi.NewUpdate(0)
@@ -71,7 +69,6 @@ func WasabeeBot(init TGConfiguration) {
 	webroot, _ := wasabee.GetWebroot()
 	config.hook = wasabee.GenerateName()
 	t := fmt.Sprintf("%s%s/%s", webroot, config.HookPath, config.hook)
-	wasabee.Log.Debugf("TG webroot %s", t)
 	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -89,7 +86,6 @@ func WasabeeBot(init TGConfiguration) {
 			i = 1
 			config.hook = wasabee.GenerateName()
 			t = fmt.Sprintf("%s%s/%s", webroot, config.HookPath, config.hook)
-			wasabee.Log.Debugf("new TG webroot %s", t)
 			_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 			if err != nil {
 				wasabee.Log.Error(err)
@@ -102,14 +98,14 @@ func WasabeeBot(init TGConfiguration) {
 // Shutdown closes all the Telegram connections
 // called only at server shutdown
 func Shutdown() {
-	wasabee.Log.Info("Shutting down tgbot")
+	wasabee.Log.Info("shutdown", "subsystem", "Telegram")
 	_, _ = bot.RemoveWebhook()
 	bot.StopReceivingUpdates()
 }
 
 func runUpdate(update tgbotapi.Update) error {
 	if update.CallbackQuery != nil {
-		wasabee.Log.Debugf("incoming telegram callback: %v", update)
+		wasabee.Log.Debugw("callback", "subsystem", "Telegram", "data", update)
 		msg, err := callback(&update)
 		if err != nil {
 			wasabee.Log.Error(err)
@@ -144,7 +140,7 @@ func runUpdate(update tgbotapi.Update) error {
 		}
 
 		if gid == "" {
-			wasabee.Log.Infof("unknown user: %s (%s); initializing", update.Message.From.UserName, string(update.Message.From.ID))
+			wasabee.Log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", update.Message.From.UserName, "tgid", tgid)
 			fgid, err := runRocks(tgid)
 			if fgid != "" && err == nil {
 				tmp, _ := templateExecute("InitTwoSuccess", update.Message.From.LanguageCode, nil)
@@ -163,7 +159,7 @@ func runUpdate(update tgbotapi.Update) error {
 		}
 
 		if !verified {
-			wasabee.Log.Infof("unverified user: %s (%s); verifying", update.Message.From.UserName, string(update.Message.From.ID))
+			wasabee.Log.Infof("unverified user; verifying", "subsystem", "Telegram", "tgusername", update.Message.From.UserName, "tgid", tgid)
 			err = newUserVerify(&msg, &update)
 			if err != nil {
 				wasabee.Log.Error(err)
@@ -190,12 +186,11 @@ func runUpdate(update tgbotapi.Update) error {
 			wasabee.Log.Error(err)
 			return err
 		}
-		if !verified {
-			wasabee.Log.Infof("%s not verified, ignoring location update", gid)
+		if !verified || gid == "" {
+			wasabee.Log.Debugw("user not initialized/verified, ignoring location update", "GID", gid, "tgid", tgid)
 			return nil
 		}
 
-		// wasabee.Log.Debugf("processing live location update for %s", gid)
 		_ = gid.AgentLocation(
 			strconv.FormatFloat(update.EditedMessage.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(update.EditedMessage.Location.Longitude, 'f', -1, 64),
@@ -312,7 +307,7 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 	}
 
 	if inMsg.Message != nil && inMsg.Message.Location != nil {
-		wasabee.Log.Debugf("processing initial location for %s", gid)
+		wasabee.Log.Debugw("processing location", "subsystem", "Telegram", "GID", gid)
 		_ = gid.AgentLocation(
 			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
 			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
@@ -336,8 +331,7 @@ func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	}
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
-		err = fmt.Errorf("TelegramID not found for %s", gid)
-		wasabee.Log.Debug(err)
+		wasabee.Log.Debug("TelegramID not found", "subsystem", "Telegram", "GID", gid)
 		return false, err
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
@@ -350,7 +344,7 @@ func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 		return false, err
 	}
 
-	wasabee.Log.Debugf("sent message to: %s", gid)
+	wasabee.Log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
 	return true, nil
 }
 

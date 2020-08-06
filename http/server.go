@@ -78,10 +78,10 @@ func initializeConfig(initialConfig Configuration) {
 	wasabee.SetWebAPIPath(apipath)
 
 	if config.OauthConfig.ClientID == "" {
-		wasabee.Log.Error("OAUTH_CLIENT_ID unset: logins will fail")
+		wasabee.Log.Fatal("OAUTH_CLIENT_ID unset: logins will fail")
 	}
 	if config.OauthConfig.ClientSecret == "" {
-		wasabee.Log.Error("OAUTH_SECRET unset: logins will fail")
+		wasabee.Log.Fatal("OAUTH_SECRET unset: logins will fail")
 	}
 
 	wasabee.Log.Debugw("startup", "ClientID", config.OauthConfig.ClientID)
@@ -100,7 +100,7 @@ func initializeConfig(initialConfig Configuration) {
 
 	// certificate directory cleanup
 	if config.CertDir == "" {
-		wasabee.Log.Error("CERTDIR unset: defaulting to 'certs'")
+		wasabee.Log.Warn("CERTDIR unset: defaulting to 'certs'")
 		config.CertDir = "certs"
 	}
 	certdir, err := filepath.Abs(config.CertDir)
@@ -112,6 +112,7 @@ func initializeConfig(initialConfig Configuration) {
 	wasabee.Log.Debugw("startup", "Certificate Directory", config.CertDir)
 
 	if config.Logfile == "" {
+		// wasabee.Log.Warn("https logfile unset: defaulting to 'wasabee-https.log'")
 		config.Logfile = "wasabee-https.log"
 	}
 	wasabee.Log.Debugw("startup", "https logfile", config.Logfile)
@@ -182,10 +183,9 @@ func StartHTTP(initialConfig Configuration) {
 				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			},
 		},
-		// ErrorLog: wasabee.Log, // XXX need to write an interface for this
 	}
 
-	wasabee.Log.Infow("startup", "port", config.ListenHTTPS, "url", config.Root)
+	wasabee.Log.Infow("startup", "port", config.ListenHTTPS, "url", config.Root, "message", "online at "+config.Root)
 	if err := config.srv.ListenAndServeTLS(config.CertDir+"/wasabee.fullchain.pem", config.CertDir+"/wasabee.key"); err != nil {
 		wasabee.Log.Fatal(err)
 		// panic(err)
@@ -210,7 +210,7 @@ func StartAppEngine(ic Configuration) {
 
 // Shutdown forces a graceful shutdown of the https server
 func Shutdown() error {
-	wasabee.Log.Info("Shutting down HTTPS server")
+	wasabee.Log.Warn("shutdown", "message", "shutting down HTTPS server")
 	if err := config.srv.Shutdown(context.Background()); err != nil {
 		wasabee.Log.Error(err)
 		return err
@@ -297,7 +297,7 @@ func authMW(next http.Handler) http.Handler {
 
 		gid := wasabee.GoogleID(id.(string))
 		if gid.CheckLogout() {
-			wasabee.Log.Debugw("requested logout", "GID", gid.String())
+			wasabee.Log.Debugw("honoring previously requested logout", "GID", gid.String())
 			http.Redirect(res, req, "/", http.StatusFound)
 			return
 		}

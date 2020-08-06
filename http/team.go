@@ -16,7 +16,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -26,31 +26,32 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	isowner, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	safe, err := gid.AgentInTeam(team, false)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		// XXX this should be a nice screen
-		http.Error(res, "unauthorized: enable the team to access it", http.StatusUnauthorized)
+		err := fmt.Errorf("team not enabled")
+		wasabee.Log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	err = team.FetchTeam(&teamList, isowner) // send all to owner
 	if err == sql.ErrNoRows {
-		err = fmt.Errorf("team %s not found", team)
-		wasabee.Log.Debug(err)
+		err = fmt.Errorf("team not found while fetching member list")
+		wasabee.Log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
 		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -69,7 +70,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -77,9 +78,16 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	name := html.EscapeString(vars["name"])
 
+	if name == "" {
+		err := fmt.Errorf("empty team name")
+		wasabee.Log.Warnw(err.Error(), "GID", gid)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
 	_, err = gid.NewTeam(name)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -90,7 +98,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -99,16 +107,18 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabee.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden")
+		wasabee.Log.Warnw(err.Error(), "resource", team, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if err = team.Delete(); err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +129,7 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -128,29 +138,32 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabee.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden")
+		wasabee.Log.Warnw(err.Error(), "resource", team, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	to, ok := vars["to"]
 	if !ok { // this should not happen unless the router gets misconfigured
-		err = fmt.Errorf("to unset")
+		err = fmt.Errorf("team new owner unset")
+		wasabee.Log.Warnw(err.Error(), "resource", team, "GID", gid)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	togid, err := wasabee.ToGid(to)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if err = team.Chown(togid); err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -161,7 +174,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -172,24 +185,26 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden")
+		wasabee.Log.Warnw(err.Error(), "resource", team, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	if key != "" { // prevents a bit of log spam
 		togid, err := wasabee.ToGid(key)
 		if err != nil {
-			wasabee.Log.Info(err)
+			wasabee.Log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 		if err = team.AddAgent(togid); err != nil {
-			wasabee.Log.Info(err)
+			wasabee.Log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -201,7 +216,7 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -210,26 +225,30 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabee.TeamID(vars["team"])
 	togid, err := wasabee.ToGid(vars["key"])
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if gid == togid {
-		http.Error(res, "Cannot remove owner", http.StatusUnauthorized)
+		err := fmt.Errorf("cannot remove owner")
+		wasabee.Log.Warnw(err.Error(), "resource", team, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if !safe {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden")
+		wasabee.Log.Warnw(err.Error(), "resource", team, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if err = team.RemoveAgent(togid); err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -240,7 +259,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -249,13 +268,14 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabee.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
-		err := fmt.Errorf("Unauthorized")
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		err := fmt.Errorf("forbidden: only team owners can send announcements")
+		wasabee.Log.Warnw(err.Error(), "resource", team, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -265,7 +285,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = team.SendAnnounce(gid, message)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -277,7 +297,7 @@ func setAgentTeamSquadRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -285,19 +305,19 @@ func setAgentTeamSquadRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	teamID := wasabee.TeamID(vars["team"])
 
-	if owns, _ := gid.OwnsTeam(teamID); owns {
-		inGid := wasabee.GoogleID(vars["gid"])
-		squad := req.FormValue("squad")
-		err := teamID.SetSquad(inGid, squad)
-		if err != nil {
-			wasabee.Log.Info(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		err = fmt.Errorf("only the team owner can set squads")
-		wasabee.Log.Info(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+	if owns, _ := gid.OwnsTeam(teamID); !owns {
+		err = fmt.Errorf("forbidden: only the team owner can set squads")
+		wasabee.Log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	inGid := wasabee.GoogleID(vars["gid"])
+	squad := req.FormValue("squad")
+	err = teamID.SetSquad(inGid, squad)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -308,7 +328,7 @@ func setAgentTeamDisplaynameRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -316,19 +336,19 @@ func setAgentTeamDisplaynameRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	teamID := wasabee.TeamID(vars["team"])
 
-	if owns, _ := gid.OwnsTeam(teamID); owns {
-		inGid := wasabee.GoogleID(vars["gid"])
-		displayname := req.FormValue("displayname")
-		err := teamID.SetDisplayname(inGid, displayname)
-		if err != nil {
-			wasabee.Log.Info(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		err = fmt.Errorf("only the team owner can set display names")
-		wasabee.Log.Info(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+	if owns, _ := gid.OwnsTeam(teamID); !owns {
+		err = fmt.Errorf("forbidden: only the team owner can set display names")
+		wasabee.Log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	inGid := wasabee.GoogleID(vars["gid"])
+	displayname := req.FormValue("displayname")
+	err = teamID.SetDisplayname(inGid, displayname)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -339,7 +359,7 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -349,20 +369,20 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if owns, _ := gid.OwnsTeam(teamID); !owns {
 		err = fmt.Errorf("only the team owner can rename a team")
-		wasabee.Log.Info(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		wasabee.Log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	teamname := req.FormValue("teamname")
 	if teamname == "" {
 		err = fmt.Errorf("empty team name")
-		wasabee.Log.Info(err)
+		wasabee.Log.Warnw(err.Error(), "resource", teamID, "GID", gid)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if err := teamID.Rename(teamname); err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -373,7 +393,7 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -385,14 +405,14 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	if owns, _ := gid.OwnsTeam(teamID); owns {
 		key, err = teamID.GenerateJoinToken()
 		if err != nil {
-			wasabee.Log.Info(err)
+			wasabee.Log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the team owner can create join links")
-		wasabee.Log.Info(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		err = fmt.Errorf("forbidden: only the team owner can create join links")
+		wasabee.Log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -414,7 +434,7 @@ func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -425,14 +445,14 @@ func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	if owns, _ := gid.OwnsTeam(teamID); owns {
 		err := teamID.DeleteJoinToken()
 		if err != nil {
-			wasabee.Log.Info(err)
+			wasabee.Log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		err = fmt.Errorf("only the team owner can remove join links")
-		wasabee.Log.Info(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		err = fmt.Errorf("forbidden: only the team owner can remove join links")
+		wasabee.Log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -442,7 +462,7 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 	// redirects to the app interface for the user to manage the team
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -453,7 +473,7 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = teamID.JoinToken(gid, key)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

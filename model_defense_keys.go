@@ -24,7 +24,7 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 
 	rows, err := db.Query("SELECT gid, portalID, capID, count FROM defensivekeys WHERE gid IN (SELECT DISTINCT x.gid FROM agentteams=x, agentteams=y WHERE y.gid = ? AND y.state = 'On' AND x.teamID = y.teamID AND x.state = 'On')", gid)
 	if err != nil && err != sql.ErrNoRows {
-		Log.Info(err)
+		Log.Error(err)
 		return dkl, err
 	}
 	defer rows.Close()
@@ -32,7 +32,7 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 	for rows.Next() {
 		err := rows.Scan(&dk.GID, &dk.PortalID, &dk.CapID, &dk.Count)
 		if err != nil {
-			Log.Info(err)
+			Log.Error(err)
 			return dkl, err
 		}
 		dkl.DefensiveKeys = append(dkl.DefensiveKeys, dk)
@@ -45,12 +45,12 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 func (gid GoogleID) InsertDefensiveKey(portalID PortalID, capID string, count int32) error {
 	if count < 1 {
 		if _, err := db.Exec("DELETE FROM defensivekeys WHERE gid = ? AND portalID = ?", gid, portalID); err != nil {
-			Log.Info(err)
+			Log.Error(err)
 			return err
 		}
 	} else {
 		if _, err := db.Exec("INSERT INTO defensivekeys (gid, portalID, capID, count) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE capID = ?, count = ?", gid, portalID, capID, count, capID, count); err != nil {
-			Log.Info(err)
+			Log.Error(err)
 			return err
 		}
 	}

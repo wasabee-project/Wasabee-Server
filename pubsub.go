@@ -24,7 +24,7 @@ func PubSubInit() <-chan PSCommand {
 // PubSubClose shuts down the channel when done
 func PubSubClose() {
 	if ps.running {
-		Log.Debug("shutting down PubSub")
+		Log.Infow("shutdown", "subsystem", "PubSub", "message", "shutting down PubSub")
 		ps.running = false
 		close(ps.c)
 	}
@@ -36,7 +36,7 @@ func (gid GoogleID) PSRequest() {
 		return
 	}
 
-	Log.Debugf("requesting: %s", gid.String())
+	Log.Debugw("PubSub request", "GID", gid.String())
 	ps.c <- PSCommand{
 		Command: "request",
 		Param:   gid.String(),

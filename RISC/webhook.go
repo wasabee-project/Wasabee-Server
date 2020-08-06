@@ -32,25 +32,25 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 
 	if !config.running {
 		err = fmt.Errorf("RISC not configured, yet somehow a message was received")
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 
 	raw, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(raw) == "" {
 		err = fmt.Errorf("empty JWT")
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 	if err := validateToken(raw); err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
@@ -61,7 +61,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 	err := checkWebhook()
 	if err != nil {
-		wasabee.Log.Info(err)
+		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -70,7 +70,7 @@ func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 }
 
 func riscRegisterWebhook() {
-	wasabee.Log.Info("establishing RISC webhook with Google")
+	wasabee.Log.Infow("startup", "subsystem", "RISC", "message", "establishing RISC webhook with Google")
 	err := googleLoadKeys()
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -97,7 +97,6 @@ func riscRegisterWebhook() {
 
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
-		// wasabee.Log.Debug("updating RISC webhook with Google: ", tick)
 		err = googleLoadKeys()
 		if err != nil {
 			wasabee.Log.Error(err)
@@ -170,7 +169,7 @@ func updateWebhook() error {
 
 // DisableWebhook tells Google to stop sending messages
 func DisableWebhook() {
-	wasabee.Log.Info("disabling RISC webhook with Google")
+	wasabee.Log.Infow("shutdown", "subsystem", "RISC", "message", "disabling RISC webhook with Google")
 
 	token, err := getToken()
 	if err != nil {
@@ -288,7 +287,6 @@ func AddSubject(gid wasabee.GoogleID) error {
 		return err
 	}
 
-	// wasabee.Log.Debug(config.AddEndpoint)
 	jmsg := map[string]interface{}{
 		"subject": map[string]string{
 			"subject_type": "iss-sub",
@@ -303,8 +301,7 @@ func AddSubject(gid wasabee.GoogleID) error {
 		return err
 	}
 
-	wasabee.Log.Debug(config.AddEndpoint)
-	wasabee.Log.Debug(string(raw))
+	wasabee.Log.Debugw("AddSubject", "subsystem", "RISC", "data", config.AddEndpoint, "raw", string(raw))
 
 	client := http.Client{}
 	req, err := http.NewRequest("POST", config.AddEndpoint, bytes.NewBuffer(raw))
@@ -332,6 +329,7 @@ func getToken() (*oauth2.Token, error) {
 	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, jwtService)
 	if err != nil {
 		wasabee.Log.Fatal(err)
+		// not reached
 		return nil, err
 	}
 	return creds.Token()
