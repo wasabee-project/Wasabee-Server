@@ -151,7 +151,11 @@ func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	}
 
 	err := db.QueryRow("SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
-	if err != nil {
+	if err != nil && err == sql.ErrNoRows {
+		Log.Warnw("non-existent team ownership queried", "resource", teamID, "GID", gid)
+		return false, nil
+	} else if err != nil {
+		Log.Error(err)
 		return false, err
 	}
 	if gid == owner {

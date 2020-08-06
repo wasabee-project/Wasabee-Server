@@ -150,7 +150,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("forbidden: only the owner can delete an operation")
 		wasabee.Log.Warnw(err.Error(), "resource", op.ID, "GID", gid)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -231,7 +231,7 @@ func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("forbidden: only the owner can set operation ownership ")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -387,7 +387,7 @@ func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to set link color")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	link := wasabee.LinkID(vars["link"])
@@ -525,7 +525,7 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set marker comments")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -558,7 +558,7 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set portal comments")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -591,7 +591,7 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	if op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set portal hardness")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	portalID := wasabee.PortalID(vars["portal"])
@@ -621,7 +621,7 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set operation order")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -657,7 +657,7 @@ func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set operation info")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	info := req.FormValue("info")
@@ -886,7 +886,7 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("permission to edit permissions denied")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -925,7 +925,7 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("permission to edit permissions denied")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 

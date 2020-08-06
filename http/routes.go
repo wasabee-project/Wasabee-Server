@@ -14,8 +14,11 @@ import (
 	"net/http"
 	// "net/http/httputil"
 	"strings"
+	"sync"
 	"time"
 )
+
+var scannerMux sync.Mutex
 
 func setupRouter() *mux.Router {
 	// Main Router
@@ -28,6 +31,7 @@ func setupRouter() *mux.Router {
 	// router.Use(debugMW)
 	router.Use(config.unrolled.Handler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
+	router.MethodNotAllowedHandler = http.HandlerFunc(notFoundRoute)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff (constants defined in server.go)
@@ -53,6 +57,7 @@ func setupRouter() *mux.Router {
 	setupAuthRoutes(api)
 	api.Use(authMW)
 	api.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	api.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
 
 	// /me route
@@ -61,12 +66,14 @@ func setupRouter() *mux.Router {
 	meRouter.HandleFunc("", meShowRoute).Methods("GET", "POST", "HEAD")
 	meRouter.Use(authMW)
 	meRouter.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
 	// /rocks route -- why a subrouter? for JSON error messages
 	rocks := wasabee.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
@@ -215,12 +222,7 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
-	i, ok := config.scanners[req.RemoteAddr]
-	if ok {
-		config.scanners[req.RemoteAddr] = i + 1
-	} else {
-		config.scanners[req.RemoteAddr] = 1
-	}
+	incrementScanner(req)
 	wasabee.Log.Debugf("404: %s", req.URL)
 	http.Error(res, "404: no light here.", http.StatusNotFound)
 }
@@ -229,13 +231,19 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 	err := fmt.Errorf("404 not found")
 	wasabee.Log.Debugw(err.Error(), "URL", req.URL)
+	incrementScanner(req)
+	http.Error(res, jsonError(err), http.StatusNotFound)
+}
+
+func incrementScanner(req *http.Request) {
+	scannerMux.Lock()
+	defer scannerMux.Unlock()
 	i, ok := config.scanners[req.RemoteAddr]
 	if ok {
 		config.scanners[req.RemoteAddr] = i + 1
 	} else {
 		config.scanners[req.RemoteAddr] = 1
 	}
-	http.Error(res, jsonError(err), http.StatusNotFound)
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {
@@ -514,7 +522,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	if !authorized {
 		err = fmt.Errorf("access denied: %s", err.Error())
 		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
@@ -587,7 +595,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := wasabee.OneTimeToken(token)
 	if err != nil {
-		// add some brute-force detection here
+		incrementScanner(req)
 		err := fmt.Errorf("invalid one-time token")
 		wasabee.Log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
@@ -615,7 +623,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	authorized, err := gid.InitAgent() // V & .rocks authorization takes place here
 	if !authorized {
 		err = fmt.Errorf("access denied: %s", err)
-		http.Error(res, jsonError(err), http.StatusUnauthorized)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant

@@ -235,7 +235,7 @@ func scannerMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		i, ok := config.scanners[req.RemoteAddr]
 		if ok && i > 30 {
-			http.Error(res, "Scanner detected", http.StatusForbidden)
+			http.Error(res, "scanner detected", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(res, req)
@@ -255,11 +255,8 @@ func (rec *statusRecorder) WriteHeader(code int) {
 func logRequestMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Debug("REQ", req.Method, req.RequestURI)
-
 		rec := statusRecorder{res, 200}
-
 		next.ServeHTTP(&rec, req)
-
 		wasabee.Log.Debug("RESP", rec.status, req.RequestURI)
 	})
 }
@@ -278,8 +275,8 @@ func authMW(next http.Handler) http.Handler {
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
-			_ = ses.Save(req, res)
 			res.Header().Set("Connection", "close")
+			_ = ses.Save(req, res)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -288,8 +285,8 @@ func authMW(next http.Handler) http.Handler {
 		if !ok || id == nil {
 			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
 			ses.Values["loginReq"] = req.URL.String()
-			_ = ses.Save(req, res)
 			res.Header().Set("Connection", "close")
+			_ = ses.Save(req, res)
 			// wasabee.Log.Debug("not logged in")
 			redirectOrError(res, req)
 			return
@@ -308,20 +305,19 @@ func authMW(next http.Handler) http.Handler {
 			redirectOrError(res, req)
 			return
 		}
-		inNonce := in.(string)
+
+		// inNonce := in.(string)
 		nonce, pNonce := calculateNonce(gid)
 
-		if inNonce != nonce {
-			if inNonce != pNonce {
-				wasabee.Log.Debugw("Session timed out", "GID", gid.String())
+		if in.(string) != nonce {
+			res.Header().Set("Connection", "close")
+			if in.(string) != pNonce {
+				wasabee.Log.Debugw("session timed out", "GID", gid.String())
 				ses.Values["nonce"] = "unset"
-				res.Header().Set("Connection", "close")
-				_ = ses.Save(req, res)
 			} else {
 				ses.Values["nonce"] = nonce
-				res.Header().Set("Connection", "close")
-				_ = ses.Save(req, res)
 			}
+			_ = ses.Save(req, res)
 		}
 
 		if ses.Values["nonce"] == "unset" {
