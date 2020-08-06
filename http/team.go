@@ -198,7 +198,11 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if key != "" { // prevents a bit of log spam
 		togid, err := wasabee.ToGid(key)
-		if err != nil {
+		if err != nil && err.Error() == "unknown agent" {
+			// no need to fill the logs with user typos
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
+			return
+		} else if err != nil {
 			wasabee.Log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return

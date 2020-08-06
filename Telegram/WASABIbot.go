@@ -98,7 +98,7 @@ func WasabeeBot(init TGConfiguration) {
 // Shutdown closes all the Telegram connections
 // called only at server shutdown
 func Shutdown() {
-	wasabee.Log.Info("shutdown", "subsystem", "Telegram")
+	wasabee.Log.Infow("shutdown", "subsystem", "Telegram")
 	_, _ = bot.RemoveWebhook()
 	bot.StopReceivingUpdates()
 }
@@ -159,7 +159,7 @@ func runUpdate(update tgbotapi.Update) error {
 		}
 
 		if !verified {
-			wasabee.Log.Infof("unverified user; verifying", "subsystem", "Telegram", "tgusername", update.Message.From.UserName, "tgid", tgid)
+			wasabee.Log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", update.Message.From.UserName, "tgid", tgid)
 			err = newUserVerify(&msg, &update)
 			if err != nil {
 				wasabee.Log.Error(err)

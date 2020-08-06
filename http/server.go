@@ -210,7 +210,7 @@ func StartAppEngine(ic Configuration) {
 
 // Shutdown forces a graceful shutdown of the https server
 func Shutdown() error {
-	wasabee.Log.Warn("shutdown", "message", "shutting down HTTPS server")
+	wasabee.Log.Infow("shutdown", "message", "shutting down HTTPS server")
 	if err := config.srv.Shutdown(context.Background()); err != nil {
 		wasabee.Log.Error(err)
 		return err

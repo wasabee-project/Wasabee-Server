@@ -737,14 +737,19 @@ func ToGid(in string) (GoogleID, error) {
 	}
 	if err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown agent")
+		Log.Warnw(err.Error(), "search", in)
+		return gid, err 
 	}
 	if err == nil && gid == "" {
 		err = fmt.Errorf("unknown agent")
+		Log.Warnw(err.Error(), "search", in)
+		return gid, err 
 	}
 	if err != nil {
 		Log.Errorw(err.Error(), "search", in)
+		return gid, err 
 	}
-	return gid, err
+	return gid, nil 
 }
 
 // Save is called by InitAgent and from the Pub/Sub system to write a new agent

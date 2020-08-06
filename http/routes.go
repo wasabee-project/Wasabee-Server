@@ -504,7 +504,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Errorw("Cookie error", "error", err.Error())
+		wasabee.Log.Debugw("cookie error", "error", err.Error())
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
