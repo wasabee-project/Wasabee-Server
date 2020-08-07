@@ -7,7 +7,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
@@ -97,15 +96,13 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-
-	if contentType == "multipart/form-data" {
+	if contentTypeIs(req, "multipart/form-data") {
 		wasabee.Log.Infow("using old format for sending targets", "GID", gid)
 		agentTargetRouteOld(res, req)
 		return
 	}
 
-	if contentType != jsonTypeShort {
+	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("must use content-type: %s", jsonTypeShort)
 		wasabee.Log.Errorw(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)

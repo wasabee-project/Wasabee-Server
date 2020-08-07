@@ -103,12 +103,22 @@ func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, 'unused', ?, 0, ?)", tgid, gid, authtoken)
+	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tgid, name, gid, authtoken)
 	if err != nil {
 		Log.Info(err)
 		return err
 	}
 
+	return nil
+}
+
+// UpdateName is used to set an agent's telegram display name
+func (tgid TelegramID) UpdateName(name string) error {
+	_, err := db.Exec("UPDATE telegram SET telegramName = ? WHERE telegramID = ?", name, tgid)
+	if err != nil {
+		Log.Info(err)
+		return err
+	}
 	return nil
 }
 

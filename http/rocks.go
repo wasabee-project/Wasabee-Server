@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server"
@@ -14,8 +13,7 @@ import (
 func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
-	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != jsonTypeShort {
+	if !contentTypeIs(req, jsonTypeShort) {
 		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
 		return
 	}

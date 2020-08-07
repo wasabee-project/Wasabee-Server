@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	// "net/http/httputil"
-	"strings"
 	"sync"
 	"time"
 )
@@ -336,7 +335,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
 	location := fmt.Sprintf("%s?r=%s", me, h)
-	wasabee.Log.Infow("webview login", "GID", m.Gid, "name", iname)
+	wasabee.Log.Infow("WebUI login", "GID", m.Gid, "name", iname, "message", iname + " WebUI login")
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		if rr[:len(me)] == me || rr[:len(login)] == login {
@@ -451,8 +450,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	var t token
 
-	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != jsonTypeShort {
+	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		wasabee.Log.Warn(err)
@@ -561,6 +559,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	wasabee.Log.Infow("iitc/app login",
 		"GID", m.Gid,
 		"name", iname,
+		"message", iname + " login",
 	)
 	m.Gid.FirebaseAgentLogin()
 
@@ -577,9 +576,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
-	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != "multipart/form-data" {
-		err := fmt.Errorf("invalid content-type %s (needs to be multipart/form-data)", contentType)
+	if !contentTypeIs(req, "multipart/form-data") {
+		err := fmt.Errorf("invalid content-type (needs to be multipart/form-data)")
 		wasabee.Log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return

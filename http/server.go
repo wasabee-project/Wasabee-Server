@@ -403,3 +403,11 @@ func debugMW(next http.Handler) http.Handler {
 		next.ServeHTTP(res, req)
 	})
 }
+
+func contentTypeIs(req *http.Request, check string) bool {
+	contentType := strings.Split(strings.Replace(req.Header.Get("Content-Type"), " ", "", -1), ";")[0]
+	if strings.EqualFold(contentType, check) {
+		return true
+	}
+	return false
+}

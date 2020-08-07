@@ -266,6 +266,11 @@ func keyboards(c *TGConfiguration) {
 
 // This is where command processing takes place
 func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.GoogleID) error {
+	// kludge to undo a mistake I made by ignoring this data for the past year
+	if inMsg.Message.From.UserName != "" {
+		tgid := wasabee.TelegramID(inMsg.Message.From.ID)
+		tgid.UpdateName(inMsg.Message.From.UserName)
+	}
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
 		case "start":

@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -23,8 +22,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != jsonTypeShort {
+	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", "new operation")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
@@ -177,8 +175,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != jsonTypeShort {
+	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", id)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)

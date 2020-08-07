@@ -3,6 +3,7 @@ package wasabee
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"strconv"
 	"sync"
 )
@@ -567,12 +568,27 @@ func RevalidateEveryone() error {
 // SearchAgentName gets a GoogleID from an Agent's name
 func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
+
+	// if it starts with an @ and not the placeholder, search tg
+	if agent[0] == '@' && !strings.EqualFold("@unused", agent) {
+		err := db.QueryRow("SELECT gid FROM telegram WHERE LOWER(telegramName) LIKE LOWER(?)", agent[1:]).Scan(&gid)
+		if err != nil && err != sql.ErrNoRows {
+			Log.Error(err)
+			return "", err
+		}
+		if gid != "" {
+			return gid, nil
+		}
+	}
+
 	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(iname) LIKE LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
 		return "", err
 	}
 	return gid, nil
+
+	// XXX where else can we search by name? Rocks? V? enlio?
 }
 
 // Delete removes an agent and all associated data
