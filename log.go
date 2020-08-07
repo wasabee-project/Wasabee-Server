@@ -14,8 +14,10 @@ import (
 	// "github.com/blendle/zapdriver"
 )
 
+// Log is the primary log interface for Wasabee-Server
 var Log *zap.SugaredLogger
 
+// LogConfiguration is passed to SetupLogging to configure logging
 type LogConfiguration struct {
 	Console            bool
 	ConsoleLevel       zapcore.Level
@@ -25,6 +27,7 @@ type LogConfiguration struct {
 	FileLevel          zapcore.Level
 }
 
+// SetupLogging is called very early by the startup routine to configure logging
 func SetupLogging(c LogConfiguration) {
 	var cores []zapcore.Core
 
