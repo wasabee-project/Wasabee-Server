@@ -2,6 +2,8 @@ package wasabee
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
 )
 
 // KeyOnHand describes the already in possession for the op
@@ -16,6 +18,11 @@ type KeyOnHand struct {
 func (o *Operation) insertKey(k KeyOnHand) error {
 	_, err := db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?, capsule = ?",
 		o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule), k.Onhand, MakeNullString(k.Capsule))
+	if err != nil && strings.Contains(err.Error(), "Error 1452") {
+		Log.Info(err)
+		err := fmt.Errorf("Unable to record keys, ensure the op on the server is up-to-date")
+		return err
+	}
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -60,7 +67,7 @@ func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, caps
 		Capsule: capsule,
 	}
 	if err := o.insertKey(k); err != nil {
-		Log.Error(err)
+		// Log.Error(err) // insertKey records exact error, caller will report it as well
 		return err
 	}
 	return nil

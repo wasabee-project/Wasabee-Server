@@ -113,7 +113,7 @@ func listenForPubSubMessages() {
 				msg.Ack()
 				break
 			}
-			wasabee.Log.Debugw("request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+			// wasabee.Log.Debugw("request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 			ack, err := respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
 			if err != nil {
 				wasabee.Log.Error(err)
@@ -121,7 +121,7 @@ func listenForPubSubMessages() {
 				break
 			}
 			if ack {
-				wasabee.Log.Debugw("ACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+				// wasabee.Log.Debugw("ACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 				msg.Ack()
 			} else {
 				wasabee.Log.Warnw("NACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
@@ -138,7 +138,7 @@ func listenForPubSubMessages() {
 				msg.Ack()
 				break
 			}
-			wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"])
+			// wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"])
 			// if msg.Attributes["Authoritative"] == "true" { wasabee.Log.Debug("Authoritative") }
 			var ad wasabee.AgentData
 			err := json.Unmarshal(msg.Data, &ad)
@@ -245,7 +245,7 @@ func respond(g string, sender string) (bool, error) {
 		atts["Authoritative"] = "true"
 	}
 
-	wasabee.Log.Debugw("publishing", "subsystem", "PubSub", "GID", ad.GoogleID, "name", ad.IngressName)
+	// wasabee.Log.Debugw("publishing", "subsystem", "PubSub", "GID", ad.GoogleID, "name", ad.IngressName)
 	c.responseTopic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       d,

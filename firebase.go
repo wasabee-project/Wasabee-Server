@@ -187,7 +187,7 @@ func (o *Operation) firebaseMapChange() {
 			Msg:    "changed",
 		})
 	}
-	Log.Debugw("sending mapchange via firebase", "subsystem", "Firebase", "resource", o.ID)
+	// Log.Debugw("sending mapchange via firebase", "subsystem", "Firebase", "resource", o.ID)
 }
 
 func (gid GoogleID) firebaseSubscribeTeam(teamID TeamID) {

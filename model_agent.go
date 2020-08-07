@@ -3,8 +3,8 @@ package wasabee
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -678,7 +678,7 @@ func (gid GoogleID) Unlock(reason string) error {
 // Logout sets a temporary logout token - not stored in DB since logout cases are not critical
 // and sessions are refreshed with google hourly
 func (gid GoogleID) Logout(reason string) {
-	Log.Infow("logout", "GID", gid, "reason", reason)
+	Log.Infow("logout", "GID", gid.String(), "reason", reason, "message", gid.String()+" logout")
 	ll.mux.Lock()
 	defer ll.mux.Unlock()
 	ll.logoutlist[gid] = true

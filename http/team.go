@@ -39,7 +39,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !safe {
 		err := fmt.Errorf("team not enabled")
-		wasabee.Log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
+		wasabee.Log.Infow(err.Error(), "teamID", team, "GID", gid.String(), "message", gid.String()+" requested a team they are on but do not have enabled")
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}

@@ -144,8 +144,8 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 
 		// doppelkeks error
 		if err != nil && strings.Contains(err.Error(), "Error 1062") {
-			iname := "%s-doppel"
-			Log.Error("dupliate ingress agent name detected", "GID", vres.Data.Agent, "new name", iname)
+			iname := fmt.Sprintf("%s-doppel", vres.Data.Agent)
+			Log.Warnw("dupliate ingress agent name detected", "GID", vres.Data.Agent, "new name", iname)
 			if _, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
 				iname, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid); err != nil {
 				Log.Error(err)

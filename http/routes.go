@@ -335,7 +335,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
 	location := fmt.Sprintf("%s?r=%s", me, h)
-	wasabee.Log.Infow("WebUI login", "GID", m.Gid, "name", iname, "message", iname + " WebUI login")
+	wasabee.Log.Infow("WebUI login", "GID", m.Gid, "name", iname, "message", iname+" WebUI login")
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		if rr[:len(me)] == me || rr[:len(login)] == login {
@@ -559,7 +559,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	wasabee.Log.Infow("iitc/app login",
 		"GID", m.Gid,
 		"name", iname,
-		"message", iname + " login",
+		"message", iname+" login",
 	)
 	m.Gid.FirebaseAgentLogin()
 
