@@ -65,6 +65,7 @@ func (et etRole) isValid() error {
 
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
 // use ONLY for initial op creation
+// All assignment data and key count data is assumed to be correct
 func DrawInsert(op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
@@ -150,6 +151,8 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 
 // DrawUpdate is called to UPDATE an existing draw
 // in order to minimize races between the various writers, the following conditions are enforced
+//
+// Key counts are ignored -- trust that the server has the right key counts
 //
 // Active mode
 // Links are added/removed as necessary -- assignments and status are not overwritten (deleting a link removes the assignment/status)
