@@ -28,6 +28,12 @@ func TestInitAgent(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+
+	ngid, err := ad.LocationKey.Gid()
+	if ngid != gid {
+		t.Errorf("unable to round-trip gid->lockey->gid")
+	}
+
 	// xxx check a value or two in ad
 }
 

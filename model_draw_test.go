@@ -95,6 +95,12 @@ func TestOperation(t *testing.T) {
 		t.Error(err.Error())
 	}
 
+	var a wasabee.Assignments
+	if err := gid.Assignments(opp.ID, &a); err != nil {
+		t.Error(err.Error())
+	}
+	wasabee.Log.Infof("assignments: \n%v", a)
+
 	wasabee.Log.Info("TestOperation completed")
 }
 

@@ -34,7 +34,7 @@ type AgentData struct {
 	GoogleID      GoogleID
 	IngressName   string
 	Level         int64
-	LocationKey   string
+	LocationKey   LocKey
 	VVerified     bool
 	VBlacklisted  bool
 	Vid           EnlID
@@ -209,7 +209,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		ad := AgentData{
 			GoogleID:      gid,
 			IngressName:   tmpName,
-			LocationKey:   lockey,
+			LocationKey:   LocKey(lockey),
 			Level:         vdata.Data.Level,
 			VVerified:     vdata.Data.Verified,
 			VBlacklisted:  vdata.Data.Blacklisted,

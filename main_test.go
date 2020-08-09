@@ -4,12 +4,19 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 	"os"
 	"testing"
+	"time"
 )
 
 var gid wasabee.GoogleID
 
 func TestMain(m *testing.M) {
 	gid = wasabee.GoogleID("118281765050946915735")
+
+	// check these values
+	wasabee.SetupDebug(false)
+	wasabee.GetTimeout(2 * time.Second)
+	wasabee.SetupDebug(true)
+	wasabee.GetTimeout(2 * time.Second)
 
 	wasabee.SetupLogging(wasabee.LogConfiguration{
 		Console: true,
