@@ -6,6 +6,9 @@ var ps struct {
 }
 
 // PSCommand is the command passed over the channel
+// Currently there is online command: request agent data from the responders
+// Potential future options: push agent location, sync op, sync team, etc... etc...
+// as we determine what is desired/needed
 type PSCommand struct {
 	Command string
 	Param   string

@@ -8,13 +8,16 @@ import (
 )
 
 func TestVConfigured(t *testing.T) {
-	b := wasabee.GetvEnlOne()
-	if b != true {
-		t.Errorf("V API Key not configured")
+	if b := wasabee.GetvEnlOne(); b != true {
+		wasabee.Log.Info("V API Key not configured")
 	}
 }
 
 func TestVsearch(t *testing.T) {
+	if b := wasabee.GetvEnlOne(); b != true {
+		return
+	}
+
 	var v wasabee.Vresult
 
 	err := wasabee.VSearch(gid, &v)
@@ -32,6 +35,10 @@ func TestVsearch(t *testing.T) {
 }
 
 func TestStatusLocation(t *testing.T) {
+	if b := wasabee.GetvEnlOne(); b != true {
+		return
+	}
+
 	lat, lon, err := gid.StatusLocation()
 	if err != nil {
 		t.Errorf(err.Error())
@@ -58,7 +65,12 @@ func TestGid(t *testing.T) {
 	}
 }
 
+/*
 func TestVTeamPull(t *testing.T) {
+	if b := wasabee.GetvEnlOne(); b != true {
+		return
+	}
+
 	teamID := wasabee.TeamID("stopping-caboose-l114")
 	k := "some API key"
 	err := teamID.VPullTeam(gid, "1589", k)
@@ -66,3 +78,4 @@ func TestVTeamPull(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 }
+*/

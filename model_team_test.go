@@ -13,7 +13,8 @@ func TestNewTeam(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	// fmt.Printf("TeamID: %s", teamID.String())
+	wasabee.Log.Info("New teamID: %s", teamID.String())
+
 	q, err := gid.AgentInTeam(teamID, false)
 	if err != nil {
 		t.Error(err.Error())
@@ -66,15 +67,16 @@ func TestNewTeam(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	// err = gid.SetTeamState(teamID, "Wombat")
-	//if err == nil {
-	//	t.Error("SetTeamState did not return an error on a bad value")
-	//}
+	/*
+		err = gid.SetTeamState(teamID, "Wombat")
+		if err == nil {
+			t.Error("SetTeamState did not return an error on a bad value")
+		}
 
-	// err = teamID.SendAnnounce(gid, "testing")
-	// if err != nil {
-	//	t.Error(err.Error())
-	//}
+		err = teamID.SendAnnounce(gid, "testing")
+		if err != nil {
+			t.Error(err.Error())
+		} */
 
 	err = teamID.Delete()
 	if err != nil {

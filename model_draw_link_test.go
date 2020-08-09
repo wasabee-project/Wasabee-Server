@@ -30,6 +30,6 @@ func TestDistance(t *testing.T) {
 	for _, link := range in.Links {
 		d := wasabee.Distance(p[link.From].Lat, p[link.From].Lon, p[link.To].Lat, p[link.To].Lon)
 		m := wasabee.MinPortalLevel(d, 8, true)
-		wasabee.Log.Debugf("distance: %.3f km = min level: %.1f", (d / 1000), m)
+		wasabee.Log.Infof("distance: %.3f km = min level: %.1f", (d / 1000), m)
 	}
 }

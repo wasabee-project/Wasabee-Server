@@ -320,11 +320,17 @@ func (gid GoogleID) StatusLocationDisable() error {
 
 // EnlID returns the V EnlID for a agent if it is known.
 func (gid GoogleID) EnlID() (EnlID, error) {
-	var e EnlID
-	err := db.QueryRow("SELECT Vid FROM agent WHERE gid = ?", gid).Scan(&e)
+	var vid sql.NullString
+	err := db.QueryRow("SELECT Vid FROM agent WHERE gid = ?", gid).Scan(&vid)
 	if err != nil {
 		Log.Error(err)
+		return "", err
 	}
+	if !vid.Valid {
+		return "", nil
+	}
+	e := EnlID(vid.String)
+
 	return e, err
 }
 

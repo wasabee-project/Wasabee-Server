@@ -11,6 +11,9 @@ func TestInitAgent(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
+	gid.SetAgentName("deviousness")
+
+	// no one should use StatusLocation now...
 	err = gid.StatusLocationEnable()
 	if err != nil {
 		t.Errorf(err.Error())

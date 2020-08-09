@@ -2,7 +2,7 @@ package wasabee_test
 
 import (
 	"encoding/json"
-	"fmt"
+	// "fmt"
 	"io/ioutil"
 	"testing"
 
@@ -37,7 +37,7 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	fmt.Print(string(newj))
+	// fmt.Print(string(newj))
 
 	// make some changes
 	opp.KeyOnHand(gid, wasabee.PortalID("83c4d2bee503409cbfc76db98af4d749.16"), 7, "")
@@ -54,10 +54,10 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	fmt.Print(string(newj))
+	// fmt.Print(string(newj))
 
 	// run an update
-	if err := wasabee.DrawUpdate("test1", newj, gid); err != nil {
+	if err := wasabee.DrawUpdate(op.ID, newj, gid); err != nil {
 		t.Error(err.Error())
 	}
 
@@ -70,7 +70,7 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	fmt.Print(string(newj))
+	// fmt.Print(string(newj))
 
 	// random test
 	if opp.ID.IsOwner(gid) != true {
@@ -95,10 +95,12 @@ func TestOperation(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	wasabee.Log.Debug("TestOperation completed")
+	wasabee.Log.Info("TestOperation completed")
 }
 
 func TestDamagedOperation(t *testing.T) {
+	wasabee.Log.Info("starting TestDamageOperation")
+
 	content, err := ioutil.ReadFile("testdata/test3.json")
 	if err != nil {
 		t.Error(err.Error())
@@ -130,12 +132,14 @@ func TestDamagedOperation(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	if err := wasabee.DrawUpdate("random", j, gid); err != nil {
-		wasabee.Log.Debug("properly ignored update to 'random'")
+	wasabee.Log.Info("testing damaged op")
+	if err := wasabee.DrawUpdate("wrong.id", j, gid); err != nil {
+		wasabee.Log.Info("properly ignored update to 'random'")
 		// t.Error(err.Error())
 	}
 
 	if err = opp.Delete(gid); err != nil {
 		t.Error(err.Error())
 	}
+	wasabee.Log.Info("TestDamageOperation completed")
 }

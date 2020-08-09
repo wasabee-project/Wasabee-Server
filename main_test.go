@@ -18,17 +18,41 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
-	wasabee.SetVEnlOne(wasabee.Vconfig{
-		APIKey: os.Getenv("VENLONE_API_KEY"),
-	})
-	wasabee.SetEnlRocks(wasabee.Rocksconfig{
-		APIKey: os.Getenv("ENLROCKS_API_KEY"),
-	})
+
+	if os.Getenv("VENLONE_API_KEY") != "" {
+		wasabee.SetVEnlOne(wasabee.Vconfig{
+			APIKey: os.Getenv("VENLONE_API_KEY"),
+		})
+	}
+
+	/* disable rocks for now, kept messing up my communities
+	if os.Getenv("ENLROCKS_API_KEY") != "" {
+		wasabee.SetEnlRocks(wasabee.Rocksconfig{
+			APIKey: os.Getenv("ENLROCKS_API_KEY"),
+		})
+	}*/
 
 	// flag.Parse()
 	exitCode := m.Run()
 	wasabee.Disconnect()
 	os.Exit(exitCode)
+}
+
+func TestAgentDataSetup(t *testing.T) {
+	var ad wasabee.AgentData
+	if err := gid.GetAgentData(&ad); err != nil {
+		wasabee.Log.Error(err)
+		t.Error(err.Error())
+	}
+
+	ad.Vid = wasabee.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
+	ad.Telegram.ID = 1111111111
+	ad.Telegram.Verified = true
+
+	if err := ad.Save(); err != nil {
+		wasabee.Log.Error(err)
+		t.Error(err.Error())
+	}
 }
 
 func TestLoadWordsFile(t *testing.T) {

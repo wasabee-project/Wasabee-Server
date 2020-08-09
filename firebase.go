@@ -69,6 +69,8 @@ func fbPush(fbc FirebaseCmd) {
 
 // notifiy all subscribers to the agent's teams that they have moved
 // do not share the location since it is possible to subscribe to firebase topics without being on the team
+// this is not really true, only those with the server key can adjust topic membership, so it would be safe to share location directly
+// but this is probably sufficient and has worked well so far
 func (gid GoogleID) firebaseAgentLocation() {
 	if !fb.running {
 		return
