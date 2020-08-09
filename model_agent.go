@@ -790,6 +790,13 @@ func (ad AgentData) Save() error {
 		Log.Error(err)
 		return err
 	}
+
+	if ad.Telegram.ID != 0 {
+		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, gid, verified) VALUES (?, ?, ?)", ad.Telegram.ID, ad.GoogleID, ad.Telegram.Verified); err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 

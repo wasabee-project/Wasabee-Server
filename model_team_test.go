@@ -13,7 +13,7 @@ func TestNewTeam(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	wasabee.Log.Info("New teamID: %s", teamID.String())
+	wasabee.Log.Infof("New teamID: %s", teamID.String())
 
 	q, err := gid.AgentInTeam(teamID, false)
 	if err != nil {
