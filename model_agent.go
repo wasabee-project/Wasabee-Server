@@ -810,3 +810,14 @@ func OneTimeToken(token string) (GoogleID, error) {
 
 	return gid, nil
 }
+
+// SetAgentName updates an agent's name -- used only for test scripts presently
+func (gid GoogleID) SetAgentName(newname string) error {
+	_, err := db.Exec("UPDATE agent SET iname = ? WHERE gid = ?", newname, gid)
+
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return err
+}
