@@ -27,6 +27,14 @@ func TestMain(m *testing.M) {
 		wasabee.Log.Error(err)
 	}
 
+	// start up the firebase command channel - we will consume any messages, not the firebase subsystem
+	fbchan := wasabee.FirebaseInit()
+	go func() {
+		for fb := range fbchan {
+			wasabee.Log.Infof("fbchan message: %v", fb)
+		}
+	}()
+
 	if os.Getenv("VENLONE_API_KEY") != "" {
 		wasabee.SetVEnlOne(wasabee.Vconfig{
 			APIKey: os.Getenv("VENLONE_API_KEY"),

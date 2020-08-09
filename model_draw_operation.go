@@ -500,7 +500,8 @@ func (opID OperationID) Rename(gid GoogleID, name string) error {
 }
 
 // Copy duplicates an operation and returns the new op's ID
-func (o *Operation) Copy(gid GoogleID, complete bool) (OperationID, error) {
+// This should not be used since it does not conform to the normal opID format
+func (o *Operation) deprecatedCopy(gid GoogleID, complete bool) (OperationID, error) {
 	var new Operation
 
 	if o.Name == "" { // not populated
