@@ -1,6 +1,7 @@
 package wasabee_test
 
 import (
+	"fmt"
 	"github.com/wasabee-project/Wasabee-Server"
 	"os"
 	"testing"
@@ -64,16 +65,61 @@ func TestAgentDataSetup(t *testing.T) {
 	ad.Telegram.ID = 1111111111
 	ad.Telegram.Verified = true
 
+	tgid := wasabee.TelegramID(ad.Telegram.ID)
+
 	wasabee.Log.Infof("%v", ad)
 
 	if err := ad.Save(); err != nil {
 		wasabee.Log.Error(err)
 		t.Error(err.Error())
 	}
+
+	fgid, err := wasabee.SearchAgentName("unknown")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	wasabee.Log.Infof("got '%s' for 'unknown'", fgid)
+
+	fgid, err = wasabee.SearchAgentName("@unused")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	wasabee.Log.Infof("got '%s' for '@unused'", fgid)
+
+	fgid, err = wasabee.SearchAgentName("@deviousness")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	wasabee.Log.Infof("got '%s' for '@deviousness'", fgid)
+
+	if err = tgid.UpdateName("deviousness"); err != nil {
+		t.Errorf(err.Error())
+	}
+	fgid, err = wasabee.SearchAgentName("@deviousness")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	wasabee.Log.Infof("got '%s' for '@deviousness'", fgid)
 }
 
 func TestLoadWordsFile(t *testing.T) {
-	err := wasabee.LoadWordsFile("testdata/small_wordlist.txt")
+	err := wasabee.LoadWordsFile("/dev/null")
+	if err != nil {
+		wasabee.Log.Info("correctly reported empty word list")
+	} else {
+		err := fmt.Errorf("did not report empty word list")
+		t.Error(err.Error())
+	}
+
+	err = wasabee.LoadWordsFile("/tmp/_no_such_file")
+	if err != nil {
+		wasabee.Log.Info("correctly reported missing word file")
+	} else {
+		err := fmt.Errorf("did not report missing word file")
+		t.Error(err.Error())
+	}
+
+	err = wasabee.LoadWordsFile("testdata/small_wordlist.txt")
 	if err != nil {
 		t.Error(err.Error())
 	}

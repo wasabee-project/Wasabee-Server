@@ -16,7 +16,17 @@ type KeyOnHand struct {
 
 // insertKey adds a user keycount to the database
 func (o *Operation) insertKey(k KeyOnHand) error {
-	_, err := db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?, capsule = ?",
+	details, err := o.PortalDetails(k.ID, k.Gid)
+	if err != nil {
+		Log.Error(err.Error())
+		return err
+	}
+	if details.Name == "" {
+		Log.Infow("attempt to assign key count to portal not in op", "GID", k.Gid, "resource", o.ID, "portal", k.ID)
+		return nil
+	}
+
+	_, err = db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?, capsule = ?",
 		o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule), k.Onhand, MakeNullString(k.Capsule))
 	if err != nil && strings.Contains(err.Error(), "Error 1452") {
 		Log.Info(err)
@@ -66,6 +76,7 @@ func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, caps
 		Onhand:  count,
 		Capsule: capsule,
 	}
+
 	if err := o.insertKey(k); err != nil {
 		// Log.Error(err) // insertKey records exact error, caller will report it as well
 		return err

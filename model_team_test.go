@@ -67,6 +67,15 @@ func TestNewTeam(t *testing.T) {
 		t.Error(err.Error())
 	}
 
+	owns, err := gid.OwnsTeam(teamID)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if !owns {
+		err := fmt.Errorf("%s should own team %s", gid, teamID)
+		t.Error(err.Error())
+	}
+
 	/*
 		err = gid.SetTeamState(teamID, "Wombat")
 		if err == nil {
@@ -77,6 +86,45 @@ func TestNewTeam(t *testing.T) {
 		if err != nil {
 			t.Error(err.Error())
 		} */
+
+	if err := teamID.SetSquad(gid, "developer"); err != nil {
+		t.Error(err.Error())
+	}
+
+	displayname, err := gid.IngressNameTeam(teamID)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	wasabee.Log.Infof("display name set to %s", displayname)
+
+	if err := teamID.SetDisplayname(gid, "developerness"); err != nil {
+		t.Error(err.Error())
+	}
+
+	displayname, err = gid.IngressNameTeam(teamID)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	wasabee.Log.Infof("display name set to %s", displayname)
+
+	tok, err := teamID.GenerateJoinToken()
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if err := teamID.JoinToken(gid, tok); err != nil {
+		t.Error(err.Error())
+	}
+	if err := teamID.JoinToken(gid, "bogus"); err == nil {
+		t.Error("did not err on bogus join link token")
+	}
+	if err := teamID.DeleteJoinToken(); err != nil {
+		t.Error(err.Error())
+	}
+	name, err := teamID.Name()
+	if err != nil {
+		t.Error(err.Error())
+	}
+	wasabee.Log.Infof("team name currently %s", name)
 
 	err = teamID.Delete()
 	if err != nil {

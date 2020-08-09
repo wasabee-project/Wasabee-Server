@@ -40,11 +40,27 @@ func TestOperation(t *testing.T) {
 	// fmt.Print(string(newj))
 
 	// make some changes
-	opp.KeyOnHand(gid, wasabee.PortalID("83c4d2bee503409cbfc76db98af4d749.16"), 7, "")
-	opp.KeyOnHand(gid, wasabee.PortalID("2aa9e865ab8a4bb9896fb371281dcb7b.16"), 99, "cap")
-	opp.PortalHardness("2aa9e865ab8a4bb9896fb371281dcb7b.16", "booster required")
-	opp.PortalHardness("83c4d2bee503409cbfc76db98af4d749.16", "BGAN only")
-	opp.PortalComment("83c4d2bee503409cbfc76db98af4d749.16", "testing a comment")
+	// 1956808f69fc4d889bc1861315149fa2.16 65f4a7f1954e43279b07f10f419ae5cd.16
+	opp.KeyOnHand(gid, wasabee.PortalID("1956808f69fc4d889bc1861315149fa2.16"), 7, "")
+	opp.KeyOnHand(gid, wasabee.PortalID("65f4a7f1954e43279b07f10f419ae5cd.16"), 99, "cap")
+	opp.KeyOnHand(gid, wasabee.PortalID("badportalid.01"), 99, "cap")
+
+	opp.PortalHardness("65f4a7f1954e43279b07f10f419ae5cd.16", "booster required")
+	opp.PortalHardness("1956808f69fc4d889bc1861315149fa2.16", "BGAN only")
+	opp.PortalHardness("badportalid.02", "BGAN only")
+	opp.PortalComment("1956808f69fc4d889bc1861315149fa2.16", "testing a comment")
+	p, err := opp.PortalDetails("1956808f69fc4d889bc1861315149fa2.16", gid)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	wasabee.Log.Infof("%v", p)
+
+	p, err = opp.PortalDetails("badportalid.17", gid)
+	if err == nil {
+		t.Error("did not report bad portal")
+	}
+	wasabee.Log.Infof("%v", p)
+
 	// pull again
 	opp = &opx
 	if err := opp.Populate(gid); err != nil {

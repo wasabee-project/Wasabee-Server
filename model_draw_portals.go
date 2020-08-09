@@ -117,10 +117,19 @@ func (p PortalID) String() string {
 
 // PortalHardness updates the comment on a portal
 func (o *Operation) PortalHardness(portalID PortalID, hardness string) error {
-	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, o.ID)
+	result, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	ra, err := result.RowsAffected()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if ra != 1 {
+		Log.Infow("ineffectual hardness assign", "resource", o.ID, "portal", portalID)
+		return nil
 	}
 	if err = o.Touch(); err != nil {
 		Log.Error(err)
@@ -130,10 +139,19 @@ func (o *Operation) PortalHardness(portalID PortalID, hardness string) error {
 
 // PortalComment updates the comment on a portal
 func (o *Operation) PortalComment(portalID PortalID, comment string) error {
-	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, o.ID)
+	result, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	ra, err := result.RowsAffected()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if ra != 1 {
+		Log.Infow("ineffectual comment assign", "resource", o.ID, "portal", portalID)
+		return nil
 	}
 	if err = o.Touch(); err != nil {
 		Log.Error(err)
@@ -154,6 +172,10 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, erro
 
 	var comment, hardness sql.NullString
 	err := db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", o.ID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
+	if err != nil && err == sql.ErrNoRows {
+		err := fmt.Errorf("portal %s not in op", portalID)
+		return p, err
+	}
 	if err != nil {
 		Log.Error(err)
 		return p, err
