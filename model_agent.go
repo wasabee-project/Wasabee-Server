@@ -810,16 +810,10 @@ func OneTimeToken(token string) (GoogleID, error) {
 		return "", err
 	}
 
-	newTok, err := GenerateSafeName()
+	_, err = gid.NewLocKey()
 	if err != nil {
-		Log.Error(err)
-		return "", err
+		Log.Warn(err)
 	}
-	if _, err = db.Exec("UPDATE agent SET LocKey = ? WHERE gid = ?", newTok, gid); err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
 	return gid, nil
 }
 

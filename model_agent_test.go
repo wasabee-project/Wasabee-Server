@@ -30,26 +30,6 @@ func TestInitAgent(t *testing.T) {
 	}
 	wasabee.Log.Infof("%v", ad)
 
-	if ad.LocationKey == "" {
-		// t.Errorf("location key unset")
-		wasabee.Log.Info("location key unset")
-
-		// this does nothing yet
-		lk, err := wasabee.GenerateSafeName()
-		if err != nil {
-			t.Error(err.Error())
-		}
-		ad.LocationKey = wasabee.LocKey(lk)
-	} else {
-		ngid, err := ad.LocationKey.Gid()
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-		if ngid != gid {
-			t.Errorf("unable to round-trip gid->lockey->gid")
-		}
-	}
-
 	// xxx check a value or two in ad
 }
 
@@ -122,4 +102,30 @@ func TestToGid(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	wasabee.Log.Info(tgid)
+}
+
+func TestLocKey(t *testing.T) {
+	var ad wasabee.AgentData
+	err := gid.GetAgentData(&ad)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if ad.LocationKey == "" {
+		// t.Errorf("location key unset")
+		wasabee.Log.Info("location key unset")
+		ad.LocationKey, _ = gid.NewLocKey()
+	}
+
+	ngid, err := ad.LocationKey.Gid()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if ngid != gid {
+		t.Errorf("unable to round-trip gid->lockey->gid")
+	}
+
+	if _, err := wasabee.LocKey("bogus").Gid(); err == nil {
+		t.Errorf("wrongly returned result for bogus LocKey.Gid()")
+	}
 }

@@ -34,3 +34,18 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 
 	return gid, nil
 }
+
+// NewLocKey generates a new LocationKey for an agent -- exported for use in test scripts
+func (gid GoogleID) NewLocKey() (LocKey, error) {
+	lk, err := GenerateSafeName()
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	if _, err = db.Exec("UPDATE agent SET LocKey = ? WHERE gid = ?", lk, gid); err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	l := LocKey(lk)
+	return l, err
+}

@@ -8,7 +8,8 @@ import (
 // nothing to do here, just run the code
 func TestPubsubCmdChan(t *testing.T) {
 	go wasabee.PubSubInit()
-	wasabee.PubSubClose()
+
+	// wasabee.PubSubClose()
 }
 
 func TestFirebaseCmdChan(t *testing.T) {

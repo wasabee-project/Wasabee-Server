@@ -61,13 +61,6 @@ func TestAgentDataSetup(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	// this value is not Saved since PubSub should not sync it
-	lk, err := wasabee.GenerateSafeName()
-	if err != nil {
-		t.Error(err.Error())
-	}
-	ad.LocationKey = wasabee.LocKey(lk)
-
 	// these values are saved
 	ad.Vid = wasabee.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
 	ad.Telegram.ID = 1111111111
@@ -78,6 +71,10 @@ func TestAgentDataSetup(t *testing.T) {
 	wasabee.Log.Infof("%v", ad)
 
 	if err := ad.Save(); err != nil {
+		wasabee.Log.Error(err)
+		t.Error(err.Error())
+	}
+	if _, err := gid.NewLocKey(); err != nil {
 		wasabee.Log.Error(err)
 		t.Error(err.Error())
 	}
