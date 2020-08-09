@@ -19,6 +19,12 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
+
+	err = wasabee.DrawInsert(j, gid)
+	if err == nil {
+		t.Error("failed to detect insert to existing ID")
+	}
+
 	var op, opx, opy, in wasabee.Operation
 
 	err = json.Unmarshal(j, &in)
@@ -33,22 +39,46 @@ func TestOperation(t *testing.T) {
 	if err := opp.Populate(gid); err != nil {
 		t.Error(err.Error())
 	}
-	newj, err := json.MarshalIndent(&op, "", "  ")
+	_, err = json.MarshalIndent(&op, "", "  ")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	// fmt.Print(string(newj))
 
 	// make some changes
 	// 1956808f69fc4d889bc1861315149fa2.16 65f4a7f1954e43279b07f10f419ae5cd.16
-	opp.KeyOnHand(gid, wasabee.PortalID("1956808f69fc4d889bc1861315149fa2.16"), 7, "")
-	opp.KeyOnHand(gid, wasabee.PortalID("65f4a7f1954e43279b07f10f419ae5cd.16"), 99, "cap")
-	opp.KeyOnHand(gid, wasabee.PortalID("badportalid.01"), 99, "cap")
+	err = opp.KeyOnHand(gid, wasabee.PortalID("1956808f69fc4d889bc1861315149fa2.16"), 7, "")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	err = opp.KeyOnHand(gid, wasabee.PortalID("65f4a7f1954e43279b07f10f419ae5cd.16"), 99, "cap")
+	if err != nil {
+		t.Error(err.Error())
+	}
 
-	opp.PortalHardness("65f4a7f1954e43279b07f10f419ae5cd.16", "booster required")
-	opp.PortalHardness("1956808f69fc4d889bc1861315149fa2.16", "BGAN only")
-	opp.PortalHardness("badportalid.02", "BGAN only")
-	opp.PortalComment("1956808f69fc4d889bc1861315149fa2.16", "testing a comment")
+	// should log "ineffectual"
+	err = opp.KeyOnHand(gid, wasabee.PortalID("badportalid.01"), 99, "cap")
+	if err == nil {
+		t.Error("failed to detect bad portal for keyonhand")
+	}
+
+	err = opp.PortalHardness("65f4a7f1954e43279b07f10f419ae5cd.16", "booster required")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	err = opp.PortalHardness("1956808f69fc4d889bc1861315149fa2.16", "BGAN only")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	err = opp.PortalHardness("badportalid.02", "BGAN only")
+	/* if err == nil {
+		t.Error("failed to detect bad portal for hardness")
+	} */
+
+	err = opp.PortalComment("1956808f69fc4d889bc1861315149fa2.16", "testing a comment")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
 	p, err := opp.PortalDetails("1956808f69fc4d889bc1861315149fa2.16", gid)
 	if err != nil {
 		t.Error(err.Error())
@@ -66,11 +96,10 @@ func TestOperation(t *testing.T) {
 	if err := opp.Populate(gid); err != nil {
 		t.Error(err.Error())
 	}
-	newj, err = json.MarshalIndent(opp, "", "  ")
+	newj, err := json.MarshalIndent(opp, "", "  ")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	// fmt.Print(string(newj))
 
 	// run an update
 	if err := wasabee.DrawUpdate(op.ID, newj, gid); err != nil {
