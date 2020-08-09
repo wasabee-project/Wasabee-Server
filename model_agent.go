@@ -243,8 +243,9 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	ud.GoogleID = gid
 
-	var Vid sql.NullString
-	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &ud.LocationKey, &ud.VVerified, &ud.VBlacklisted, &Vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
+	var vid sql.NullString
+	var lk sql.NullString
+	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &lk, &ud.VVerified, &ud.VBlacklisted, &vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
@@ -254,8 +255,12 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		return err
 	}
 
-	if Vid.Valid {
-		ud.Vid = EnlID(Vid.String)
+	if vid.Valid {
+		ud.Vid = EnlID(vid.String)
+	}
+
+	if lk.Valid {
+		ud.LocationKey = LocKey(lk.String)
 	}
 
 	if err = gid.adTeams(ud); err != nil {

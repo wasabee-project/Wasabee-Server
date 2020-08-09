@@ -20,7 +20,7 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 		o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule), k.Onhand, MakeNullString(k.Capsule))
 	if err != nil && strings.Contains(err.Error(), "Error 1452") {
 		Log.Info(err)
-		err := fmt.Errorf("Unable to record keys, ensure the op on the server is up-to-date")
+		err := fmt.Errorf("unable to record keys, ensure the op on the server is up-to-date")
 		return err
 	}
 	if err != nil {
