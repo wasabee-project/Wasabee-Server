@@ -27,6 +27,11 @@ func TestMain(m *testing.M) {
 		wasabee.Log.Error(err)
 	}
 
+	// just in case of leftovers
+	if err := gid.Delete(); err != nil {
+		wasabee.Log.Panic(err.Error())
+	}
+
 	// start up the firebase command channel - we will consume any messages, not the firebase subsystem
 	fbchan := wasabee.FirebaseInit()
 	go func() {
