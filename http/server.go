@@ -138,7 +138,7 @@ func initializeConfig(initialConfig Configuration) {
 func templateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
 	var lang string
 	tmp := req.Header.Get("Accept-Language")
-	if tmp == "" {
+	if tmp == "" || len(tmp) < 2 {
 		lang = "en"
 	} else {
 		lang = strings.ToLower(tmp)[:2]
