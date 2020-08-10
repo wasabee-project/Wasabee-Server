@@ -583,7 +583,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	token := req.FormValue("token")
+	token := wasabee.LocKey(req.FormValue("token"))
 	if token == "" {
 		err := fmt.Errorf("token not set")
 		wasabee.Log.Warn(err)

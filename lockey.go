@@ -17,6 +17,11 @@ import (
 // LocKey is the location share key, a transitory ID for an agent
 type LocKey string
 
+// String is a stringer for LocKey
+func (lockey LocKey) String() string {
+	return string(lockey)
+}
+
 // Gid converts a location share key to a agent's gid
 func (lockey LocKey) Gid() (GoogleID, error) {
 	var gid GoogleID

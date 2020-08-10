@@ -228,7 +228,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 
 	if gid.RISC() {
 		err := fmt.Errorf("account locked by Google RISC")
-		Log.Warnw(err.Error(), "GID", gid.String)
+		Log.Warnw(err.Error(), "GID", gid.String())
 		return false, err
 	}
 	return true, nil
@@ -801,7 +801,7 @@ func (ad AgentData) Save() error {
 }
 
 // OneTimeToken attempts to verify a submitted OTT and updates it if valid
-func OneTimeToken(token string) (GoogleID, error) {
+func OneTimeToken(token LocKey) (GoogleID, error) {
 	var gid GoogleID
 
 	err := db.QueryRow("SELECT gid FROM agent WHERE LocKey = ?", token).Scan(&gid)

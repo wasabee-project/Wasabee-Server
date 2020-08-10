@@ -29,8 +29,66 @@ func TestInitAgent(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	wasabee.Log.Infof("%v", ad)
-
 	// xxx check a value or two in ad
+}
+
+func TestAgentRISCLock(t *testing.T) {
+	if gid.RISC() {
+		t.Errorf("RISC true, should be false")
+	}
+
+	if err := gid.Lock("test locking"); err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if !gid.RISC() {
+		t.Errorf("RISC false, should be true")
+	}
+
+	if err := gid.Unlock("test unlock"); err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if gid.RISC() {
+		t.Errorf("RISC true, should be false")
+	}
+
+	if err := gid.Unlock("test double unlock"); err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if gid.RISC() {
+		t.Errorf("RISC true, should be false")
+	}
+
+	if err := gid.Lock("test relock"); err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if !gid.RISC() {
+		t.Errorf("RISC false, should be true")
+	}
+
+	_, err := gid.InitAgent()
+	if err == nil {
+		t.Errorf("InitAgent permitted a locked agent through...")
+	}
+
+	if err := gid.Unlock("clearing locks"); err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+func TestAgentLogout(t *testing.T) {
+	lo := gid.CheckLogout()
+	if lo {
+		t.Errorf("should be logged in")
+	}
+	gid.Logout("testing")
+	lo = gid.CheckLogout()
+	if !lo {
+		t.Errorf("should be logged out")
+	}
 }
 
 func TestAgentLocation(t *testing.T) {
@@ -123,6 +181,14 @@ func TestLocKey(t *testing.T) {
 	}
 	if ngid != gid {
 		t.Errorf("unable to round-trip gid->lockey->gid")
+	}
+
+	ngid, err = wasabee.OneTimeToken(ad.LocationKey)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if ngid != gid {
+		t.Errorf("OneTimeToken did not round-trip")
 	}
 
 	if _, err := wasabee.LocKey("bogus").Gid(); err == nil {
