@@ -71,12 +71,11 @@ type AdTeam struct {
 
 // AdOperation is a sub-struct of AgentData
 type AdOperation struct {
-	ID       string
-	Name     string
-	IsOwner  bool
-	Color    string
-	TeamName string
-	TeamID   TeamID
+	ID      string
+	Name    string
+	IsOwner bool
+	Color   string
+	TeamID  TeamID
 }
 
 // AgentID is anything that can be converted to a GoogleID or a string
@@ -364,21 +363,47 @@ func (gid GoogleID) adTelegram(ud *AgentData) error {
 }
 
 func (gid GoogleID) adOps(ud *AgentData) error {
-	var op AdOperation
+	seen := make(map[string]bool)
 
-	row2, err := db.Query("SELECT o.ID, o.Name, o.Color, t.Name, p.teamID FROM operation=o, team=t, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID AND x.teamID = t.teamID AND x.state = 'On' ORDER BY o.Name, t.Name", gid)
+	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ? ORDER BY Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	defer row2.Close()
-	for row2.Next() {
-		err := row2.Scan(&op.ID, &op.Name, &op.Color, &op.TeamName, &op.TeamID)
+	defer rowOwned.Close()
+	for rowOwned.Next() {
+		var op AdOperation
+		err := rowOwned.Scan(&op.ID, &op.Name, &op.Color)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
+		op.IsOwner = true
+		if seen[op.ID] {
+			continue
+		}
 		ud.Ops = append(ud.Ops, op)
+		seen[op.ID] = true
+	}
+
+	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID AND x.state = 'On' ORDER BY o.Name", gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer rowTeam.Close()
+	for rowTeam.Next() {
+		var op AdOperation
+		err := rowTeam.Scan(&op.ID, &op.Name, &op.Color, &op.TeamID)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if seen[op.ID] {
+			continue
+		}
+		ud.Ops = append(ud.Ops, op)
+		seen[op.ID] = true
 	}
 	return nil
 }

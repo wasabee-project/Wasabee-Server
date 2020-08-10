@@ -890,7 +890,7 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	teamID := wasabee.TeamID(req.FormValue("team"))
 	role := req.FormValue("role")
 	if teamID == "" || role == "" {
-		err = fmt.Errorf("required value not set")
+		err = fmt.Errorf("required value not set to add permission to op")
 		wasabee.Log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
@@ -929,7 +929,7 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	teamID := wasabee.TeamID(req.FormValue("team"))
 	role := req.FormValue("role")
 	if teamID == "" || role == "" {
-		err = fmt.Errorf("required value not set")
+		err = fmt.Errorf("required value not set to remove permission from op")
 		wasabee.Log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
