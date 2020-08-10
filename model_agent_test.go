@@ -195,3 +195,56 @@ func TestLocKey(t *testing.T) {
 		t.Errorf("wrongly returned result for bogus LocKey.Gid()")
 	}
 }
+
+func TestWD(t *testing.T) {
+	p := wasabee.PortalID("bogus.16")
+	d := wasabee.PortalID("bogus.17")
+
+	if err := gid.InsertDefensiveKey(p, "", 10000); err != nil {
+		t.Errorf(err.Error())
+	}
+	if err := gid.InsertDefensiveKey(p, "", -1); err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if err := gid.InsertDefensiveKey(p, "green", 7); err != nil {
+		t.Errorf(err.Error())
+	}
+	if err := gid.InsertDefensiveKey(d, "green", 7); err != nil {
+		t.Errorf(err.Error())
+	}
+
+	list, err := gid.ListDefensiveKeys()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	teamID, err := gid.NewTeam("Defensive Team")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	err = gid.SetTeamState(teamID, "On")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// wasabee.Log.Infof("Defensive Key List: %+v", list)
+	for _, k := range list.DefensiveKeys {
+		wasabee.Log.Infof("d-key: %+v", k)
+	}
+	if len(list.DefensiveKeys) != 2 {
+		t.Error("wrong key count")
+	}
+
+	if err := teamID.Delete(); err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := gid.InsertDefensiveKey(p, "", -1); err != nil {
+		t.Errorf(err.Error())
+	}
+	if err := gid.InsertDefensiveKey(d, "", -1); err != nil {
+		t.Errorf(err.Error())
+	}
+
+}

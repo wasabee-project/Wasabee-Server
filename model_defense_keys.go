@@ -2,6 +2,7 @@ package wasabee
 
 import (
 	"database/sql"
+	"time"
 )
 
 // DefensiveKeyList is the list of all defensive keys
@@ -37,7 +38,9 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 		}
 		dkl.DefensiveKeys = append(dkl.DefensiveKeys, dk)
 	}
-	// XXX set fetched time
+
+	dkl.Fetched = time.Now().Format(time.RFC3339)
+
 	return dkl, nil
 }
 
