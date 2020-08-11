@@ -300,16 +300,17 @@ func (gid GoogleID) adTeams(ud *AgentData) error {
 			adteam.RocksComm = ""
 		}
 		if rk.Valid && adteam.Owner == gid {
-			// only share RocksComm with owner
-			adteam.RocksComm = rc.String
+			// only share RocksKey with owner
+			adteam.RocksKey = rc.String
 		} else {
-			adteam.RocksComm = ""
+			adteam.RocksKey = ""
 		}
 		ud.Teams = append(ud.Teams, adteam)
 	}
 	return nil
 }
 
+// deprecated - do not use
 func (gid GoogleID) adOwnedTeams(ud *AgentData) error {
 	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ? ORDER BY name", gid)
 	if err != nil {
