@@ -42,7 +42,7 @@ type AgentData struct {
 	RAID          bool
 	RISC          bool
 	// XXX owned teams needs to go away, merge into teams
-	OwnedTeams []AdOwnedTeam
+	OwnedTeams []AdTeam
 	Teams      []AdTeam
 	Ops        []AdOperation
 	Telegram   struct {
@@ -53,25 +53,19 @@ type AgentData struct {
 	Assignments []Assignment
 }
 
-// AdOwnedTeam is a sub-struct of AgentData
-type AdOwnedTeam struct {
-	ID        string
+// AdTeam is a sub-struct of AgentData
+type AdTeam struct {
+	ID        TeamID
 	Name      string
 	RocksComm string
 	RocksKey  string
-}
-
-// AdTeam is a sub-struct of AgentData
-type AdTeam struct {
-	ID        string
-	Name      string
 	State     string
-	RocksComm string
+	Owner     GoogleID
 }
 
 // AdOperation is a sub-struct of AgentData
 type AdOperation struct {
-	ID      string
+	ID      OperationID
 	Name    string
 	IsOwner bool
 	Color   string
@@ -242,8 +236,7 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	ud.GoogleID = gid
 
-	var vid sql.NullString
-	var lk sql.NullString
+	var vid, lk sql.NullString
 	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &lk, &ud.VVerified, &ud.VBlacklisted, &vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
@@ -262,28 +255,23 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 		ud.LocationKey = LocKey(lk.String)
 	}
 
-	if err = gid.adTeams(ud); err != nil {
-		// Log.Error(err) // redundant
+	if err := gid.adOwnedTeams(ud); err != nil {
 		return err
 	}
 
-	if err = gid.adOwnedTeams(ud); err != nil {
-		// Log.Error(err) // redundant
+	if err = gid.adTeams(ud); err != nil {
 		return err
 	}
 
 	if err = gid.adTelegram(ud); err != nil {
-		// Log.Error(err) // redundant
 		return err
 	}
 
 	if err = gid.adOps(ud); err != nil {
-		// Log.Error(err) // redundant
 		return err
 	}
 
 	if err = gid.adAssignments(ud); err != nil {
-		// Log.Error(err) // redundant
 		return err
 	}
 
@@ -291,21 +279,28 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 }
 
 func (gid GoogleID) adTeams(ud *AgentData) error {
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm, t.rockskey, t.owner FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
+
+	var rc, rk sql.NullString
 	var adteam AdTeam
-	var rc sql.NullString
 	for rows.Next() {
-		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &rc)
+		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &rc, &rk, &adteam.Owner)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
 		if rc.Valid {
+			adteam.RocksComm = rc.String
+		} else {
+			adteam.RocksComm = ""
+		}
+		if rk.Valid && adteam.Owner == gid {
+			// only share RocksComm with owner
 			adteam.RocksComm = rc.String
 		} else {
 			adteam.RocksComm = ""
@@ -316,14 +311,15 @@ func (gid GoogleID) adTeams(ud *AgentData) error {
 }
 
 func (gid GoogleID) adOwnedTeams(ud *AgentData) error {
-	var ownedTeam AdOwnedTeam
 	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ? ORDER BY name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer row.Close()
+
 	var rc, rockskey sql.NullString
+	var ownedTeam AdTeam
 	for row.Next() {
 		err := row.Scan(&ownedTeam.ID, &ownedTeam.Name, &rc, &rockskey)
 		if err != nil {
@@ -340,6 +336,8 @@ func (gid GoogleID) adOwnedTeams(ud *AgentData) error {
 		} else {
 			ownedTeam.RocksKey = ""
 		}
+		ownedTeam.State = "NA"
+		ownedTeam.Owner = gid
 		ud.OwnedTeams = append(ud.OwnedTeams, ownedTeam)
 	}
 	return nil
@@ -363,7 +361,7 @@ func (gid GoogleID) adTelegram(ud *AgentData) error {
 }
 
 func (gid GoogleID) adOps(ud *AgentData) error {
-	seen := make(map[string]bool)
+	seen := make(map[OperationID]bool)
 
 	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ? ORDER BY Name", gid)
 	if err != nil {
