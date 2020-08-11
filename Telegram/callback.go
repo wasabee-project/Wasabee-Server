@@ -20,11 +20,11 @@ func teamKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
 			var row []tgbotapi.InlineKeyboardButton
 			var on, off tgbotapi.InlineKeyboardButton
 			if v.State == "Off" {
-				on = tgbotapi.NewInlineKeyboardButtonData("Activate "+v.Name, "team/activate/"+v.ID)
+				on = tgbotapi.NewInlineKeyboardButtonData("Activate "+v.Name, "team/activate/"+v.ID.String())
 				row = append(row, on)
 			}
 			if v.State == "On" {
-				off = tgbotapi.NewInlineKeyboardButtonData("Deactivate "+v.Name, "team/deactivate/"+v.ID)
+				off = tgbotapi.NewInlineKeyboardButtonData("Deactivate "+v.Name, "team/deactivate/"+v.ID.String())
 				row = append(row, off)
 			}
 			rows = append(rows, row)
