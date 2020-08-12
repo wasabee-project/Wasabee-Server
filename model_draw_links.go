@@ -31,7 +31,7 @@ func (opID OperationID) insertLink(l Link) error {
 		return nil
 	}
 
-	l.Color = opValidColor(l.Color)
+	// l.Color = opValidColor(l.Color)
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color)
@@ -57,7 +57,7 @@ func (opID OperationID) updateLink(l Link) error {
 		return nil
 	}
 
-	l.Color = opValidColor(l.Color)
+	// l.Color = opValidColor(l.Color)
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?",
 		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color,
@@ -232,9 +232,9 @@ func (o *Operation) LinkOrder(order string, gid GoogleID) error {
 
 // LinkColor changes the color of a link in an operation
 func (o *Operation) LinkColor(link LinkID, color string) error {
-	checked := opValidColor(color)
+	// checked := opValidColor(color)
 
-	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", checked, link, o.ID)
+	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", color, link, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
