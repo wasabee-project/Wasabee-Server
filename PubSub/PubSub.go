@@ -225,7 +225,7 @@ func respond(g string, sender string) (bool, error) {
 	}
 
 	// we do not need to send team/op data across
-	ad.OwnedTeams = nil
+	// ad.OwnedTeams = nil
 	ad.Teams = nil
 	ad.Ops = nil
 	ad.Assignments = nil
