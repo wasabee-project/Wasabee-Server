@@ -281,7 +281,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		ses.Options = &sessions.Options{
 			Path:     "/",
 			MaxAge:   -1,
-			SameSite: http.SameSiteNoneMode, // requires go 1.13
+			SameSite: http.SameSiteNoneMode,
 			Secure:   true,
 		}
 		// := creates a new err, not overwriting
@@ -318,7 +318,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:     "/",
-		SameSite: http.SameSiteNoneMode, // requires go 1.13
+		MaxAge:   86400,
+		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	}
 
@@ -355,8 +356,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 // not really a nonce, but it started life as one
 func calculateNonce(gid wasabee.GoogleID) (string, string) {
 	t := time.Now()
-	now := t.Round(time.Hour).String()
-	prev := t.Add(0 - time.Hour).Round(time.Hour).String()
+	y := t.Add(0 - 24 * time.Hour) 
+	now := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()) // t.Round(time.Hour).String()
+	prev := fmt.Sprintf("%d-%02d-%02d", y.Year(), y.Month(), y.Day()) // t.Add(0 - time.Hour).Round(time.Hour).String()
 	// something specific to the agent, something secret, something short-term
 	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)))
 	previous := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, prev)))
@@ -506,8 +508,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
-			MaxAge:   -1,                    // force delete
-			SameSite: http.SameSiteNoneMode, // requires go 1.13
+			MaxAge:   -1,
+			SameSite: http.SameSiteNoneMode,
 			Secure:   true,
 		}
 		_ = ses.Save(req, res)
@@ -534,7 +536,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:     "/",
-		SameSite: http.SameSiteNoneMode, // requires go 1.13
+		MaxAge:   86400,
+		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	}
 	err = ses.Save(req, res)
@@ -608,8 +611,8 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
-			MaxAge:   -1,                    // force delete
-			SameSite: http.SameSiteNoneMode, // requires go 1.13
+			MaxAge:   -1,
+			SameSite: http.SameSiteNoneMode,
 			Secure:   true,
 		}
 		_ = ses.Save(req, res)
@@ -635,7 +638,8 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses.Values["nonce"] = nonce
 	ses.Options = &sessions.Options{
 		Path:     "/",
-		SameSite: http.SameSiteNoneMode, // requires go 1.13
+		MaxAge:   86400,
+		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	}
 	err = ses.Save(req, res)
@@ -657,7 +661,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	data, _ := json.Marshal(ud)
 
-	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", iname)
+	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", iname, "message", iname + " oneTimeToken login")
 	gid.FirebaseAgentLogin()
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2

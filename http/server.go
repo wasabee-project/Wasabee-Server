@@ -264,12 +264,6 @@ func logRequestMW(next http.Handler) http.Handler {
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ses, err := config.store.Get(req, config.sessionName)
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   0,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
 		if err != nil {
 			wasabee.Log.Error(err)
 			delete(ses.Values, "nonce")
@@ -279,6 +273,12 @@ func authMW(next http.Handler) http.Handler {
 			_ = ses.Save(req, res)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		ses.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   86400, // 0,
+			SameSite: http.SameSiteNoneMode,
+			Secure:   true,
 		}
 
 		id, ok := ses.Values["id"]
@@ -295,6 +295,14 @@ func authMW(next http.Handler) http.Handler {
 		gid := wasabee.GoogleID(id.(string))
 		if gid.CheckLogout() {
 			wasabee.Log.Debugw("honoring previously requested logout", "GID", gid.String())
+			delete(ses.Values, "nonce")
+			delete(ses.Values, "id")
+			ses.Options = &sessions.Options{
+				Path:     "/",
+				MaxAge:   -1,
+				SameSite: http.SameSiteNoneMode,
+				Secure:   true,
+			}
 			http.Redirect(res, req, "/", http.StatusFound)
 			return
 		}
@@ -357,7 +365,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	ses.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   0,
+		MaxAge:   86400, // 0,
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	}
