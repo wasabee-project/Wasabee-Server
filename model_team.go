@@ -257,6 +257,8 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		Log.Error(err)
 		// return err
 	}
+
+	Log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
 	return nil
 }
 
@@ -278,6 +280,8 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		Log.Error(err)
 		// return err
 	}
+
+	Log.Infow("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
 	return nil
 }
 
