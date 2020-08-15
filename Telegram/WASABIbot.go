@@ -336,7 +336,7 @@ func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	}
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
-		wasabee.Log.Debug("TelegramID not found", "subsystem", "Telegram", "GID", gid)
+		wasabee.Log.Debugw("TelegramID not found", "subsystem", "Telegram", "GID", gid)
 		return false, err
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
