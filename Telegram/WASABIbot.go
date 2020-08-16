@@ -179,7 +179,6 @@ func runUpdate(update tgbotapi.Update) error {
 	}
 
 	if update.EditedMessage != nil && update.EditedMessage.Location != nil {
-		wasabee.Log.Debug("processing live location upate")
 		tgid := wasabee.TelegramID(update.EditedMessage.From.ID)
 		gid, verified, err := tgid.GidV()
 		if err != nil {
@@ -190,6 +189,7 @@ func runUpdate(update tgbotapi.Update) error {
 			wasabee.Log.Debugw("user not initialized/verified, ignoring location update", "GID", gid, "tgid", tgid)
 			return nil
 		}
+		wasabee.Log.Debugw("live location update", "GID", gid, "message", "live location update")
 
 		_ = gid.AgentLocation(
 			strconv.FormatFloat(update.EditedMessage.Location.Latitude, 'f', -1, 64),
