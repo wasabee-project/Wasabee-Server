@@ -201,4 +201,3 @@ func (o *Operation) getPortal(portalID PortalID) (Portal, error) {
 	err := fmt.Errorf("Portal not found")
 	return p, err
 }
-

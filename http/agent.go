@@ -7,6 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
@@ -160,12 +161,32 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	target.ll = fmt.Sprintf("%s,%s", target.Lat, target.Lng)
 
-	// XXX include sender's name
-	message := fmt.Sprintf(
-		"[%s](https://intel.ingress.com/intel?ll=%s&z=12&pll=%s): [Google Maps](http://maps.google.com/?q=%s) | [Apple Maps](http://maps.apple.com/?q=%s)",
-		target.Name, target.ll, target.ll, target.ll, target.ll)
+	iname, err := gid.IngressName()
+	if err != nil {
+		wasabee.Log.Error(err)
+	}
+
+	templateData := struct {
+		Name   string
+		Lat    string
+		Lon    string
+		Type   string
+		Sender string
+	}{
+		Name:   target.Name,
+		Lat:    target.Lat,
+		Lon:    target.Lng,
+		Type:   "ad-hoc target",
+		Sender: iname,
+	}
+
+	msg, err := gid.ExecuteTemplate("target", templateData)
+	if err != nil {
+		wasabee.Log.Error(err)
+		msg = fmt.Sprintf("template failed; ad-hoc target @ %s %s", target.Lat, target.Lng)
+		// do not report send errors up the chain, just log
+	}
 
 	/* ok := gid.CanSendTo(togid)
 	if !ok {
@@ -174,7 +195,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	} */
-	ok, err := togid.SendMessage(message)
+	ok, err := togid.SendMessage(msg)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -223,11 +244,36 @@ func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	message := fmt.Sprintf(
-		"[%s](https://intel.ingress.com/intel?ll=%s&z=12&pll=%s): [Google Maps](http://maps.google.com/?q=%s) | [Apple Maps](http://maps.apple.com/?q=%s)",
-		portal, ll, ll, ll, ll)
+	lls := strings.Split(ll, ",")
+	lls = lls[:2] // make it be exactly 2 long
 
-	ok, err := togid.SendMessage(message)
+	iname, err := gid.IngressName()
+	if err != nil {
+		wasabee.Log.Error(err)
+	}
+
+	templateData := struct {
+		Name   string
+		Lat    string
+		Lon    string
+		Type   string
+		Sender string
+	}{
+		Name:   portal,
+		Lat:    lls[0],
+		Lon:    lls[1],
+		Type:   "ad-hoc target",
+		Sender: iname,
+	}
+
+	msg, err := gid.ExecuteTemplate("target", templateData)
+	if err != nil {
+		wasabee.Log.Error(err)
+		msg = fmt.Sprintf("template failed: ad-hoc target @ %s", ll)
+		// do not report send errors up the chain, just log
+	}
+
+	ok, err := togid.SendMessage(msg)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

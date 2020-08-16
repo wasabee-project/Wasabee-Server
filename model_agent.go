@@ -484,7 +484,7 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 }
 
 // IngressName returns an agent's name for a given GoogleID.
-// It returns err == sql.ErrNoRows if there is no such agent.
+// returns err == sql.ErrNoRows if there is no such agent.
 func (gid GoogleID) IngressName() (string, error) {
 	var iname string
 	err := db.QueryRow("SELECT iname FROM agent WHERE gid = ?", gid).Scan(&iname)
@@ -507,6 +507,7 @@ func (gid GoogleID) IngressNameTeam(teamID TeamID) (string, error) {
 }
 
 // IngressNameOperation returns an agent's display name on a given operation
+// if the agent is on multiple teams associated with the op, the first one found is used -- this is non-deterministic
 func (gid GoogleID) IngressNameOperation(o *Operation) (string, error) {
 	var iname string
 

@@ -146,16 +146,35 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 	}
 
 	o.ID.firebaseAssignMarker(gid, markerID)
-
-	marker := struct {
-		OpID     OperationID
-		MarkerID MarkerID
-	}{
-		OpID:     o.ID,
-		MarkerID: markerID,
+	m, err := o.getMarker(markerID)
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
 
-	msg, err := gid.ExecuteTemplate("assignMarker", marker)
+	p, err := o.getPortal(m.PortalID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	templateData := struct {
+		PortalID PortalID
+		Name     string
+		Lat      string
+		Lon      string
+		Type     string
+		Sender   string
+	}{
+		PortalID: m.PortalID,
+		Name:     p.Name,
+		Lat:      p.Lat,
+		Lon:      p.Lon,
+		Type:     m.Type.String(),
+		Sender:   "unavailable",
+	}
+
+	msg, err := gid.ExecuteTemplate("target", templateData)
 	if err != nil {
 		Log.Error(err)
 		msg = fmt.Sprintf("assigned a marker for op %s", o.ID)
@@ -169,6 +188,19 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		Log.Error(err)
 	}
 	return nil
+}
+
+// lookup and return a populated Marker from an id
+func (o *Operation) getMarker(markerID MarkerID) (Marker, error) {
+	for _, m := range o.Markers {
+		if m.ID == markerID {
+			return m, nil
+		}
+	}
+
+	var m Marker
+	err := fmt.Errorf("Marker not found")
+	return m, err
 }
 
 // MarkerComment updates the comment on a marker

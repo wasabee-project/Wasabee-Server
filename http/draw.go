@@ -495,6 +495,13 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 
 	marker := wasabee.MarkerID(vars["marker"])
 	agent := wasabee.GoogleID(req.FormValue("agent"))
+	err = op.Populate(gid)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
 	err = op.AssignMarker(marker, agent, true)
 	if err != nil {
 		wasabee.Log.Error(err)

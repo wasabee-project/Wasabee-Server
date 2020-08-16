@@ -356,8 +356,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 // not really a nonce, but it started life as one
 func calculateNonce(gid wasabee.GoogleID) (string, string) {
 	t := time.Now()
-	y := t.Add(0 - 24 * time.Hour) 
-	now := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()) // t.Round(time.Hour).String()
+	y := t.Add(0 - 24*time.Hour)
+	now := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())  // t.Round(time.Hour).String()
 	prev := fmt.Sprintf("%d-%02d-%02d", y.Year(), y.Month(), y.Day()) // t.Add(0 - time.Hour).Round(time.Hour).String()
 	// something specific to the agent, something secret, something short-term
 	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)))
@@ -661,7 +661,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	data, _ := json.Marshal(ud)
 
-	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", iname, "message", iname + " oneTimeToken login")
+	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", iname, "message", iname+" oneTimeToken login")
 	gid.FirebaseAgentLogin()
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
