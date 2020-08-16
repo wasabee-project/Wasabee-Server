@@ -188,3 +188,17 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, erro
 	}
 	return p, nil
 }
+
+// lookup and return a populated Portal from an ID
+func (o *Operation) getPortal(portalID PortalID) (Portal, error) {
+	for _, p := range o.OpPortals {
+		if p.ID == portalID {
+			return p, nil
+		}
+	}
+
+	var p Portal
+	err := fmt.Errorf("Portal not found")
+	return p, err
+}
+
