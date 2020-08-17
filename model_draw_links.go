@@ -129,12 +129,38 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		return nil
 	}
 
+	o.ID.firebaseAssignLink(gid, linkID)
+
+	l, err := o.getLink(linkID)
+	if err != nil {
+		Log.Error(err)
+		return nil // just log and bail
+	}
+
+	from, err := o.getPortal(l.From)
+	if err != nil {
+		Log.Error(err)
+		return nil // just log and bail
+	}
+
+	to, err := o.getPortal(l.To)
+	if err != nil {
+		Log.Error(err)
+		return nil // just log and bail
+	}
+
 	link := struct {
 		OpID   OperationID
 		LinkID LinkID
+		From   Portal
+		To     Portal
+		Sender string
 	}{
 		OpID:   o.ID,
 		LinkID: linkID,
+		From:   from,
+		To:     to,
+		Sender:  "unaccessible",
 	}
 
 	msg, err := gid.ExecuteTemplate("assignLink", link)
@@ -149,9 +175,6 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		// do not report send errors up the chain, just log
 	}
 
-	if gid.String() != "" {
-		o.ID.firebaseAssignLink(gid, linkID)
-	}
 	if err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
@@ -305,4 +328,17 @@ func MinPortalLevel(distance float64, agents int, allowmods bool) float64 {
 
 func fourthroot(a float64) float64 {
 	return math.Pow(math.E, math.Log(a)/4.0)
+}
+
+// lookup and return a populated link from an ID
+func (o *Operation) getLink(linkID LinkID) (Link, error) {
+	for _, l := range o.Links{
+		if l.ID == linkID {
+			return l, nil
+		}
+	}
+
+	var l Link
+	err := fmt.Errorf("Link not found")
+	return l, err
 }
