@@ -336,7 +336,14 @@ func (o *Operation) Delete(gid GoogleID) error {
 		return err
 	}
 
-	_, err := db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
+	// deletedate is automatic
+	_, err := db.Exec("INSERT INTO deletedops (opID, by) VALUES (?, ?)", o.ID, gid)
+	if err != nil {
+		Log.Error(err)
+		// carry on
+	}
+
+	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -351,6 +358,21 @@ func (o *Operation) Delete(gid GoogleID) error {
 	_, _ = db.Exec("DELETE FROM opteams WHERE opID = ?", o.ID)
 
 	return nil
+}
+
+// IsDeletedOp reports back if a particular op has been deleted
+func (opID OperationID) IsDeletedOp() bool {
+	var i int
+	r := db.QueryRow("SELECT COUNT(*) FROM deletedops WHERE opID = ?", opID)
+	err := r.Scan(&i)
+	if err != nil {
+		Log.Error(err)
+		return false
+	}
+	if i > 0 {
+		return true
+	}
+	return false
 }
 
 // Populate takes a pointer to an Operation and fills it in; o.ID must be set

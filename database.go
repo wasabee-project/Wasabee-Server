@@ -62,10 +62,7 @@ func setupTables() {
 		{"telegram", `CREATE TABLE telegram ( telegramID bigint(20) NOT NULL, telegramName varchar(32) NOT NULL, gid varchar(32) NOT NULL, verified tinyint(1) NOT NULL DEFAULT '0', authtoken varchar(32) DEFAULT NULL, PRIMARY KEY (telegramID), UNIQUE KEY gid (gid), CONSTRAINT fk_agent_telegram FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"opteams", `CREATE TABLE opteams (teamID varchar(64) NOT NULL, opID varchar(64) NOT NULL, permission enum('read','write','assignedonly') NOT NULL DEFAULT 'read', KEY opID (opID), KEY teamID (teamID), CONSTRAINT fk_ops_teamID FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE, CONSTRAINT fk_teamIDs_op FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"defensivekeys", `CREATE TABLE defensivekeys ( gid varchar(32) NOT NULL, portalID varchar(64) NOT NULL, capID varchar(12) DEFAULT NULL, count int(3) NOT NULL DEFAULT '0', PRIMARY KEY (portalID,gid), KEY fk_dk_gid (gid), CONSTRAINT fk_dk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
-
-		// reg_form must come before reg_entry
-		// {"reg_form", `CREATE TABLE reg_form ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, date datetime DEFAULT NULL, desc text, PRIMARY KEY (ID), UNIQUE KEY opID (opID), CONSTRAINT fk_opID FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
-		// {"reg_entry", `CREATE TABLE reg_entry ( gid varchar(32) NOT NULL, formID varchar(64) NOT NULL, homecell varchar(32) NOT NULL, radius int(32) NOT NULL DEFAULT '100', roles set('keyfarm','boots','fielding','keytransport','other') DEFAULT NULL, special set('booster','bgan','onyx','hike') DEFAULT NULL, PRIMARY KEY (gid), UNIQUE KEY gid (gid,formID), KEY fk_reg_formID (formID), CONSTRAINT fk_reg_formID FOREIGN KEY (formID) REFERENCES reg_form (ID) ON DELETE CASCADE, CONSTRAINT fk_reg_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"deletedops", `CREATE TABLE deletedops ( opID varchar(64) NOT NULL, deletedate datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32), PRIMARY KEY(opID)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 	}
 
 	var table string
