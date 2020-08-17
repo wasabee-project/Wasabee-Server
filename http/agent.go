@@ -138,7 +138,6 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		Name string
 		Lat  string
 		Lng  string
-		ll   string
 	}
 	var target T
 	err = json.Unmarshal(jRaw, &target)
