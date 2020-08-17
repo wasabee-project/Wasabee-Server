@@ -453,7 +453,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	var t token
 
 	if !contentTypeIs(req, jsonTypeShort) {
-		err := fmt.Errorf("invalid request (needs to be application/json)")
+		err := fmt.Errorf("invalid aptok send (needs to be application/json)")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		wasabee.Log.Warn(err)
 		return
@@ -480,7 +480,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	contents, err := getOauthUserInfo(t.AccessToken)
 	if err != nil {
-		err = fmt.Errorf("failed getting agent info from Google")
+		err = fmt.Errorf("aptok failed getting agent info from Google")
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -493,7 +493,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	// yes, we've seen this with a bad accessToken
 	if m.Gid == "" {
-		wasabee.Log.Debugf("from client: %v\nfrom google: %v", t, m)
+		wasabee.Log.Debugf("aptok from client: %v\nfrom google: %v", t, m)
 		err = fmt.Errorf("no GoogleID set")
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -504,7 +504,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Debugw("cookie error", "error", err.Error())
+		wasabee.Log.Debugw("aptok cookie error", "error", err.Error())
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
@@ -563,6 +563,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		"GID", m.Gid,
 		"name", iname,
 		"message", iname+" login",
+		"client", req.Header.Get("User-Agent"),
 	)
 	m.Gid.FirebaseAgentLogin()
 

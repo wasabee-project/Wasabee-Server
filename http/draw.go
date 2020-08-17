@@ -81,6 +81,13 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	// o.Populate determines all or assigned-only
 	if !o.ReadAccess(gid) && !o.AssignedOnlyAccess(gid) {
+		if o.ID.IsDeletedOp() {
+			err := fmt.Errorf("requested deleted op")
+			wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", o.ID)
+			http.Error(res, jsonError(err), http.StatusGone)
+			return
+		}
+
 		err := fmt.Errorf("forbidden")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", o.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
