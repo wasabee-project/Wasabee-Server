@@ -160,7 +160,7 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		LinkID: linkID,
 		From:   from,
 		To:     to,
-		Sender:  "unaccessible",
+		Sender: "unaccessible",
 	}
 
 	msg, err := gid.ExecuteTemplate("assignLink", link)
@@ -332,13 +332,13 @@ func fourthroot(a float64) float64 {
 
 // lookup and return a populated link from an ID
 func (o *Operation) getLink(linkID LinkID) (Link, error) {
-	for _, l := range o.Links{
+	for _, l := range o.Links {
 		if l.ID == linkID {
 			return l, nil
 		}
 	}
 
 	var l Link
-	err := fmt.Errorf("Link not found")
+	err := fmt.Errorf("link not found")
 	return l, err
 }

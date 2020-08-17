@@ -198,6 +198,6 @@ func (o *Operation) getPortal(portalID PortalID) (Portal, error) {
 	}
 
 	var p Portal
-	err := fmt.Errorf("Portal not found")
+	err := fmt.Errorf("portal not found")
 	return p, err
 }

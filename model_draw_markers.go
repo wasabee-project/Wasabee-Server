@@ -199,7 +199,7 @@ func (o *Operation) getMarker(markerID MarkerID) (Marker, error) {
 	}
 
 	var m Marker
-	err := fmt.Errorf("Marker not found")
+	err := fmt.Errorf("marker not found")
 	return m, err
 }
 
