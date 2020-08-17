@@ -269,7 +269,9 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 	// kludge to undo a mistake I made by ignoring this data for the past year
 	if inMsg.Message.From.UserName != "" {
 		tgid := wasabee.TelegramID(inMsg.Message.From.ID)
-		tgid.UpdateName(inMsg.Message.From.UserName)
+		if err := tgid.UpdateName(inMsg.Message.From.UserName); err != nil {
+			wasabee.Log.Error(err)
+		}
 	}
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
