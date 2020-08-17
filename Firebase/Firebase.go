@@ -72,6 +72,8 @@ func ServeFirebase(keypath string) error {
 			_ = subscribeToTeam(ctx, msg, fb)
 		case wasabee.FbccAgentLogin:
 			_ = agentLogin(ctx, msg, fb)
+		case wasabee.FbccBroadcastDelete:
+			_ = broadcastDelete(ctx, msg, fb)
 		default:
 			wasabee.Log.Warnw("unknown command", "subsystem", "Firebase", "command", fb.Cmd)
 		}

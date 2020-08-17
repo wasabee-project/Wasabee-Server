@@ -272,6 +272,64 @@ func agentLogin(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd
 	return nil
 }
 
+func broadcastDelete(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
+	tokens, err := wasabee.FirebaseBroadcastList()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	data := map[string]string{
+		"msg":  fb.Msg,
+		"cmd":  fb.Cmd.String(),
+		"opID": string(fb.OpID),
+	}
+
+	// can send up to 500 per block
+	for len(tokens) > 500 {
+		subset := tokens[:500]
+		tokens = tokens[500:]
+		msg := messaging.MulticastMessage{
+			Data:   data,
+			Tokens: subset,
+		}
+		br, err := c.SendMulticast(ctx, &msg)
+		if err != nil {
+			wasabee.Log.Error(err)
+			// carry on
+		}
+		wasabee.Log.Infow("delete broadcast block", "resource", string(fb.OpID), "success", br.SuccessCount, "failure", br.FailureCount)
+		for pos, resp := range br.Responses {
+			if !resp.Success {
+				wasabee.Log.Infow("multicast error response", "token", subset[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
+				wasabee.FirebaseRemoveToken(tokens[pos])
+			}
+		}
+	}
+
+	msg := messaging.MulticastMessage{
+		Data:   data,
+		Tokens: tokens,
+	}
+	br, err := c.SendMulticast(ctx, &msg)
+	if err != nil {
+		wasabee.Log.Error(err)
+		// carry on
+	}
+	wasabee.Log.Infow("delete broadcast final block", "resource", string(fb.OpID), "success", br.SuccessCount, "failure", br.FailureCount)
+	for pos, resp := range br.Responses {
+		if !resp.Success {
+			wasabee.Log.Infow("multicast error response", "token", tokens[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
+			wasabee.FirebaseRemoveToken(tokens[pos])
+		}
+	}
+
+	return nil
+}
+
 func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
 	if fb.Gid == "" {
 		return nil

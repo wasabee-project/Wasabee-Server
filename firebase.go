@@ -24,6 +24,7 @@ const (
 	FbccLinkAssignmentChange
 	FbccSubscribeTeam
 	FbccAgentLogin
+	FbccBroadcastDelete
 )
 
 // FirebaseCmd is the struct passed to the Firebase module to take actions -- required params depend on the FBCC
@@ -55,7 +56,7 @@ func FirebaseClose() {
 }
 
 func (cc FirebaseCommandCode) String() string {
-	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe", "Login"}[cc]
+	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe", "Login", "Delete"}[cc]
 }
 
 // Functions called from Wasabee to message the firebase subsystem
@@ -235,6 +236,18 @@ func (gid GoogleID) FirebaseAgentLogin() {
 	}
 }
 
+func firebaseBroadcastDelete(opID OperationID) {
+	if !fb.running {
+		return
+	}
+
+	fbPush(FirebaseCmd{
+		Cmd:  FbccBroadcastDelete,
+		OpID: opID,
+		Msg:  "delete",
+	})
+}
+
 // Functions called from Firebase to use Wasabee resources
 
 // FirebaseTokens gets an agents FirebaseToken from the database
@@ -314,4 +327,37 @@ func (gid GoogleID) FirebaseRemoveAllTokens() {
 	if err != nil {
 		Log.Error(err)
 	}
+}
+
+// FirebaseRemoveToken removes known token
+func FirebaseRemoveToken(token string) {
+	_, err := db.Exec("DELETE FROM firebase WHERE token = ?", token)
+	if err != nil {
+		Log.Error(err)
+	}
+}
+
+// FirebaseBroadcastList returns all known firebase tokens for messaging all clients
+func FirebaseBroadcastList() ([]string, error) {
+	var out []string
+
+	rows, err := db.Query("SELECT DISTINCT token FROM firebase")
+	if err != nil && err == sql.ErrNoRows {
+		return out, nil
+	}
+	if err != nil {
+		Log.Error(err)
+		return out, err
+	}
+
+	var token string
+	for rows.Next() {
+		err := rows.Scan(&token)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		out = append(out, token)
+	}
+	return out, nil
 }

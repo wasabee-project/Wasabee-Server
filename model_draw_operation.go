@@ -337,11 +337,13 @@ func (o *Operation) Delete(gid GoogleID) error {
 	}
 
 	// deletedate is automatic
-	_, err := db.Exec("INSERT INTO deletedops (opID, by) VALUES (?, ?)", o.ID, gid)
+	_, err := db.Exec("INSERT INTO deletedops (opID, deletedate, gid) VALUES (?, NOW(), ?)", o.ID, gid)
 	if err != nil {
 		Log.Error(err)
 		// carry on
 	}
+
+	firebaseBroadcastDelete(o.ID)
 
 	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
