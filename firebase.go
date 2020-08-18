@@ -25,7 +25,14 @@ const (
 	FbccSubscribeTeam
 	FbccAgentLogin
 	FbccBroadcastDelete
+	FbccDeleteOp
 )
+
+// String is the string value of the Firebase Command Code
+// yes, delete is the same for broadcast and direct
+func (cc FirebaseCommandCode) String() string {
+	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe", "Login", "Delete", "Delete"}[cc]
+}
 
 // FirebaseCmd is the struct passed to the Firebase module to take actions -- required params depend on the FBCC
 type FirebaseCmd struct {
@@ -53,10 +60,6 @@ func FirebaseClose() {
 		fb.running = false
 		close(fb.c)
 	}
-}
-
-func (cc FirebaseCommandCode) String() string {
-	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe", "Login", "Delete"}[cc]
 }
 
 // Functions called from Wasabee to message the firebase subsystem
@@ -244,14 +247,28 @@ func firebaseBroadcastDelete(opID OperationID) {
 	fbPush(FirebaseCmd{
 		Cmd:  FbccBroadcastDelete,
 		OpID: opID,
-		Msg:  "delete",
+		Msg:  "Delete",
+	})
+}
+
+// FirebaseDeleteOp instructs a single agent to delete a specified op
+func (gid GoogleID) FirebaseDeleteOp(opID OperationID) {
+	if !fb.running {
+		return
+	}
+
+	fbPush(FirebaseCmd{
+		Cmd:  FbccDeleteOp,
+		Gid:  gid,
+		OpID: opID,
+		Msg:  "Delete",
 	})
 }
 
 // Functions called from Firebase to use Wasabee resources
 
 // FirebaseTokens gets an agents FirebaseToken from the database
-// token may be "" if it has not been set for a user
+// token may be "" if it has not been set for a agent
 func (gid GoogleID) FirebaseTokens() ([]string, error) {
 	var token string
 	var toks []string
@@ -278,8 +295,9 @@ func (gid GoogleID) FirebaseTokens() ([]string, error) {
 	return toks, nil
 }
 
-// FirebaseInsertToken updates a token in the database for an agent
-// gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers) -- need a cleaning mechanism
+// FirebaseInsertToken adds a token in the database for an agent.
+// gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers).
+// Pruning of dead tokens takes place in the senders upon error.
 func (gid GoogleID) FirebaseInsertToken(token string) error {
 	var count int
 	err := db.QueryRow("SELECT COUNT(gid) FROM firebase WHERE token = ? AND gid = ?", token, gid).Scan(&count)
@@ -288,14 +306,8 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 		return err
 	}
 
-	if count == 1 {
+	if count > 0 {
 		return nil
-	}
-
-	// XXX if we have duplicates, prune -- TODO: add unique key after this has been in place a while
-	if count > 1 {
-		Log.Warnw("removing duplicate tokens", "subsystem", "Firebase", "GID", gid, "token", token)
-		gid.FirebaseRemoveToken(token)
 	}
 
 	Log.Debugw("adding token", "subsystem", "Firebase", "GID", gid, "token", token)
@@ -313,7 +325,7 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 	return nil
 }
 
-// FirebaseRemoveToken removes known token for a given user
+// FirebaseRemoveToken removes a known token for a given agent
 func (gid GoogleID) FirebaseRemoveToken(token string) {
 	_, err := db.Exec("DELETE FROM firebase WHERE gid = ? AND token = ?", gid, token)
 	if err != nil {
@@ -321,7 +333,7 @@ func (gid GoogleID) FirebaseRemoveToken(token string) {
 	}
 }
 
-// FirebaseRemoveAllTokens removes all tokens for a given user
+// FirebaseRemoveAllTokens removes all tokens for a given agent
 func (gid GoogleID) FirebaseRemoveAllTokens() {
 	_, err := db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
 	if err != nil {
@@ -329,7 +341,7 @@ func (gid GoogleID) FirebaseRemoveAllTokens() {
 	}
 }
 
-// FirebaseRemoveToken removes known token
+// FirebaseRemoveToken removes known token regardless of the agent
 func FirebaseRemoveToken(token string) {
 	_, err := db.Exec("DELETE FROM firebase WHERE token = ?", token)
 	if err != nil {
@@ -337,7 +349,9 @@ func FirebaseRemoveToken(token string) {
 	}
 }
 
-// FirebaseBroadcastList returns all known firebase tokens for messaging all clients
+// FirebaseBroadcastList returns all known firebase tokens for messaging all agents
+// Firebase Multicast messages are limited to 500 tokens each, the caller must
+// break the list up if necessary.
 func FirebaseBroadcastList() ([]string, error) {
 	var out []string
 

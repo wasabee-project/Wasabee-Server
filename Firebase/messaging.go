@@ -24,28 +24,11 @@ func genericMessage(ctx context.Context, c *messaging.Client, fb wasabee.Firebas
 		wasabee.Log.Error(err)
 		return err
 	}
-
-	for _, token := range tokens {
-		if token == "" {
-			continue
-		}
-
-		data := map[string]string{
-			"msg": fb.Msg,
-			"cmd": fb.Cmd.String(),
-		}
-
-		msg := messaging.Message{
-			Token: token,
-			Data:  data,
-		}
-
-		_, err = c.Send(ctx, &msg)
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
+	data := map[string]string{
+		"msg": fb.Msg,
+		"cmd": fb.Cmd.String(),
 	}
+	genericMulticast(ctx, c, data, tokens)
 	return nil
 }
 
@@ -115,33 +98,13 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 		wasabee.Log.Error(err)
 		return err
 	}
-
-	for _, token := range tokens {
-		if token == "" {
-			continue
-		}
-
-		// webpush := webpushConfig()
-		data := map[string]string{
-			"opID":     string(fb.OpID),
-			"markerID": fb.ObjID,
-			"msg":      fb.Msg,
-			"cmd":      fb.Cmd.String(),
-		}
-
-		msg := messaging.Message{
-			Token: token,
-			Data:  data,
-			// Webpush: &webpush,
-		}
-
-		_, err = c.Send(ctx, &msg)
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
-		// wasabee.Log.Debugf("sending marker assignment change to %s for op [%s] %s %s", fb.Gid, fb.OpID, fb.Msg, fb.Cmd.String());
+	data := map[string]string{
+		"opID":     string(fb.OpID),
+		"markerID": fb.ObjID,
+		"msg":      fb.Msg,
+		"cmd":      fb.Cmd.String(),
 	}
+	genericMulticast(ctx, c, data, tokens)
 	return nil
 }
 
@@ -212,37 +175,13 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 		return err
 	}
 
-	for _, token := range tokens {
-		if token == "" {
-			continue
-		}
-
-		// notif := messaging.Notification{
-		//	Title: "Link Assignment",
-		//	Body:  "You have been assigned a new link",
-		//}
-
-		// webpush := webpushConfig()
-		data := map[string]string{
-			"opID":   string(fb.OpID),
-			"linkID": fb.ObjID,
-			"msg":    fb.Msg,
-			"cmd":    fb.Cmd.String(),
-		}
-
-		msg := messaging.Message{
-			Token: token,
-			Data:  data,
-			// Webpush: &webpush,
-			// Notification: &notif,
-		}
-
-		_, err = c.Send(ctx, &msg)
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
+	data := map[string]string{
+		"opID":   string(fb.OpID),
+		"linkID": fb.ObjID,
+		"msg":    fb.Msg,
+		"cmd":    fb.Cmd.String(),
 	}
+	genericMulticast(ctx, c, data, tokens)
 	return nil
 }
 
@@ -287,6 +226,14 @@ func broadcastDelete(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 		"cmd":  fb.Cmd.String(),
 		"opID": string(fb.OpID),
 	}
+	genericMulticast(ctx, c, data, tokens)
+	return nil
+}
+
+func genericMulticast(ctx context.Context, c *messaging.Client, data map[string]string, tokens []string) {
+	if len(tokens) == 0 {
+		return
+	}
 
 	// can send up to 500 per block
 	for len(tokens) > 500 {
@@ -301,13 +248,8 @@ func broadcastDelete(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 			wasabee.Log.Error(err)
 			// carry on
 		}
-		wasabee.Log.Infow("delete broadcast block", "resource", string(fb.OpID), "success", br.SuccessCount, "failure", br.FailureCount)
-		for pos, resp := range br.Responses {
-			if !resp.Success {
-				wasabee.Log.Infow("multicast error response", "token", subset[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
-				wasabee.FirebaseRemoveToken(tokens[pos])
-			}
-		}
+		wasabee.Log.Infow("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+		processBatchResponse(br, subset)
 	}
 
 	msg := messaging.MulticastMessage{
@@ -319,14 +261,33 @@ func broadcastDelete(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 		wasabee.Log.Error(err)
 		// carry on
 	}
-	wasabee.Log.Infow("delete broadcast final block", "resource", string(fb.OpID), "success", br.SuccessCount, "failure", br.FailureCount)
+	wasabee.Log.Infow("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+	processBatchResponse(br, tokens)
+}
+
+func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 	for pos, resp := range br.Responses {
 		if !resp.Success {
 			wasabee.Log.Infow("multicast error response", "token", tokens[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
 			wasabee.FirebaseRemoveToken(tokens[pos])
 		}
 	}
+}
 
+// deleteOp instructs a single agent (all devices) to remove an op
+func deleteOp(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
+	data := map[string]string{
+		"gid": string(fb.Gid),
+		"msg": fb.Msg,
+		"cmd": fb.Cmd.String(),
+	}
+
+	tokens, err := fb.Gid.FirebaseTokens()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	genericMulticast(ctx, c, data, tokens)
 	return nil
 }
 

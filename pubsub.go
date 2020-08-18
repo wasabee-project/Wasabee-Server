@@ -39,7 +39,6 @@ func (gid GoogleID) PSRequest() {
 		return
 	}
 
-	Log.Debugw("PubSub request", "GID", gid.String())
 	ps.c <- PSCommand{
 		Command: "request",
 		Param:   gid.String(),

@@ -281,6 +281,16 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		// return err
 	}
 
+	// instruct the agent to delete all associated ops
+	// this may get ops for which the agent has double-access, but they can just re-fetch them
+	rows, err := db.Query("SELECT opID FROM opteams WHERE teamID = ?", teamID)
+	defer rows.Close()
+	var opID OperationID
+	for rows.Next() {
+		rows.Scan(&opID)
+		gid.FirebaseDeleteOp(opID)
+	}
+
 	Log.Infow("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
 	return nil
 }
