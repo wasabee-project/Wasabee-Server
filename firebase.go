@@ -124,9 +124,9 @@ func (teamID TeamID) FirebaseTarget(msg string) {
 	}
 
 	fbPush(FirebaseCmd{
-		Cmd: FbccTarget,
+		Cmd:    FbccTarget,
 		TeamID: teamID,
-		Msg: msg,
+		Msg:    msg,
 	})
 }
 

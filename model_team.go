@@ -287,7 +287,11 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 	defer rows.Close()
 	var opID OperationID
 	for rows.Next() {
-		rows.Scan(&opID)
+		err = rows.Scan(&opID)
+		if err != nil {
+			Log.Error(err)
+			// continue
+		}
 		gid.FirebaseDeleteOp(opID)
 	}
 
