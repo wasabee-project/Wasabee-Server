@@ -26,12 +26,13 @@ const (
 	FbccAgentLogin
 	FbccBroadcastDelete
 	FbccDeleteOp
+	FbccTarget
 )
 
 // String is the string value of the Firebase Command Code
 // yes, delete is the same for broadcast and direct
 func (cc FirebaseCommandCode) String() string {
-	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe", "Login", "Delete", "Delete"}[cc]
+	return [...]string{"Quit", "Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Subscribe", "Login", "Delete", "Delete", "Target"}[cc]
 }
 
 // FirebaseCmd is the struct passed to the Firebase module to take actions -- required params depend on the FBCC
@@ -99,6 +100,32 @@ func (gid GoogleID) FirebaseGenericMessage(msg string) {
 	fbPush(FirebaseCmd{
 		Cmd: FbccGenericMessage,
 		Gid: gid,
+		Msg: msg,
+	})
+}
+
+// FirebaseTarget sends a JSON formatted target to the agent
+func (gid GoogleID) FirebaseTarget(msg string) {
+	if !fb.running {
+		return
+	}
+
+	fbPush(FirebaseCmd{
+		Cmd: FbccTarget,
+		Gid: gid,
+		Msg: msg,
+	})
+}
+
+// FirebaseTarget sends a JSON formatted target to a team
+func (teamID TeamID) FirebaseTarget(msg string) {
+	if !fb.running {
+		return
+	}
+
+	fbPush(FirebaseCmd{
+		Cmd: FbccTarget,
+		TeamID: teamID,
 		Msg: msg,
 	})
 }

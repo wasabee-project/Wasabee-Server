@@ -48,6 +48,8 @@ func ServeFirebase(keypath string) error {
 		switch fb.Cmd {
 		case wasabee.FbccGenericMessage:
 			_ = genericMessage(ctx, msg, fb)
+		case wasabee.FbccTarget:
+			_ = target(ctx, msg, fb)
 		case wasabee.FbccAgentLocationChange:
 			if rateLimit(fb.TeamID) {
 				_ = agentLocationChange(ctx, msg, fb)

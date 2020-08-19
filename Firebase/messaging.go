@@ -32,6 +32,38 @@ func genericMessage(ctx context.Context, c *messaging.Client, fb wasabee.Firebas
 	return nil
 }
 
+func target(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
+	data := map[string]string{
+		"msg": fb.Msg,
+		"cmd": fb.Cmd.String(),
+	}
+
+	// send to single agent
+	if fb.Gid != "" {
+		tokens, err := fb.Gid.FirebaseTokens()
+		if err != nil {
+			wasabee.Log.Error(err)
+			return err
+		}
+		genericMulticast(ctx, c, data, tokens)
+	}
+
+	// send to team
+	if fb.TeamID != "" {
+		msg := messaging.Message{
+			Topic: string(fb.TeamID),
+			Data:  data,
+		}
+
+		_, err := c.Send(ctx, &msg)
+		if err != nil {
+			wasabee.Log.Error(err)
+			return err
+		}
+	}
+	return nil
+}
+
 func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
 	if fb.TeamID == "" {
 		err := fmt.Errorf("only send location changes to teams")
