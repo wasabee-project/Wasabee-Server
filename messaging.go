@@ -21,9 +21,6 @@ var mc messagingConfig
 // SendMessage sends a message to the available message destinations for agent specified by "gid"
 // currently only Telegram is supported, but more can be added
 func (gid GoogleID) SendMessage(message string) (bool, error) {
-	// Always send via Firebase
-	gid.FirebaseGenericMessage(message)
-
 	// determine which messaging protocols are enabled for gid
 	// pick optimal
 	bus := "Telegram"
