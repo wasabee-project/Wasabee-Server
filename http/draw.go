@@ -710,6 +710,8 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	capsule := req.FormValue("capsule")
 
+	// wasabee.Log.Debugw("updating key count", "GID", gid, "resource", op.ID, "portal", portalID, "count", onhand, "capsule", capsule);
+
 	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
 		wasabee.Log.Error(err)

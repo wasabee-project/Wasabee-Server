@@ -146,6 +146,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/agent/{id}/image", agentPictureRoute).Methods("GET")
 	// send a message to a agent
 	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")
+	r.HandleFunc("/agent/{id}/fbMessage", agentFBMessageRoute).Methods("POST")
 	r.HandleFunc("/agent/{id}/target", agentTargetRoute).Methods("POST")
 
 	// teams
@@ -167,6 +168,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}")
 	// broadcast a message to the team
 	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")
+	// r.HandleFunc("/team/{team}/fbAnnounce", fbAnnounceTeamRoute).Methods("POST")
+	// r.HandleFunc("/team/{team}/fbTarget", fbTargetTeamRoute).Methods("POST") // Firebase side done: teamID.FirebaseTarget()
 	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT")
 	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")
 	r.HandleFunc("/team/{team}/{gid}/squad", setAgentTeamSquadRoute).Methods("POST")

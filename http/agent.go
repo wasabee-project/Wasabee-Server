@@ -88,6 +88,79 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
+func agentFBMessageRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	id := vars["id"]
+	togid, err := wasabee.ToGid(id)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if !contentTypeIs(req, jsonTypeShort) {
+		err := fmt.Errorf("invalid request (needs to be application/json)")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", togid)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	jBlob, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if string(jBlob) == "" {
+		err := fmt.Errorf("empty JSON on firebase message")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", togid)
+		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
+		return
+	}
+
+	jRaw := json.RawMessage(jBlob)
+
+	var msg struct {
+		Sender  string
+		Message string
+		Date    string
+	}
+
+	if err = json.Unmarshal(jRaw, &msg); err != nil {
+		wasabee.Log.Errorw(err.Error(), "GID", gid, "content", jRaw)
+		return
+	}
+
+	if msg.Sender, err = gid.IngressName(); err != nil {
+		wasabee.Log.Errorw("sender ingress name unknown", "GID", gid)
+		return
+	}
+
+	toSend, err := json.Marshal(msg)
+	if err != nil {
+		wasabee.Log.Errorw(err.Error(), "GID", gid, "content", jRaw)
+		return
+	}
+
+	// XXX for now anyone can send to anyone
+	togid.FirebaseGenericMessage(string(toSend))
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonStatusOK)
+}
+
 func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
@@ -134,12 +207,12 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 
 	jRaw := json.RawMessage(jBlob)
 
-	type T struct {
+	var target struct {
 		Name string
+		ID   wasabee.PortalID
 		Lat  string
 		Lng  string
 	}
-	var target T
 	err = json.Unmarshal(jRaw, &target)
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -168,12 +241,14 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 
 	templateData := struct {
 		Name   string
+		ID     wasabee.PortalID
 		Lat    string
 		Lon    string
 		Type   string
 		Sender string
 	}{
 		Name:   target.Name,
+		ID:     target.ID,
 		Lat:    target.Lat,
 		Lon:    target.Lng,
 		Type:   "ad-hoc target",
@@ -187,13 +262,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		// do not report send errors up the chain, just log
 	}
 
-	/* ok := gid.CanSendTo(togid)
-	if !ok {
-		err := fmt.Errorf("forbidden")
-		wasabee.Log.Warnw(err.Error(), "from", gid, "to", togid,)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	} */
+	// XXX can send to anyone -- make "shared enabled team"
 	ok, err := togid.SendMessage(msg)
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -206,6 +275,13 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	out, err := json.Marshal(templateData)
+	if err != nil {
+		wasabee.Log.Warnw(err.Error(), "raw", templateData)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+	}
+	togid.FirebaseTarget(string(out))
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -284,6 +360,13 @@ func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	out, err := json.Marshal(templateData)
+	if err != nil {
+		wasabee.Log.Warnw(err.Error(), "raw", templateData)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+	}
+	togid.FirebaseTarget(string(out))
 	fmt.Fprint(res, jsonStatusOK)
 }
 
