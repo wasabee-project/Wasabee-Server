@@ -26,16 +26,24 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 		return nil
 	}
 
-	_, err = db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?, capsule = ?",
-		o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule), k.Onhand, MakeNullString(k.Capsule))
-	if err != nil && strings.Contains(err.Error(), "Error 1452") {
-		Log.Info(err)
-		err := fmt.Errorf("unable to record keys, ensure the op on the server is up-to-date")
-		return err
-	}
-	if err != nil {
-		Log.Error(err)
-		return err
+	if k.Onhand == 0 {
+		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? and gid = ?", o.ID, k.ID, k.Gid); err != nil {
+			Log.Info(err)
+			err := fmt.Errorf("unable to remove key count for portal")
+			return err
+		}
+	} else {
+		_, err = db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?, capsule = ?",
+			o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule), k.Onhand, MakeNullString(k.Capsule))
+		if err != nil && strings.Contains(err.Error(), "Error 1452") {
+			Log.Info(err)
+			err := fmt.Errorf("unable to record keys, ensure the op on the server is up-to-date")
+			return err
+		}
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
 	}
 	if err = o.Touch(); err != nil {
 		Log.Error(err)
