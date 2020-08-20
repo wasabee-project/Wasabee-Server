@@ -7,8 +7,8 @@ import (
 	"strings"
 	"syscall"
 
-	"cloud.google.com/go/profiler"
-	"google.golang.org/api/option"
+	// "cloud.google.com/go/profiler"
+	// "google.golang.org/api/option"
 
 	"github.com/urfave/cli"
 	"github.com/wasabee-project/Wasabee-Server"
@@ -157,12 +157,13 @@ func run(c *cli.Context) error {
 
 	wasabee.SetupDebug(c.Bool("longtimeouts"))
 
+ 	/*
 	if creds != "" {
 		if _, err := os.Stat(creds); err == nil {
 			opts := option.WithCredentialsFile(creds)
 			cfg := profiler.Config{
 				Service:        "wasabee",
-				ServiceVersion: "0.0.1",
+				ServiceVersion: "0.0.2",
 				ProjectID:      "phdevbin",
 			}
 			if err := profiler.Start(cfg, opts); err != nil {
@@ -171,7 +172,7 @@ func run(c *cli.Context) error {
 				wasabee.Log.Infow("startup", "message", "starting gcloud profiling")
 			}
 		}
-	}
+	} */
 
 	// Load words
 	err := wasabee.LoadWordsFile(c.String("wordlist"))
