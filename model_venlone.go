@@ -105,7 +105,9 @@ func VSearch(id AgentID, vres *Vresult) error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		Log.Error(err)
+		newerr := strings.ReplaceAll(err.Error(), vc.APIKey, "...")
+		err = fmt.Errorf("unable to request user info from V")
+		Log.Errorw(err.Error(), "GID", searchID, "message", newerr)
 		return err
 	}
 
