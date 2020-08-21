@@ -110,7 +110,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "wasabee-server"
-	app.Version = "0.6.10"
+	app.Version = "0.7.0"
 	app.Usage = "Wasabee Server"
 	app.Authors = []cli.Author{
 		{
@@ -163,7 +163,7 @@ func run(c *cli.Context) error {
 			opts := option.WithCredentialsFile(creds)
 			cfg := profiler.Config{
 				Service:        "wasabee",
-				ServiceVersion: "0.0.2",
+				ServiceVersion: "0.7.0",
 				ProjectID:      "phdevbin",
 			}
 			if err := profiler.Start(cfg, opts); err != nil {

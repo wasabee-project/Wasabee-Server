@@ -301,7 +301,10 @@ func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 	for pos, resp := range br.Responses {
 		if !resp.Success {
 			wasabee.Log.Infow("multicast error response", "token", tokens[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
-			wasabee.FirebaseRemoveToken(tokens[pos])
+			// XXX switch to IsUnregistered when that becomes available
+			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
+				wasabee.FirebaseRemoveToken(tokens[pos])
+			}
 		}
 	}
 }

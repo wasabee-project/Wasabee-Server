@@ -771,6 +771,7 @@ func (gid GoogleID) GetPicture() string {
 func ToGid(in string) (GoogleID, error) {
 	var gid GoogleID
 	var err error
+
 	switch len(in) {
 	case 0:
 		err = fmt.Errorf("empty agent request")
@@ -781,18 +782,13 @@ func ToGid(in string) (GoogleID, error) {
 	default:
 		gid, err = SearchAgentName(in)
 	}
-	if err == sql.ErrNoRows {
-		err = fmt.Errorf("unknown agent")
-		Log.Warnw(err.Error(), "search", in)
-		return gid, err
-	}
-	if err == nil && gid == "" {
-		err = fmt.Errorf("unknown agent")
-		Log.Warnw(err.Error(), "search", in)
+	if err == sql.ErrNoRows || gid == "" {
+		err = fmt.Errorf("agent [%s] not registered with this wasabee server", in)
+		Log.Infow(err.Error(), "search", in, "message", err.Error())
 		return gid, err
 	}
 	if err != nil {
-		Log.Errorw(err.Error(), "search", in)
+		Log.Errorw(err.Error(), "search", in, "message", err.Error())
 		return gid, err
 	}
 	return gid, nil
@@ -801,8 +797,6 @@ func ToGid(in string) (GoogleID, error) {
 // Save is called by InitAgent and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
-	// Log.Debugf("saving %s/%s", ad.GoogleID, ad.IngressName)
-
 	_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
 		ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID,
 		MakeNullString(ad.IngressName), ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID, ad.RISC)

@@ -3,7 +3,7 @@ module github.com/wasabee-project/Wasabee-Server
 go 1.15
 
 require (
-	cloud.google.com/go v0.63.0
+	cloud.google.com/go v0.64.0 // indirect
 	cloud.google.com/go/firestore v1.3.0 // indirect
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/pubsub v1.6.1
@@ -22,13 +22,11 @@ require (
 	github.com/unrolled/logger v0.0.0-20190327162521-be1a2406c7c9
 	github.com/urfave/cli v1.22.4
 	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/sys v0.0.0-20200817155316-9781c653f443 // indirect
+	golang.org/x/sys v0.0.0-20200820212457-1fb795427249 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	golang.org/x/tools v0.0.0-20200817023811-d00afeaade8f // indirect
+	golang.org/x/tools v0.0.0-20200820180210-c8f393745106 // indirect
 	google.golang.org/api v0.30.0
-	google.golang.org/genproto v0.0.0-20200815001618-f69a88009b70 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect

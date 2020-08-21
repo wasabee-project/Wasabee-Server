@@ -1,12 +1,15 @@
 package wasabee
 
 import (
+	"context"
 	"database/sql"
+	"firebase.google.com/go/auth"
 )
 
 var fb struct {
 	running bool
 	c       chan FirebaseCmd
+	client  *auth.Client
 }
 
 // FirebaseCommandCode is the command codes used for communicating with the Firebase module
@@ -46,11 +49,12 @@ type FirebaseCmd struct {
 }
 
 // FirebaseInit creates the channel used to pass messages to the Firebase subsystem
-func FirebaseInit() <-chan FirebaseCmd {
+func FirebaseInit(client *auth.Client) <-chan FirebaseCmd {
 	out := make(chan FirebaseCmd, 3)
 
 	fb.c = out
 	fb.running = true
+	fb.client = client
 	return out
 }
 
@@ -401,4 +405,16 @@ func FirebaseBroadcastList() ([]string, error) {
 		out = append(out, token)
 	}
 	return out, nil
+}
+
+// FirebaseCustomToken creates and registers a token with Google, allowing the agent to communicate directly with Firebase
+func (gid GoogleID) FirebaseCustomToken() (string, error) {
+	ctx := context.Background()
+	token, err := fb.client.CustomToken(ctx, gid.String())
+	if err != nil {
+		Log.Errorf("error minting custom token: %v\n", err)
+		return "", err
+	}
+	// store in database ?
+	return token, nil
 }

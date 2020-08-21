@@ -87,16 +87,6 @@ func RocksSearch(id AgentID, agent *RocksAgent) error {
 		return nil
 	}
 
-	searchID := id.String()
-	return rockssearch(searchID, agent)
-}
-
-// rockssearch stands behind the wraper functions and checks a agent at enl.rocks and populates a RocksAgent
-func rockssearch(searchID string, agent *RocksAgent) error {
-	if !rocks.configured {
-		return nil
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), GetTimeout(3*time.Second))
 	defer cancel()
 	if err := rocks.limiter.Wait(ctx); err != nil {
@@ -104,12 +94,12 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s/%s?apikey=%s", rocks.StatusEndpoint, searchID, rocks.APIKey)
+	apiurl := fmt.Sprintf("%s/%s?apikey=%s", rocks.StatusEndpoint, id, rocks.APIKey)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		// do not leak API key to logs
 		err := fmt.Errorf("error establishing .rocks request")
-		Log.Errorw(err.Error(), "search", searchID)
+		Log.Errorw(err.Error(), "search", id)
 		return err
 	}
 	client := &http.Client{
@@ -119,7 +109,7 @@ func rockssearch(searchID string, agent *RocksAgent) error {
 	if err != nil {
 		// do not leak API key to logs
 		err := fmt.Errorf("error executing .rocks request")
-		Log.Errorw(err.Error(), "search", searchID)
+		Log.Errorw(err.Error(), "search", id)
 		return err
 	}
 	defer resp.Body.Close()

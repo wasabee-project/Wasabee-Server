@@ -193,3 +193,23 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprint(res, jsonStatusOK)
 }
+
+func meFirebaseGenTokenRoute(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		res.Header().Add("Content-Type", jsonType)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	token, err := gid.FirebaseCustomToken()
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Add("Content-Type", "application/jwt")
+	fmt.Fprint(res, token)
+}

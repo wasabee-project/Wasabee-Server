@@ -6,7 +6,6 @@ import (
 	"time"
 
 	firebase "firebase.google.com/go"
-	// "firebase.google.com/go/messaging"
 
 	"google.golang.org/api/option"
 
@@ -28,7 +27,7 @@ func ServeFirebase(keypath string) error {
 	opt := option.WithCredentialsFile(keypath)
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
-		err := fmt.Errorf("error initializing firebase: %v", err)
+		err := fmt.Errorf("error initializing firebase messaging: %v", err)
 		wasabee.Log.Error(err)
 		return err
 	}
@@ -42,7 +41,13 @@ func ServeFirebase(keypath string) error {
 
 	rlmap = make(map[wasabee.TeamID]rlt)
 
-	fbchan := wasabee.FirebaseInit()
+	client, err := app.Auth(ctx)
+	if err != nil {
+		err := fmt.Errorf("error initializing firebase auth: %v", err)
+		wasabee.Log.Error(err)
+	}
+
+	fbchan := wasabee.FirebaseInit(client)
 	for fb := range fbchan {
 		// wasabee.Log.Debug(fb.Cmd.String())
 		switch fb.Cmd {
@@ -86,9 +91,6 @@ func ServeFirebase(keypath string) error {
 }
 
 func rateLimit(teamID wasabee.TeamID) bool {
-	// disable for now
-	// return true
-
 	rl, ok := rlmap[teamID]
 	now := time.Now()
 
