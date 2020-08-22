@@ -415,6 +415,21 @@ func (gid GoogleID) FirebaseCustomToken() (string, error) {
 		Log.Errorf("error minting custom token: %v\n", err)
 		return "", err
 	}
+
+	var utu auth.UserToUpdate;
+	iname, err := gid.IngressName()
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	utu.DisplayName(iname);
+	ur, err := fb.client.UpdateUser(ctx, gid.String(), &utu)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	Log.Debug(ur)
+
 	// store in database ?
 	return token, nil
 }
