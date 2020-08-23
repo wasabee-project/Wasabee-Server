@@ -177,10 +177,6 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	_, err = gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
 		Log.Infow("first login", "GID", gid.String(), "message", "first login for "+gid.String())
-		if tmpName == "" {
-			Log.Warnw("querying enlio for agent name", "GID", gid.String())
-			tmpName, _ = gid.enlioQuery()
-		}
 
 		// still no name? last resort
 		if tmpName == "" {
@@ -582,15 +578,6 @@ func RevalidateEveryone() error {
 		if err = RocksUpdate(gid, &r); err != nil {
 			Log.Error(err)
 		}
-
-		/* easy way to test the enl.io query
-		rocksname, err := gid.enlioQuery()
-		if err != nil {
-			// Log.Error(err)
-		} else {
-			Log.Debugf("found %s for %s at enl.io", rocksname, gid)
-		} */
-
 	}
 	return nil
 }
@@ -618,7 +605,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 	return gid, nil
 
-	// XXX where else can we search by name? Rocks? V? enlio?
+	// XXX where else can we search by name? Rocks? V?
 }
 
 // Delete removes an agent and all associated data
