@@ -1,6 +1,7 @@
 package wasabee_test
 
 import (
+	"firebase.google.com/go/auth"
 	"fmt"
 	"github.com/wasabee-project/Wasabee-Server"
 	"os"
@@ -33,7 +34,8 @@ func TestMain(m *testing.M) {
 	}
 
 	// start up the firebase command channel - we will consume any messages, not the firebase subsystem
-	fbchan := wasabee.FirebaseInit()
+	var client auth.Client
+	fbchan := wasabee.FirebaseInit(&client)
 	go func() {
 		for fb := range fbchan {
 			wasabee.Log.Infof("fbchan message: %v", fb)
