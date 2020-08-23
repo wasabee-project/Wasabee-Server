@@ -101,12 +101,6 @@ func main() {
 		})
 	}
 
-	// setup enl.io
-	enliokey := os.Getenv("ENLIO_API_KEY")
-	if enliokey != "" {
-		wasabee.SetENLIO(enliokey)
-	}
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = ":8080"

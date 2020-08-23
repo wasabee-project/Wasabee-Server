@@ -91,10 +91,6 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "enlrocksstatusurl", EnvVar: "ENLROCKS_STATUS_URL", Value: "",
 		Usage: "enl.rocks Status API URL. Defaults to the enl.rocks well-known URL"},
-	cli.StringFlag{
-		Name: "enliokey", EnvVar: "ENLIO_API_KEY", Value: "",
-		Usage: "enl.io API token. It is recommended to pass this parameter as an environment variable"},
-	// cli.StringField{ Name: "pubsub", Env
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output"},
@@ -214,11 +210,6 @@ func run(c *cli.Context) error {
 			CommunityEndpoint: c.String("enlrockscommurl"),
 			StatusEndpoint:    c.String("enlrocksstatusurl"),
 		})
-	}
-
-	// setup enl.io
-	if c.String("enliokey") != "" {
-		wasabee.SetENLIO(c.String("enliokey"))
 	}
 
 	// Serve HTTPS
