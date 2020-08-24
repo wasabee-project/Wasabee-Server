@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"firebase.google.com/go/auth"
+	"fmt"
 )
 
 var fb struct {
@@ -416,20 +417,29 @@ func (gid GoogleID) FirebaseCustomToken() (string, error) {
 		return "", err
 	}
 
-	var utu auth.UserToUpdate;
+	_ = gid.FirebaseUpdateAuthData()
+
+	return token, nil
+}
+
+// FirebaseUdateAuthData updates the user information in the Firebase Auth list -- unused for now
+func (gid GoogleID) FirebaseUpdateAuthData() error {
+	ctx := context.Background()
+
+	var utu auth.UserToUpdate
 	iname, err := gid.IngressName()
 	if err != nil {
 		Log.Error(err)
-		return "", err
+		return err
 	}
-	utu.DisplayName(iname);
-	ur, err := fb.client.UpdateUser(ctx, gid.String(), &utu)
+	utu.DisplayName(iname)
+	utu.Email(fmt.Sprintf("%s@example.com", iname))
+	_, err = fb.client.UpdateUser(ctx, gid.String(), &utu)
 	if err != nil {
 		Log.Error(err)
-		return "", err
+		// continue
+	} else {
+		Log.Infow("firebase auth update worked", "GID", gid.String())
 	}
-	Log.Debug(ur)
-
-	// store in database ?
-	return token, nil
+	return nil
 }
