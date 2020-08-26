@@ -336,7 +336,7 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	wasabee.Log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", link, "agent", agent, "message", "assigned link");
+	wasabee.Log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", link, "agent", agent, "message", "assigned link")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -514,7 +514,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	wasabee.Log.Infow("assigned marker", "GID", gid, "resource", op.ID, "marker", marker, "agent", agent, "message", "assigned marker");
+	wasabee.Log.Infow("assigned marker", "GID", gid, "resource", op.ID, "marker", marker, "agent", agent, "message", "assigned marker")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -809,7 +809,7 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	wasabee.Log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker");
+	wasabee.Log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
