@@ -3,12 +3,12 @@ package risc
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
-	"crypto/rsa"
 
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
@@ -154,7 +154,7 @@ func validateToken(rawjwt []byte) error {
 
 	// this can be removed now that we are getting verified above
 	if !tokenOK {
-		err := fmt.Errorf("unable to verify RISC event");
+		err := fmt.Errorf("unable to verify RISC event")
 		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error())
 		return err
 	}

@@ -522,4 +522,3 @@ func (opID OperationID) Rename(gid GoogleID, name string) error {
 	}
 	return nil
 }
-

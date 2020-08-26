@@ -422,7 +422,7 @@ func (gid GoogleID) FirebaseCustomToken() (string, error) {
 	return token, nil
 }
 
-// FirebaseUdateAuthData updates the user information in the Firebase Auth list -- unused for now
+// FirebaseUpdateAuthData updates the user information in the Firebase Auth list -- unused for now
 func (gid GoogleID) FirebaseUpdateAuthData() error {
 	ctx := context.Background()
 
