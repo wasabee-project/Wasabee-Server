@@ -159,13 +159,12 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	wasabee.Log.Infow("deleting operation", "resource", op.ID, "GID", gid)
 	if err := op.Delete(gid); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
+	wasabee.Log.Infow("deleted operation", "resource", op.ID, "GID", gid, "message", "deleted operation")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -212,6 +211,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	wasabee.Log.Infow("updated op", "GID", gid, "resource", id, "message", "updated op")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -322,21 +322,21 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.WriteAccess(gid) {
-		link := wasabee.LinkID(vars["link"])
-		agent := wasabee.GoogleID(req.FormValue("agent"))
-		err := op.AssignLink(link, agent, true)
-		if err != nil {
-			wasabee.Log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-	} else {
+	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to assign agents")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
+	link := wasabee.LinkID(vars["link"])
+	agent := wasabee.GoogleID(req.FormValue("agent"))
+	err = op.AssignLink(link, agent, true)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	wasabee.Log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", link, "agent", agent, "message", "assigned link");
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -355,19 +355,18 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 
-	if op.WriteAccess(gid) {
-		link := wasabee.LinkID(vars["link"])
-		desc := req.FormValue("desc")
-		err := op.LinkDescription(link, desc)
-		if err != nil {
-			wasabee.Log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-	} else {
+	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set link descriptions")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+	link := wasabee.LinkID(vars["link"])
+	desc := req.FormValue("desc")
+	err = op.LinkDescription(link, desc)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -515,6 +514,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	wasabee.Log.Infow("assigned marker", "GID", gid, "resource", op.ID, "marker", marker, "agent", agent, "message", "assigned marker");
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -809,6 +809,7 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	wasabee.Log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker");
 	fmt.Fprint(res, jsonStatusOK)
 }
 
