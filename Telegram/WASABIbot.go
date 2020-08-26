@@ -98,7 +98,7 @@ func WasabeeBot(init TGConfiguration) {
 // Shutdown closes all the Telegram connections
 // called only at server shutdown
 func Shutdown() {
-	wasabee.Log.Infow("shutdown", "subsystem", "Telegram")
+	wasabee.Log.Infow("shutdown", "subsystem", "Telegram", "message", "shutdown telegram")
 	_, _ = bot.RemoveWebhook()
 	bot.StopReceivingUpdates()
 }
