@@ -1,15 +1,18 @@
 package risc
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
+	"crypto/rsa"
 
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jws"
+	// "github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/wasabee-project/Wasabee-Server"
 )
@@ -126,39 +129,34 @@ func RISC(configfile string) {
 
 // This is called from the webhook
 func validateToken(rawjwt []byte) error {
-	token, err := jwt.ParseBytes(rawjwt)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
+	var token jwt.Token
+	var tokenOK bool
+	for iter := config.keys.Iterate(context.TODO()); iter.Next(context.TODO()); {
+		pair := iter.Pair()
+		key := pair.Value.(jwk.RSAPublicKey)
+		var pk rsa.PublicKey
+		if err := key.Raw(&pk); err != nil {
+			wasabee.Log.Errorw("unable to get public key from set", "error", err, "subsystem", "RISC", "message", "unable to get public key from set")
+			continue
+		}
+
+		var err error
+		token, err = jwt.Parse(bytes.NewReader(rawjwt), jwt.WithVerify(jwa.RS256, &pk), jwt.WithIssuer("https://accounts.google.com"))
+		if err != nil {
+			// silently try the next key
+			token = nil
+		} else {
+			// found a good one
+			tokenOK = true
+			break
+		}
 	}
 
-	kid, keyOK := token.Get("kid")
-	// if it is signed, verify it
-	if keyOK {
-		key := config.keys.LookupKeyID(kid.(string))
-		if len(key) == 0 {
-			err = fmt.Errorf("no matching key")
-			wasabee.Log.Error(err)
-			return err
-		}
-		if len(key) != 1 {
-			// pick the first that is RS256?
-			err = fmt.Errorf("multiple matching keys found, using the first")
-			wasabee.Log.Info(err)
-		}
-		var pKey interface{}
-		if err := key[0].Raw(&key); err != nil {
-			wasabee.Log.Warnw("failed to lookup key", "error", err.Error())
-		} else {
-			wasabee.Log.Debugw("JWx key sent", "key", pKey)
-
-			// this checks the signature
-			_, err = jws.Verify(rawjwt, jwa.RS256, pKey)
-			if err != nil {
-				wasabee.Log.Error(err)
-				return err
-			}
-		}
+	// this can be removed now that we are getting verified above
+	if !tokenOK {
+		err := fmt.Errorf("unable to verify RISC event");
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error())
+		return err
 	}
 
 	tmp, ok := token.Get("events")
@@ -173,35 +171,24 @@ func validateToken(rawjwt []byte) error {
 		var e event
 		e.Type = k
 
-		// verification types are not signed, no KID, just respond instantly
+		// just respond to verification requests instantly
 		if k == "https://schemas.openid.net/secevent/risc/event-type/verification" {
 			e.Reason = "ping requsted"
 			riscchan <- e
-		} else if keyOK {
-			wasabee.Log.Infow("verified RISC event", "subsystem", "RISC", "type", k, "data", v)
-
-			// XXX this is ugly and brittle - use a map parser
-			x := v.(map[string]interface{})
-			if x["reason"] != nil {
-				e.Reason = x["reason"].(string)
-			}
-			y := x["subject"].(map[string]interface{})
-			e.Issuer = y["iss"].(string)
-			e.Subject = y["sub"].(string)
-			riscchan <- e
-		} else {
-			wasabee.Log.Warnw("non-verified RISC event", "subsystem", "RISC", "type", k, "data", v)
-
-			// XXX this is ugly and brittle - use a map parser
-			x := v.(map[string]interface{})
-			if x["reason"] != nil {
-				e.Reason = x["reason"].(string)
-			}
-			y := x["subject"].(map[string]interface{})
-			e.Issuer = y["iss"].(string)
-			e.Subject = y["sub"].(string)
-			riscchan <- e
+			return nil
 		}
+
+		wasabee.Log.Infow("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
+
+		// XXX this is ugly and brittle - use a map parser
+		x := v.(map[string]interface{})
+		if x["reason"] != nil {
+			e.Reason = x["reason"].(string)
+		}
+		y := x["subject"].(map[string]interface{})
+		e.Issuer = y["iss"].(string)
+		e.Subject = y["sub"].(string)
+		riscchan <- e
 	}
 	return nil
 }

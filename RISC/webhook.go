@@ -26,14 +26,14 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 	if contentType != "application/secevent+jwt" {
 		err = fmt.Errorf("invalid request (needs to be application/secevent+jwt)")
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusNotAcceptable)
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if !config.running {
 		err = fmt.Errorf("RISC not configured, yet somehow a message was received")
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusNotAcceptable)
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -46,12 +46,12 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 	if string(raw) == "" {
 		err = fmt.Errorf("empty JWT")
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusNotAcceptable)
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if err := validateToken(raw); err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusNotAcceptable)
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 	res.WriteHeader(http.StatusAccepted)
@@ -66,7 +66,6 @@ func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Fprint(res, "RISC listener service is Running")
-
 }
 
 func riscRegisterWebhook() {
