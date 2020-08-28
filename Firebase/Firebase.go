@@ -102,7 +102,7 @@ func rateLimit(teamID wasabee.TeamID) bool {
 		return true
 	}
 
-	waituntil := rl.t.Add(15 * time.Second)
+	waituntil := rl.t.Add(3 * time.Second)
 	if now.Before(waituntil) {
 		// wasabee.Log.Debugw("skipping firebase send to team", "subsystem", "Firebase", "resource", teamID)
 		return false
