@@ -234,7 +234,7 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	ad.GoogleID = gid
 	var vid, lk, pic sql.NullString
 
-	err := db.QueryRow("SELECT a.iname, a.level, a.lockey, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, e.picurl FROM agent=a, WHERE a.gid = ? LEFT JOIN agentextras=e ON a.gid = e.gid", gid).Scan(&ad.IngressName, &ad.Level, &lk, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
+	err := db.QueryRow("SELECT a.iname, a.level, a.lockey, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.Level, &lk, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
