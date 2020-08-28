@@ -14,6 +14,7 @@ type TeamData struct {
 	RocksComm     string  `json:"rc,omitempty"`
 	RocksKey      string  `json:"rk,omitempty"`
 	JoinLinkToken string  `json:"jlt,omitempty"`
+	telegramChannel int64
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams
@@ -178,7 +179,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 		Log.Error(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm) VALUES (?,?,?,NULL,NULL)", team, gid, name)
+	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm, telegram) VALUES (?,?,?,NULL,NULL,NULL)", team, gid, name)
 	if err != nil {
 		Log.Error(err)
 		return "", err
@@ -528,6 +529,23 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 }
 
 func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
-	Log.Debug("not written yet")
+	owns, err := gid.OwnsTeam(teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	if !owns {
+		err = fmt.Errorf("only team owner can set telegram link")
+		Log.Error(err)
+		return err
+	}
+
+	_, err = db.Exec("UPDATE team SET telegram = ? WHERE teamID = ?", chat, teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	Log.Infow("linked team to telegram", "GID", gid, "resource", teamID, "chatID", chat)
 	return nil
 }

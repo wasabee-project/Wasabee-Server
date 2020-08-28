@@ -226,15 +226,31 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 				wasabee.Log.Debugw("linking team and chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", team)
 				if err := team.LinkToTelegramChat(inMsg.Message.Chat.ID, gid); err != nil {
 					wasabee.Log.Error(err)
-					// XXX send a tg message of the error
+					msg.Text = err.Error()
+					if _, err := bot.Send(msg); err != nil {
+						wasabee.Log.Error(err)
+						return err
+					}
+					return err;
 				}
+			} else {
+				msg.Text = "specify a single teamID"
+				if _, err := bot.Send(msg); err != nil {
+					wasabee.Log.Error(err)
+					return err
+				}
+				return nil;
 			}
-			// XXX else report invalid link
+			msg.Text = "Successfully linked"
+			if _, err := bot.Send(msg); err != nil {
+				wasabee.Log.Error(err)
+				return err
+			}
 		default:
-			wasabee.Log.Debugw("command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
+			wasabee.Log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 		}
 	} else {
-		wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "msg", inMsg.Message.Text)
+		wasabee.Log.Debugw("we should never see these: message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid)
 	}
 	return nil
 }
