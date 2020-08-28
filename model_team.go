@@ -526,3 +526,8 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 
 	return nil
 }
+
+func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
+	Log.Debug("not written yet")
+	return nil
+}
