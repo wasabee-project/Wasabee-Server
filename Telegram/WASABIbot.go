@@ -122,81 +122,140 @@ func runUpdate(update tgbotapi.Update) error {
 		return nil
 	}
 
-	if update.Message != nil && update.Message.Chat.Type == "private" {
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-		defaultReply, err := templateExecute("default", update.Message.From.LanguageCode, nil)
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
-		msg.Text = defaultReply
-		msg.ParseMode = "MarkDown"
-
-		tgid := wasabee.TelegramID(update.Message.From.ID)
-		gid, verified, err := tgid.GidV()
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
-
-		if gid == "" {
-			wasabee.Log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", update.Message.From.UserName, "tgid", tgid)
-			fgid, err := runRocks(tgid)
-			if fgid != "" && err == nil {
-				tmp, _ := templateExecute("InitTwoSuccess", update.Message.From.LanguageCode, nil)
-				msg.Text = tmp
-			} else {
-				err = newUserInit(&msg, &update)
-				if err != nil {
-					wasabee.Log.Error(err)
-				}
-			}
-			if _, err = bot.Send(msg); err != nil {
-				wasabee.Log.Error(err)
-				return err
-			}
-			return nil
-		}
-
-		if !verified {
-			wasabee.Log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", update.Message.From.UserName, "tgid", tgid)
-			err = newUserVerify(&msg, &update)
-			if err != nil {
+	if update.Message != nil {
+		if update.Message.Chat.Type == "private" {
+			if err := processDirectMessage(&update); err != nil {
 				wasabee.Log.Error(err)
 			}
-			if _, err = bot.Send(msg); err != nil {
+		} else {
+			if err := processChatMessage(&update); err != nil {
 				wasabee.Log.Error(err)
-				return err
 			}
-			return nil
-		}
-
-		// verified user, process message
-		if err := processMessage(&msg, &update, gid); err != nil {
-			wasabee.Log.Error(err)
-			return err
 		}
 	}
 
 	if update.EditedMessage != nil && update.EditedMessage.Location != nil {
-		tgid := wasabee.TelegramID(update.EditedMessage.From.ID)
-		gid, verified, err := tgid.GidV()
-		if err != nil {
+		if err := liveLocationUpdate(&update); err != nil {
+			wasabee.Log.Error(err)
+		}
+	}
+
+	return nil
+}
+
+func processDirectMessage(inMsg *tgbotapi.Update) error {
+	tgid := wasabee.TelegramID(inMsg.Message.From.ID)
+	gid, verified, err := tgid.GidV()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	msg.Text = defaultReply
+	msg.ParseMode = "MarkDown"
+
+	if gid == "" {
+		wasabee.Log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
+		fgid, err := runRocks(tgid)
+		if fgid != "" && err == nil {
+			tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
+			msg.Text = tmp
+		} else {
+			err = newUserInit(&msg, inMsg)
+			if err != nil {
+				wasabee.Log.Error(err)
+			}
+		}
+		if _, err = bot.Send(msg); err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
-		if !verified || gid == "" {
-			wasabee.Log.Debugw("user not initialized/verified, ignoring location update", "GID", gid, "tgid", tgid)
-			return nil
-		}
-		wasabee.Log.Debugw("live location update", "GID", gid, "message", "live location update")
-
-		_ = gid.AgentLocation(
-			strconv.FormatFloat(update.EditedMessage.Location.Latitude, 'f', -1, 64),
-			strconv.FormatFloat(update.EditedMessage.Location.Longitude, 'f', -1, 64),
-		)
+		return nil
 	}
 
+	if !verified {
+		wasabee.Log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
+		err = newUserVerify(&msg, inMsg)
+		if err != nil {
+			wasabee.Log.Error(err)
+		}
+		if _, err = bot.Send(msg); err != nil {
+			wasabee.Log.Error(err)
+			return err
+		}
+		return nil
+	}
+
+	// verified user, process message
+	if err := processMessage(&msg, inMsg, gid); err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func processChatMessage(inMsg *tgbotapi.Update) error {
+	tgid := wasabee.TelegramID(inMsg.Message.From.ID)
+	gid, _, err := tgid.GidV()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	msg.Text = defaultReply
+	msg.ParseMode = "MarkDown"
+
+	if inMsg.Message.IsCommand() {
+		switch inMsg.Message.Command() {
+		case "link":
+			tokens := strings.Split(inMsg.Message.Text, " ")
+			if len(tokens) == 2 {
+				team := wasabee.TeamID(strings.TrimSpace(tokens[1]))
+				wasabee.Log.Debugw("linking team and chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", team)
+				if err := team.LinkToTelegramChat(inMsg.Message.Chat.ID, gid); err != nil {
+					wasabee.Log.Error(err)
+					// XXX send a tg message of the error
+				}
+			}
+			// XXX else report invalid link
+		default:
+			wasabee.Log.Debugw("command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
+		}
+	} else {
+		wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "msg", inMsg.Message.Text)
+	}
+	return nil
+}
+
+func liveLocationUpdate(inMsg *tgbotapi.Update) error {
+	tgid := wasabee.TelegramID(inMsg.EditedMessage.From.ID)
+	gid, verified, err := tgid.GidV()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+	if !verified || gid == "" {
+		wasabee.Log.Debugw("user not initialized/verified, ignoring location inMsg", "GID", gid, "tgid", tgid)
+		return nil
+	}
+	wasabee.Log.Debugw("live location inMsg", "GID", gid, "message", "live location update")
+
+	_ = gid.AgentLocation(
+		strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64),
+		strconv.FormatFloat(inMsg.EditedMessage.Location.Longitude, 'f', -1, 64),
+	)
 	return nil
 }
 
