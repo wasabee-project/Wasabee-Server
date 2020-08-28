@@ -549,3 +549,18 @@ func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
 	Log.Infow("linked team to telegram", "GID", gid, "resource", teamID, "chatID", chat)
 	return nil
 }
+
+func (teamID TeamID) TelegramChat() (int64, error) {
+	var chatID int64
+
+	err := db.QueryRow("SELECT telegram FROM team WHERE teamID = ?", teamID).Scan(&chatID)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Error(err)
+		return int64(0), err
+	}
+	if err == sql.ErrNoRows {
+		Log.Debug("attempt to get telegram chatID for non-existant team")
+		return int64(0), nil
+	}
+	return chatID, nil
+}

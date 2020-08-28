@@ -481,3 +481,25 @@ func runRocks(tgid wasabee.TelegramID) (wasabee.GoogleID, error) {
 
 	return agent.Gid, nil
 }
+
+// SendToTeamChannel sends a message to chat linked to a team
+func SendToTeamChannel(teamID wasabee.TeamID, gid wasabee.GoogleID, message string) error {
+	chatID, err := teamID.TelegramChat()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+
+	// XXX make sure sender is on the team
+
+	msg := tgbotapi.NewMessage(chatID, "")
+
+	msg.Text =message 
+	msg.ParseMode = "MarkDown"
+	if _, err := bot.Send(msg); err != nil {
+		wasabee.Log.Error(err)
+		return err
+	}
+
+	return nil
+}
