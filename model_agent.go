@@ -41,16 +41,17 @@ type AgentData struct {
 	RocksVerified bool
 	RAID          bool
 	RISC          bool
+	ProfileImage  string
 	// XXX owned teams needs to go away, merge into teams
-	OwnedTeams []AdTeam
-	Teams      []AdTeam
-	Ops        []AdOperation
-	Telegram   struct {
+	OwnedTeams  []AdTeam
+	Teams       []AdTeam
+	Ops         []AdOperation
+	Assignments []Assignment
+	Telegram    struct {
 		ID        int64
 		Verified  bool
 		Authtoken string
 	}
-	Assignments []Assignment
 }
 
 // AdTeam is a sub-struct of AgentData
@@ -229,11 +230,11 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 }
 
 // GetAgentData populates a AgentData struct based on the gid
-func (gid GoogleID) GetAgentData(ud *AgentData) error {
-	ud.GoogleID = gid
+func (gid GoogleID) GetAgentData(ad *AgentData) error {
+	ad.GoogleID = gid
+	var vid, lk, pic sql.NullString
 
-	var vid, lk sql.NullString
-	err := db.QueryRow("SELECT u.iname, u.level, u.lockey, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, u.RAID, u.RISC FROM agent=u WHERE u.gid = ?", gid).Scan(&ud.IngressName, &ud.Level, &lk, &ud.VVerified, &ud.VBlacklisted, &vid, &ud.RocksVerified, &ud.RAID, &ud.RISC)
+	err := db.QueryRow("SELECT a.iname, a.level, a.lockey, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, e.picurl FROM agent=a, WHERE a.gid = ? LEFT JOIN agentextras=e ON a.gid = e.gid", gid).Scan(&ad.IngressName, &ad.Level, &lk, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
@@ -244,37 +245,41 @@ func (gid GoogleID) GetAgentData(ud *AgentData) error {
 	}
 
 	if vid.Valid {
-		ud.Vid = EnlID(vid.String)
+		ad.Vid = EnlID(vid.String)
 	}
 
 	if lk.Valid {
-		ud.LocationKey = LocKey(lk.String)
+		ad.LocationKey = LocKey(lk.String)
 	}
 
-	if err := gid.adOwnedTeams(ud); err != nil {
+	if pic.Valid {
+		ad.ProfileImage = pic.String
+	}
+
+	if err := gid.adOwnedTeams(ad); err != nil {
 		return err
 	}
 
-	if err = gid.adTeams(ud); err != nil {
+	if err = gid.adTeams(ad); err != nil {
 		return err
 	}
 
-	if err = gid.adTelegram(ud); err != nil {
+	if err = gid.adTelegram(ad); err != nil {
 		return err
 	}
 
-	if err = gid.adOps(ud); err != nil {
+	if err = gid.adOps(ad); err != nil {
 		return err
 	}
 
-	if err = gid.adAssignments(ud); err != nil {
+	if err = gid.adAssignments(ad); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (gid GoogleID) adTeams(ud *AgentData) error {
+func (gid GoogleID) adTeams(ad *AgentData) error {
 	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm, t.rockskey, t.owner FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
 	if err != nil {
 		Log.Error(err)
@@ -301,13 +306,13 @@ func (gid GoogleID) adTeams(ud *AgentData) error {
 		} else {
 			adteam.RocksKey = ""
 		}
-		ud.Teams = append(ud.Teams, adteam)
+		ad.Teams = append(ad.Teams, adteam)
 	}
 	return nil
 }
 
 // deprecated - do not use
-func (gid GoogleID) adOwnedTeams(ud *AgentData) error {
+func (gid GoogleID) adOwnedTeams(ad *AgentData) error {
 	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ? ORDER BY name", gid)
 	if err != nil {
 		Log.Error(err)
@@ -335,29 +340,29 @@ func (gid GoogleID) adOwnedTeams(ud *AgentData) error {
 		}
 		ownedTeam.State = "NA"
 		ownedTeam.Owner = gid
-		ud.OwnedTeams = append(ud.OwnedTeams, ownedTeam)
+		ad.OwnedTeams = append(ad.OwnedTeams, ownedTeam)
 	}
 	return nil
 }
 
-func (gid GoogleID) adTelegram(ud *AgentData) error {
+func (gid GoogleID) adTelegram(ad *AgentData) error {
 	var authtoken sql.NullString
-	err := db.QueryRow("SELECT telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ud.Telegram.ID, &ud.Telegram.Verified, &authtoken)
+	err := db.QueryRow("SELECT telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ad.Telegram.ID, &ad.Telegram.Verified, &authtoken)
 	if err != nil && err == sql.ErrNoRows {
-		ud.Telegram.ID = 0
-		ud.Telegram.Verified = false
-		ud.Telegram.Authtoken = ""
+		ad.Telegram.ID = 0
+		ad.Telegram.Verified = false
+		ad.Telegram.Authtoken = ""
 	} else if err != nil {
 		Log.Error(err)
 		return err
 	}
 	if authtoken.Valid {
-		ud.Telegram.Authtoken = authtoken.String
+		ad.Telegram.Authtoken = authtoken.String
 	}
 	return nil
 }
 
-func (gid GoogleID) adOps(ud *AgentData) error {
+func (gid GoogleID) adOps(ad *AgentData) error {
 	seen := make(map[OperationID]bool)
 
 	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ? ORDER BY Name", gid)
@@ -377,7 +382,7 @@ func (gid GoogleID) adOps(ud *AgentData) error {
 		if seen[op.ID] {
 			continue
 		}
-		ud.Ops = append(ud.Ops, op)
+		ad.Ops = append(ad.Ops, op)
 		seen[op.ID] = true
 	}
 
@@ -397,7 +402,7 @@ func (gid GoogleID) adOps(ud *AgentData) error {
 		if seen[op.ID] {
 			continue
 		}
-		ud.Ops = append(ud.Ops, op)
+		ad.Ops = append(ad.Ops, op)
 		seen[op.ID] = true
 	}
 	return nil
