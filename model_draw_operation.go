@@ -45,6 +45,7 @@ type OpStat struct {
 type ExtendedTeam struct {
 	TeamID TeamID `json:"teamid"`
 	Role   etRole `json:"role"`
+	Zone   Zone   `json:"zone"`
 }
 
 type etRole string
@@ -400,7 +401,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	if !o.ReadAccess(gid) {
+	read, zone := o.ReadAccess(gid)
+	if !read {
 		if o.AssignedOnlyAccess(gid) {
 			var a Assignments
 			err = gid.Assignments(o.ID, &a)
@@ -419,6 +421,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation (%s: %s)", gid, o.ID)
 	}
 
+	// don't leak other portal data on zone filtering
 	if comment.Valid {
 		o.Comment = comment.String
 	}
@@ -428,7 +431,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	if err = o.populateMarkers(); err != nil {
+	if err = o.populateMarkers(zone); err != nil {
 		Log.Error(err)
 		return err
 	}

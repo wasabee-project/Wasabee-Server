@@ -10,7 +10,7 @@ func (o *Operation) PopulateTeams() error {
 	// start empty, trust only what is in the database
 	o.Teams = nil
 
-	rows, err := db.Query("SELECT teamID, permission FROM opteams WHERE opID = ?", o.ID)
+	rows, err := db.Query("SELECT teamID, permission, zone FROM opteams WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
 		return err
@@ -18,8 +18,9 @@ func (o *Operation) PopulateTeams() error {
 	defer rows.Close()
 
 	var tid, role string
+	var zone Zone
 	for rows.Next() {
-		err := rows.Scan(&tid, &role)
+		err := rows.Scan(&tid, &role, &zone)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -27,31 +28,33 @@ func (o *Operation) PopulateTeams() error {
 		o.Teams = append(o.Teams, ExtendedTeam{
 			TeamID: TeamID(tid),
 			Role:   etRole(role),
+			Zone:   zone,
 		})
 	}
 	return nil
 }
 
-// ReadAccess determines if an agent has read acces to an op
-func (o *Operation) ReadAccess(gid GoogleID) bool {
+// ReadAccess determines if an agent has read acces to an op, if zone limitations are present, return those as well
+func (o *Operation) ReadAccess(gid GoogleID) (bool, Zone) {
+	if o.ID.IsOwner(gid) {
+		return true, ZoneAll
+	}
 	if len(o.Teams) == 0 {
 		if err := o.PopulateTeams(); err != nil {
 			Log.Error(err)
-			return false
+			return false, ZoneAll
 		}
 	}
-	if o.ID.IsOwner(gid) {
-		return true
-	}
+
 	for _, t := range o.Teams {
 		if t.Role == etRoleAssignedOnly {
 			continue
 		}
-		if inteam, _ := gid.AgentInTeam(t.TeamID, false); inteam {
-			return true
+		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
+			return true, t.Zone
 		}
 	}
-	return false
+	return false, ZoneAll
 }
 
 // WriteAccess determines if an agent has write access to an op
@@ -68,7 +71,8 @@ func (o *Operation) WriteAccess(gid GoogleID) bool {
 		if t.Role != etRoleWrite {
 			continue
 		}
-		if inteam, _ := gid.AgentInTeam(t.TeamID, false); inteam {
+		// write teams
+		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
 			return true
 		}
 	}
@@ -131,7 +135,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 		if t.Role != etRoleAssignedOnly {
 			continue
 		}
-		if inteam, _ := gid.AgentInTeam(t.TeamID, false); inteam {
+		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
 			return true
 		}
 	}
@@ -146,7 +150,7 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 		return err
 	}
 
-	inteam, err := gid.AgentInTeam(teamID, false)
+	inteam, err := gid.AgentInTeam(teamID)
 	if err != nil {
 		Log.Error(err)
 		return err

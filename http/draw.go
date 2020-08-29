@@ -80,7 +80,8 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	o.ID = wasabee.OperationID(id)
 
 	// o.Populate determines all or assigned-only
-	if !o.ReadAccess(gid) && !o.AssignedOnlyAccess(gid) {
+	read, _ := o.ReadAccess(gid)
+	if !read && !o.AssignedOnlyAccess(gid) {
 		if o.ID.IsDeletedOp() {
 			err := fmt.Errorf("requested deleted op")
 			wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", o.ID)

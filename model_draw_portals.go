@@ -164,7 +164,7 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, erro
 	var p Portal
 	p.ID = portalID
 
-	if !o.ReadAccess(gid) {
+	if read, _ := o.ReadAccess(gid); !read {
 		err := fmt.Errorf("unauthorized: unable to get portal details")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "portal", portalID)
 		return p, err
