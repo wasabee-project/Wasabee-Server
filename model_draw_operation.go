@@ -3,10 +3,7 @@ package wasabee
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
-	// "html/template"
-	// "strings"
 	"time"
 )
 
@@ -25,7 +22,7 @@ type Operation struct {
 	Links      []Link         `json:"links"`
 	Blockers   []Link         `json:"blockers"` // we ignore this for now
 	Markers    []Marker       `json:"markers"`
-	Teams      []ExtendedTeam `json:"teamlist"`
+	Teams      []OpPermission `json:"teamlist"`
 	Modified   string         `json:"modified"`
 	Comment    string         `json:"comment"`
 	Keys       []KeyOnHand    `json:"keysonhand"`
@@ -39,29 +36,6 @@ type OpStat struct {
 	Name     string      `json:"name"`
 	Gid      GoogleID    `json:"creator"`
 	Modified string      `json:"modified"`
-}
-
-// ExtendedTeam is the form of permission
-type ExtendedTeam struct {
-	TeamID TeamID `json:"teamid"`
-	Role   etRole `json:"role"`
-	Zone   Zone   `json:"zone"`
-}
-
-type etRole string
-
-const (
-	etRoleRead         etRole = "read"
-	etRoleWrite        etRole = "write"
-	etRoleAssignedOnly etRole = "assignedonly"
-)
-
-func (et etRole) isValid() error {
-	switch et {
-	case etRoleRead, etRoleWrite, etRoleAssignedOnly:
-		return nil
-	}
-	return errors.New("invalid etRole")
 }
 
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
@@ -436,7 +410,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	if err = o.populateLinks(); err != nil {
+	if err = o.populateLinks(zone); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -450,6 +424,16 @@ func (o *Operation) Populate(gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
+
+	// it wouldn't hurt to filter even for ZoneAll
+	if zone != ZoneAll {
+		// populate portals, links and anchors first
+		if err = o.filterPortals(); err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
+
 	t := time.Now()
 	o.Fetched = fmt.Sprint(t.Format(time.RFC1123))
 

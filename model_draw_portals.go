@@ -82,26 +82,42 @@ func (o *Operation) populatePortals() error {
 	return nil
 }
 
+// reduce the portal list to keys, links and makers in this zone
+func (o *Operation) filterPortals() error {
+	var filteredList []Portal
+
+	set := make(map[PortalID]Portal)
+	for _, a := range o.Anchors {
+		p, _ := o.getPortal(a)
+		set[a] = p
+	}
+
+	for _, m := range o.Markers {
+		p, _ := o.getPortal(m.PortalID)
+		set[m.PortalID] = p
+	}
+
+	for _, k := range o.Keys {
+		p, _ := o.getPortal(k.ID)
+		set[k.ID] = p
+	}
+
+	for _, p := range set {
+		filteredList = append(filteredList, p)
+	}
+
+	o.OpPortals = filteredList
+	return nil
+}
+
 // PopulateAnchors fills in the Anchors list for the Operation. No authorization takes place.
 // XXX the clients _should_ build this themselves, but don't, yet.
+// use only the currently known links (e.g. for this zone) -- call populateLinks first
 func (o *Operation) populateAnchors() error {
-	var fromPortalID, toPortalID PortalID
-	rows, err := db.Query("SELECT fromPortalID, toPortalID FROM link WHERE opID = ?", o.ID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	defer rows.Close()
-
 	set := make(map[PortalID]bool)
-	for rows.Next() {
-		err := rows.Scan(&fromPortalID, &toPortalID)
-		if err != nil {
-			Log.Error(err)
-			continue
-		}
-		set[fromPortalID] = true
-		set[toPortalID] = true
+	for _, l := range o.Links {
+		set[l.From] = true
+		set[l.To] = true
 	}
 
 	for key := range set {

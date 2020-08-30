@@ -25,9 +25,9 @@ func (o *Operation) PopulateTeams() error {
 			Log.Error(err)
 			continue
 		}
-		o.Teams = append(o.Teams, ExtendedTeam{
+		o.Teams = append(o.Teams, OpPermission{
 			TeamID: TeamID(tid),
-			Role:   etRole(role),
+			Role:   opPermRole(role),
 			Zone:   zone,
 		})
 	}
@@ -47,7 +47,7 @@ func (o *Operation) ReadAccess(gid GoogleID) (bool, Zone) {
 	}
 
 	for _, t := range o.Teams {
-		if t.Role == etRoleAssignedOnly {
+		if t.Role == opPermRoleAssignedOnly {
 			continue
 		}
 		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
@@ -68,7 +68,7 @@ func (o *Operation) WriteAccess(gid GoogleID) bool {
 		return true
 	}
 	for _, t := range o.Teams {
-		if t.Role != etRoleWrite {
+		if t.Role != opPermRoleWrite {
 			continue
 		}
 		// write teams
@@ -132,7 +132,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 	}
 
 	for _, t := range o.Teams {
-		if t.Role != etRoleAssignedOnly {
+		if t.Role != opPermRoleAssignedOnly {
 			continue
 		}
 		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
@@ -143,7 +143,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 }
 
 // AddPerm adds a new permission to an op
-func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
+func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone) error {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied: not current owner of op")
 		Log.Error(err.Error(), "GID", gid, "resource", o.ID)
@@ -157,17 +157,17 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string) error {
 	}
 	if !inteam {
 		err := fmt.Errorf("you must be on a team to add it as a permission")
-		Log.Error(err.Error(), "GID", gid, "team", teamID, "resource", o.ID)
+		Log.Errorw(err.Error(), "GID", gid, "team", teamID, "resource", o.ID)
 		return err
 	}
 
-	et := etRole(perm)
-	err = et.isValid()
-	if err != nil {
-		Log.Error(err)
+	opp := opPermRole(perm)
+	if !opp.Valid() {
+		err := fmt.Errorf("unknown permission type")
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "perm", perm)
 		return err
 	}
-	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?)", teamID, o.ID, perm)
+	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?,?)", teamID, o.ID, opp, zone)
 	if err != nil {
 		Log.Error(err)
 		return err

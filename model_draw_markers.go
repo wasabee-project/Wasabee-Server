@@ -72,7 +72,13 @@ func (o *Operation) populateMarkers(zone Zone) error {
 
 	var assignedGid, comment, assignedNick, completedBy, completedID sql.NullString
 
-	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
+	var err error
+	var rows *sql.Rows
+	if zone != ZoneAll {
+		rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
+	} else {
+		rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? AND m.zone = ? ORDER BY m.oporder, m.type", o.ID, zone)
+	}
 	if err != nil {
 		Log.Error(err)
 		return err

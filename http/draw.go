@@ -906,15 +906,17 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	teamID := wasabee.TeamID(req.FormValue("team"))
-	role := req.FormValue("role")
+	role := req.FormValue("role") // AddPerm verifies this is good
 	if teamID == "" || role == "" {
 		err = fmt.Errorf("required value not set to add permission to op")
 		wasabee.Log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
+	// Pass in "Zeta" and get a zone back... defaults to "All"
+	zone := wasabee.ZoneFromString(req.FormValue("zone"))
 
-	if err := op.AddPerm(gid, teamID, role); err != nil {
+	if err := op.AddPerm(gid, teamID, role, zone); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -946,9 +948,10 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	teamID := wasabee.TeamID(req.FormValue("team"))
 	role := req.FormValue("role")
+	zone := req.FormValue("zone")
 	if teamID == "" || role == "" {
 		err = fmt.Errorf("required value not set to remove permission from op")
-		wasabee.Log.Warn(err)
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "role", role, "zone", zone, "teamID", teamID, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}

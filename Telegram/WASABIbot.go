@@ -251,6 +251,15 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 		}
 	} else {
 		wasabee.Log.Debugw("we should never see these: message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid)
+		admins, err := bot.GetChatAdministrators(tgbotapi.ChatConfig{
+			ChatID: inMsg.Message.Chat.ID,
+		})
+		if err != nil {
+			wasabee.Log.Debug(err);
+		}
+		for _, a := range admins {
+			wasabee.Log.Debugw("administrator", "ID", a.User.ID, "tgname", a.User.UserName)
+		}
 	}
 	return nil
 }

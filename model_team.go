@@ -62,7 +62,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var rows *sql.Rows
 	rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
-		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY x.state DESC, u.iname", teamID)
+		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
 	if err != nil {
 		Log.Error(err)
 		return err

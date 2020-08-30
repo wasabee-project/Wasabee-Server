@@ -70,11 +70,17 @@ func (opID OperationID) updateLink(l Link) error {
 }
 
 // PopulateLinks fills in the Links list for the Operation. No authorization takes place.
-func (o *Operation) populateLinks() error {
+func (o *Operation) populateLinks(zone Zone) error {
 	var tmpLink Link
 	var description, gid, iname sql.NullString
 
-	rows, err := db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
+	var err error
+	var rows *sql.Rows
+	if zone == ZoneAll {
+		rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
+	} else {
+		rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? AND l.zone = zone ORDER BY l.throworder", o.ID, zone)
+	}
 	if err != nil {
 		Log.Error(err)
 		return err
