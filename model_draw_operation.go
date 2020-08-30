@@ -375,7 +375,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	read, zone := o.ReadAccess(gid)
+	read, zones := o.ReadAccess(gid)
 	if !read {
 		if o.AssignedOnlyAccess(gid) {
 			var a Assignments
@@ -395,26 +395,27 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation (%s: %s)", gid, o.ID)
 	}
 
-	// don't leak other portal data on zone filtering
 	if comment.Valid {
 		o.Comment = comment.String
 	}
 
+	// start with everything -- filter after the rest is set up
 	if err = o.populatePortals(); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = o.populateMarkers(zone); err != nil {
+	if err = o.populateMarkers(zones, gid); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = o.populateLinks(zone); err != nil {
+	if err = o.populateLinks(zones, gid); err != nil {
 		Log.Error(err)
 		return err
 	}
 
+	// built based on available links, zone filtering has taken places
 	if err = o.populateAnchors(); err != nil {
 		Log.Error(err)
 		return err
@@ -426,7 +427,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 	}
 
 	// it wouldn't hurt to filter even for ZoneAll
-	if zone != ZoneAll {
+	if !ZoneAll.inZones(zones) {
 		// populate portals, links and anchors first
 		if err = o.filterPortals(); err != nil {
 			Log.Error(err)

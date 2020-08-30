@@ -22,6 +22,7 @@ type Link struct {
 	ThrowOrder int32    `json:"throwOrderPos"`
 	Completed  bool     `json:"completed"`
 	Color      string   `json:"color"`
+	Zone       Zone     `json:"zone"`
 }
 
 // insertLink adds a link to the database
@@ -31,10 +32,12 @@ func (opID OperationID) insertLink(l Link) error {
 		return nil
 	}
 
-	// l.Color = opValidColor(l.Color)
+	if !l.Zone.Valid() {
+		l.Zone = ZonePrimary
+	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -57,11 +60,13 @@ func (opID OperationID) updateLink(l Link) error {
 		return nil
 	}
 
-	// l.Color = opValidColor(l.Color)
+	if !l.Zone.Valid() {
+		l.Zone = ZonePrimary
+	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color,
-		l.From, l.To, MakeNullString(l.Desc), l.Color)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone,
+		l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -70,26 +75,26 @@ func (opID OperationID) updateLink(l Link) error {
 }
 
 // PopulateLinks fills in the Links list for the Operation. No authorization takes place.
-func (o *Operation) populateLinks(zone Zone) error {
+func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 	var tmpLink Link
 	var description, gid, iname sql.NullString
 
 	var err error
 	var rows *sql.Rows
-	if zone == ZoneAll {
-		rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
-	} else {
-		rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? AND l.zone = zone ORDER BY l.throworder", o.ID, zone)
-	}
+	rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color, l.zone FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname, &tmpLink.Color)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname, &tmpLink.Color, &tmpLink.Zone)
 		if err != nil {
 			Log.Error(err)
+			continue
+		}
+		// this isn't in a zone with which we are concerned AND not assigned to me, skip
+		if !tmpLink.Zone.inZones(zones) && tmpLink.AssignedTo != inGid {
 			continue
 		}
 		if description.Valid {

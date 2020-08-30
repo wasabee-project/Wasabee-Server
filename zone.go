@@ -12,7 +12,8 @@ type Zone int
 
 // ZoneAlpha ... is the friendly name for the zones
 const (
-	ZoneAll Zone = iota
+	ZoneUnset Zone = iota
+	ZonePrimary
 	ZoneAlpha
 	ZoneBeta
 	ZoneGamma
@@ -22,13 +23,16 @@ const (
 	ZoneEta
 )
 
+const ZoneAll = ZoneUnset
+
 // String is the string represenation for the zone
 func (z Zone) String() string {
 	return zoneToString[z]
 }
 
 var zoneToString = map[Zone]string{
-	ZoneAll:     "All",
+	ZoneUnset:   "Unset",
+	ZonePrimary: "Primary",
 	ZoneAlpha:   "Alpha",
 	ZoneBeta:    "Beta",
 	ZoneGamma:   "Gamma",
@@ -39,7 +43,8 @@ var zoneToString = map[Zone]string{
 }
 
 var zoneToID = map[string]Zone{
-	"All":     ZoneAll,
+	"Unset":   ZoneUnset,
+	"Primary": ZonePrimary,
 	"Alpha":   ZoneAlpha,
 	"Beta":    ZoneBeta,
 	"Gamma":   ZoneGamma,
@@ -51,7 +56,7 @@ var zoneToID = map[string]Zone{
 
 // Valid returns a boolean if the zone is in the valid range
 func (z Zone) Valid() bool {
-	if z >= ZoneAll && z <= ZoneEta {
+	if z >= ZonePrimary && z <= ZoneEta {
 		return true
 	}
 	return false
@@ -59,8 +64,11 @@ func (z Zone) Valid() bool {
 
 // ZoneFromString takes a string and returns a zone
 func ZoneFromString(in string) Zone {
-	// unmatched == ZoneAll
-	return zoneToID[in]
+	z := zoneToID[in]
+	if !z.Valid() {
+		z = ZonePrimary
+	}
+	return z
 }
 
 // MarshalJSON marshals the enum as a quoted json string
@@ -78,7 +86,25 @@ func (z *Zone) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	// unmatched == ZoneAll
 	*z = zoneToID[j]
+	// unmatched == ZoneUnset
+	if *z == ZoneUnset {
+		*z = ZonePrimary
+	}
 	return nil
+}
+
+func (z Zone) inZones(zones []Zone) bool {
+	for _, t := range zones {
+		// ZoneAll is set, anything goes
+		if t == ZoneAll {
+			return true
+		}
+		// this zone is set, permit
+		if t == z {
+			return true
+		}
+	}
+	// no match found, fail
+	return false
 }

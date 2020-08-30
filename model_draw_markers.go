@@ -34,6 +34,10 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.State = "pending"
 	}
 
+	if m.Zone == ZoneUnset {
+		m.Zone = ZonePrimary
+	}
+
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone)
 	if err != nil {
@@ -48,8 +52,13 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ?",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Type, m.PortalID, MakeNullString(m.Comment), m.Zone)
+	if m.Zone == ZoneUnset {
+		m.Zone = ZonePrimary
+	}
+
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ? zone= ?",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Type, m.Zone,
+		m.PortalID, MakeNullString(m.Comment), m.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -67,18 +76,14 @@ func (opID OperationID) deleteMarker(mid MarkerID) error {
 }
 
 // PopulateMarkers fills in the Markers list for the Operation.
-func (o *Operation) populateMarkers(zone Zone) error {
+func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 	var tmpMarker Marker
 
 	var assignedGid, comment, assignedNick, completedBy, completedID sql.NullString
 
 	var err error
 	var rows *sql.Rows
-	if zone != ZoneAll {
-		rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
-	} else {
-		rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? AND m.zone = ? ORDER BY m.oporder, m.type", o.ID, zone)
-	}
+	rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -88,6 +93,10 @@ func (o *Operation) populateMarkers(zone Zone) error {
 		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order, &completedID, &tmpMarker.Zone)
 		if err != nil {
 			Log.Error(err)
+			continue
+		}
+		// if the marker is not in the zones with which we are concerned AND not assigned to me, skip
+		if !tmpMarker.Zone.inZones(zones) && tmpMarker.AssignedTo != gid {
 			continue
 		}
 		if tmpMarker.State == "" { // enums in sql default to "" if invalid, WTF?

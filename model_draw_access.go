@@ -35,26 +35,44 @@ func (o *Operation) PopulateTeams() error {
 }
 
 // ReadAccess determines if an agent has read acces to an op, if zone limitations are present, return those as well
-func (o *Operation) ReadAccess(gid GoogleID) (bool, Zone) {
+func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
+	var zones []Zone
+	var permitted bool
+
 	if o.ID.IsOwner(gid) {
-		return true, ZoneAll
+		permitted = true
+		zones = append(zones, ZoneAll)
+		return true, zones
 	}
+
 	if len(o.Teams) == 0 {
 		if err := o.PopulateTeams(); err != nil {
 			Log.Error(err)
-			return false, ZoneAll
+			return false, zones
 		}
 	}
 
 	for _, t := range o.Teams {
-		if t.Role == opPermRoleAssignedOnly {
+		switch t.Role {
+		case opPermRoleAssignedOnly:
 			continue
-		}
-		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
-			return true, t.Zone
+		case opPermRoleRead:
+			if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
+				permitted = true
+				zones = append(zones, t.Zone)
+				if t.Zone == ZoneAll {
+					return permitted, zones // fast-path
+				}
+			}
+		case opPermRoleWrite:
+			if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
+				permitted = true
+				zones = append(zones, ZoneAll)
+				return permitted, zones // fast-path
+			}
 		}
 	}
-	return false, ZoneAll
+	return permitted, zones
 }
 
 // WriteAccess determines if an agent has write access to an op
