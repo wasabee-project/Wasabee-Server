@@ -63,6 +63,7 @@ func setupTables() {
 		{"opteams", `CREATE TABLE opteams (teamID varchar(64) NOT NULL, opID varchar(64) NOT NULL, permission enum('read','write','assignedonly') NOT NULL DEFAULT 'read', zone tinyint(4) NOT NULL DEFAULT 0, KEY opID (opID), KEY teamID (teamID), CONSTRAINT fk_ops_teamID FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE, CONSTRAINT fk_teamIDs_op FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"defensivekeys", `CREATE TABLE defensivekeys ( gid varchar(32) NOT NULL, portalID varchar(64) NOT NULL, capID varchar(12) DEFAULT NULL, count int(3) NOT NULL DEFAULT '0', PRIMARY KEY (portalID,gid), KEY fk_dk_gid (gid), CONSTRAINT fk_dk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"deletedops", `CREATE TABLE deletedops ( opID varchar(64) NOT NULL, deletedate datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32), PRIMARY KEY(opID)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
+		{"zone", `CREATE TABLE zone (ID tinyint(4) NOT NULL, opID varchar(64) NOT NULL, name varchar(64) NOT NULL DEFAULT 'zone', PRIMARY KEY (ID,opID), KEY fk_operation_zone (opID), CONSTRAINT fk_operation_zone FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE`},
 	}
 
 	var table string

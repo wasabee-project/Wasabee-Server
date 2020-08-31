@@ -34,8 +34,8 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	if m.Zone == ZoneUnset {
-		m.Zone = ZonePrimary
+	if !m.Zone.Valid() {
+		m.Zone = zonePrimary
 	}
 
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -52,8 +52,8 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	if m.Zone == ZoneUnset {
-		m.Zone = ZonePrimary
+	if !m.Zone.Valid() {
+		m.Zone = zonePrimary
 	}
 
 	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ? zone= ?",
@@ -95,10 +95,6 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 			Log.Error(err)
 			continue
 		}
-		// if the marker is not in the zones with which we are concerned AND not assigned to me, skip
-		if !tmpMarker.Zone.inZones(zones) && tmpMarker.AssignedTo != gid {
-			continue
-		}
 		if tmpMarker.State == "" { // enums in sql default to "" if invalid, WTF?
 			tmpMarker.State = "pending"
 		}
@@ -107,25 +103,36 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 		} else {
 			tmpMarker.AssignedTo = ""
 		}
+
+		// XXX remove this SOON
 		if assignedNick.Valid {
 			tmpMarker.IngressName = assignedNick.String
 		} else {
 			tmpMarker.IngressName = ""
 		}
+
 		if comment.Valid {
 			tmpMarker.Comment = comment.String
 		} else {
 			tmpMarker.Comment = ""
 		}
+
+		// XXX remove this SOON
 		if completedBy.Valid {
 			tmpMarker.CompletedBy = completedBy.String
 		} else {
 			tmpMarker.CompletedBy = ""
 		}
+
 		if completedID.Valid {
 			tmpMarker.CompletedID = GoogleID(completedID.String)
 		} else {
 			tmpMarker.CompletedID = ""
+		}
+
+		// if the marker is not in the zones with which we are concerned AND not assigned to me, skip
+		if !tmpMarker.Zone.inZones(zones) && tmpMarker.AssignedTo != gid {
+			continue
 		}
 		o.Markers = append(o.Markers, tmpMarker)
 	}
@@ -376,6 +383,18 @@ func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
 		pos++
 	}
 	if err = o.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
+// MarkerZone sets a marker's zone -- caller must authorize
+func (m MarkerID) SetZone(o *Operation, z Zone) error {
+	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil

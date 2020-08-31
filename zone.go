@@ -1,97 +1,41 @@
 package wasabee
 
 import (
-	"bytes"
-	"encoding/json"
+	"strconv"
 )
-
-// This is a reasonable pattern for enums. We should convert others to use it
 
 // Zone is the sub-operation zone identifer
 type Zone int
 
 // ZoneAlpha ... is the friendly name for the zones
 const (
-	ZoneUnset Zone = iota
-	ZonePrimary
-	ZoneAlpha
-	ZoneBeta
-	ZoneGamma
-	ZoneDelta
-	ZoneEpsilon
-	ZoneZeta
-	ZoneEta
+	ZoneAll     Zone = 0
+	zonePrimary Zone = 1
+	zoneMax          = 32
 )
-
-const ZoneAll = ZoneUnset
-
-// String is the string represenation for the zone
-func (z Zone) String() string {
-	return zoneToString[z]
-}
-
-var zoneToString = map[Zone]string{
-	ZoneUnset:   "Unset",
-	ZonePrimary: "Primary",
-	ZoneAlpha:   "Alpha",
-	ZoneBeta:    "Beta",
-	ZoneGamma:   "Gamma",
-	ZoneDelta:   "Delta",
-	ZoneEpsilon: "Epison",
-	ZoneZeta:    "Zeta",
-	ZoneEta:     "Eta",
-}
-
-var zoneToID = map[string]Zone{
-	"Unset":   ZoneUnset,
-	"Primary": ZonePrimary,
-	"Alpha":   ZoneAlpha,
-	"Beta":    ZoneBeta,
-	"Gamma":   ZoneGamma,
-	"Delta":   ZoneDelta,
-	"Epsilon": ZoneEpsilon,
-	"Zeta":    ZoneZeta,
-	"Eta":     ZoneEta,
-}
 
 // Valid returns a boolean if the zone is in the valid range
 func (z Zone) Valid() bool {
-	if z >= ZonePrimary && z <= ZoneEta {
+	if z >= zonePrimary && z <= zoneMax {
 		return true
 	}
 	return false
 }
 
-// ZoneFromString takes a string and returns a zone
+// ZoneFromString takes a string and returns a valid zone or zonePrimary if invalid input
 func ZoneFromString(in string) Zone {
-	z := zoneToID[in]
+	i, err := strconv.Atoi(in)
+	if err != nil {
+		Log.Error(err)
+		return zonePrimary
+	}
+
+	z := Zone(i)
+
 	if !z.Valid() {
-		z = ZonePrimary
+		z = zonePrimary
 	}
 	return z
-}
-
-// MarshalJSON marshals the enum as a quoted json string
-func (z Zone) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(zoneToString[z])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
-}
-
-// UnmarshalJSON unmashals a quoted json string to the enum value
-func (z *Zone) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
-	}
-	*z = zoneToID[j]
-	// unmatched == ZoneUnset
-	if *z == ZoneUnset {
-		*z = ZonePrimary
-	}
-	return nil
 }
 
 func (z Zone) inZones(zones []Zone) bool {
@@ -107,4 +51,60 @@ func (z Zone) inZones(zones []Zone) bool {
 	}
 	// no match found, fail
 	return false
+}
+
+// use to map display names to zones
+type ZoneListElement struct {
+	Zone Zone   `json:"id"`
+	Name string `json:"name"`
+}
+
+func defaultZones() []ZoneListElement {
+	zones := []ZoneListElement{
+		{zonePrimary, "Primary"},
+		{2, "Alpha"},
+		{3, "Beta"},
+		{4, "Gamma"},
+		{5, "Delta"},
+		{6, "Epsilon"},
+		{7, "Zeta"},
+		{8, "Eta"},
+		{9, "Theta"},
+	}
+	return zones
+}
+
+func (o *Operation) insertZone(z ZoneListElement) error {
+	_, err := db.Exec("INSERT INTO zone (ID, opID, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = ?", z.Zone, o.ID, z.Name, z.Name)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (o *Operation) populateZones() error {
+	rows, err := db.Query("SELECT ID, name FROM zone WHERE opID = ? ORDER BY ID", o.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer rows.Close()
+	var tmpZone ZoneListElement
+	for rows.Next() {
+		err := rows.Scan(&tmpZone.Zone, &tmpZone.Name)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		o.Zones = append(o.Zones, tmpZone)
+	}
+
+	// use default for old ops w/o set zones
+	if len(o.Zones) == 0 {
+		o.Zones = defaultZones()
+	}
+
+	return nil
 }

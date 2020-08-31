@@ -421,7 +421,7 @@ func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 	op.ID = wasabee.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
-		err = fmt.Errorf("forbidden: write access required swap link order")
+		err = fmt.Errorf("forbidden: write access required to swap link order")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
@@ -429,6 +429,41 @@ func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 
 	link := wasabee.LinkID(vars["link"])
 	err = op.LinkSwap(link)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonStatusOK)
+}
+
+func pDrawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to set zone")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	link := wasabee.LinkID(vars["link"])
+	wasabee.Log.Debug(link)
+	zone := wasabee.ZoneFromString(req.FormValue("zone"))
+
+	err = link.SetZone(&op, zone)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -544,6 +579,39 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	marker := wasabee.MarkerID(vars["marker"])
 	comment := req.FormValue("comment")
 	err = op.MarkerComment(marker, comment)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonStatusOK)
+}
+
+func pDrawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("write access required to set marker zone")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	marker := wasabee.MarkerID(vars["marker"])
+	zone := wasabee.ZoneFromString(req.FormValue("zone"))
+	err = marker.SetZone(&op, zone)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -947,8 +1015,8 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	teamID := wasabee.TeamID(req.FormValue("team"))
-	role := req.FormValue("role")
-	zone := req.FormValue("zone")
+	role := wasabee.OpPermRole(req.FormValue("role"))
+	zone := wasabee.ZoneFromString(req.FormValue("zone"))
 	if teamID == "" || role == "" {
 		err = fmt.Errorf("required value not set to remove permission from op")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "role", role, "zone", zone, "teamID", teamID, "resource", op.ID)
@@ -956,7 +1024,14 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := op.DelPerm(gid, teamID, role); err != nil {
+	if !zone.Valid() {
+		err = fmt.Errorf("zone not set removing permission from op")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "role", role, "zone", zone, "teamID", teamID, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	if err := op.DelPerm(gid, teamID, role, zone); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

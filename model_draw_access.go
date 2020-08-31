@@ -27,7 +27,7 @@ func (o *Operation) PopulateTeams() error {
 		}
 		o.Teams = append(o.Teams, OpPermission{
 			TeamID: TeamID(tid),
-			Role:   opPermRole(role),
+			Role:   OpPermRole(role),
 			Zone:   zone,
 		})
 	}
@@ -179,11 +179,16 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone)
 		return err
 	}
 
-	opp := opPermRole(perm)
+	opp := OpPermRole(perm)
 	if !opp.Valid() {
 		err := fmt.Errorf("unknown permission type")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "perm", perm)
 		return err
+	}
+
+	// zone only applies to read access for now
+	if opp != opPermRoleRead {
+		zone = ZoneAll
 	}
 	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?,?)", teamID, o.ID, opp, zone)
 	if err != nil {
@@ -199,19 +204,27 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone)
 }
 
 // DelPerm removes a permission from an op
-func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm string) error {
+func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Zone) error {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("not current owner of op")
 		Log.Error(err.Error(), "GID", gid, "resource", o.ID)
 		return err
 	}
 
-	_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o.ID, perm)
-	if err != nil {
-		Log.Error(err)
-		return err
+	if perm != opPermRoleRead {
+		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o.ID, perm)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	} else {
+		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? AND zone = ? LIMIT 1", teamID, o.ID, perm, zone)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
 	}
-	if err = o.Touch(); err != nil {
+	if err := o.Touch(); err != nil {
 		Log.Error(err)
 		return err
 	}

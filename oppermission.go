@@ -9,19 +9,19 @@ import (
 // OpPermission is the form of permission
 type OpPermission struct {
 	TeamID TeamID     `json:"teamid"`
-	Role   opPermRole `json:"role"`
+	Role   OpPermRole `json:"role"`
 	Zone   Zone       `json:"zone"`
 }
 
-type opPermRole string
+type OpPermRole string
 
 const (
-	opPermRoleRead         opPermRole = "read"
-	opPermRoleWrite        opPermRole = "write"
-	opPermRoleAssignedOnly opPermRole = "assignedonly"
+	opPermRoleRead         OpPermRole = "read"
+	opPermRoleWrite        OpPermRole = "write"
+	opPermRoleAssignedOnly OpPermRole = "assignedonly"
 )
 
-func (perm opPermRole) Valid() bool {
+func (perm OpPermRole) Valid() bool {
 	switch perm {
 	case opPermRoleRead, opPermRoleWrite, opPermRoleAssignedOnly:
 		return true

@@ -110,6 +110,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/link/{link}/complete", pDrawLinkCompleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/incomplete", pDrawLinkIncompleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/swap", pDrawLinkSwapRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/link/{link}/zone", pDrawLinkZoneRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/assign", pDrawMarkerAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", pDrawMarkerCommentRoute).Methods("POST")
 	// agent acknowledge the assignment
@@ -120,10 +121,10 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", pDrawMarkerIncompleteRoute).Methods("GET")
 	// operator verify completing
 	r.HandleFunc("/draw/{document}/marker/{marker}/reject", pDrawMarkerRejectRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/marker/{marker}/zone", pDrawMarkerZoneRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", pDrawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", pDrawPortalHardnessRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", pDrawPortalKeysRoute).Methods("POST")
-	// r.HandleFunc("/draw/{document}/portal/{portal}", pDrawPortalRoute).Methods("GET")
 
 	// manual location post
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")

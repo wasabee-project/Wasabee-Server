@@ -33,7 +33,7 @@ func (opID OperationID) insertLink(l Link) error {
 	}
 
 	if !l.Zone.Valid() {
-		l.Zone = ZonePrimary
+		l.Zone = zonePrimary
 	}
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -61,7 +61,7 @@ func (opID OperationID) updateLink(l Link) error {
 	}
 
 	if !l.Zone.Valid() {
-		l.Zone = ZonePrimary
+		l.Zone = zonePrimary
 	}
 
 	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?",
@@ -93,10 +93,6 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			Log.Error(err)
 			continue
 		}
-		// this isn't in a zone with which we are concerned AND not assigned to me, skip
-		if !tmpLink.Zone.inZones(zones) && tmpLink.AssignedTo != inGid {
-			continue
-		}
 		if description.Valid {
 			tmpLink.Desc = description.String
 		} else {
@@ -111,6 +107,10 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			tmpLink.Iname = iname.String
 		} else {
 			tmpLink.Iname = ""
+		}
+		// this isn't in a zone with which we are concerned AND not assigned to me, skip
+		if !tmpLink.Zone.inZones(zones) && tmpLink.AssignedTo != inGid {
+			continue
 		}
 		o.Links = append(o.Links, tmpLink)
 	}
@@ -129,15 +129,27 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		gid = ""
 	}
 
-	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, o.ID)
+	result, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	ra, _ := result.RowsAffected()
+	if ra != 1 {
+		Log.Debugw("AssignLink rows changed", "rows", ra, "resource", o.ID, "GID", gid, "link", linkID)
+		return nil
 	}
 
 	// if we are unassigning or not sending messages, we are done
 	if !sendMsg || gid.String() == "" {
 		return nil
+	}
+
+	if len(o.Links) == 0 {
+		o.populateLinks([]Zone{ZoneAll}, gid)
+	}
+	if len(o.OpPortals) == 0 {
+		o.populatePortals()
 	}
 
 	o.ID.firebaseAssignLink(gid, linkID)
@@ -352,4 +364,16 @@ func (o *Operation) getLink(linkID LinkID) (Link, error) {
 	var l Link
 	err := fmt.Errorf("link not found")
 	return l, err
+}
+
+// Zone sets a link's zone -- caller must authorize
+func (l LinkID) SetZone(o *Operation, z Zone) error {
+	if _, err := db.Exec("UPDATE link SET zone = ? WHERE ID = ? AND opID = ?", z, l, o.ID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	if err := o.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
 }

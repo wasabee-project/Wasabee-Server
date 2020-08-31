@@ -13,21 +13,22 @@ type OperationID string
 // Operation is defined by the Wasabee IITC plugin.
 // It is the top level item in the JSON file.
 type Operation struct {
-	ID         OperationID    `json:"ID"`
-	Name       string         `json:"name"`
-	Gid        GoogleID       `json:"creator"` // IITC plugin sending agent name, need to convert to GID
-	Color      string         `json:"color"`   // could be an enum, but freeform is fine for now
-	OpPortals  []Portal       `json:"opportals"`
-	Anchors    []PortalID     `json:"anchors"` // We should let the clients build this themselves
-	Links      []Link         `json:"links"`
-	Blockers   []Link         `json:"blockers"` // we ignore this for now
-	Markers    []Marker       `json:"markers"`
-	Teams      []OpPermission `json:"teamlist"`
-	Modified   string         `json:"modified"`
-	Comment    string         `json:"comment"`
-	Keys       []KeyOnHand    `json:"keysonhand"`
-	Fetched    string         `json:"fetched"`
-	UpdateMode string         `json:"mode,omitempty"`
+	ID         OperationID       `json:"ID"`
+	Name       string            `json:"name"`
+	Gid        GoogleID          `json:"creator"` // IITC plugin sending agent name, need to convert to GID
+	Color      string            `json:"color"`   // could be an enum, but freeform is fine for now
+	OpPortals  []Portal          `json:"opportals"`
+	Anchors    []PortalID        `json:"anchors"` // We should let the clients build this themselves
+	Links      []Link            `json:"links"`
+	Blockers   []Link            `json:"blockers"` // we ignore this for now
+	Markers    []Marker          `json:"markers"`
+	Teams      []OpPermission    `json:"teamlist"`
+	Modified   string            `json:"modified"`
+	Comment    string            `json:"comment"`
+	Keys       []KeyOnHand       `json:"keysonhand"`
+	Fetched    string            `json:"fetched"`
+	UpdateMode string            `json:"mode,omitempty"`
+	Zones      []ZoneListElement `json:"zones"`
 }
 
 // OpStat is a minimal struct to determine if the op has been updated
@@ -116,6 +117,17 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 
 	for _, k := range o.Keys {
 		if err = o.insertKey(k); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
+	// pre 0.18 clients do not send zone data
+	if len(o.Zones) == 0 {
+		o.Zones = defaultZones()
+	}
+	for _, z := range o.Zones {
+		if err = o.insertZone(z); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -298,6 +310,19 @@ func drawOpUpdateWorker(o Operation) error {
 		}
 	}
 
+	// pre 0.18 clients do not send zone info
+	if len(o.Zones) == 0 {
+		o.Zones = defaultZones()
+	}
+
+	// XXX this needs to be updated
+	for _, z := range o.Zones {
+		if err = o.insertZone(z); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
 	// XXX TBD remove unused opkey portals?
 
 	return nil
@@ -435,9 +460,13 @@ func (o *Operation) Populate(gid GoogleID) error {
 		}
 	}
 
+	if err = o.populateZones(); err != nil {
+		Log.Error(err)
+		return err
+	}
+
 	t := time.Now()
 	o.Fetched = fmt.Sprint(t.Format(time.RFC1123))
-
 	return nil
 }
 
