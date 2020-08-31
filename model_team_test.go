@@ -15,7 +15,7 @@ func TestNewTeam(t *testing.T) {
 	}
 	wasabee.Log.Infof("New teamID: %s", teamID.String())
 
-	q, err := gid.AgentInTeam(teamID, false)
+	q, err := gid.AgentInTeam(teamID)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -40,11 +40,7 @@ func TestNewTeam(t *testing.T) {
 	}
 
 	var td wasabee.TeamData
-	err = teamID.FetchTeam(&td, true)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	err = teamID.FetchTeam(&td, false)
+	err = teamID.FetchTeam(&td)
 	if err != nil {
 		t.Error(err.Error())
 	}
