@@ -24,6 +24,10 @@ func (z Zone) Valid() bool {
 
 // ZoneFromString takes a string and returns a valid zone or zonePrimary if invalid input
 func ZoneFromString(in string) Zone {
+	if in == "" {
+		return zonePrimary
+	}
+
 	i, err := strconv.Atoi(in)
 	if err != nil {
 		Log.Error(err)
