@@ -14,7 +14,7 @@ type TeamData struct {
 	RocksComm     string  `json:"rc,omitempty"`
 	RocksKey      string  `json:"rk,omitempty"`
 	JoinLinkToken string  `json:"jlt,omitempty"`
-	telegramChannel int64
+	// telegramChannel int64
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams
@@ -38,21 +38,11 @@ type Agent struct {
 }
 
 // AgentInTeam checks to see if a agent is in a team and enabled.
-// allowOff == true will report if a agent is in a team even if they are Off. That should ONLY be used to display lists of teams to the calling agent.
-func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
-	if team == "owned" {
-		Log.Infow("owned team queried: old buggy IITC plugin", "GID", gid)
-		return true, nil
-	}
-
+func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 	var count string
 
 	var err error
-	if allowOff {
-		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
-	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ? AND state = 'On'", team, gid).Scan(&count)
-	}
+	err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -64,28 +54,15 @@ func (gid GoogleID) AgentInTeam(team TeamID, allowOff bool) (bool, error) {
 }
 
 // FetchTeam populates an entire TeamData struct
-// fetchAll includes agent for whom their state == off, should only be used to display lists to the calling agent
-func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
-	if teamID == "owned" {
-		Log.Info("owned team queried: old buggy IITC plugin")
-		return nil
-	}
-
+func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var state, lat, lon string
 	var tmpU Agent
 
 	var err error
 	var rows *sql.Rows
-	if fetchAll {
-		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
-			"FROM team=t, agentteams=x, agent=u, locations=l "+
-			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY x.state DESC, u.iname", teamID)
-	} else {
-		rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
-			"FROM team=t, agentteams=x, agent=u, locations=l "+
-			"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid "+
-			"AND x.state = 'On' ORDER BY x.state DESC, u.iname", teamID)
-	}
+	rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
+		"FROM team=t, agentteams=x, agent=u, locations=l "+
+		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -146,11 +123,6 @@ func (teamID TeamID) FetchTeam(teamList *TeamData, fetchAll bool) error {
 func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 	var owner GoogleID
 
-	if teamID == "owned" {
-		Log.Infow("owned team queried: old buggy IITC plugin", "GID", gid)
-		return true, nil
-	}
-
 	err := db.QueryRow("SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
 	if err != nil && err == sql.ErrNoRows {
 		Log.Warnw("non-existent team ownership queried", "resource", teamID, "GID", gid)
@@ -159,26 +131,27 @@ func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 		Log.Error(err)
 		return false, err
 	}
-	if gid == owner {
-		return true, nil
+	if gid != owner {
+		return false, nil
 	}
-	return false, nil
+	return true, nil
 }
 
 // NewTeam initializes a new team and returns a teamID
 // the creating gid is added and enabled on that team by default
 func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 	var err error
-	if name == "" {
-		err = fmt.Errorf("attempting to create unnamed team")
-		Log.Warnw(err.Error(), "GID", gid)
-		return "", err
-	}
 	team, err := GenerateSafeName()
 	if err != nil {
 		Log.Error(err)
 		return "", err
 	}
+	if name == "" {
+		err = fmt.Errorf("attempting to create unnamed team: using team ID")
+		Log.Errorw(err.Error(), "GID", gid, "resource", team, "message", err.Error())
+		name = team
+	}
+
 	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm, telegram) VALUES (?,?,?,NULL,NULL,NULL)", team, gid, name)
 	if err != nil {
 		Log.Error(err)
@@ -528,6 +501,7 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 	return nil
 }
 
+// LinkToTelegramChat associates a telegram chat ID with the team, performs authorization
 func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
 	owns, err := gid.OwnsTeam(teamID)
 	if err != nil {
@@ -550,6 +524,7 @@ func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
 	return nil
 }
 
+// TelegramChat returns the associated telegram chat ID for this team, if any
 func (teamID TeamID) TelegramChat() (int64, error) {
 	var chatID int64
 

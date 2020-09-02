@@ -25,6 +25,7 @@ type Marker struct {
 	CompletedID  GoogleID   `json:"completedID"`
 	State        string     `json:"state"`
 	Order        int        `json:"order"`
+	Zone         Zone       `json:"zone"`
 }
 
 // insertMarkers adds a marker to the database
@@ -33,8 +34,12 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order)
+	if !m.Zone.Valid() {
+		m.Zone = zonePrimary
+	}
+
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -47,8 +52,13 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ?",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Type, m.PortalID, MakeNullString(m.Comment))
+	if !m.Zone.Valid() {
+		m.Zone = zonePrimary
+	}
+
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, comment = ?, zone= ?",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone,
+		m.Type, m.PortalID, MakeNullString(m.Comment), m.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -65,20 +75,22 @@ func (opID OperationID) deleteMarker(mid MarkerID) error {
 	return nil
 }
 
-// PopulateMarkers fills in the Markers list for the Operation. No authorization takes place.
-func (o *Operation) populateMarkers() error {
+// PopulateMarkers fills in the Markers list for the Operation.
+func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 	var tmpMarker Marker
 
 	var assignedGid, comment, assignedNick, completedBy, completedID sql.NullString
 
-	rows, err := db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
+	var err error
+	var rows *sql.Rows
+	rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order, &completedID)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order, &completedID, &tmpMarker.Zone)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -91,25 +103,36 @@ func (o *Operation) populateMarkers() error {
 		} else {
 			tmpMarker.AssignedTo = ""
 		}
+
+		// XXX remove this SOON
 		if assignedNick.Valid {
 			tmpMarker.IngressName = assignedNick.String
 		} else {
 			tmpMarker.IngressName = ""
 		}
+
 		if comment.Valid {
 			tmpMarker.Comment = comment.String
 		} else {
 			tmpMarker.Comment = ""
 		}
+
+		// XXX remove this SOON
 		if completedBy.Valid {
 			tmpMarker.CompletedBy = completedBy.String
 		} else {
 			tmpMarker.CompletedBy = ""
 		}
+
 		if completedID.Valid {
 			tmpMarker.CompletedID = GoogleID(completedID.String)
 		} else {
 			tmpMarker.CompletedID = ""
+		}
+
+		// if the marker is not in the zones with which we are concerned AND not assigned to me, skip
+		if !tmpMarker.Zone.inZones(zones) && tmpMarker.AssignedTo != gid {
+			continue
 		}
 		o.Markers = append(o.Markers, tmpMarker)
 	}
@@ -184,7 +207,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		Log.Errorw("send message", "GID", gid, "error", err, "themsg", msg)
 		// do not report send errors up the chain, just log
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -209,7 +232,19 @@ func (o *Operation) MarkerComment(markerID MarkerID, comment string) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
+// Zone updates the marker's zone
+func (m MarkerID) Zone(o *Operation, z Zone) error {
+	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -244,7 +279,7 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -254,7 +289,7 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
 
 // Complete marks a marker as completed
 func (m MarkerID) Complete(o Operation, gid GoogleID) error {
-	if !o.ReadAccess(gid) {
+	if read, _ := o.ReadAccess(gid); !read {
 		err := fmt.Errorf("permission denied")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return err
@@ -263,7 +298,7 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -273,7 +308,7 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) error {
 
 // Incomplete marks a marker as not-completed
 func (m MarkerID) Incomplete(o Operation, gid GoogleID) error {
-	if !o.ReadAccess(gid) {
+	if read, _ := o.ReadAccess(gid); !read {
 		err := fmt.Errorf("permission denied")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return err
@@ -282,7 +317,7 @@ func (m MarkerID) Incomplete(o Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -319,7 +354,7 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -347,7 +382,19 @@ func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
 		}
 		pos++
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
+}
+
+// SetZone sets a marker's zone -- caller must authorize
+func (m MarkerID) SetZone(o *Operation, z Zone) error {
+	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil

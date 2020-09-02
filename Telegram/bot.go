@@ -1,7 +1,6 @@
 package wasabeetelegram
 
 import (
-	// "encoding/json"
 	"fmt"
 	"html/template"
 	"strconv"
@@ -231,7 +230,7 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 						wasabee.Log.Error(err)
 						return err
 					}
-					return err;
+					return err
 				}
 			} else {
 				msg.Text = "specify a single teamID"
@@ -239,7 +238,7 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 					wasabee.Log.Error(err)
 					return err
 				}
-				return nil;
+				return nil
 			}
 			msg.Text = "Successfully linked"
 			if _, err := bot.Send(msg); err != nil {
@@ -251,6 +250,15 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 		}
 	} else {
 		wasabee.Log.Debugw("we should never see these: message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid)
+		admins, err := bot.GetChatAdministrators(tgbotapi.ChatConfig{
+			ChatID: inMsg.Message.Chat.ID,
+		})
+		if err != nil {
+			wasabee.Log.Debug(err)
+		}
+		for _, a := range admins {
+			wasabee.Log.Debugw("administrator", "ID", a.User.ID, "tgname", a.User.UserName)
+		}
 	}
 	return nil
 }
@@ -494,7 +502,7 @@ func SendToTeamChannel(teamID wasabee.TeamID, gid wasabee.GoogleID, message stri
 
 	msg := tgbotapi.NewMessage(chatID, "")
 
-	msg.Text =message 
+	msg.Text = message
 	msg.ParseMode = "MarkDown"
 	if _, err := bot.Send(msg); err != nil {
 		wasabee.Log.Error(err)

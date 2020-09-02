@@ -295,7 +295,7 @@ func authMW(next http.Handler) http.Handler {
 		gid := wasabee.GoogleID(id.(string))
 		if gid.CheckLogout() {
 			wasabee.Log.Debugw("honoring previously requested logout", "GID", gid.String())
-			delete(ses.Values, "nonce")
+			/* delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			ses.Options = &sessions.Options{
 				Path:     "/",
@@ -304,7 +304,7 @@ func authMW(next http.Handler) http.Handler {
 				Secure:   true,
 			}
 			http.Redirect(res, req, "/", http.StatusFound)
-			return
+			return */
 		}
 
 		in, ok := ses.Values["nonce"]

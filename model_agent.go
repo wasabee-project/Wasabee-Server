@@ -386,7 +386,7 @@ func (gid GoogleID) adOps(ad *AgentData) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID AND x.state = 'On' ORDER BY o.Name", gid)
+	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err

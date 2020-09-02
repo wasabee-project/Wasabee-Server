@@ -209,7 +209,7 @@ func (o *Operation) firebaseLinkStatus(linkID LinkID, completed bool) {
 	}
 }
 
-func (o *Operation) firebaseMapChange() {
+func (o *Operation) firebaseMapChange(updateID string) {
 	if !fb.running {
 		return
 	}
@@ -222,6 +222,7 @@ func (o *Operation) firebaseMapChange() {
 			Cmd:    FbccMapChange,
 			TeamID: t.TeamID,
 			OpID:   o.ID,
+			ObjID:  updateID,
 			Msg:    "changed",
 		})
 	}

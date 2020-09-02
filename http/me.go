@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server"
 )
 
@@ -155,6 +156,27 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	ses, err := config.store.Get(req, config.sessionName)
+	delete(ses.Values, "nonce")
+	delete(ses.Values, "id")
+	delete(ses.Values, "loginReq")
+	res.Header().Set("Connection", "close")
+
+	if err != nil {
+		wasabee.Log.Error(err)
+		_ = ses.Save(req, res)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ses.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   -1,
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
+	}
+	_ = ses.Save(req, res)
+
 	gid.Logout("user requested")
 	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprint(res, jsonStatusOK)

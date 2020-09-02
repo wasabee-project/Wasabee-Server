@@ -22,6 +22,7 @@ type Link struct {
 	ThrowOrder int32    `json:"throwOrderPos"`
 	Completed  bool     `json:"completed"`
 	Color      string   `json:"color"`
+	Zone       Zone     `json:"zone"`
 }
 
 // insertLink adds a link to the database
@@ -31,10 +32,12 @@ func (opID OperationID) insertLink(l Link) error {
 		return nil
 	}
 
-	// l.Color = opValidColor(l.Color)
+	if !l.Zone.Valid() {
+		l.Zone = zonePrimary
+	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -57,11 +60,13 @@ func (opID OperationID) updateLink(l Link) error {
 		return nil
 	}
 
-	// l.Color = opValidColor(l.Color)
+	if !l.Zone.Valid() {
+		l.Zone = zonePrimary
+	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color,
-		l.From, l.To, MakeNullString(l.Desc), l.Color)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone,
+		l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -70,18 +75,20 @@ func (opID OperationID) updateLink(l Link) error {
 }
 
 // PopulateLinks fills in the Links list for the Operation. No authorization takes place.
-func (o *Operation) populateLinks() error {
+func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 	var tmpLink Link
 	var description, gid, iname sql.NullString
 
-	rows, err := db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
+	var err error
+	var rows *sql.Rows
+	rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color, l.zone FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname, &tmpLink.Color)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname, &tmpLink.Color, &tmpLink.Zone)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -101,6 +108,10 @@ func (o *Operation) populateLinks() error {
 		} else {
 			tmpLink.Iname = ""
 		}
+		// this isn't in a zone with which we are concerned AND not assigned to me, skip
+		if !tmpLink.Zone.inZones(zones) && tmpLink.AssignedTo != inGid {
+			continue
+		}
 		o.Links = append(o.Links, tmpLink)
 	}
 	return nil
@@ -118,15 +129,27 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		gid = ""
 	}
 
-	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, o.ID)
+	result, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+	ra, _ := result.RowsAffected()
+	if ra != 1 {
+		Log.Debugw("AssignLink rows changed", "rows", ra, "resource", o.ID, "GID", gid, "link", linkID)
+		return nil
 	}
 
 	// if we are unassigning or not sending messages, we are done
 	if !sendMsg || gid.String() == "" {
 		return nil
+	}
+
+	if len(o.Links) == 0 {
+		_ = o.populateLinks([]Zone{ZoneAll}, gid)
+	}
+	if len(o.OpPortals) == 0 {
+		_ = o.populatePortals()
 	}
 
 	o.ID.firebaseAssignLink(gid, linkID)
@@ -175,7 +198,7 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		// do not report send errors up the chain, just log
 	}
 
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -189,7 +212,7 @@ func (o *Operation) LinkDescription(linkID LinkID, desc string) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -202,7 +225,7 @@ func (o *Operation) LinkCompleted(linkID LinkID, completed bool) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -247,7 +270,7 @@ func (o *Operation) LinkOrder(order string, gid GoogleID) error {
 		}
 		pos++
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -262,7 +285,7 @@ func (o *Operation) LinkColor(link LinkID, color string) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -283,7 +306,7 @@ func (o *Operation) LinkSwap(link LinkID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -341,4 +364,16 @@ func (o *Operation) getLink(linkID LinkID) (Link, error) {
 	var l Link
 	err := fmt.Errorf("link not found")
 	return l, err
+}
+
+// SetZone sets a link's zone -- caller must authorize
+func (l LinkID) SetZone(o *Operation, z Zone) error {
+	if _, err := db.Exec("UPDATE link SET zone = ? WHERE ID = ? AND opID = ?", z, l, o.ID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	if _, err := o.Touch(); err != nil {
+		Log.Error(err)
+	}
+	return nil
 }

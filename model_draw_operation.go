@@ -3,10 +3,7 @@ package wasabee
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
-	// "html/template"
-	// "strings"
 	"time"
 )
 
@@ -16,21 +13,22 @@ type OperationID string
 // Operation is defined by the Wasabee IITC plugin.
 // It is the top level item in the JSON file.
 type Operation struct {
-	ID         OperationID    `json:"ID"`
-	Name       string         `json:"name"`
-	Gid        GoogleID       `json:"creator"` // IITC plugin sending agent name, need to convert to GID
-	Color      string         `json:"color"`   // could be an enum, but freeform is fine for now
-	OpPortals  []Portal       `json:"opportals"`
-	Anchors    []PortalID     `json:"anchors"` // We should let the clients build this themselves
-	Links      []Link         `json:"links"`
-	Blockers   []Link         `json:"blockers"` // we ignore this for now
-	Markers    []Marker       `json:"markers"`
-	Teams      []ExtendedTeam `json:"teamlist"`
-	Modified   string         `json:"modified"`
-	Comment    string         `json:"comment"`
-	Keys       []KeyOnHand    `json:"keysonhand"`
-	Fetched    string         `json:"fetched"`
-	UpdateMode string         `json:"mode,omitempty"`
+	ID         OperationID       `json:"ID"`
+	Name       string            `json:"name"`
+	Gid        GoogleID          `json:"creator"` // IITC plugin sending agent name, need to convert to GID
+	Color      string            `json:"color"`   // could be an enum, but freeform is fine for now
+	OpPortals  []Portal          `json:"opportals"`
+	Anchors    []PortalID        `json:"anchors"` // We should let the clients build this themselves
+	Links      []Link            `json:"links"`
+	Blockers   []Link            `json:"blockers"` // we ignore this for now
+	Markers    []Marker          `json:"markers"`
+	Teams      []OpPermission    `json:"teamlist"`
+	Modified   string            `json:"modified"`
+	Comment    string            `json:"comment"`
+	Keys       []KeyOnHand       `json:"keysonhand"`
+	Fetched    string            `json:"fetched"`
+	UpdateMode string            `json:"mode,omitempty"`
+	Zones      []ZoneListElement `json:"zones"`
 }
 
 // OpStat is a minimal struct to determine if the op has been updated
@@ -39,28 +37,6 @@ type OpStat struct {
 	Name     string      `json:"name"`
 	Gid      GoogleID    `json:"creator"`
 	Modified string      `json:"modified"`
-}
-
-// ExtendedTeam is the form of permission
-type ExtendedTeam struct {
-	TeamID TeamID `json:"teamid"`
-	Role   etRole `json:"role"`
-}
-
-type etRole string
-
-const (
-	etRoleRead         etRole = "read"
-	etRoleWrite        etRole = "write"
-	etRoleAssignedOnly etRole = "assignedonly"
-)
-
-func (et etRole) isValid() error {
-	switch et {
-	case etRoleRead, etRoleWrite, etRoleAssignedOnly:
-		return nil
-	}
-	return errors.New("invalid etRole")
 }
 
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
@@ -146,6 +122,17 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 		}
 	}
 
+	// pre 0.18 clients do not send zone data
+	if len(o.Zones) == 0 {
+		o.Zones = defaultZones()
+	}
+	for _, z := range o.Zones {
+		if err = o.insertZone(z); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
 	return nil
 }
 
@@ -163,17 +150,17 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 // Markers are added/removed as necessary -- assignments _are_ overwritten
 //
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
-func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
+func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, error) {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	if opID != o.ID {
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
 		Log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
-		return err
+		return "", err
 	}
 
 	// ignore incoming team data
@@ -181,19 +168,20 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	if !o.WriteAccess(gid) {
 		err := fmt.Errorf("write access denied to op: %s", o.ID)
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	if err := drawOpUpdateWorker(o); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
-	if err := o.Touch(); err != nil {
+	updateID, err := o.Touch()
+	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	return nil
+	return updateID, nil
 }
 
 func drawOpUpdateWorker(o Operation) error {
@@ -323,6 +311,19 @@ func drawOpUpdateWorker(o Operation) error {
 		}
 	}
 
+	// pre 0.18 clients do not send zone info
+	if len(o.Zones) == 0 {
+		o.Zones = defaultZones()
+	}
+
+	// XXX this needs to be updated
+	for _, z := range o.Zones {
+		if err = o.insertZone(z); err != nil {
+			Log.Error(err)
+			continue
+		}
+	}
+
 	// XXX TBD remove unused opkey portals?
 
 	return nil
@@ -400,7 +401,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	if !o.ReadAccess(gid) {
+	read, zones := o.ReadAccess(gid)
+	if !read {
 		if o.AssignedOnlyAccess(gid) {
 			var a Assignments
 			err = gid.Assignments(o.ID, &a)
@@ -423,21 +425,23 @@ func (o *Operation) Populate(gid GoogleID) error {
 		o.Comment = comment.String
 	}
 
+	// start with everything -- filter after the rest is set up
 	if err = o.populatePortals(); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = o.populateMarkers(); err != nil {
+	if err = o.populateMarkers(zones, gid); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = o.populateLinks(); err != nil {
+	if err = o.populateLinks(zones, gid); err != nil {
 		Log.Error(err)
 		return err
 	}
 
+	// built based on available links, zone filtering has taken places
 	if err = o.populateAnchors(); err != nil {
 		Log.Error(err)
 		return err
@@ -447,9 +451,23 @@ func (o *Operation) Populate(gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
+
+	// it wouldn't hurt to filter even for ZoneAll
+	if !ZoneAll.inZones(zones) {
+		// populate portals, links and anchors first
+		if err = o.filterPortals(); err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
+
+	if err = o.populateZones(); err != nil {
+		Log.Error(err)
+		return err
+	}
+
 	t := time.Now()
 	o.Fetched = fmt.Sprint(t.Format(time.RFC1123))
-
 	return nil
 }
 
@@ -466,22 +484,23 @@ func (o *Operation) SetInfo(info string, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
 }
 
 // Touch updates the modified timestamp on an operation
-func (o *Operation) Touch() error {
+func (o *Operation) Touch() (string, error) {
 	_, err := db.Exec("UPDATE operation SET modified = UTC_TIMESTAMP() WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
+	updateID := GenerateID(40)
 
-	o.firebaseMapChange()
-	return nil
+	o.firebaseMapChange(updateID)
+	return updateID, nil
 }
 
 // Stat returns useful info on an operation

@@ -31,19 +31,19 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	safe, err := gid.AgentInTeam(team, false)
+	onteam, err := gid.AgentInTeam(team)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	if !safe {
-		err := fmt.Errorf("team not enabled")
-		wasabee.Log.Infow(err.Error(), "teamID", team, "GID", gid.String(), "message", gid.String()+" requested a team they are on but do not have enabled")
+	if !isowner && !onteam {
+		err := fmt.Errorf("not on team")
+		wasabee.Log.Infow(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	err = team.FetchTeam(&teamList, isowner) // send all to owner
+	err = team.FetchTeam(&teamList)
 	if err == sql.ErrNoRows {
 		err = fmt.Errorf("team not found while fetching member list")
 		wasabee.Log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
