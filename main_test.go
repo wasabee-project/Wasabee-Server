@@ -55,6 +55,8 @@ func TestMain(m *testing.M) {
 		})
 	}*/
 
+	_ = wasabee.LoadWordsFile("testdata/small_wordlist.txt")
+
 	// flag.Parse()
 	exitCode := m.Run()
 	wasabee.Disconnect()
