@@ -146,10 +146,10 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 	}
 
 	if len(o.Links) == 0 {
-		o.populateLinks([]Zone{ZoneAll}, gid)
+		_ = o.populateLinks([]Zone{ZoneAll}, gid)
 	}
 	if len(o.OpPortals) == 0 {
-		o.populatePortals()
+		_ =o.populatePortals()
 	}
 
 	o.ID.firebaseAssignLink(gid, linkID)
