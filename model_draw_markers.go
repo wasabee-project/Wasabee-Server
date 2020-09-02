@@ -207,7 +207,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		Log.Errorw("send message", "GID", gid, "error", err, "themsg", msg)
 		// do not report send errors up the chain, just log
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -232,7 +232,7 @@ func (o *Operation) MarkerComment(markerID MarkerID, comment string) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -244,7 +244,7 @@ func (markerID MarkerID) Zone(o *Operation, z Zone) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -279,7 +279,7 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -298,7 +298,7 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -317,7 +317,7 @@ func (m MarkerID) Incomplete(o Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -354,7 +354,7 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -382,7 +382,7 @@ func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
 		}
 		pos++
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -394,7 +394,7 @@ func (m MarkerID) SetZone(o *Operation, z Zone) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil

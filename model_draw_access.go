@@ -196,7 +196,7 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone)
 		return err
 	}
 
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -224,7 +224,7 @@ func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Z
 			return err
 		}
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 		return err
 	}

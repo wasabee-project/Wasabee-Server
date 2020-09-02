@@ -198,7 +198,7 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		// do not report send errors up the chain, just log
 	}
 
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -212,7 +212,7 @@ func (o *Operation) LinkDescription(linkID LinkID, desc string) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -225,7 +225,7 @@ func (o *Operation) LinkCompleted(linkID LinkID, completed bool) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 
@@ -270,7 +270,7 @@ func (o *Operation) LinkOrder(order string, gid GoogleID) error {
 		}
 		pos++
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -285,7 +285,7 @@ func (o *Operation) LinkColor(link LinkID, color string) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -306,7 +306,7 @@ func (o *Operation) LinkSwap(link LinkID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -372,7 +372,7 @@ func (l LinkID) SetZone(o *Operation, z Zone) error {
 		Log.Error(err)
 		return err
 	}
-	if err := o.Touch(); err != nil {
+	if _, err := o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil

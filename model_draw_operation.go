@@ -150,17 +150,17 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 // Markers are added/removed as necessary -- assignments _are_ overwritten
 //
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
-func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
+func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, error) {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	if opID != o.ID {
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
 		Log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
-		return err
+		return "", err
 	}
 
 	// ignore incoming team data
@@ -168,19 +168,20 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	if !o.WriteAccess(gid) {
 		err := fmt.Errorf("write access denied to op: %s", o.ID)
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	if err := drawOpUpdateWorker(o); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
-	if err := o.Touch(); err != nil {
+	updateID, err := o.Touch()
+	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	return nil
+	return updateID, nil
 }
 
 func drawOpUpdateWorker(o Operation) error {
@@ -483,22 +484,23 @@ func (o *Operation) SetInfo(info string, gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
 }
 
 // Touch updates the modified timestamp on an operation
-func (o *Operation) Touch() error {
+func (o *Operation) Touch() (string, error) {
 	_, err := db.Exec("UPDATE operation SET modified = UTC_TIMESTAMP() WHERE ID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
+	updateID := GenerateID(40)
 
-	o.firebaseMapChange()
-	return nil
+	o.firebaseMapChange(updateID)
+	return updateID, nil
 }
 
 // Stat returns useful info on an operation

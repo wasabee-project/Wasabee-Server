@@ -30,7 +30,7 @@ func randomWord(array []string, try int) string {
 func GenerateID(size int) string {
 	var buf = make([]byte, size)
 
-	for i := 0 ; i < size ; i++ {
+	for i := 0; i < size; i++ {
 		r, err := rand.Int(rand.Reader, big.NewInt(int64(len(characters))))
 		if err != nil {
 			Log.Error(err)
@@ -95,7 +95,7 @@ func loadWords(content []byte) error {
 func GenerateName() string {
 	first := randomWord(words, 0)
 	second := randomWord(words, 0)
-	third := GenerateID(5);
+	third := GenerateID(5)
 
 	return fmt.Sprintf("%s-%s-%s", first, second, third)
 }

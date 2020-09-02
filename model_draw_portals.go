@@ -147,7 +147,7 @@ func (o *Operation) PortalHardness(portalID PortalID, hardness string) error {
 		Log.Infow("ineffectual hardness assign", "resource", o.ID, "portal", portalID)
 		return nil
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil
@@ -169,7 +169,7 @@ func (o *Operation) PortalComment(portalID PortalID, comment string) error {
 		Log.Infow("ineffectual comment assign", "resource", o.ID, "portal", portalID)
 		return nil
 	}
-	if err = o.Touch(); err != nil {
+	if _, err = o.Touch(); err != nil {
 		Log.Error(err)
 	}
 	return nil

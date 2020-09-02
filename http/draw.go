@@ -207,13 +207,17 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	jRaw := json.RawMessage(jBlob)
 
 	// wasabee.Log.Debug(string(jBlob))
-	if err = wasabee.DrawUpdate(wasabee.OperationID(id), jRaw, gid); err != nil {
+	updateID, err := wasabee.DrawUpdate(wasabee.OperationID(id), jRaw, gid)
+	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	wasabee.Log.Infow("updated op", "GID", gid, "resource", id, "message", "updated op")
-	fmt.Fprint(res, jsonStatusOK)
+
+	// updateID := wasabee.GenerateID(40)
+	wasabee.Log.Infow("updated op", "GID", gid, "resource", id, "message", "updated op", "updateID", updateID)
+	ok := fmt.Sprintf("{\"status\":\"ok\", \"updateID\": \"%s\"}", updateID)
+	fmt.Fprint(res, ok)
 }
 
 func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
