@@ -7,7 +7,7 @@ import (
 // Zone is the sub-operation zone identifer
 type Zone int
 
-// ZoneAlpha ... is the friendly name for the zones
+// ZoneAll is a reserved name for the wildcard zone
 const (
 	ZoneAll     Zone = 0
 	zonePrimary Zone = 1
@@ -57,7 +57,7 @@ func (z Zone) inZones(zones []Zone) bool {
 	return false
 }
 
-// use to map display names to zones
+// ZoneListElement is used to map display names to zones
 type ZoneListElement struct {
 	Zone Zone   `json:"id"`
 	Name string `json:"name"`

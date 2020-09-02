@@ -8,13 +8,13 @@ import (
 
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
-	Name            string  `json:"name"`
-	ID              TeamID  `json:"id"`
-	Agent           []Agent `json:"agents"`
-	RocksComm       string  `json:"rc,omitempty"`
-	RocksKey        string  `json:"rk,omitempty"`
-	JoinLinkToken   string  `json:"jlt,omitempty"`
-	telegramChannel int64
+	Name          string  `json:"name"`
+	ID            TeamID  `json:"id"`
+	Agent         []Agent `json:"agents"`
+	RocksComm     string  `json:"rc,omitempty"`
+	RocksKey      string  `json:"rk,omitempty"`
+	JoinLinkToken string  `json:"jlt,omitempty"`
+	// telegramChannel int64
 }
 
 // Agent is the light version of AgentData, containing visible information exported to teams
@@ -501,6 +501,7 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 	return nil
 }
 
+// LinkToTelegramChat associates a telegram chat ID with the team, performs authorization
 func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
 	owns, err := gid.OwnsTeam(teamID)
 	if err != nil {
@@ -523,6 +524,7 @@ func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
 	return nil
 }
 
+// TelegramChat returns the associated telegram chat ID for this team, if any
 func (teamID TeamID) TelegramChat() (int64, error) {
 	var chatID int64
 

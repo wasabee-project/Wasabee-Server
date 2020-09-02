@@ -102,7 +102,8 @@ func TestOperation(t *testing.T) {
 	}
 
 	// run an update
-	if err := wasabee.DrawUpdate(op.ID, newj, gid); err != nil {
+	_, err = wasabee.DrawUpdate(op.ID, newj, gid)
+	if err != nil {
 		t.Error(err.Error())
 	}
 
@@ -179,12 +180,14 @@ func TestDamagedOperation(t *testing.T) {
 
 	j = json.RawMessage(content)
 
-	if err := wasabee.DrawUpdate(opp.ID, j, gid); err != nil {
+	_, err = wasabee.DrawUpdate(opp.ID, j, gid)
+	if err != nil {
 		t.Error(err.Error())
 	}
 
 	wasabee.Log.Info("testing damaged op")
-	if err := wasabee.DrawUpdate("wrong.id", j, gid); err != nil {
+	_, err = wasabee.DrawUpdate("wrong.id", j, gid)
+	if err != nil {
 		wasabee.Log.Info("properly ignored update to 'random'")
 		// t.Error(err.Error())
 	}

@@ -149,7 +149,7 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		_ = o.populateLinks([]Zone{ZoneAll}, gid)
 	}
 	if len(o.OpPortals) == 0 {
-		_ =o.populatePortals()
+		_ = o.populatePortals()
 	}
 
 	o.ID.firebaseAssignLink(gid, linkID)
@@ -366,7 +366,7 @@ func (o *Operation) getLink(linkID LinkID) (Link, error) {
 	return l, err
 }
 
-// Zone sets a link's zone -- caller must authorize
+// SetZone sets a link's zone -- caller must authorize
 func (l LinkID) SetZone(o *Operation, z Zone) error {
 	if _, err := db.Exec("UPDATE link SET zone = ? WHERE ID = ? AND opID = ?", z, l, o.ID); err != nil {
 		Log.Error(err)

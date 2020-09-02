@@ -239,8 +239,8 @@ func (o *Operation) MarkerComment(markerID MarkerID, comment string) error {
 }
 
 // Zone updates the marker's zone
-func (markerID MarkerID) Zone(o *Operation, z Zone) error {
-	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, markerID, o.ID); err != nil {
+func (m MarkerID) Zone(o *Operation, z Zone) error {
+	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -388,7 +388,7 @@ func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
 	return nil
 }
 
-// MarkerZone sets a marker's zone -- caller must authorize
+// SetZone sets a marker's zone -- caller must authorize
 func (m MarkerID) SetZone(o *Operation, z Zone) error {
 	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
 		Log.Error(err)

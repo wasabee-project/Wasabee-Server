@@ -13,6 +13,7 @@ type OpPermission struct {
 	Zone   Zone       `json:"zone"`
 }
 
+// OpPermRole is just a convenience class for the permission string
 type OpPermRole string
 
 const (
@@ -21,6 +22,7 @@ const (
 	opPermRoleAssignedOnly OpPermRole = "assignedonly"
 )
 
+// Valid checks to make sure the OpPermRole is one of the valid options
 func (perm OpPermRole) Valid() bool {
 	switch perm {
 	case opPermRoleRead, opPermRoleWrite, opPermRoleAssignedOnly:
