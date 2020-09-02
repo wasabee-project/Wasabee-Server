@@ -116,7 +116,7 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 	}
 
 	for _, k := range o.Keys {
-		if err = o.insertKey(k); err != nil {
+		if _, err = o.insertKey(k); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -175,13 +175,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 		Log.Error(err)
 		return "", err
 	}
-
-	updateID, err := o.Touch()
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-	return updateID, nil
+	return o.Touch()
 }
 
 func drawOpUpdateWorker(o Operation) error {
@@ -477,17 +471,14 @@ type objectID interface {
 } */
 
 // SetInfo changes the description of an operation
-func (o *Operation) SetInfo(info string, gid GoogleID) error {
+func (o *Operation) SetInfo(info string, gid GoogleID) (string, error) {
 	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
 	_, err := db.Exec("UPDATE operation SET comment = ? WHERE ID = ?", info, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // Touch updates the modified timestamp on an operation

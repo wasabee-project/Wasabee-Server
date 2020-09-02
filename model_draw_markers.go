@@ -151,7 +151,7 @@ func (m MarkerID) String() string {
 }
 
 // AssignMarker assigns a marker to an agent, sending them a message
-func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bool) error {
+func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bool) (string, error) {
 	// unassign
 	if gid == "0" {
 		gid = ""
@@ -160,25 +160,25 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 	_, err := db.Exec("UPDATE marker SET gid = ?, state = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), "assigned", markerID, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	// we are done if not sending messages or unassignming
 	if !sendMessage || gid.String() == "" {
-		return nil
+		return o.Touch()
 	}
 
 	o.ID.firebaseAssignMarker(gid, markerID)
 	m, err := o.getMarker(markerID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	p, err := o.getPortal(m.PortalID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	templateData := struct {
@@ -207,10 +207,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		Log.Errorw("send message", "GID", gid, "error", err, "themsg", msg)
 		// do not report send errors up the chain, just log
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // lookup and return a populated Marker from an id
@@ -227,147 +224,125 @@ func (o *Operation) getMarker(markerID MarkerID) (Marker, error) {
 }
 
 // MarkerComment updates the comment on a marker
-func (o *Operation) MarkerComment(markerID MarkerID, comment string) error {
+func (o *Operation) MarkerComment(markerID MarkerID, comment string) (string, error) {
 	if _, err := db.Exec("UPDATE marker SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), markerID, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err := o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // Zone updates the marker's zone
-func (m MarkerID) Zone(o *Operation, z Zone) error {
+func (m MarkerID) Zone(o *Operation, z Zone) (string, error) {
 	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err := o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // Acknowledge that a marker has been assigned
 // gid must be the assigned agent.
-func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) error {
+func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) (string, error) {
 	var ns sql.NullString
 	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, o.ID).Scan(&ns)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Info(err)
-		return err
+		return "", err
 	}
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("no such marker")
 		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	if !ns.Valid {
 		err = fmt.Errorf("marker not assigned")
 		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	markerGid := GoogleID(ns.String)
 	if gid != markerGid {
 		err = fmt.Errorf("marker assigned to someone else")
 		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	if _, err = db.Exec("UPDATE marker SET state = ? WHERE ID = ? AND opID = ?", "acknowledged", m, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-
 	o.firebaseMarkerStatus(m, "acknowledged")
-	return nil
+	return o.Touch()
 }
 
 // Complete marks a marker as completed
-func (m MarkerID) Complete(o Operation, gid GoogleID) error {
+func (m MarkerID) Complete(o Operation, gid GoogleID) (string, error) {
 	if read, _ := o.ReadAccess(gid); !read {
 		err := fmt.Errorf("permission denied")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	if _, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err := o.Touch(); err != nil {
-		Log.Error(err)
-	}
-
 	o.firebaseMarkerStatus(m, "completed")
-	return nil
+	return o.Touch()
 }
 
 // Incomplete marks a marker as not-completed
-func (m MarkerID) Incomplete(o Operation, gid GoogleID) error {
+func (m MarkerID) Incomplete(o Operation, gid GoogleID) (string, error) {
 	if read, _ := o.ReadAccess(gid); !read {
 		err := fmt.Errorf("permission denied")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	if _, err := db.Exec("UPDATE marker SET state = ?, completedby = NULL WHERE ID = ? AND opID = ?", "assigned", m, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err := o.Touch(); err != nil {
-		Log.Error(err)
-	}
-
 	o.firebaseMarkerStatus(m, "assigned")
-	return nil
+	return o.Touch()
 }
 
 // Reject allows an agent to refuse to take a target
 // gid must be the assigned agent.
-func (m MarkerID) Reject(o *Operation, gid GoogleID) error {
+func (m MarkerID) Reject(o *Operation, gid GoogleID) (string, error) {
 	var ns sql.NullString
 	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, o.ID).Scan(&ns)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("no such marker")
 		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	if !ns.Valid {
 		err = fmt.Errorf("marker not assigned")
 		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	markerGid := GoogleID(ns.String)
 	if gid != markerGid {
 		err = fmt.Errorf("marker assigned to someone else")
 		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
-		return err
+		return "", err
 	}
 	if _, err = db.Exec("UPDATE marker SET state = 'pending', gid = NULL WHERE ID = ? AND opID = ?", m, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-
 	o.firebaseMarkerStatus(m, "pending")
-	return nil
+	return o.Touch()
 }
 
 // MarkerOrder changes the order of the throws for an operation
-func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
+func (o *Operation) MarkerOrder(order string, gid GoogleID) (string, error) {
 	stmt, err := db.Prepare("UPDATE marker SET oporder = ? WHERE opID = ? AND ID = ?")
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	pos := 1
@@ -382,20 +357,14 @@ func (o *Operation) MarkerOrder(order string, gid GoogleID) error {
 		}
 		pos++
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // SetZone sets a marker's zone -- caller must authorize
-func (m MarkerID) SetZone(o *Operation, z Zone) error {
+func (m MarkerID) SetZone(o *Operation, z Zone) (string, error) {
 	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err := o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }

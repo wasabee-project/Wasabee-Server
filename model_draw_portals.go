@@ -132,47 +132,39 @@ func (p PortalID) String() string {
 }
 
 // PortalHardness updates the comment on a portal
-func (o *Operation) PortalHardness(portalID PortalID, hardness string) error {
+func (o *Operation) PortalHardness(portalID PortalID, hardness string) (string, error) {
 	result, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 	ra, err := result.RowsAffected()
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 	if ra != 1 {
 		Log.Infow("ineffectual hardness assign", "resource", o.ID, "portal", portalID)
-		return nil
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // PortalComment updates the comment on a portal
-func (o *Operation) PortalComment(portalID PortalID, comment string) error {
+func (o *Operation) PortalComment(portalID PortalID, comment string) (string, error) {
 	result, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 	ra, err := result.RowsAffected()
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 	if ra != 1 {
 		Log.Infow("ineffectual comment assign", "resource", o.ID, "portal", portalID)
-		return nil
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // PortalDetails returns information about the portal

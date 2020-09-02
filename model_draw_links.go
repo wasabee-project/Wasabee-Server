@@ -123,7 +123,7 @@ func (l LinkID) String() string {
 }
 
 // AssignLink assigns a link to an agent, sending them a message that they have an assignment
-func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error {
+func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) (string, error) {
 	// gid of 0 unsets the assignment
 	if gid == "0" {
 		gid = ""
@@ -132,17 +132,17 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 	result, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 	ra, _ := result.RowsAffected()
 	if ra != 1 {
 		Log.Debugw("AssignLink rows changed", "rows", ra, "resource", o.ID, "GID", gid, "link", linkID)
-		return nil
+		return "", nil
 	}
 
 	// if we are unassigning or not sending messages, we are done
 	if !sendMsg || gid.String() == "" {
-		return nil
+		return "", nil
 	}
 
 	if len(o.Links) == 0 {
@@ -157,19 +157,19 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 	l, err := o.getLink(linkID)
 	if err != nil {
 		Log.Error(err)
-		return nil // just log and bail
+		return "", nil // just log and bail
 	}
 
 	from, err := o.getPortal(l.From)
 	if err != nil {
 		Log.Error(err)
-		return nil // just log and bail
+		return "", nil // just log and bail
 	}
 
 	to, err := o.getPortal(l.To)
 	if err != nil {
 		Log.Error(err)
-		return nil // just log and bail
+		return "", nil // just log and bail
 	}
 
 	link := struct {
@@ -197,40 +197,28 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) error 
 		Log.Error(err)
 		// do not report send errors up the chain, just log
 	}
-
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-
-	return nil
+	return o.Touch()
 }
 
 // LinkDescription updates the description for a link
-func (o *Operation) LinkDescription(linkID LinkID, desc string) error {
+func (o *Operation) LinkDescription(linkID LinkID, desc string) (string, error) {
 	_, err := db.Exec("UPDATE link SET description = ? WHERE ID = ? AND opID = ?", MakeNullString(desc), linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // LinkCompleted updates the completed flag for a link
-func (o *Operation) LinkCompleted(linkID LinkID, completed bool) error {
+func (o *Operation) LinkCompleted(linkID LinkID, completed bool) (string, error) {
 	_, err := db.Exec("UPDATE link SET completed = ? WHERE ID = ? AND opID = ?", completed, linkID, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-
 	o.firebaseLinkStatus(linkID, completed)
-	return nil
+	return o.Touch()
 }
 
 // AssignedTo checks to see if a link is assigned to a particular agent
@@ -249,13 +237,13 @@ func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 }
 
 // LinkOrder changes the order of the throws for an operation
-func (o *Operation) LinkOrder(order string, gid GoogleID) error {
+func (o *Operation) LinkOrder(order string, gid GoogleID) (string, error) {
 	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
 
 	stmt, err := db.Prepare("UPDATE link SET throworder = ? WHERE opID = ? AND ID = ?")
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	pos := 1
@@ -270,46 +258,35 @@ func (o *Operation) LinkOrder(order string, gid GoogleID) error {
 		}
 		pos++
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // LinkColor changes the color of a link in an operation
-func (o *Operation) LinkColor(link LinkID, color string) error {
-	// checked := opValidColor(color)
-
+func (o *Operation) LinkColor(link LinkID, color string) (string, error) {
 	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", color, link, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // LinkSwap changes the direction of a link in an operation
-func (o *Operation) LinkSwap(link LinkID) error {
+func (o *Operation) LinkSwap(link LinkID) (string, error) {
 	var tmpLink Link
 
 	err := db.QueryRow("SELECT fromPortalID, toPortalID FROM link WHERE opID = ? AND ID = ?", o.ID, link).Scan(&tmpLink.From, &tmpLink.To)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
 
 	_, err = db.Exec("UPDATE link SET fromPortalID = ?, toPortalID = ? WHERE ID = ? and opID = ?", tmpLink.To, tmpLink.From, link, o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err = o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }
 
 // Distance calculates the distance between to lat/long pairs
@@ -367,13 +344,10 @@ func (o *Operation) getLink(linkID LinkID) (Link, error) {
 }
 
 // SetZone sets a link's zone -- caller must authorize
-func (l LinkID) SetZone(o *Operation, z Zone) error {
+func (l LinkID) SetZone(o *Operation, z Zone) (string, error) {
 	if _, err := db.Exec("UPDATE link SET zone = ? WHERE ID = ? AND opID = ?", z, l, o.ID); err != nil {
 		Log.Error(err)
-		return err
+		return "", err
 	}
-	if _, err := o.Touch(); err != nil {
-		Log.Error(err)
-	}
-	return nil
+	return o.Touch()
 }

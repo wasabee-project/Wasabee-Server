@@ -207,7 +207,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	jRaw := json.RawMessage(jBlob)
 
 	// wasabee.Log.Debug(string(jBlob))
-	updateID, err := wasabee.DrawUpdate(wasabee.OperationID(id), jRaw, gid)
+	uid, err := wasabee.DrawUpdate(wasabee.OperationID(id), jRaw, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -215,9 +215,8 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// updateID := wasabee.GenerateID(40)
-	wasabee.Log.Infow("updated op", "GID", gid, "resource", id, "message", "updated op", "updateID", updateID)
-	ok := fmt.Sprintf("{\"status\":\"ok\", \"updateID\": \"%s\"}", updateID)
-	fmt.Fprint(res, ok)
+	wasabee.Log.Infow("updated op", "GID", gid, "resource", id, "message", "updated op", "updateID", uid)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
@@ -335,14 +334,14 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	link := wasabee.LinkID(vars["link"])
 	agent := wasabee.GoogleID(req.FormValue("agent"))
-	err = op.AssignLink(link, agent, true)
+	uid, err := op.AssignLink(link, agent, true)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	wasabee.Log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", link, "agent", agent, "message", "assigned link")
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
@@ -368,13 +367,13 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	link := wasabee.LinkID(vars["link"])
 	desc := req.FormValue("desc")
-	err = op.LinkDescription(link, desc)
+	uid, err := op.LinkDescription(link, desc)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
@@ -400,13 +399,13 @@ func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	link := wasabee.LinkID(vars["link"])
 	color := req.FormValue("color")
-	err = op.LinkColor(link, color)
+	uid, err := op.LinkColor(link, color)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
@@ -432,13 +431,13 @@ func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	link := wasabee.LinkID(vars["link"])
-	err = op.LinkSwap(link)
+	uid, err := op.LinkSwap(link)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
@@ -467,13 +466,13 @@ func pDrawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 	wasabee.Log.Debug(link)
 	zone := wasabee.ZoneFromString(req.FormValue("zone"))
 
-	err = link.SetZone(&op, zone)
+	uid, err := link.SetZone(&op, zone)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawLinkCompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -508,13 +507,13 @@ func pDrawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete boo
 		return
 	}
 
-	err = op.LinkCompleted(link, complete)
+	uid, err := op.LinkCompleted(link, complete)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
@@ -548,14 +547,14 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = op.AssignMarker(marker, agent, true)
+	uid, err := op.AssignMarker(marker, agent, true)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	wasabee.Log.Infow("assigned marker", "GID", gid, "resource", op.ID, "marker", marker, "agent", agent, "message", "assigned marker")
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
@@ -582,13 +581,13 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 
 	marker := wasabee.MarkerID(vars["marker"])
 	comment := req.FormValue("comment")
-	err = op.MarkerComment(marker, comment)
+	uid, err := op.MarkerComment(marker, comment)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
@@ -615,13 +614,13 @@ func pDrawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 
 	marker := wasabee.MarkerID(vars["marker"])
 	zone := wasabee.ZoneFromString(req.FormValue("zone"))
-	err = marker.SetZone(&op, zone)
+	uid, err := marker.SetZone(&op, zone)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
@@ -648,13 +647,13 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 
 	portalID := wasabee.PortalID(vars["portal"])
 	comment := req.FormValue("comment")
-	err = op.PortalComment(portalID, comment)
+	uid, err := op.PortalComment(portalID, comment)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
@@ -680,13 +679,13 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	portalID := wasabee.PortalID(vars["portal"])
 	hardness := req.FormValue("hardness")
-	err = op.PortalHardness(portalID, hardness)
+	uid, err := op.PortalHardness(portalID, hardness)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
@@ -710,19 +709,19 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	order := req.FormValue("order")
-	err = op.LinkOrder(order, gid)
+	_, err = op.LinkOrder(order, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	err = op.MarkerOrder(order, gid)
+	uid, err := op.MarkerOrder(order, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
@@ -745,14 +744,13 @@ func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	info := req.FormValue("info")
-	err = op.SetInfo(info, gid)
+	uid, err := op.SetInfo(info, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
@@ -785,14 +783,14 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 
 	// wasabee.Log.Debugw("updating key count", "GID", gid, "resource", op.ID, "portal", portalID, "count", onhand, "capsule", capsule);
 
-	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
+	uid, err := op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -808,14 +806,14 @@ func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.Complete(op, gid)
+	uid, err := markerID.Complete(op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -831,14 +829,14 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.Incomplete(op, gid)
+	uid, err := markerID.Incomplete(op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
@@ -854,13 +852,13 @@ func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.Reject(&op, gid)
+	uid, err := markerID.Reject(&op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
@@ -876,14 +874,14 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	err = markerID.Acknowledge(&op, gid)
+	uid, err := markerID.Acknowledge(&op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	wasabee.Log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker")
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
@@ -988,13 +986,14 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	// Pass in "Zeta" and get a zone back... defaults to "All"
 	zone := wasabee.ZoneFromString(req.FormValue("zone"))
 
-	if err := op.AddPerm(gid, teamID, role, zone); err != nil {
+	uid, err := op.AddPerm(gid, teamID, role, zone)
+	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -1035,11 +1034,16 @@ func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := op.DelPerm(gid, teamID, role, zone); err != nil {
+	uid, err := op.DelPerm(gid, teamID, role, zone)
+	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(res, jsonStatusOK)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+
+func jsonOKUpdateID(uid string) string {
+	return fmt.Sprintf("{\"status\":\"ok\", \"updateID\": \"%s\"}", uid)
 }
