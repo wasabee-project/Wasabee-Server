@@ -163,8 +163,10 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 		return "", err
 	}
 
-	// ignore incoming team data
+	// ignore incoming team data -- only trust what is stored in DB
 	o.Teams = nil
+
+	// this repopulates the team data with what is in the DB
 	if !o.WriteAccess(gid) {
 		err := fmt.Errorf("write access denied to op: %s", o.ID)
 		Log.Error(err)
@@ -179,9 +181,9 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 }
 
 func drawOpUpdateWorker(o Operation) error {
-	// designMode := true
+	designMode := true
 	if o.UpdateMode == "active" {
-		// designMode = false
+		designMode = false
 		Log.Debugf("activeMode update")
 	}
 
@@ -209,7 +211,7 @@ func drawOpUpdateWorker(o Operation) error {
 		}
 		curPortals[pid] = pid
 	}
-	// update/add portals
+	// update/add portals that were sent in the update
 	portalMap := make(map[PortalID]Portal)
 	for _, p := range o.OpPortals {
 		portalMap[p.ID] = p
@@ -219,7 +221,7 @@ func drawOpUpdateWorker(o Operation) error {
 		}
 		delete(curPortals, p.ID)
 	}
-	// clear portals that are no longer used
+	// clear portals that were not sent in this update
 	for k := range curPortals {
 		err := o.ID.deletePortal(k)
 		if err != nil {
@@ -244,18 +246,20 @@ func drawOpUpdateWorker(o Operation) error {
 		}
 		curMarkers[mid] = mid
 	}
+	// add/update markers sent in this update
 	for _, m := range o.Markers {
 		_, ok := portalMap[m.PortalID]
 		if !ok {
 			Log.Warnw("portal missing from portal list", "marker", m.PortalID, "resource", o.ID)
 			continue
 		}
-		if err = o.ID.updateMarker(m); err != nil {
+		if err = o.ID.updateMarker(m, designMode); err != nil {
 			Log.Error(err)
 			continue
 		}
 		delete(curMarkers, m.ID)
 	}
+	// remove all markers not sent in this update
 	for k := range curMarkers {
 		err = o.ID.deleteMarker(k)
 		if err != nil {
@@ -291,7 +295,7 @@ func drawOpUpdateWorker(o Operation) error {
 			Log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
 			continue
 		}
-		if err = o.ID.updateLink(l); err != nil {
+		if err = o.ID.updateLink(l, designMode); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -309,8 +313,7 @@ func drawOpUpdateWorker(o Operation) error {
 	if len(o.Zones) == 0 {
 		o.Zones = defaultZones()
 	}
-
-	// XXX this needs to be updated
+	// update and insert are the saem
 	for _, z := range o.Zones {
 		if err = o.insertZone(z); err != nil {
 			Log.Error(err)
