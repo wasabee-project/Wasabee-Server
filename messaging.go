@@ -33,7 +33,7 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 	// XXX loop through valid, trying until one works
 	ok, err := gid.SendMessageVia(message, bus)
 	if err != nil {
-		Log.Infow("error sending message", "GID", gid, "bus", bus, "error", err.Error(), "message", message)
+		Log.Errorw("error sending message", "GID", gid, "bus", bus, "error", err.Error(), "message", message)
 		return false, err
 	}
 	if !ok {
@@ -51,13 +51,7 @@ func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
 		err := fmt.Errorf("no such messaging bus: [%s]", bus)
 		return false, err
 	}
-
-	ok, err := mc.senders[bus](gid, message)
-	if err != nil {
-		Log.Error(err)
-		return false, err
-	}
-	return ok, nil
+	return mc.senders[bus](gid, message)
 }
 
 // CanSendTo checks to see if a message is permitted to be sent between these users

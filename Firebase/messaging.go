@@ -151,6 +151,7 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 	data := map[string]string{
 		"opID": string(fb.OpID),
 		"msg":  fb.Msg,
+		"updateID": fb.ObjID,
 		"cmd":  fb.Cmd.String(),
 	}
 

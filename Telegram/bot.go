@@ -422,16 +422,20 @@ func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	tgid64 := int64(tgid)
 	if tgid64 == 0 {
 		wasabee.Log.Debugw("TelegramID not found", "subsystem", "Telegram", "GID", gid)
-		return false, err
+		return false, nil
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
 	msg.Text = message
 	msg.ParseMode = "MarkDown"
 
 	_, err = bot.Send(msg)
-	if err != nil {
+	if err != nil && err.Error() != "Bad Request: chat not found" {
 		wasabee.Log.Error(err)
 		return false, err
+	}
+	if err != nil && err.Error() == "Bad Request: chat not found" {
+		wasabee.Log.Debugw(err.Error(), "gid", gid, "tgid", tgid)
+		return false, nil 
 	}
 
 	wasabee.Log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
