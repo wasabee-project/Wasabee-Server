@@ -435,7 +435,7 @@ func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	}
 	if err != nil && err.Error() == "Bad Request: chat not found" {
 		wasabee.Log.Debugw(err.Error(), "gid", gid, "tgid", tgid)
-		return false, nil 
+		return false, nil
 	}
 
 	wasabee.Log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
