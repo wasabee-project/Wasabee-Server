@@ -247,6 +247,7 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 				return err
 			}
 		case "status":
+			msg.ParseMode = "Markdown"
 			teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
 			if err != nil {
 				wasabee.Log.Error(err)
@@ -300,6 +301,46 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 							a = fmt.Sprintf("@%s", tg)
 						}
 						b.WriteString(fmt.Sprintf("%d / [%s](http://maps.google.com/?q=%s,%s) / %s / %s / %s\n", m.Order, p.Name, p.Lat, p.Lon, wasabee.NewMarkerType(m.Type), a, m.State))
+					}
+				}
+				msg.Text = b.String()
+				if _, err := bot.Send(msg); err != nil {
+					wasabee.Log.Error(err)
+					continue
+				}
+			}
+		case "unassigned":
+			msg.ParseMode = "Markdown"
+			teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+			if err != nil {
+				wasabee.Log.Error(err)
+				if _, err := bot.Send(msg); err != nil {
+					wasabee.Log.Error(err)
+					return err
+				}
+				return err
+			}
+			ops, err := teamID.Operations()
+			if err != nil {
+				wasabee.Log.Error(err)
+				return err
+			}
+			for _, p := range ops {
+				var o wasabee.Operation
+				o.ID = p.OpID
+				err := o.Populate(gid)
+				if err != nil {
+					wasabee.Log.Error(err)
+					continue
+				}
+				var b bytes.Buffer
+				name, _ := teamID.Name()
+				b.WriteString(fmt.Sprintf("Operation: %s (team: %s)\n", o.Name, name))
+				b.WriteString("Order / Portal / Action\n")
+				for _, m := range o.Markers {
+					if m.State == "pending" {
+						p, _ := o.PortalDetails(m.PortalID, gid)
+						b.WriteString(fmt.Sprintf("%d / [%s](http://maps.google.com/?q=%s,%s) / %s\n", m.Order, p.Name, p.Lat, p.Lon, wasabee.NewMarkerType(m.Type)))
 					}
 				}
 				msg.Text = b.String()
