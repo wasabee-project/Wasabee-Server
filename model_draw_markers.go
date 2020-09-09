@@ -379,3 +379,35 @@ func (m MarkerID) SetZone(o *Operation, z Zone) (string, error) {
 	}
 	return o.Touch()
 }
+
+func NewMarkerType(old MarkerType) string {
+	switch old {
+	case "CapturePortalMarker":
+		return "capture"
+	case "LetDecayPortalAlert":
+		return "decay"
+	case "ExcludeMarker":
+		return "exclude"
+	case "DestroyPortalAlert":
+		return "destroy"
+	case "FarmPortalMarker":
+		return "farm"
+	case "GotoPortalMarker":
+		return "goto"
+	case "GetKeyPortalMarker":
+		return "key"
+	case "CreateLinkAlert":
+		return "link"
+	case "MeetAgentPortalMarker":
+		return "meetagent"
+	case "OtherPortalAlert":
+		return "other"
+	case "RechargePortalAlert":
+		return "recharge"
+	case "UpgradePortalAlert":
+		return "upgrade"
+	case "UseVirusPortalAlert":
+		return "virus"
+	}
+	return old.String()
+}

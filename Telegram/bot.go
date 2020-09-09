@@ -1,6 +1,7 @@
 package wasabeetelegram
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"strconv"
@@ -157,7 +158,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		return err
 	}
 	msg.Text = defaultReply
-	msg.ParseMode = "MarkDown"
+	msg.ParseMode = "MarkdownV2"
 
 	if gid == "" {
 		wasabee.Log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
@@ -214,7 +215,7 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 		return err
 	}
 	msg.Text = defaultReply
-	msg.ParseMode = "MarkDown"
+	msg.ParseMode = "MarkdownV2"
 
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
@@ -245,14 +246,68 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 				wasabee.Log.Error(err)
 				return err
 			}
-		case "assignments":
+		case "status":
 			teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+			if err != nil {
+				wasabee.Log.Error(err)
+				msg.Text = err.Error()
+				if _, err := bot.Send(msg); err != nil {
+					wasabee.Log.Error(err)
+					return err
+				}
+				return err
+			}
+			name, _ := teamID.Name()
+			msg.Text = fmt.Sprintf("Linked to team: %s (%s)", name, teamID)
+			if _, err := bot.Send(msg); err != nil {
+				wasabee.Log.Error(err)
+				return err
+			}
+		case "assignments":
+			msg.ParseMode = "Markdown"
+			teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+			if err != nil {
+				wasabee.Log.Error(err)
+				if _, err := bot.Send(msg); err != nil {
+					wasabee.Log.Error(err)
+					return err
+				}
+				return err
+			}
+			ops, err := teamID.Operations()
 			if err != nil {
 				wasabee.Log.Error(err)
 				return err
 			}
-			wasabee.Log.Debug(teamID)
-			// GET LIST OF OPS
+			for _, p := range ops {
+				var o wasabee.Operation
+				o.ID = p.OpID
+				err := o.Populate(gid)
+				if err != nil {
+					wasabee.Log.Error(err)
+					continue
+				}
+				var b bytes.Buffer
+				name, _ := teamID.Name()
+				b.WriteString(fmt.Sprintf("Operation: %s (team: %s)\n", o.Name, name))
+				b.WriteString("Order / Portal / Action / Agent / State\n")
+				for _, m := range o.Markers {
+					if m.State != "pending" && m.AssignedTo != "" {
+						p, _ := o.PortalDetails(m.PortalID, gid)
+						a, _ := m.AssignedTo.IngressNameTeam(teamID)
+						tg, _ := m.AssignedTo.TelegramName()
+						if tg != "" {
+							a = fmt.Sprintf("@%s", tg)
+						}
+						b.WriteString(fmt.Sprintf("%d / [%s](http://maps.google.com/?q=%s,%s) / %s / %s / %s\n", m.Order, p.Name, p.Lat, p.Lon, wasabee.NewMarkerType(m.Type), a, m.State))
+					}
+				}
+				msg.Text = b.String()
+				if _, err := bot.Send(msg); err != nil {
+					wasabee.Log.Error(err)
+					continue
+				}
+			}
 		default:
 			wasabee.Log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 		}
@@ -434,7 +489,7 @@ func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
 	msg.Text = message
-	msg.ParseMode = "MarkDown"
+	msg.ParseMode = "MarkdownV2"
 
 	_, err = bot.Send(msg)
 	if err != nil && err.Error() != "Bad Request: chat not found" {
@@ -515,7 +570,7 @@ func SendToTeamChannel(teamID wasabee.TeamID, gid wasabee.GoogleID, message stri
 	msg := tgbotapi.NewMessage(chatID, "")
 
 	msg.Text = message
-	msg.ParseMode = "MarkDown"
+	msg.ParseMode = "MarkdownV2"
 	if _, err := bot.Send(msg); err != nil {
 		wasabee.Log.Error(err)
 		return err

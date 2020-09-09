@@ -2,9 +2,10 @@ package wasabee
 
 // OpPermission is the form of permission
 type OpPermission struct {
-	TeamID TeamID     `json:"teamid"`
-	Role   OpPermRole `json:"role"`
-	Zone   Zone       `json:"zone"`
+	OpID   OperationID `json:"opid"`
+	TeamID TeamID      `json:"teamid"`
+	Role   OpPermRole  `json:"role"`
+	Zone   Zone        `json:"zone"`
 }
 
 // OpPermRole is just a convenience class for the permission string

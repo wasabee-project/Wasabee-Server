@@ -88,6 +88,22 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 	return tgid, nil
 }
 
+// TelegramName returns a telegram friendly name for a gid
+func (gid GoogleID) TelegramName() (string, error) {
+	var tgName sql.NullString
+
+	row := db.QueryRow("SELECT telegramName FROM telegram WHERE gid = ?", gid)
+	err := row.Scan(&tgName)
+	if (err != nil && err == sql.ErrNoRows) || !tgName.Valid {
+		return "", nil
+	}
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return tgName.String, nil
+}
+
 // InitAgent establishes a new telegram user in the database and begins the verification process
 func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
 	authtoken := GenerateName()

@@ -26,6 +26,7 @@ func (o *Operation) PopulateTeams() error {
 			continue
 		}
 		o.Teams = append(o.Teams, OpPermission{
+			OpID:   o.ID,
 			TeamID: TeamID(tid),
 			Role:   OpPermRole(role),
 			Zone:   zone,
@@ -220,4 +221,32 @@ func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Z
 		}
 	}
 	return o.Touch()
+}
+
+// Operations returns a slice containing all the OpPermissions associated with this team
+func (t TeamID) Operations() ([]OpPermission, error) {
+	var perms []OpPermission
+	rows, err := db.Query("SELECT opID, permission, zone FROM opteams WHERE teamID = ?", t)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Error(err)
+		return perms, err
+	}
+	defer rows.Close()
+
+	var opid, role string
+	var zone Zone
+	for rows.Next() {
+		err := rows.Scan(&opid, &role, &zone)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		perms = append(perms, OpPermission{
+			OpID:   OperationID(opid),
+			TeamID: t,
+			Role:   OpPermRole(role),
+			Zone:   zone,
+		})
+	}
+	return perms, nil
 }
