@@ -12,7 +12,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 )
 
-func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
+func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -64,7 +64,7 @@ func pDrawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, string(data))
 }
 
-func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
+func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	vars := mux.Vars(req)
 	id := vars["document"]
@@ -136,7 +136,7 @@ func pDrawGetRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, string(s))
 }
 
-func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
+func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -169,7 +169,7 @@ func pDrawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
-func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
+func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
@@ -219,7 +219,7 @@ func pDrawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
+func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	vars := mux.Vars(req)
@@ -253,7 +253,7 @@ func pDrawChownRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
-func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
+func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
 
@@ -311,7 +311,7 @@ func pDrawStockRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, url, http.StatusFound)
 }
 
-func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
+func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -344,7 +344,7 @@ func pDrawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
+func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -376,7 +376,7 @@ func pDrawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
+func drawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -408,7 +408,7 @@ func pDrawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
+func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -440,7 +440,7 @@ func pDrawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
+func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -475,15 +475,15 @@ func pDrawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawLinkCompleteRoute(res http.ResponseWriter, req *http.Request) {
-	pDrawLinkCompRoute(res, req, true)
+func drawLinkCompleteRoute(res http.ResponseWriter, req *http.Request) {
+	drawLinkCompRoute(res, req, true)
 }
 
-func pDrawLinkIncompleteRoute(res http.ResponseWriter, req *http.Request) {
-	pDrawLinkCompRoute(res, req, false)
+func drawLinkIncompleteRoute(res http.ResponseWriter, req *http.Request) {
+	drawLinkCompRoute(res, req, false)
 }
 
-func pDrawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool) {
+func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -516,7 +516,7 @@ func pDrawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete boo
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
+func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -557,7 +557,7 @@ func pDrawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
+func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -590,7 +590,7 @@ func pDrawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
+func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -623,7 +623,7 @@ func pDrawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
+func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -656,7 +656,7 @@ func pDrawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
+func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -688,7 +688,7 @@ func pDrawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
+func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -724,7 +724,7 @@ func pDrawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
+func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -753,7 +753,7 @@ func pDrawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
+func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -793,7 +793,7 @@ func pDrawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
+func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -816,7 +816,7 @@ func pDrawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
+func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -839,7 +839,7 @@ func pDrawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
+func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -861,7 +861,7 @@ func pDrawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
+func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -884,7 +884,7 @@ func pDrawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
+func drawStatRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	_, err := getAgentID(req)
 	if err != nil {
@@ -907,7 +907,7 @@ func pDrawStatRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, string(data))
 }
 
-func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
+func drawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -954,7 +954,7 @@ func pDrawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 	http.Redirect(res, req, lls, http.StatusFound)
 }
 
-func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
+func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -996,7 +996,7 @@ func pDrawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func pDrawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
+func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
