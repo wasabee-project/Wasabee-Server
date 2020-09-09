@@ -1,11 +1,5 @@
 package wasabee
 
-/*
-import (
-	"encoding/json"
-	"fmt"
-) */
-
 // OpPermission is the form of permission
 type OpPermission struct {
 	TeamID TeamID     `json:"teamid"`
@@ -31,5 +25,3 @@ func (perm OpPermRole) Valid() bool {
 		return false
 	}
 }
-
-// do we need marshal/unmarshal calls?

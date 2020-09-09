@@ -245,6 +245,14 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 				wasabee.Log.Error(err)
 				return err
 			}
+		case "assignments":
+			teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+			if err != nil {
+				wasabee.Log.Error(err)
+				return err
+			}
+			wasabee.Log.Debug(teamID)
+			// GET LIST OF OPS
 		default:
 			wasabee.Log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 		}

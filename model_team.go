@@ -539,3 +539,20 @@ func (teamID TeamID) TelegramChat() (int64, error) {
 	}
 	return chatID, nil
 }
+
+// ChatToTeam takes a chatID and returns a linked teamID
+func ChatToTeam(chat int64) (TeamID, error) {
+	var t TeamID
+
+	err := db.QueryRow("SELECT teamID FROM team WHERE telegram = ?", chat).Scan(&t)
+	if err != nil && err != sql.ErrNoRows {
+		Log.Error(err)
+		return t, err
+	}
+	if err == sql.ErrNoRows {
+		err := fmt.Errorf("attempt to get teamID for non-linked chat")
+		Log.Debug(err)
+		return t, err
+	}
+	return t, nil
+}

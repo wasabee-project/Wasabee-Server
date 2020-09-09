@@ -46,35 +46,35 @@ func TestOperation(t *testing.T) {
 
 	// make some changes
 	// 1956808f69fc4d889bc1861315149fa2.16 65f4a7f1954e43279b07f10f419ae5cd.16
-	err = opp.KeyOnHand(gid, wasabee.PortalID("1956808f69fc4d889bc1861315149fa2.16"), 7, "")
+	_, err = opp.KeyOnHand(gid, wasabee.PortalID("1956808f69fc4d889bc1861315149fa2.16"), 7, "")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	err = opp.KeyOnHand(gid, wasabee.PortalID("65f4a7f1954e43279b07f10f419ae5cd.16"), 99, "cap")
+	_, err = opp.KeyOnHand(gid, wasabee.PortalID("65f4a7f1954e43279b07f10f419ae5cd.16"), 99, "cap")
 	if err != nil {
 		t.Error(err.Error())
 	}
 
 	// should log "ineffectual"
-	err = opp.KeyOnHand(gid, wasabee.PortalID("badportalid.01"), 99, "cap")
+	_, err = opp.KeyOnHand(gid, wasabee.PortalID("badportalid.01"), 99, "cap")
 	if err == nil {
 		t.Error("failed to detect bad portal for keyonhand")
 	}
 
-	err = opp.PortalHardness("65f4a7f1954e43279b07f10f419ae5cd.16", "booster required")
+	_, err = opp.PortalHardness("65f4a7f1954e43279b07f10f419ae5cd.16", "booster required")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	err = opp.PortalHardness("1956808f69fc4d889bc1861315149fa2.16", "BGAN only")
+	_, err = opp.PortalHardness("1956808f69fc4d889bc1861315149fa2.16", "BGAN only")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	err = opp.PortalHardness("badportalid.02", "BGAN only")
+	_, err = opp.PortalHardness("badportalid.02", "BGAN only")
 	/* if err == nil {
 		t.Error("failed to detect bad portal for hardness")
 	} */
 
-	err = opp.PortalComment("1956808f69fc4d889bc1861315149fa2.16", "testing a comment")
+	_, err = opp.PortalComment("1956808f69fc4d889bc1861315149fa2.16", "testing a comment")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -112,7 +112,7 @@ func TestOperation(t *testing.T) {
 	if err := opp.Populate(gid); err != nil {
 		t.Error(err.Error())
 	}
-	newj, err = json.MarshalIndent(opp, "", "  ")
+	_, err = json.MarshalIndent(opp, "", "  ")
 	if err != nil {
 		t.Error(err.Error())
 	}

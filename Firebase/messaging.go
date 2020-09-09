@@ -149,10 +149,10 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 
 	// webpush := webpushConfig()
 	data := map[string]string{
-		"opID": string(fb.OpID),
-		"msg":  fb.Msg,
+		"opID":     string(fb.OpID),
+		"msg":      fb.Msg,
 		"updateID": fb.ObjID,
-		"cmd":  fb.Cmd.String(),
+		"cmd":      fb.Cmd.String(),
 	}
 
 	msg := messaging.Message{
