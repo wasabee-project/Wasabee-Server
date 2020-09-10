@@ -524,6 +524,18 @@ func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
 	return nil
 }
 
+// UnlinkFromTelegramChat disassociates a telegram chat ID from the team -- not authenticated since bot removal from chat is enough
+func (teamID TeamID) UnlinkFromTelegramChat(chat int64) error {
+	_, err := db.Exec("UPDATE team SET telegram = NULL WHERE teamID = ? AND telegram = ?", teamID, chat)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	Log.Infow("unlinked team from telegram", "resource", teamID, "chatID", chat)
+	return nil
+}
+
 // TelegramChat returns the associated telegram chat ID for this team, if any
 func (teamID TeamID) TelegramChat() (int64, error) {
 	var chatID int64
