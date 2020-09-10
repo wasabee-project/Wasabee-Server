@@ -162,7 +162,7 @@ func (m MarkerID) String() string {
 }
 
 // AssignMarker assigns a marker to an agent, sending them a message
-func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bool) (string, error) {
+func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bool, sender GoogleID) (string, error) {
 	// unassign
 	if gid == "0" {
 		gid = ""
@@ -192,6 +192,8 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		return "", err
 	}
 
+	senderName, _ := sender.IngressName()
+
 	templateData := struct {
 		PortalID PortalID
 		Name     string
@@ -205,7 +207,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		Lat:      p.Lat,
 		Lon:      p.Lon,
 		Type:     m.Type.String(),
-		Sender:   "unavailable",
+		Sender:   senderName,
 	}
 
 	msg, err := gid.ExecuteTemplate("target", templateData)
