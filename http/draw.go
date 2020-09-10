@@ -547,7 +547,7 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.AssignMarker(marker, agent, true)
+	uid, err := op.AssignMarker(marker, agent, true, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
