@@ -56,9 +56,9 @@ func (o *Operation) populateKeys() error {
 		Log.Error(err)
 		return err
 	}
-	defer rows.Close()
 
 	var cap sql.NullString
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&k.ID, &k.Gid, &k.Onhand, &cap)
 		if err != nil {

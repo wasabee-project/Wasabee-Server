@@ -285,10 +285,10 @@ func (gid GoogleID) adTeams(ad *AgentData) error {
 		Log.Error(err)
 		return err
 	}
-	defer rows.Close()
 
 	var rc, rk sql.NullString
 	var adteam AdTeam
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &rc, &rk, &adteam.Owner)
 		if err != nil {
@@ -318,10 +318,10 @@ func (gid GoogleID) adOwnedTeams(ad *AgentData) error {
 		Log.Error(err)
 		return err
 	}
-	defer row.Close()
 
 	var rc, rockskey sql.NullString
 	var ownedTeam AdTeam
+	defer row.Close()
 	for row.Next() {
 		err := row.Scan(&ownedTeam.ID, &ownedTeam.Name, &rc, &rockskey)
 		if err != nil {
@@ -551,9 +551,9 @@ func RevalidateEveryone() error {
 		Log.Error(err)
 		return err
 	}
-	defer rows.Close()
 
 	var gid GoogleID
+	defer rows.Close()
 	for rows.Next() {
 		if err = rows.Scan(&gid); err != nil {
 			Log.Error(err)

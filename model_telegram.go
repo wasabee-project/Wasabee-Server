@@ -48,8 +48,7 @@ func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 	var gid GoogleID
 	var verified bool
 
-	row := db.QueryRow("SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid)
-	err := row.Scan(&gid, &verified)
+	err := db.QueryRow("SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid).Scan(&gid, &verified)
 	if err != nil && err == sql.ErrNoRows {
 		return "", false, nil
 	}
@@ -76,8 +75,7 @@ func (tgid TelegramID) Gid() (GoogleID, error) {
 func (gid GoogleID) TelegramID() (TelegramID, error) {
 	var tgid TelegramID
 
-	row := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid)
-	err := row.Scan(&tgid)
+	err := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid).Scan(&tgid)
 	if err != nil && err == sql.ErrNoRows {
 		return 0, nil
 	}
@@ -92,8 +90,7 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 func (gid GoogleID) TelegramName() (string, error) {
 	var tgName sql.NullString
 
-	row := db.QueryRow("SELECT telegramName FROM telegram WHERE gid = ?", gid)
-	err := row.Scan(&tgName)
+	err := db.QueryRow("SELECT telegramName FROM telegram WHERE gid = ?", gid).Scan(&tgName)
 	if (err != nil && err == sql.ErrNoRows) || !tgName.Valid {
 		return "", nil
 	}

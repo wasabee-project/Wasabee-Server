@@ -41,8 +41,7 @@ type Agent struct {
 func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 	var count string
 
-	var err error
-	err = db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
+	err := db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -58,9 +57,8 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var state, lat, lon string
 	var tmpU Agent
 
-	var err error
 	var rows *sql.Rows
-	rows, err = db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
+	rows, err := db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
 		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
 	if err != nil {
@@ -184,9 +182,9 @@ func (teamID TeamID) Delete() error {
 		Log.Error(err)
 		return err
 	}
-	defer rows.Close()
 
 	var gid GoogleID
+	defer rows.Close()
 	for rows.Next() {
 		err = rows.Scan(&gid)
 		if err != nil {
@@ -262,8 +260,8 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		Log.Error(err)
 		return err
 	}
-	defer rows.Close()
 	var opID OperationID
+	defer rows.Close()
 	for rows.Next() {
 		err = rows.Scan(&opID)
 		if err != nil {
@@ -414,6 +412,8 @@ func (gid GoogleID) teamList() []TeamID {
 		Log.Error(err)
 		return x
 	}
+
+	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&tid); err != nil {
 			Log.Error(err)

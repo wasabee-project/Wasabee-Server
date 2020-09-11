@@ -15,10 +15,10 @@ func (o *Operation) PopulateTeams() error {
 		Log.Error(err)
 		return err
 	}
-	defer rows.Close()
 
 	var tid, role string
 	var zone Zone
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&tid, &role, &zone)
 		if err != nil {
@@ -231,10 +231,10 @@ func (t TeamID) Operations() ([]OpPermission, error) {
 		Log.Error(err)
 		return perms, err
 	}
-	defer rows.Close()
 
 	var opid, role string
 	var zone Zone
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&opid, &role, &zone)
 		if err != nil {

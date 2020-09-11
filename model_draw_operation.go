@@ -201,8 +201,8 @@ func drawOpUpdateWorker(o Operation) error {
 		Log.Error(err)
 		return err
 	}
-	defer portalRows.Close()
 	var pid PortalID
+	defer portalRows.Close()
 	for portalRows.Next() {
 		err := portalRows.Scan(&pid)
 		if err != nil {
@@ -236,8 +236,8 @@ func drawOpUpdateWorker(o Operation) error {
 		Log.Error(err)
 		return err
 	}
-	defer markerRows.Close()
 	var mid MarkerID
+	defer markerRows.Close()
 	for markerRows.Next() {
 		err := markerRows.Scan(&mid)
 		if err != nil {
@@ -274,8 +274,8 @@ func drawOpUpdateWorker(o Operation) error {
 		Log.Error(err)
 		return err
 	}
-	defer linkRows.Close()
 	var lid LinkID
+	defer linkRows.Close()
 	for linkRows.Next() {
 		err := linkRows.Scan(&lid)
 		if err != nil {

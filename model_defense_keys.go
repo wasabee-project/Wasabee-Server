@@ -28,8 +28,8 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 		Log.Error(err)
 		return dkl, err
 	}
-	defer rows.Close()
 	var dk DefensiveKey
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&dk.GID, &dk.PortalID, &dk.CapID, &dk.Count)
 		if err != nil {
