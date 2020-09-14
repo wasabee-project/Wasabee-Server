@@ -17,7 +17,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lestrrat-go/jwx v1.0.4
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/unrolled/logger v0.0.0-20190327162521-be1a2406c7c9
 	github.com/urfave/cli v1.22.4
 	go.uber.org/zap v1.16.0
@@ -27,6 +26,7 @@ require (
 	golang.org/x/tools v0.0.0-20200902012652-d1954cc86c82 // indirect
 	google.golang.org/api v0.31.0
 	google.golang.org/genproto v0.0.0-20200901141002-b3bf27a9dbd1 // indirect
+	googlemaps.github.io/maps v1.2.2
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
