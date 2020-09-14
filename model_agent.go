@@ -816,6 +816,12 @@ func OneTimeToken(token LocKey) (GoogleID, error) {
 	var gid GoogleID
 
 	err := db.QueryRow("SELECT gid FROM agent WHERE LocKey = ?", token).Scan(&gid)
+	if err != nil && err == sql.ErrNoRows {
+		err := fmt.Errorf("invalid OneTimeToken")
+		Log.Info(err)
+		return "", err
+	}
+
 	if err != nil {
 		Log.Error(err)
 		return "", err
