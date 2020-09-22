@@ -23,6 +23,9 @@ type DefensiveKey struct {
 func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 	var dkl DefensiveKeyList
 
+	// disable for now
+	return dkl, nil
+
 	rows, err := db.Query("SELECT gid, portalID, capID, count FROM defensivekeys WHERE gid IN (SELECT DISTINCT x.gid FROM agentteams=x, agentteams=y WHERE y.gid = ? AND y.state = 'On' AND x.teamID = y.teamID AND x.state = 'On')", gid)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
