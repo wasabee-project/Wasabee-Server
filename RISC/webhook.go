@@ -25,32 +25,32 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/secevent+jwt" {
 		err = fmt.Errorf("invalid request (needs to be application/secevent+jwt)")
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if !config.running {
 		err = fmt.Errorf("RISC not configured, yet somehow a message was received")
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	raw, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(raw) == "" {
 		err = fmt.Errorf("empty JWT")
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if err := validateToken(raw); err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -59,9 +59,8 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 
 // WebhookStatus exposes the running RISC status to the HTTP process
 func WebhookStatus(res http.ResponseWriter, req *http.Request) {
-	err := checkWebhook()
-	if err != nil {
-		wasabee.Log.Error(err)
+	if err := checkWebhook(); err != nil {
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -70,15 +69,13 @@ func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 
 func riscRegisterWebhook() {
 	wasabee.Log.Infow("startup", "subsystem", "RISC", "message", "establishing RISC webhook with Google")
-	err := googleLoadKeys()
-	if err != nil {
-		wasabee.Log.Error(err)
+	if err := googleLoadKeys(); err != nil {
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
 
-	err = updateWebhook()
-	if err != nil {
-		wasabee.Log.Error(err)
+	if err := updateWebhook(); err != nil {
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
 
@@ -87,28 +84,24 @@ func riscRegisterWebhook() {
 	// if a secevent comes in between establishing the hook and loading the keys?
 	config.running = true
 
-	err = ping()
-	if err != nil {
-		wasabee.Log.Error(err)
+	if err := ping(); err != nil {
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
 	// checkWebhook()
 
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
-		err = googleLoadKeys()
-		if err != nil {
-			wasabee.Log.Error(err)
+		if err := googleLoadKeys(); err != nil {
+			wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 			return
 		}
-		err = updateWebhook()
-		if err != nil {
-			wasabee.Log.Error(err)
+		if err := updateWebhook(); err != nil {
+			wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 			return
 		}
-		err = ping()
-		if err != nil {
-			wasabee.Log.Error(err)
+		if err := ping(); err != nil {
+			wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 			return
 		}
 	}
@@ -117,7 +110,7 @@ func riscRegisterWebhook() {
 func updateWebhook() error {
 	token, err := getToken()
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 
@@ -141,13 +134,13 @@ func updateWebhook() error {
 	}
 	raw, err := json.Marshal(jmsg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -155,12 +148,14 @@ func updateWebhook() error {
 
 	response, err := client.Do(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
+		err := fmt.Errorf("non-OK status")
 		raw, _ := ioutil.ReadAll(response.Body)
-		wasabee.Log.Error(string(raw))
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "content", string(raw))
+		return err
 	}
 
 	return nil
@@ -172,7 +167,7 @@ func DisableWebhook() {
 
 	token, err := getToken()
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
 
@@ -187,13 +182,13 @@ func DisableWebhook() {
 	}
 	raw, err := json.Marshal(jmsg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -201,12 +196,12 @@ func DisableWebhook() {
 
 	response, err := client.Do(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
 	if response.StatusCode != http.StatusOK {
 		raw, _ = ioutil.ReadAll(response.Body)
-		wasabee.Log.Error(string(raw))
+		wasabee.Log.Errorw("not OK status", "subsystem", "RISC", "content", string(raw))
 	}
 	config.running = false
 }
@@ -214,7 +209,7 @@ func DisableWebhook() {
 func checkWebhook() error {
 	token, err := getToken()
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 
@@ -222,7 +217,7 @@ func checkWebhook() error {
 	client := http.Client{}
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -230,7 +225,7 @@ func checkWebhook() error {
 
 	response, err := client.Do(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	raw, _ := ioutil.ReadAll(response.Body)
@@ -242,7 +237,7 @@ func checkWebhook() error {
 func ping() error {
 	token, err := getToken()
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 
@@ -252,13 +247,13 @@ func ping() error {
 	}
 	raw, err := json.Marshal(jmsg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -266,12 +261,12 @@ func ping() error {
 
 	response, err := client.Do(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
-		wasabee.Log.Error(string(raw))
+		wasabee.Log.Errorw("non OK status", "subsystem", "RISC", "content", string(raw))
 	}
 
 	return nil
@@ -282,7 +277,7 @@ func ping() error {
 func AddSubject(gid wasabee.GoogleID) error {
 	token, err := getToken()
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 
@@ -296,7 +291,7 @@ func AddSubject(gid wasabee.GoogleID) error {
 	}
 	raw, err := json.Marshal(jmsg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 
@@ -305,7 +300,7 @@ func AddSubject(gid wasabee.GoogleID) error {
 	client := http.Client{}
 	req, err := http.NewRequest("POST", config.AddEndpoint, bytes.NewBuffer(raw))
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -313,12 +308,12 @@ func AddSubject(gid wasabee.GoogleID) error {
 
 	response, err := client.Do(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
 		raw, _ := ioutil.ReadAll(response.Body)
-		wasabee.Log.Error(string(raw))
+		wasabee.Log.Errorw("non OK status", "subsystem", "RISC", "content", string(raw))
 	}
 
 	return nil
@@ -327,8 +322,7 @@ func AddSubject(gid wasabee.GoogleID) error {
 func getToken() (*oauth2.Token, error) {
 	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, jwtService)
 	if err != nil {
-		wasabee.Log.Fatal(err)
-		// not reached
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC")
 		return nil, err
 	}
 	return creds.Token()
