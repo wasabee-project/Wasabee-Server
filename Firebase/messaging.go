@@ -281,7 +281,7 @@ func genericMulticast(ctx context.Context, c *messaging.Client, data map[string]
 			wasabee.Log.Error(err)
 			// carry on
 		}
-		wasabee.Log.Infow("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+		wasabee.Log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 		processBatchResponse(br, subset)
 	}
 
@@ -294,14 +294,14 @@ func genericMulticast(ctx context.Context, c *messaging.Client, data map[string]
 		wasabee.Log.Error(err)
 		// carry on
 	}
-	wasabee.Log.Infow("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+	wasabee.Log.Debugw("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 	processBatchResponse(br, tokens)
 }
 
 func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 	for pos, resp := range br.Responses {
 		if !resp.Success {
-			wasabee.Log.Infow("multicast error response", "token", tokens[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
+			// wasabee.Log.Infow("multicast error response", "token", tokens[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
 			// XXX switch to IsUnregistered when that becomes available
 			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
 				wasabee.FirebaseRemoveToken(tokens[pos])
