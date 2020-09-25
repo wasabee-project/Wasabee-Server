@@ -362,16 +362,7 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 			wasabee.Log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 		}
 	} else {
-		wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid)
-		admins, err := bot.GetChatAdministrators(tgbotapi.ChatConfig{
-			ChatID: inMsg.Message.Chat.ID,
-		})
-		if err != nil {
-			wasabee.Log.Debug(err)
-		}
-		for _, a := range admins {
-			wasabee.Log.Debugw("administrator", "ID", a.User.ID, "tgname", a.User.UserName)
-		}
+		// wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid)
 		if inMsg.Message.LeftChatMember != nil && inMsg.Message.LeftChatMember.ID == bot.Self.ID {
 			teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
 			if err != nil {
@@ -396,10 +387,10 @@ func liveLocationUpdate(inMsg *tgbotapi.Update) error {
 		return err
 	}
 	if !verified || gid == "" {
-		wasabee.Log.Debugw("user not initialized/verified, ignoring location", "GID", gid, "tgid", tgid)
+		// wasabee.Log.Debugw("user not initialized/verified, ignoring location", "GID", gid, "tgid", tgid)
 		return nil
 	}
-	wasabee.Log.Debugw("live location inMsg", "GID", gid, "message", "live location update")
+	// wasabee.Log.Debugw("live location inMsg", "GID", gid, "message", "live location update")
 
 	_ = gid.AgentLocation(
 		strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64),
