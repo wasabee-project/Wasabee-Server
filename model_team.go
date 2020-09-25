@@ -45,7 +45,7 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	i, err := strconv.Atoi(count)
+	i, err := strconv.ParseInt(count, 10, 32)
 	if err != nil || i < 1 {
 		return false, err
 	}
@@ -479,7 +479,7 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 		return err
 	}
 
-	i, err := strconv.Atoi(count)
+	i, err := strconv.ParseInt(count, 10, 32)
 	if err != nil {
 		return err
 	}

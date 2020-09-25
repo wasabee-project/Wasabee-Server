@@ -28,7 +28,7 @@ func ZoneFromString(in string) Zone {
 		return zonePrimary
 	}
 
-	i, err := strconv.Atoi(in)
+	i, err := strconv.ParseInt(in, 10, 32)
 	if err != nil {
 		Log.Error(err)
 		return zonePrimary

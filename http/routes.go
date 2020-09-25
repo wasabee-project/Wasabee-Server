@@ -181,6 +181,7 @@ func setupAuthRoutes(r *mux.Router) {
 
 	r.HandleFunc("/d", getDefensiveKeys).Methods("GET")
 	r.HandleFunc("/d", setDefensiveKey).Methods("POST")
+	r.HandleFunc("/d/bulk", setDefensiveKeyBulk).Methods("POST")
 
 	// server control functions
 	// trigger the server refresh of the template files

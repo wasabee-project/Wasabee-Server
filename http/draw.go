@@ -765,8 +765,8 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	portalID := wasabee.PortalID(vars["portal"])
-	// #nosec
-	onhand, err := strconv.Atoi(req.FormValue("onhand"))
+
+	onhand, err := strconv.ParseInt(req.FormValue("count"), 10, 32)
 	if err != nil { // user supplied non-numeric value
 		onhand = 0
 	}
