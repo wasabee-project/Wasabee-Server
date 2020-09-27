@@ -475,12 +475,30 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 	teamID := wasabee.TeamID(vars["team"])
 	key := vars["key"]
 
-	err = teamID.JoinToken(gid, key)
-	if err != nil {
+	if err = teamID.JoinToken(gid, key); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	http.Redirect(res, req, me, http.StatusFound)
+}
+
+func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	list, err := gid.GetAgentLocations()
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(res, list)
 }

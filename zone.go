@@ -24,7 +24,7 @@ func (z Zone) Valid() bool {
 
 // ZoneFromString takes a string and returns a valid zone or zonePrimary if invalid input
 func ZoneFromString(in string) Zone {
-	if in == "" {
+	if in == "" || in == "undefined" {
 		return zonePrimary
 	}
 

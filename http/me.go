@@ -64,6 +64,48 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
+func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	team := wasabee.TeamID(vars["team"])
+	state := vars["state"]
+
+	if err = gid.SetWDShare(team, state); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonStatusOK)
+}
+
+func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	team := wasabee.TeamID(vars["team"])
+	state := vars["state"]
+
+	if err = gid.SetWDLoad(team, state); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonStatusOK)
+}
+
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)

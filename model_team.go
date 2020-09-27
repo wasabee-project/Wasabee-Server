@@ -2,6 +2,7 @@ package wasabee
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 )
@@ -155,7 +156,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 		Log.Error(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color, displayname) VALUES (?,?,'On','operator',NULL)", team, gid)
+	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color, displayname, shareWD, loadWD) VALUES (?,?,'On','operator',NULL, 'Off', 'Off')", team, gid)
 	if err != nil {
 		Log.Error(err)
 		return TeamID(team), err
@@ -219,7 +220,7 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color, displayname) VALUES (?, ?, 'Off', 'boots', NULL)", teamID, gid)
+	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color, displayname, shareWD, loadWD) VALUES (?, ?, 'Off', '', NULL, 'Off', 'Off')", teamID, gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -366,6 +367,32 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 		gid.firebaseSubscribeTeam(teamID)
 	} else {
 		gid.firebaseUnsubscribeTeam(teamID)
+	}
+	return nil
+}
+
+// SetWDShare updates the agent's willingness to share WD keys with other agents on this team
+func (gid GoogleID) SetWDShare(teamID TeamID, state string) error {
+	if state != "On" {
+		state = "Off"
+	}
+
+	if _, err := db.Exec("UPDATE agentteams SET shareWD  ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// SetWDLoad updates the agent's desire to load WD keys from other agents on this team
+func (gid GoogleID) SetWDLoad(teamID TeamID, state string) error {
+	if state != "On" {
+		state = "Off"
+	}
+
+	if _, err := db.Exec("UPDATE agentteams SET loadWD  ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
+		Log.Error(err)
+		return err
 	}
 	return nil
 }
@@ -567,4 +594,50 @@ func ChatToTeam(chat int64) (TeamID, error) {
 		return t, err
 	}
 	return t, nil
+}
+
+// GetAgentLocations is a fast-path to get all available agent locations
+func (gid GoogleID) GetAgentLocations() (string, error) {
+	type loc struct {
+		Gid  GoogleID `json:"gid"`
+		Lat  float64  `json:"lat"`
+		Lon  float64  `json:"lng"`
+		Date string   `json:"date"`
+	}
+
+	var list []loc
+	var tmpL loc
+	var lat, lon string
+
+	var rows *sql.Rows
+	rows, err := db.Query("SELECT x.gid, Y(l.loc), X(l.loc), l.upTime "+
+		"FROM agentteams=x, locations=l "+
+		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ?) "+
+		"AND x.state = 'On' AND x.gid = l.gid", gid)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&tmpL.Gid, &lat, &lon, &tmpL.Date); err != nil {
+			Log.Error(err)
+			return "", err
+		}
+		tmpL.Lat, _ = strconv.ParseFloat(lat, 64)
+		tmpL.Lon, _ = strconv.ParseFloat(lon, 64)
+
+		if tmpL.Lat == 0 || tmpL.Lon == 0 {
+			continue
+		}
+
+		list = append(list, tmpL)
+	}
+
+	jList, err := json.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	return string(jList), nil
 }
