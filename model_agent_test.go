@@ -196,6 +196,17 @@ func TestLocKey(t *testing.T) {
 	}
 }
 
+/* type DefensiveKey struct {
+GID      GoogleID `json:"GID"`
+PortalID PortalID `json:"PortalID"`
+CapID    string   `json:"CapID"`
+Count    int32    `json:"Count"`
+Name     string   `json:"Name"`
+Lat      string   `json:"Lat"`
+Lon      string   `json:"Lng"`
+}
+ */
+/*
 func TestWD(t *testing.T) {
 	p := wasabee.PortalID("bogus.16")
 	d := wasabee.PortalID("bogus.17")
@@ -232,9 +243,7 @@ func TestWD(t *testing.T) {
 	for _, k := range list.DefensiveKeys {
 		wasabee.Log.Infof("d-key: %+v", k)
 	}
-	/* if len(list.DefensiveKeys) != 2 {
-		t.Error("wrong key count")
-	} */
+	// if len(list.DefensiveKeys) != 2 { t.Error("wrong key count") }
 
 	if err := teamID.Delete(); err != nil {
 		t.Error(err.Error())
@@ -247,4 +256,4 @@ func TestWD(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-}
+} */

@@ -69,7 +69,7 @@ func TestOperation(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	_, err = opp.PortalHardness("badportalid.02", "BGAN only")
+	opp.PortalHardness("badportalid.02", "BGAN only")
 	/* if err == nil {
 		t.Error("failed to detect bad portal for hardness")
 	} */
