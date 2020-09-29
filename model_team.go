@@ -25,17 +25,19 @@ type Agent struct {
 	Level         int64    `json:"level"`
 	EnlID         EnlID    `json:"enlid"`
 	PictureURL    string   `json:"pic"`
-	Verified      bool     `json:"Vverified,omitempty"`
+	Verified      bool     `json:"Vverified"`
 	Blacklisted   bool     `json:"blacklisted"`
-	RocksVerified bool     `json:"rocks,omitempty"`
-	Squad         string   `json:"squad,omitempty"`
-	State         bool     `json:"state,omitempty"`
-	Lat           float64  `json:"lat,omitempty"`
-	Lon           float64  `json:"lng,omitempty"`
-	Date          string   `json:"date,omitempty"`
+	RocksVerified bool     `json:"rocks"`
+	Squad         string   `json:"squad"`
+	State         bool     `json:"state"`
+	Lat           float64  `json:"lat"`
+	Lon           float64  `json:"lng"`
+	Date          string   `json:"date"`
 	Distance      float64  `json:"distance,omitempty"`
-	CanSendTo     bool     `json:"cansendto,omitempty"`
 	DisplayName   string   `json:"displayname,omitempty"`
+	CanSendTo     bool     `json:"cansendto,omitempty"`
+	ShareWD       bool     `json:"shareWD`
+	LoadWD        bool     `json:"loadWD`
 }
 
 // AgentInTeam checks to see if a agent is in a team and enabled.
@@ -55,11 +57,8 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 
 // FetchTeam populates an entire TeamData struct
 func (teamID TeamID) FetchTeam(teamList *TeamData) error {
-	var state, lat, lon string
-	var tmpU Agent
-
 	var rows *sql.Rows
-	rows, err := db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname "+
+	rows, err := db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname, sharewd, loadwd "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
 		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
 	if err != nil {
@@ -69,8 +68,12 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 
 	defer rows.Close()
 	for rows.Next() {
+		var tmpU Agent
+		var state, lat, lon, sharewd, loadwd string
 		var enlID, dn sql.NullString
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &dn)
+
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified,
+			&tmpU.Blacklisted, &enlID, &dn, &sharewd, &loadwd)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -95,6 +98,16 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 			tmpU.DisplayName = dn.String
 		} else {
 			tmpU.DisplayName = ""
+		}
+		if sharewd == "On" {
+			tmpU.ShareWD = true;
+		} else {
+			tmpU.ShareWD = false;
+		}
+		if loadwd == "On" {
+			tmpU.LoadWD = true;
+		} else {
+			tmpU.LoadWD = false;
 		}
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
@@ -377,7 +390,7 @@ func (gid GoogleID) SetWDShare(teamID TeamID, state string) error {
 		state = "Off"
 	}
 
-	if _, err := db.Exec("UPDATE agentteams SET shareWD  ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
+	if _, err := db.Exec("UPDATE agentteams SET shareWD = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -390,7 +403,7 @@ func (gid GoogleID) SetWDLoad(teamID TeamID, state string) error {
 		state = "Off"
 	}
 
-	if _, err := db.Exec("UPDATE agentteams SET loadWD  ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
+	if _, err := db.Exec("UPDATE agentteams SET loadWD = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
 		Log.Error(err)
 		return err
 	}

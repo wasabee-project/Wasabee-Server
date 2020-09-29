@@ -61,6 +61,8 @@ type AdTeam struct {
 	RocksComm string
 	RocksKey  string
 	State     string
+	ShareWD   string
+	LoadWD    string
 	Owner     GoogleID
 }
 
@@ -280,7 +282,7 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 }
 
 func (gid GoogleID) adTeams(ad *AgentData) error {
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state, t.rockscomm, t.rockskey, t.owner FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state, x.shareWD, x.loadWD, t.rockscomm, t.rockskey, t.owner FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -290,7 +292,7 @@ func (gid GoogleID) adTeams(ad *AgentData) error {
 	var adteam AdTeam
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &rc, &rk, &adteam.Owner)
+		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &adteam.ShareWD, &adteam.LoadWD, &rc, &rk, &adteam.Owner)
 		if err != nil {
 			Log.Error(err)
 			return err

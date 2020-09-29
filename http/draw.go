@@ -171,8 +171,8 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	id := vars["document"]
-
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -184,7 +184,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", id)
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -199,23 +199,27 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 	if string(jBlob) == "" {
 		err := fmt.Errorf("empty JSON on operation upload")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", id)
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 
-	// wasabee.Log.Debug(string(jBlob))
-	uid, err := wasabee.DrawUpdate(wasabee.OperationID(id), jRaw, gid)
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to update an operation")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	uid, err := wasabee.DrawUpdate(wasabee.OperationID(op.ID), jRaw, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	// updateID := wasabee.GenerateID(40)
-	wasabee.Log.Infow("updated op", "GID", gid, "resource", id, "message", "updated op", "updateID", uid)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
