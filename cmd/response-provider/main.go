@@ -112,7 +112,7 @@ func vSearch(res http.ResponseWriter, req *http.Request) {
 	}
 	j, _ := json.Marshal(v)
 	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	fmt.Fprintf(res, string(j))
+	fmt.Fprint(res, string(j))
 }
 
 func rocksSearch(res http.ResponseWriter, req *http.Request) {
@@ -136,7 +136,7 @@ func rocksSearch(res http.ResponseWriter, req *http.Request) {
 	}
 	j, _ := json.Marshal(r)
 	res.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	fmt.Fprintf(res, string(j))
+	fmt.Fprint(res, string(j))
 }
 
 func preload() {
