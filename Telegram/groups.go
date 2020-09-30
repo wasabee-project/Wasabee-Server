@@ -181,19 +181,50 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 }
 
 func chatResponses(inMsg *tgbotapi.Update) error {
-	// wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid)
+	wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID)
+	teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+	if err != nil {
+		// no need to log these, just non-linked chats
+		// wasabee.Log.Error(err)
+		return nil
+	}
+
 	if inMsg.Message.LeftChatMember != nil && inMsg.Message.LeftChatMember.ID == bot.Self.ID {
-		teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
 		if err := teamID.UnlinkFromTelegramChat(inMsg.Message.Chat.ID); err != nil {
 			wasabee.Log.Error(err)
 			return err
 		}
 	}
-	// we can log being added to a chat using inMsg.Message.NewChatMembers
+
+	if inMsg.Message.NewChatMembers != nil {
+		var ncm []tgbotapi.User
+		ncm = *inMsg.Message.NewChatMembers
+		for _, new := range ncm {
+			wasabee.Log.Debugw("new chat member", "tgid", new.ID, "tg", new.UserName)
+			tgid := wasabee.TelegramID(new.ID)
+			gid, err := tgid.Gid()
+			if err != nil {
+				continue
+			}
+			if err = teamID.AddAgent(gid); err != nil {
+				wasabee.Log.Debugw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid)
+			}
+		}
+	}
+
+	if inMsg.Message.LeftChatMember != nil {
+		left := inMsg.Message.LeftChatMember
+		wasabee.Log.Debugw("left chat member", "tgid", left.ID, "tg", left.UserName)
+		tgid := wasabee.TelegramID(left.ID)
+		gid, err := tgid.Gid()
+		if err != nil {
+			wasabee.Log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID)
+		} else {
+			if err := teamID.RemoveAgent(gid); err != nil {
+				wasabee.Log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "GID", gid)
+			}
+		}
+	}
 	return nil
 }
 
@@ -237,4 +268,51 @@ func SendToTeamChannel(teamID wasabee.TeamID, gid wasabee.GoogleID, message stri
 	}
 
 	return nil
+}
+
+func AddToChat(gid wasabee.GoogleID, t string) (bool, error) {
+	wasabee.Log.Debugw("AddToChat called", "GID", gid, "resource", t)
+	teamID := wasabee.TeamID(t)
+	chatID, err := teamID.TelegramChat()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return false, err
+	}
+	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
+	if err != nil {
+		wasabee.Log.Error(err)
+		return false, err
+	}
+
+	name, _ := gid.IngressNameTeam(teamID)
+	text := fmt.Sprintf("%s joined the linked team (%s)", name, teamID)
+	msg := tgbotapi.NewMessage(chat.ID, text)
+	if _, err := bot.Send(msg); err != nil {
+		wasabee.Log.Error(err)
+		return false, err
+	}
+	return true, nil
+}
+
+func RemoveFromChat(gid wasabee.GoogleID, t string) (bool, error) {
+	wasabee.Log.Debugw("RemoveFromChat called", "GID", gid, "chatID", t)
+	teamID := wasabee.TeamID(t)
+	chatID, err := teamID.TelegramChat()
+	if err != nil {
+		wasabee.Log.Error(err)
+		return false, err
+	}
+	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
+	if err != nil {
+		wasabee.Log.Error(err)
+		return false, err
+	}
+	name, _ := gid.IngressNameTeam(teamID)
+	text := fmt.Sprintf("%s left the linked team (%s)", name, teamID)
+	msg := tgbotapi.NewMessage(chat.ID, text)
+	if _, err := bot.Send(msg); err != nil {
+		wasabee.Log.Error(err)
+		return false, err
+	}
+	return true, nil
 }

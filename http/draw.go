@@ -104,29 +104,28 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", o.Modified, time.UTC)
 	if err != nil {
 		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
 	}
 	res.Header().Set("Last-Modified", lastModified.Format(time.RFC1123))
+	res.Header().Set("Cache-Control", "no-store")
 
-	var skipsending bool
 	ims := req.Header.Get("If-Modified-Since")
 	if ims != "" && ims != "null" { // yes, the string "null", seen in the wild
 		modifiedSince, err := time.ParseInLocation(time.RFC1123, ims, time.UTC)
 		if err != nil {
 			wasabee.Log.Error(err)
-		} else {
-			if lastModified.Before(modifiedSince) {
-				// wasabee.Log.Debugw("skip sending op", "resource", o.ID, "if-modified-since", modifiedSince.In(time.UTC), "last-modified", lastModified.In(time.UTC))
-				skipsending = true
-			}
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+		if !lastModified.After(modifiedSince) {
+			// wasabee.Log.Debugw("skip sending op", "resource", o.ID, "if-modified-since", modifiedSince.In(time.UTC), "last-modified", lastModified.In(time.UTC))
+			res.Header().Set("Content-Type", "")
+			http.Redirect(res, req, "", http.StatusNotModified)
+			return
 		}
 	}
 
-	res.Header().Set("Cache-Control", "no-store")
-	if skipsending {
-		res.Header().Set("Content-Type", "")
-		http.Redirect(res, req, "", http.StatusNotModified)
-		return
-	}
 	s, err := json.Marshal(o)
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -189,7 +188,6 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		wasabee.Log.Error(err)

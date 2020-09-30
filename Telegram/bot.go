@@ -48,7 +48,8 @@ func WasabeeBot(init TGConfiguration) {
 	webhook := wasabee.Subrouter(config.HookPath)
 	webhook.HandleFunc("/{hook}", TGWebHook).Methods("POST")
 
-	_ = wasabee.RegisterMessageBus("Telegram", SendMessage)
+	wasabee.RegisterMessageBus("Telegram", SendMessage)
+	wasabee.RegisterGroupCalls("Telegram", AddToChat, RemoveFromChat)
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(config.APIKey)

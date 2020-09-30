@@ -205,7 +205,7 @@ Name     string   `json:"Name"`
 Lat      string   `json:"Lat"`
 Lon      string   `json:"Lng"`
 }
- */
+*/
 /*
 func TestWD(t *testing.T) {
 	p := wasabee.PortalID("bogus.16")

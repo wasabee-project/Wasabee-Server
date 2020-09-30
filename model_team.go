@@ -100,14 +100,14 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 			tmpU.DisplayName = ""
 		}
 		if sharewd == "On" {
-			tmpU.ShareWD = true;
+			tmpU.ShareWD = true
 		} else {
-			tmpU.ShareWD = false;
+			tmpU.ShareWD = false
 		}
 		if loadwd == "On" {
-			tmpU.LoadWD = true;
+			tmpU.LoadWD = true
 		} else {
-			tmpU.LoadWD = false;
+			tmpU.LoadWD = false
 		}
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
@@ -244,6 +244,8 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		// return err
 	}
 
+	gid.joinChannels(teamID)
+	gid.firebaseSubscribeTeam(teamID)
 	Log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
 	return nil
 }
@@ -285,6 +287,8 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		gid.FirebaseDeleteOp(opID)
 	}
 
+	gid.leaveChannels(teamID)
+	gid.firebaseUnsubscribeTeam(teamID)
 	Log.Infow("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
 	return nil
 }
@@ -376,11 +380,6 @@ func (gid GoogleID) SetTeamState(teamID TeamID, state string) error {
 		Log.Error(err)
 		return err
 	}
-	if state == "On" {
-		gid.firebaseSubscribeTeam(teamID)
-	} else {
-		gid.firebaseUnsubscribeTeam(teamID)
-	}
 	return nil
 }
 
@@ -442,12 +441,12 @@ func (teamID TeamID) Name() (string, error) {
 	return name, nil
 }
 
-// teamList is used for getting a list of all an agent's active teams
+// teamList is used for getting a list of all an agent's teams
 func (gid GoogleID) teamList() []TeamID {
 	var tid TeamID
 	var x []TeamID
 
-	rows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On'", gid)
+	rows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ?", gid)
 	if err != nil {
 		Log.Error(err)
 		return x
@@ -578,7 +577,7 @@ func (teamID TeamID) UnlinkFromTelegramChat(chat int64) error {
 
 // TelegramChat returns the associated telegram chat ID for this team, if any
 func (teamID TeamID) TelegramChat() (int64, error) {
-	var chatID int64
+	var chatID sql.NullInt64
 
 	err := db.QueryRow("SELECT telegram FROM team WHERE teamID = ?", teamID).Scan(&chatID)
 	if err != nil && err != sql.ErrNoRows {
@@ -589,7 +588,10 @@ func (teamID TeamID) TelegramChat() (int64, error) {
 		Log.Debug("attempt to get telegram chatID for non–existent team")
 		return int64(0), nil
 	}
-	return chatID, nil
+	if !chatID.Valid {
+		return int64(0), nil
+	}
+	return chatID.Int64, nil
 }
 
 // ChatToTeam takes a chatID and returns a linked teamID

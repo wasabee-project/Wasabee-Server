@@ -5,16 +5,14 @@ import (
 )
 
 type messagingConfig struct {
-	inited  bool
+	inited bool
+	// function to send a message to a GID
 	senders map[string]func(gid GoogleID, message string) (bool, error)
-	// busses map[string]MessageBus
+	// function to join a channel for a GID
+	joiners map[string]func(gid GoogleID, groupID string) (bool, error)
+	// funciton to leave a channel for a GID
+	leavers map[string]func(gid GoogleID, groupID string) (bool, error)
 }
-
-/*
-type MessageBus interface {
-	SendMessage(gid GoogleID, message string) (bool, error)
-}
-*/
 
 var mc messagingConfig
 
@@ -31,7 +29,7 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 	}
 
 	// XXX loop through valid, trying until one works
-	ok, err := gid.SendMessageVia(message, bus)
+	ok, err := gid.sendMessageVia(message, bus)
 	if err != nil {
 		Log.Errorw("error sending message", "GID", gid, "bus", bus, "error", err.Error(), "message", message)
 		return false, err
@@ -45,7 +43,7 @@ func (gid GoogleID) SendMessage(message string) (bool, error) {
 }
 
 // SendMessageVia sends a message to the destination on the specified bus
-func (gid GoogleID) SendMessageVia(message, bus string) (bool, error) {
+func (gid GoogleID) sendMessageVia(message, bus string) (bool, error) {
 	_, ok := mc.senders[bus]
 	if !ok {
 		err := fmt.Errorf("no such messaging bus: [%s]", bus)
@@ -101,13 +99,50 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 }
 
 // RegisterMessageBus registers a function used to send messages by various protocols
-func RegisterMessageBus(name string, f func(GoogleID, string) (bool, error)) error {
+func RegisterMessageBus(name string, f func(GoogleID, string) (bool, error)) {
 	mc.senders[name] = f
-	return nil
 }
 
 // called at server start to init the configuration
 func init() {
 	mc.senders = make(map[string]func(GoogleID, string) (bool, error))
+	mc.joiners = make(map[string]func(GoogleID, string) (bool, error))
+	mc.leavers = make(map[string]func(GoogleID, string) (bool, error))
 	mc.inited = true
+}
+
+// RegisterGroupCalls registers the functions to join and leave a channel
+func RegisterGroupCalls(name string, join func(GoogleID, string) (bool, error), leave func(GoogleID, string) (bool, error)) {
+	mc.joiners[name] = join
+	mc.leavers[name] = leave
+}
+
+// joinChannels is called when a user is added to a team to add them to the proper messaging service channels
+func (gid GoogleID) joinChannels(t TeamID) {
+	for service, joiner := range mc.joiners {
+		Log.Debugw("calling joiner", "service", service, "resource", t, "GID", gid)
+		ok, err := joiner(gid, string(t))
+		if err != nil {
+			Log.Debugw(err.Error(), "service", service, "resource", t, "GID", gid)
+			continue
+		}
+		if ok {
+			Log.Debug("success!")
+		}
+	}
+}
+
+// leaveChannels is called when a user is removed from a team to remove them from the associated messaging service channels
+func (gid GoogleID) leaveChannels(t TeamID) {
+	for service, leaver := range mc.leavers {
+		Log.Debugw("calling leaver", "service", service, "resource", t, "GID", gid)
+		ok, err := leaver(gid, string(t))
+		if err != nil {
+			Log.Debugw(err.Error(), "service", service, "resource", t, "GID", gid)
+			continue
+		}
+		if ok {
+			Log.Debug("success!")
+		}
+	}
 }

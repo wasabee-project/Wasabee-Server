@@ -393,7 +393,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	t := time.Now()
+	t := time.Now().UTC()
 	o.Fetched = fmt.Sprint(t.Format(time.RFC1123))
 
 	if err := o.PopulateTeams(); err != nil {
