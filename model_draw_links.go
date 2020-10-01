@@ -54,7 +54,7 @@ func (opID OperationID) deleteLink(lid LinkID) error {
 	return nil
 }
 
-func (opID OperationID) updateLink(l Link, designMode bool) error {
+func (opID OperationID) updateLink(l Link) error {
 	if l.To == l.From {
 		Log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
@@ -64,22 +64,12 @@ func (opID OperationID) updateLink(l Link, designMode bool) error {
 		l.Zone = zonePrimary
 	}
 
-	if designMode {
-		_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?, gid = ?, completed = ?",
-			l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone,
-			l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone, MakeNullString(l.AssignedTo), l.Completed)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-	} else {
-		_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, throworder, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?",
-			l.ID, l.From, l.To, opID, MakeNullString(l.Desc), l.ThrowOrder, l.Color, l.Zone,
-			l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?, gid = ?, completed = ?",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone,
+		l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone, MakeNullString(l.AssignedTo), l.Completed)
+	if err != nil {
+		Log.Error(err)
+		return err
 	}
 	return nil
 }

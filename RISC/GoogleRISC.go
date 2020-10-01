@@ -29,11 +29,15 @@ type riscConfig struct {
 	authdata    []byte
 }
 
+// the token's event
+// {"subject":{"email":"whoever@gmail.com","iss":"https://accounts.google.com","sub":"...gid...","subject_type":"id_token_claims"}, "reason": ""}
+// we move the Reason into the event and pass that on
 type event struct {
-	Type    string
-	Reason  string
-	Issuer  string
-	Subject string
+	Type    string `json:"subject_type"`
+	Reason  string `json:"reason"`
+	Issuer  string `json:"iss"`
+	Subject string `json:"sub"`
+	// Email   string `json:"email"`
 }
 
 // Google probably has a type for this somewhere, maybe x/oauth/Google
@@ -121,6 +125,10 @@ func RISC(configfile string) {
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// wasabee.Log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			// no need to do anything
+		case "https://accounts.google.com/risc/event/sessions-revoked":
+			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			gid.FirebaseRemoveAllTokens()
+			gid.Logout(e.Reason)
 		default:
 			wasabee.Log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
 		}
@@ -180,7 +188,8 @@ func validateToken(rawjwt []byte) error {
 
 		wasabee.Log.Infow("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
 
-		// XXX this is ugly and brittle - use a map parser
+		// XXX this is ugly and brittle - it is JSON, just unmarshal it.
+		// {"subject":{"email":"whoever@gmail.com","iss":"https://accounts.google.com","sub":"...gid...","subject_type":"id_token_claims"}, "reason": "whatever"}
 		x := v.(map[string]interface{})
 		if x["reason"] != nil {
 			e.Reason = x["reason"].(string)

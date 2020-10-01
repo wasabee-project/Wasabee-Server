@@ -13,22 +13,21 @@ type OperationID string
 // Operation is defined by the Wasabee IITC plugin.
 // It is the top level item in the JSON file.
 type Operation struct {
-	ID         OperationID       `json:"ID"`
-	Name       string            `json:"name"`
-	Gid        GoogleID          `json:"creator"` // IITC plugin sending agent name, need to convert to GID
-	Color      string            `json:"color"`   // could be an enum, but freeform is fine for now
-	OpPortals  []Portal          `json:"opportals"`
-	Anchors    []PortalID        `json:"anchors"` // We should let the clients build this themselves
-	Links      []Link            `json:"links"`
-	Blockers   []Link            `json:"blockers"` // we ignore this for now
-	Markers    []Marker          `json:"markers"`
-	Teams      []OpPermission    `json:"teamlist"`
-	Modified   string            `json:"modified"`
-	Comment    string            `json:"comment"`
-	Keys       []KeyOnHand       `json:"keysonhand"`
-	Fetched    string            `json:"fetched"`
-	UpdateMode string            `json:"mode,omitempty"`
-	Zones      []ZoneListElement `json:"zones"`
+	ID        OperationID       `json:"ID"`
+	Name      string            `json:"name"`
+	Gid       GoogleID          `json:"creator"` // IITC plugin sending agent name, need to convert to GID
+	Color     string            `json:"color"`   // could be an enum, but freeform is fine for now
+	OpPortals []Portal          `json:"opportals"`
+	Anchors   []PortalID        `json:"anchors"` // We should let the clients build this themselves
+	Links     []Link            `json:"links"`
+	Blockers  []Link            `json:"blockers"` // we ignore this for now
+	Markers   []Marker          `json:"markers"`
+	Teams     []OpPermission    `json:"teamlist"`
+	Modified  string            `json:"modified"`
+	Comment   string            `json:"comment"`
+	Keys      []KeyOnHand       `json:"keysonhand"`
+	Fetched   string            `json:"fetched"`
+	Zones     []ZoneListElement `json:"zones"`
 }
 
 // OpStat is a minimal struct to determine if the op has been updated
@@ -137,18 +136,8 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 }
 
 // DrawUpdate is called to UPDATE an existing draw
-// in order to minimize races between the various writers, the following conditions are enforced
-//
-// Key counts are ignored -- trust that the server has the right key counts
-//
-// Active mode
-// Links are added/removed as necessary -- assignments and status are not overwritten (deleting a link removes the assignment/status)
-// Markers are added/removed as necessary -- assignments and status are not overwritten (deleting the marker removes the assignment/status)
-//
-// Design mode: default
 // Links are added/removed as necessary -- assignments _are_ overwritten
 // Markers are added/removed as necessary -- assignments _are_ overwritten
-//
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
 func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, error) {
 	var o Operation
@@ -181,12 +170,6 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 }
 
 func drawOpUpdateWorker(o Operation) error {
-	designMode := true
-	if o.UpdateMode == "active" {
-		designMode = false
-		// Log.Debugf("activeMode update")
-	}
-
 	_, err := db.Exec("UPDATE operation SET name = ?, color = ?, comment = ? WHERE ID = ?",
 		o.Name, o.Color, MakeNullString(o.Comment), o.ID)
 	if err != nil {
@@ -253,7 +236,7 @@ func drawOpUpdateWorker(o Operation) error {
 			Log.Warnw("portal missing from portal list", "marker", m.PortalID, "resource", o.ID)
 			continue
 		}
-		if err = o.ID.updateMarker(m, designMode); err != nil {
+		if err = o.ID.updateMarker(m); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -295,7 +278,7 @@ func drawOpUpdateWorker(o Operation) error {
 			Log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
 			continue
 		}
-		if err = o.ID.updateLink(l, designMode); err != nil {
+		if err = o.ID.updateLink(l); err != nil {
 			Log.Error(err)
 			continue
 		}
