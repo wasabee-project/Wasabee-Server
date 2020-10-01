@@ -584,11 +584,7 @@ func (teamID TeamID) TelegramChat() (int64, error) {
 		Log.Error(err)
 		return int64(0), err
 	}
-	if err == sql.ErrNoRows {
-		Log.Debug("attempt to get telegram chatID for non–existent team")
-		return int64(0), nil
-	}
-	if !chatID.Valid {
+	if err == sql.ErrNoRows || !chatID.Valid {
 		return int64(0), nil
 	}
 	return chatID.Int64, nil
@@ -605,7 +601,7 @@ func ChatToTeam(chat int64) (TeamID, error) {
 	}
 	if err == sql.ErrNoRows {
 		err := fmt.Errorf("attempt to get teamID for non–linked chat")
-		Log.Debug(err)
+		// Log.Debug(err)
 		return t, err
 	}
 	return t, nil

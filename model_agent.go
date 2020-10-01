@@ -181,8 +181,8 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	if err != nil && err == sql.ErrNoRows {
 		Log.Infow("first login", "GID", gid.String(), "message", "first login for "+gid.String())
 
-		// still no name? last resort
-		if tmpName == "" {
+		// still no name? last resort ; -hidden- is sent by rocks for users marked private
+		if tmpName == "" || tmpName == "-hidden-" {
 			// triggered this in testing -- should never happen IRL
 			length := 15
 			if tmp := len(gid); tmp < length {

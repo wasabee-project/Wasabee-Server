@@ -184,7 +184,7 @@ func drawOpUpdateWorker(o Operation) error {
 	designMode := true
 	if o.UpdateMode == "active" {
 		designMode = false
-		Log.Debugf("activeMode update")
+		// Log.Debugf("activeMode update")
 	}
 
 	_, err := db.Exec("UPDATE operation SET name = ?, color = ?, comment = ? WHERE ID = ?",

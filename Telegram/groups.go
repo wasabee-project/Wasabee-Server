@@ -181,7 +181,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 }
 
 func chatResponses(inMsg *tgbotapi.Update) error {
-	wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID)
+	// wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID)
 	teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
 	if err != nil {
 		// no need to log these, just non-linked chats
@@ -197,9 +197,10 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 	}
 
 	if inMsg.Message.NewChatMembers != nil {
-		var ncm []tgbotapi.User
-		ncm = *inMsg.Message.NewChatMembers
-		for _, new := range ncm {
+		// var ncm []tgbotapi.User
+		// ncm = *inMsg.Message.NewChatMembers
+		// for _, new := range ncm {
+		for _, new := range *inMsg.Message.NewChatMembers {
 			wasabee.Log.Debugw("new chat member", "tgid", new.ID, "tg", new.UserName)
 			tgid := wasabee.TelegramID(new.ID)
 			gid, err := tgid.Gid()
