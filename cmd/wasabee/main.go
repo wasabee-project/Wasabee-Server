@@ -153,22 +153,22 @@ func run(c *cli.Context) error {
 
 	wasabee.SetupDebug(c.Bool("longtimeouts"))
 
- 	/*
-	if creds != "" {
-		if _, err := os.Stat(creds); err == nil {
-			opts := option.WithCredentialsFile(creds)
-			cfg := profiler.Config{
-				Service:        "wasabee",
-				ServiceVersion: "0.7.0",
-				ProjectID:      "phdevbin",
+	/*
+		if creds != "" {
+			if _, err := os.Stat(creds); err == nil {
+				opts := option.WithCredentialsFile(creds)
+				cfg := profiler.Config{
+					Service:        "wasabee",
+					ServiceVersion: "0.7.0",
+					ProjectID:      "phdevbin",
+				}
+				if err := profiler.Start(cfg, opts); err != nil {
+					wasabee.Log.Errorw("startup", "message", "unable to start profiler", "error", err)
+				} else {
+					wasabee.Log.Infow("startup", "message", "starting gcloud profiling")
+				}
 			}
-			if err := profiler.Start(cfg, opts); err != nil {
-				wasabee.Log.Errorw("startup", "message", "unable to start profiler", "error", err)
-			} else {
-				wasabee.Log.Infow("startup", "message", "starting gcloud profiling")
-			}
-		}
-	} */
+		} */
 
 	// Load words
 	err := wasabee.LoadWordsFile(c.String("wordlist"))
