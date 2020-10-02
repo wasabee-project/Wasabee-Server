@@ -279,9 +279,13 @@ func AddToChat(gid wasabee.GoogleID, t string) (bool, error) {
 		wasabee.Log.Error(err)
 		return false, err
 	}
+	if chatID == 0 {
+		wasabee.Log.Debug("no linked chat")
+		return false, nil
+	}
 	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "chatID", chatID)
 		return false, err
 	}
 

@@ -122,8 +122,8 @@ func (l LinkID) String() string {
 	return string(l)
 }
 
-// AssignLink assigns a link to an agent, sending them a message that they have an assignment
-func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) (string, error) {
+// AssignLink assigns a link to an agent
+func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) (string, error) {
 	// gid of 0 unsets the assignment
 	if gid == "0" {
 		gid = ""
@@ -139,63 +139,9 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID, sendMsg bool) (strin
 		Log.Debugw("AssignLink rows changed", "rows", ra, "resource", o.ID, "GID", gid, "link", linkID)
 		return "", nil
 	}
-
-	// if we are unassigning or not sending messages, we are done
-	if !sendMsg || gid.String() == "" {
-		return "", nil
-	}
-
-	if len(o.Links) == 0 {
-		_ = o.populateLinks([]Zone{ZoneAll}, gid)
-	}
-	if len(o.OpPortals) == 0 {
-		_ = o.populatePortals()
-	}
-
-	o.ID.firebaseAssignLink(gid, linkID)
-
-	l, err := o.getLink(linkID)
-	if err != nil {
-		Log.Error(err)
-		return "", nil // just log and bail
-	}
-
-	from, err := o.getPortal(l.From)
-	if err != nil {
-		Log.Error(err)
-		return "", nil // just log and bail
-	}
-
-	to, err := o.getPortal(l.To)
-	if err != nil {
-		Log.Error(err)
-		return "", nil // just log and bail
-	}
-
-	link := struct {
-		OpID   OperationID
-		LinkID LinkID
-		From   Portal
-		To     Portal
-		Sender string
-	}{
-		OpID:   o.ID,
-		LinkID: linkID,
-		From:   from,
-		To:     to,
-		Sender: "unaccessible",
-	}
-
-	msg, err := gid.ExecuteTemplate("assignLink", link)
-	if err != nil {
-		Log.Error(err)
-		msg = fmt.Sprintf("assigned a marker for op %s", o.ID)
-		// do not report send errors up the chain, just log
-	}
-	_, err = gid.SendMessage(msg)
-	if err != nil {
-		Log.Error(err)
-		// do not report send errors up the chain, just log
+	
+	if gid != "" {
+		o.ID.firebaseAssignLink(gid, linkID)
 	}
 	return o.Touch()
 }

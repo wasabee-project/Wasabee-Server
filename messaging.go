@@ -10,7 +10,7 @@ type messagingConfig struct {
 	senders map[string]func(gid GoogleID, message string) (bool, error)
 	// function to join a channel for a GID
 	joiners map[string]func(gid GoogleID, groupID string) (bool, error)
-	// funciton to leave a channel for a GID
+	// function to leave a channel for a GID
 	leavers map[string]func(gid GoogleID, groupID string) (bool, error)
 }
 
@@ -94,7 +94,6 @@ func (teamID TeamID) SendAnnounce(sender GoogleID, message string) error {
 			return err
 		}
 	}
-
 	return nil
 }
 

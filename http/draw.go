@@ -336,13 +336,13 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	link := wasabee.LinkID(vars["link"])
 	agent := wasabee.GoogleID(req.FormValue("agent"))
-	uid, err := op.AssignLink(link, agent, false)
+	uid, err := op.AssignLink(link, agent)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	wasabee.Log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", link, "agent", agent, "message", "assigned link")
+	// wasabee.Log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", link, "agent", agent, "message", "assigned link")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -548,7 +548,7 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.AssignMarker(marker, agent, false, gid)
+	uid, err := op.AssignMarker(marker, agent)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

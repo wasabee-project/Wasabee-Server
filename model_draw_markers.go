@@ -151,7 +151,7 @@ func (m MarkerID) String() string {
 }
 
 // AssignMarker assigns a marker to an agent, sending them a message
-func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bool, sender GoogleID) (string, error) {
+func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID) (string, error) {
 	// unassign
 	if gid == "0" {
 		gid = ""
@@ -163,51 +163,8 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID, sendMessage bo
 		return "", err
 	}
 
-	// we are done if not sending messages or unassignming
-	if !sendMessage || gid.String() == "" {
-		return o.Touch()
-	}
-
-	o.ID.firebaseAssignMarker(gid, markerID)
-	m, err := o.getMarker(markerID)
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
-	p, err := o.getPortal(m.PortalID)
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
-	senderName, _ := sender.IngressName()
-
-	templateData := struct {
-		PortalID PortalID
-		Name     string
-		Lat      string
-		Lon      string
-		Type     string
-		Sender   string
-	}{
-		PortalID: m.PortalID,
-		Name:     p.Name,
-		Lat:      p.Lat,
-		Lon:      p.Lon,
-		Type:     m.Type.String(),
-		Sender:   senderName,
-	}
-
-	msg, err := gid.ExecuteTemplate("target", templateData)
-	if err != nil {
-		Log.Error(err)
-		msg = fmt.Sprintf("assigned a marker for op %s", o.ID)
-		// do not report send errors up the chain, just log
-	}
-	if _, err = gid.SendMessage(msg); err != nil {
-		Log.Errorw("send message", "GID", gid, "error", err, "themsg", msg)
-		// do not report send errors up the chain, just log
+	if gid.String() != "" {
+		o.ID.firebaseAssignMarker(gid, markerID)
 	}
 	return o.Touch()
 }
