@@ -23,11 +23,14 @@ require (
 	github.com/urfave/cli v1.22.4
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
+	golang.org/x/net v0.0.0-20200930145003-4acb6c075d10 // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
-	golang.org/x/sys v0.0.0-20200929083018-4d22bbb62b3c // indirect
+	golang.org/x/sync v0.0.0-20200930132711-30421366ff76 // indirect
+	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	golang.org/x/tools v0.0.0-20200929175058-fc8742f94788 // indirect
+	golang.org/x/tools v0.0.0-20201002055958-0d28ed0cbe40 // indirect
 	google.golang.org/api v0.32.0
+	google.golang.org/genproto v0.0.0-20201001141541-efaab9d3c4f7 // indirect
 	googlemaps.github.io/maps v1.2.2
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
