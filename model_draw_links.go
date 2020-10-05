@@ -139,7 +139,7 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) (string, error) {
 		Log.Debugw("AssignLink rows changed", "rows", ra, "resource", o.ID, "GID", gid, "link", linkID)
 		return "", nil
 	}
-	
+
 	if gid != "" {
 		o.ID.firebaseAssignLink(gid, linkID)
 	}
