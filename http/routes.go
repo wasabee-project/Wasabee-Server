@@ -111,6 +111,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/swap", drawLinkSwapRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/marker/{marker}", drawMarkerFetch).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")
 	// agent acknowledge the assignment
