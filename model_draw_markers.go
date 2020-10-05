@@ -170,7 +170,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID) (string, error
 }
 
 // lookup and return a populated Marker from an id
-func (o *Operation) getMarker(markerID MarkerID) (Marker, error) {
+func (o *Operation) GetMarker(markerID MarkerID) (Marker, error) {
 	for _, m := range o.Markers {
 		if m.ID == markerID {
 			return m, nil
