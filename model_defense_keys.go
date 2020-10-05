@@ -29,7 +29,8 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 	var dkl DefensiveKeyList
 	var name, lat, lon sql.NullString
 
-	rows, err := db.Query("SELECT gid, portalID, capID, count, name, Y(loc) AS lat, X(loc) AS lon FROM defensivekeys WHERE gid IN (SELECT DISTINCT x.gid FROM agentteams=x, agentteams=y WHERE y.gid = ? AND y.shareWD = 'On' AND x.teamID = y.teamID AND x.loadWD = 'On')", gid)
+	rows, err := db.Query("SELECT gid, portalID, capID, count, name, Y(loc) AS lat, X(loc) AS lon FROM defensivekeys WHERE gid IN (SELECT DISTINCT other.gid FROM agentteams=other, agentteams=me WHERE me.gid = ? AND me.loadWD = 'On' AND other.teamID = me.teamID AND other.shareWD = 'On')", gid)
+
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
 		return dkl, err
