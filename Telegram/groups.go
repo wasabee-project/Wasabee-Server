@@ -272,7 +272,7 @@ func SendToTeamChannel(teamID wasabee.TeamID, gid wasabee.GoogleID, message stri
 }
 
 func AddToChat(gid wasabee.GoogleID, t string) (bool, error) {
-	wasabee.Log.Debugw("AddToChat called", "GID", gid, "resource", t)
+	// wasabee.Log.Debugw("AddToChat called", "GID", gid, "resource", t)
 	teamID := wasabee.TeamID(t)
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
@@ -280,7 +280,7 @@ func AddToChat(gid wasabee.GoogleID, t string) (bool, error) {
 		return false, err
 	}
 	if chatID == 0 {
-		wasabee.Log.Debug("no linked chat")
+		// wasabee.Log.Debug("no chat linked to team")
 		return false, nil
 	}
 	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
