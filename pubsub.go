@@ -1,5 +1,10 @@
 package wasabee
 
+import (
+	"fmt"
+	"strconv"
+)
+
 var ps struct {
 	running bool
 	c       chan PSCommand
@@ -42,5 +47,26 @@ func (gid GoogleID) PSRequest() {
 	ps.c <- PSCommand{
 		Command: "request",
 		Param:   gid.String(),
+	}
+}
+
+// Push an Agent's location to PubSub
+func (gid GoogleID) PSLocation(lat, lon string) {
+	flat, err := strconv.ParseFloat(lat, 64)
+	if err != nil {
+		Log.Error(err)
+		flat = float64(0)
+	}
+	flon, err := strconv.ParseFloat(lon, 64)
+	if err != nil {
+		Log.Error(err)
+		flon = float64(0)
+	}
+	ll := fmt.Sprintf("%s,%s", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
+
+	ps.c <- PSCommand{
+		Command: "location",
+		Param:   gid.String(),
+		Data:    ll,
 	}
 }
