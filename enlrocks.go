@@ -49,7 +49,6 @@ type Rocksconfig struct {
 	CommunityEndpoint string
 	// StatusEndpoint is the API endpoint for getting user status
 	StatusEndpoint string
-	configured     bool
 	limiter        *rate.Limiter
 }
 
@@ -73,17 +72,15 @@ func SetEnlRocks(input Rocksconfig) {
 	}
 
 	rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
-	rocks.configured = true
 }
 
-// GetEnlRocks is used for templates to determine if .Rocks is enabled
 func GetEnlRocks() bool {
-	return rocks.configured
+	return !(rocks.APIKey == "")
 }
 
 // RocksSearch checks a agent at enl.rocks and populates a RocksAgent
 func RocksSearch(id AgentID, agent *RocksAgent) error {
-	if !rocks.configured {
+	if rocks.APIKey == "" {
 		return nil
 	}
 
@@ -130,7 +127,7 @@ func RocksSearch(id AgentID, agent *RocksAgent) error {
 // RocksUpdate updates the database to reflect an agent's current status at enl.rocks.
 // It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
 func RocksUpdate(id AgentID, agent *RocksAgent) error {
-	if !rocks.configured {
+	if rocks.APIKey == "" {
 		return nil
 	}
 	gid, err := id.Gid()
@@ -216,8 +213,8 @@ func RocksCommunitySync(msg json.RawMessage) error {
 
 // RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
 func (teamID TeamID) RocksCommunityMemberPull() error {
-	if !rocks.configured {
-		return nil
+	if rocks.CommunityEndpoint == "" {
+		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
 	}
 
 	rc, err := teamID.rocksComm()
@@ -310,6 +307,9 @@ type rocksPushResponse struct {
 
 // AddToRemoteRocksCommunity adds an agent to a community at .rocks IF that community has API enabled.
 func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
+	if rocks.CommunityEndpoint == "" {
+		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
+	}
 	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
@@ -356,6 +356,9 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 
 // RemoveFromRemoteRocksCommunity removes an agent from a Rocks Community IF that community has API enabled.
 func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
+	if rocks.CommunityEndpoint == "" {
+		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
+	}
 	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
@@ -411,10 +414,6 @@ func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 
 // rocksComm returns a rocks key for a TeamID
 func (teamID TeamID) rocksComm() (string, error) {
-	if !rocks.configured {
-		return "", nil
-	}
-
 	var rc sql.NullString
 	err := db.QueryRow("SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
 	if err != nil {
