@@ -81,7 +81,22 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			return err
 		}
 	case "assignments":
+		var filterGid wasabee.GoogleID
 		msg.ParseMode = "HTML"
+		tokens := strings.Split(inMsg.Message.Text, " ")
+		if len(tokens) > 1 {
+			agent := strings.TrimSpace(tokens[1])
+			filterGid, err = wasabee.SearchAgentName(agent)
+			if err != nil {
+				wasabee.Log.Error(err)
+				filterGid = "0"
+			}
+			if filterGid == "" {
+				filterGid = "0"
+			}
+		} else {
+			filterGid = ""
+		}
 		teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
 			wasabee.Log.Error(err)
@@ -109,6 +124,10 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
 			b.WriteString("<b>Order / Portal / Action / Agent / State</b>\n")
 			for _, m := range o.Markers {
+				// if the caller requested the results to be filtered...
+				if filterGid != "" && m.AssignedTo != filterGid {
+					continue
+				}
 				if m.State != "pending" && m.AssignedTo != "" {
 					p, _ := o.PortalDetails(m.PortalID, gid)
 					a, _ := m.AssignedTo.IngressNameTeam(teamID)
@@ -208,7 +227,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 				continue
 			}
 			if err = teamID.AddAgent(gid); err != nil {
-				wasabee.Log.Debugw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid)
+				wasabee.Log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid)
 			}
 		}
 	}
@@ -222,7 +241,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 			wasabee.Log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID)
 		} else {
 			if err := teamID.RemoveAgent(gid); err != nil {
-				wasabee.Log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "GID", gid)
+				wasabee.Log.Errorw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "GID", gid)
 			}
 		}
 	}
