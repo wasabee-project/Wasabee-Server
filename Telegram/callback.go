@@ -102,15 +102,15 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	// wasabee.Log.Debug(string(s))
 
 	if update.CallbackQuery.Message.Location != nil && update.CallbackQuery.Message.Location.Latitude != 0 {
-		err = gid.AgentLocation(
-			strconv.FormatFloat(update.CallbackQuery.Message.Location.Latitude, 'f', -1, 64),
-			strconv.FormatFloat(update.CallbackQuery.Message.Location.Longitude, 'f', -1, 64),
-		)
+		lat := strconv.FormatFloat(update.CallbackQuery.Message.Location.Latitude, 'f', -1, 64)
+		lon := strconv.FormatFloat(update.CallbackQuery.Message.Location.Longitude, 'f', -1, 64)
+		err = gid.AgentLocation(lat, lon)
 		if err != nil {
 			wasabee.Log.Error(err)
 			return msg, err
 		}
 		msg.Text = "Location Processed"
+		gid.PSLocation(lat, lon)
 	}
 
 	if update.CallbackQuery.Message.Chat.Type != "private" {

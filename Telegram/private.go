@@ -116,10 +116,10 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 
 	if inMsg.Message != nil && inMsg.Message.Location != nil {
 		wasabee.Log.Debugw("processing location", "subsystem", "Telegram", "GID", gid)
-		_ = gid.AgentLocation(
-			strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64),
-			strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64),
-		)
+		lat := strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64)
+		lon := strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64)
+		_ = gid.AgentLocation(lat, lon)
+		gid.PSLocation(lat, lon)
 	}
 
 	if _, err := bot.Send(msg); err != nil {

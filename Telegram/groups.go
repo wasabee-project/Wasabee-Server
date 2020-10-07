@@ -261,10 +261,10 @@ func liveLocationUpdate(inMsg *tgbotapi.Update) error {
 	}
 	// wasabee.Log.Debugw("live location inMsg", "GID", gid, "message", "live location update")
 
-	_ = gid.AgentLocation(
-		strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64),
-		strconv.FormatFloat(inMsg.EditedMessage.Location.Longitude, 'f', -1, 64),
-	)
+	lat := strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64)
+	lon := strconv.FormatFloat(inMsg.EditedMessage.Location.Longitude, 'f', -1, 64)
+	_ = gid.AgentLocation(lat, lon)
+	gid.PSLocation(lat, lon)
 	return nil
 }
 
