@@ -352,7 +352,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		if rr[:len(me)] == me || rr[:len(login)] == login {
 			// -- need to invert this logic now
 		} else {
-			wasabee.Log.Debugw("Oauth2 login flow completed", "redirect", rr, "GID", m.Gid)
+			// wasabee.Log.Debugw("Oauth2 login flow completed", "redirect", rr, "GID", m.Gid)
 			location = rr
 		}
 		delete(ses.Values, "loginReq")
