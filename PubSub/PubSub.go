@@ -134,10 +134,7 @@ func listenForPubSubMessages() {
 				msg.Ack()
 				break
 			}
-			if msg.Attributes["RespondingTo"] != c.hostname {
-				msg.Ack()
-				break
-			}
+			// if msg.Attributes["RespondingTo"] != c.hostname { msg.Ack() break }
 			// wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"])
 			// if msg.Attributes["Authoritative"] == "true" { wasabee.Log.Debug("Authoritative") }
 			var ad wasabee.AgentData
