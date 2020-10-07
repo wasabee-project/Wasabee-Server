@@ -212,6 +212,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		ID   wasabee.PortalID
 		Lat  string
 		Lng  string
+		Type string
 	}
 	err = json.Unmarshal(jRaw, &target)
 	if err != nil {
@@ -239,6 +240,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Error(err)
 	}
 
+	// Lng vs Lon ... 
 	templateData := struct {
 		Name   string
 		ID     wasabee.PortalID
@@ -251,14 +253,14 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		ID:     target.ID,
 		Lat:    target.Lat,
 		Lon:    target.Lng,
-		Type:   "ad-hoc target",
+		Type:   target.Type,
 		Sender: iname,
 	}
 
 	msg, err := gid.ExecuteTemplate("target", templateData)
 	if err != nil {
 		wasabee.Log.Error(err)
-		msg = fmt.Sprintf("template failed; ad-hoc target @ %s %s", target.Lat, target.Lng)
+		msg = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
 		// do not report send errors up the chain, just log
 	}
 
