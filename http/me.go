@@ -147,6 +147,9 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// send to the other servers
+	gid.PSLocation(lat, lon)
+
 	fmt.Fprint(res, jsonStatusOK)
 }
 
