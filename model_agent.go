@@ -56,14 +56,15 @@ type AgentData struct {
 
 // AdTeam is a sub-struct of AgentData
 type AdTeam struct {
-	ID        TeamID
-	Name      string
-	RocksComm string
-	RocksKey  string
-	State     string
-	ShareWD   string
-	LoadWD    string
-	Owner     GoogleID
+	ID            TeamID
+	Name          string
+	RocksComm     string
+	RocksKey      string
+	JoinLinkToken string
+	State         string
+	ShareWD       string
+	LoadWD        string
+	Owner         GoogleID
 }
 
 // AdOperation is a sub-struct of AgentData
@@ -282,17 +283,17 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 }
 
 func (gid GoogleID) adTeams(ad *AgentData) error {
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state, x.shareWD, x.loadWD, t.rockscomm, t.rockskey, t.owner FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state, x.shareWD, x.loadWD, t.rockscomm, t.rockskey, t.owner, t.joinLinkToken FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	var rc, rk sql.NullString
+	var rc, rk, jlt sql.NullString
 	var adteam AdTeam
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &adteam.ShareWD, &adteam.LoadWD, &rc, &rk, &adteam.Owner)
+		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &adteam.ShareWD, &adteam.LoadWD, &rc, &rk, &adteam.Owner, &jlt)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -304,9 +305,14 @@ func (gid GoogleID) adTeams(ad *AgentData) error {
 		}
 		if rk.Valid && adteam.Owner == gid {
 			// only share RocksKey with owner
-			adteam.RocksKey = rc.String
+			adteam.RocksKey = rk.String
 		} else {
 			adteam.RocksKey = ""
+		}
+		if jlt.Valid {
+			adteam.JoinLinkToken = jlt.String
+		} else {
+			adteam.JoinLinkToken = ""
 		}
 		ad.Teams = append(ad.Teams, adteam)
 	}
