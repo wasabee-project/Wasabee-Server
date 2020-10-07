@@ -304,7 +304,7 @@ func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 		y := portals[l.To]
 		url += y.lat + "," + y.lon
 		count++
-		if count > 60 {
+		if count > 59 {
 			break
 		}
 	}
