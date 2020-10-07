@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -98,6 +99,7 @@ func StartPubSub(config Configuration) error {
 
 func listenForPubSubMessages() {
 	for msg := range c.mc {
+		// always ignore messages from me
 		if msg.Attributes["Sender"] == c.hostname {
 			msg.Ack()
 			continue
@@ -127,6 +129,19 @@ func listenForPubSubMessages() {
 				wasabee.Log.Warnw("NACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 				msg.Nack()
 			}
+		case "location":
+			// the responder should amplify to all requesters 
+			if c.responder {
+				location(msg.Attributes["Gid"], msg.Attributes["ll"])
+			}
+			tokens := strings.Split(msg.Attributes["ll"], ",")
+			gid := wasabee.GoogleID(msg.Attributes["Gid"]);
+			if err := gid.AgentLocation(tokens[0], tokens[1]); err != nil {
+				wasabee.Log.Error(err)
+				msg.Nack()
+				break
+			}
+			msg.Ack()
 		case "agent":
 			if c.responder {
 				// anyone on the responder subscription can Ack it
@@ -168,6 +183,11 @@ func listenForWasabeeCommands() {
 			if err != nil {
 				wasabee.Log.Error(err)
 			}
+		case "location":
+			err := location(cmd.Param, cmd.Data)
+			if err != nil {
+				wasabee.Log.Error(err)
+			}
 		default:
 			wasabee.Log.Warnw("unknown PubSub command", "command", cmd.Command)
 		}
@@ -188,6 +208,23 @@ func request(gid string) error {
 	atts["Type"] = "request"
 	atts["Gid"] = gid
 	atts["Sender"] = c.hostname
+
+	c.requestTopic.Publish(ctx, &pubsub.Message{
+		Attributes: atts,
+		Data:       []byte(""),
+	})
+
+	return nil
+}
+
+func location(gid, ll string) error {
+	ctx := context.Background()
+
+	atts := make(map[string]string)
+	atts["Type"] = "location"
+	atts["Gid"] = gid
+	atts["Sender"] = c.hostname
+	atts["ll"] = ll
 
 	c.requestTopic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
