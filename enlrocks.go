@@ -215,6 +215,7 @@ func RocksCommunitySync(msg json.RawMessage) error {
 func (teamID TeamID) RocksCommunityMemberPull() error {
 	if rocks.CommunityEndpoint == "" {
 		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
+		rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
 	}
 
 	rc, err := teamID.rocksComm()
@@ -358,6 +359,7 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
 	if rocks.CommunityEndpoint == "" {
 		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
+		rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
 	}
 	rc, err := teamID.rocksComm()
 	if err != nil {
