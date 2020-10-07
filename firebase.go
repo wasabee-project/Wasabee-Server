@@ -343,7 +343,7 @@ func (gid GoogleID) FirebaseInsertToken(token string) error {
 		return nil
 	}
 
-	Log.Debugw("adding token", "subsystem", "Firebase", "GID", gid, "token", token)
+	// Log.Debugw("adding token", "subsystem", "Firebase", "GID", gid, "token", token)
 	_, err = db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		Log.Error(err)
