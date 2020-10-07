@@ -118,8 +118,8 @@ func listenForPubSubMessages() {
 			// wasabee.Log.Debugw("request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 			ack, err := respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
 			if err != nil {
-				wasabee.Log.Error(err)
-				msg.Nack()
+				wasabee.Log.Warnw(err.Error(), "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+				msg.Ack()
 				break
 			}
 			if ack {
@@ -131,7 +131,9 @@ func listenForPubSubMessages() {
 			}
 		case "location":
 			// the responder should amplify to all requesters
+			wasabee.Log.Debugw("processing pub/sub location message", "subsystem", "PubSub", "sender", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"], "data", msg.Attributes["ll"])
 			if c.responder {
+				wasabee.Log.Debugw("resending pub/sub location message", "subsystem", "PubSub")
 				location(msg.Attributes["Gid"], msg.Attributes["ll"])
 			}
 			tokens := strings.Split(msg.Attributes["ll"], ",")
@@ -141,6 +143,7 @@ func listenForPubSubMessages() {
 				msg.Nack()
 				break
 			}
+			wasabee.Log.Debugw("done with pub/sub location message", "subsystem", "PubSub")
 			msg.Ack()
 		case "agent":
 			if c.responder {
@@ -226,6 +229,7 @@ func location(gid, ll string) error {
 	atts["Sender"] = c.hostname
 	atts["ll"] = ll
 
+	wasabee.Log.Debugw("publishing pub/sub location message", "subsystem", "PubSub", "GID", gid, "LL", ll)
 	c.requestTopic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       []byte(""),
