@@ -130,12 +130,12 @@ func listenForPubSubMessages() {
 				msg.Nack()
 			}
 		case "location":
-			// the responder should amplify to all requesters 
+			// the responder should amplify to all requesters
 			if c.responder {
 				location(msg.Attributes["Gid"], msg.Attributes["ll"])
 			}
 			tokens := strings.Split(msg.Attributes["ll"], ",")
-			gid := wasabee.GoogleID(msg.Attributes["Gid"]);
+			gid := wasabee.GoogleID(msg.Attributes["Gid"])
 			if err := gid.AgentLocation(tokens[0], tokens[1]); err != nil {
 				wasabee.Log.Error(err)
 				msg.Nack()
