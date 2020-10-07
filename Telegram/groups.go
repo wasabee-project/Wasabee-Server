@@ -285,7 +285,7 @@ func AddToChat(gid wasabee.GoogleID, t string) (bool, error) {
 	}
 	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
 	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "chatID", chatID)
+		wasabee.Log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
 		return false, err
 	}
 
@@ -307,9 +307,12 @@ func RemoveFromChat(gid wasabee.GoogleID, t string) (bool, error) {
 		wasabee.Log.Error(err)
 		return false, err
 	}
+	if chatID == 0 {
+		return false, nil
+	}
 	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
 		return false, err
 	}
 	name, _ := gid.IngressNameTeam(teamID)
