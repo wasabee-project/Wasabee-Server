@@ -54,24 +54,23 @@ type Rocksconfig struct {
 
 var rocks Rocksconfig
 
+func init() {
+	rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
+	rocks.StatusEndpoint = "https://enlightened.rocks/api/user/status"
+	rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
+}
+
 // SetEnlRocks is called from main() to initialize the config
 func SetEnlRocks(input Rocksconfig) {
 	Log.Debugw("startup", "enl.rocks API Key", input.APIKey)
 	rocks.APIKey = input.APIKey
 
-	if len(input.CommunityEndpoint) != 0 {
+	if input.CommunityEndpoint != "" {
 		rocks.CommunityEndpoint = input.CommunityEndpoint
-	} else {
-		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
 	}
-
-	if len(input.StatusEndpoint) != 0 {
+	if input.StatusEndpoint != "" {
 		rocks.StatusEndpoint = input.StatusEndpoint
-	} else {
-		rocks.StatusEndpoint = "https://enlightened.rocks/api/user/status"
 	}
-
-	rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
 }
 
 func GetEnlRocks() bool {
@@ -213,11 +212,6 @@ func RocksCommunitySync(msg json.RawMessage) error {
 
 // RocksCommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
 func (teamID TeamID) RocksCommunityMemberPull() error {
-	if rocks.CommunityEndpoint == "" {
-		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
-		rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
-	}
-
 	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
@@ -308,9 +302,6 @@ type rocksPushResponse struct {
 
 // AddToRemoteRocksCommunity adds an agent to a community at .rocks IF that community has API enabled.
 func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
-	if rocks.CommunityEndpoint == "" {
-		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
-	}
 	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
@@ -357,10 +348,6 @@ func (gid GoogleID) AddToRemoteRocksCommunity(teamID TeamID) error {
 
 // RemoveFromRemoteRocksCommunity removes an agent from a Rocks Community IF that community has API enabled.
 func (gid GoogleID) RemoveFromRemoteRocksCommunity(teamID TeamID) error {
-	if rocks.CommunityEndpoint == "" {
-		rocks.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
-		rocks.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
-	}
 	rc, err := teamID.rocksComm()
 	if err != nil {
 		return err
