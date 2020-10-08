@@ -77,9 +77,8 @@ func StartPubSub(config Configuration) error {
 	go listenForPubSubMessages()
 
 	// spin up listener for commands from wasabee
-	if !c.responder {
-		go listenForWasabeeCommands()
-	}
+	// if !c.responder { }
+	go listenForWasabeeCommands()
 
 	// send some heartbeats for testing
 	go heartbeats()
@@ -133,8 +132,8 @@ func listenForPubSubMessages() {
 			// the responder should amplify to all requesters
 			wasabee.Log.Debugw("processing pub/sub location message", "subsystem", "PubSub", "sender", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"], "data", msg.Attributes["ll"])
 			if c.responder {
-				wasabee.Log.Debugw("resending pub/sub location message", "subsystem", "PubSub")
-				location(msg.Attributes["Gid"], msg.Attributes["ll"])
+				wasabee.Log.Debugw("resending pub/sub location message", "subsystem", "PubSub", "sender", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"], "data", msg.Attributes["ll"])
+				location(msg.Attributes["Gid"], msg.Attributes["ll"], msg.Attributes["Sender"])
 			}
 			tokens := strings.Split(msg.Attributes["ll"], ",")
 			gid := wasabee.GoogleID(msg.Attributes["Gid"])
@@ -143,7 +142,7 @@ func listenForPubSubMessages() {
 				msg.Nack()
 				break
 			}
-			wasabee.Log.Debugw("done with pub/sub location message", "subsystem", "PubSub")
+			wasabee.Log.Debugw("done with pub/sub location message", "subsystem", "PubSub", "sender", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"], "data", msg.Attributes["ll"])
 			msg.Ack()
 		case "agent":
 			if c.responder {
@@ -187,7 +186,7 @@ func listenForWasabeeCommands() {
 				wasabee.Log.Error(err)
 			}
 		case "location":
-			err := location(cmd.Param, cmd.Data)
+			err := location(cmd.Param, cmd.Data, "")
 			if err != nil {
 				wasabee.Log.Error(err)
 			}
@@ -220,21 +219,29 @@ func request(gid string) error {
 	return nil
 }
 
-func location(gid, ll string) error {
+func location(gid, ll, sender string) error {
 	ctx := context.Background()
+
+	if sender == "" {
+		sender = c.hostname
+	}
 
 	atts := make(map[string]string)
 	atts["Type"] = "location"
 	atts["Gid"] = gid
-	atts["Sender"] = c.hostname
+	atts["Sender"] = sender
 	atts["ll"] = ll
 
-	wasabee.Log.Debugw("publishing pub/sub location message", "subsystem", "PubSub", "GID", gid, "LL", ll)
-	c.requestTopic.Publish(ctx, &pubsub.Message{
-		Attributes: atts,
-		Data:       []byte(""),
-	})
-
+	wasabee.Log.Debugw("publishing pub/sub location message", "subsystem", "PubSub", "GID", gid, "LL", ll, "sender", c.hostname)
+	if c.responder {
+		c.responseTopic.Publish(ctx, &pubsub.Message{
+			Attributes: atts,
+		})
+	} else {
+		c.requestTopic.Publish(ctx, &pubsub.Message{
+			Attributes: atts,
+		})
+	}
 	return nil
 }
 
