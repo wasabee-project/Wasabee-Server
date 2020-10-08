@@ -240,7 +240,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Error(err)
 	}
 
-	// Lng vs Lon ... 
+	// Lng vs Lon ...
 	templateData := struct {
 		Name   string
 		ID     wasabee.PortalID
