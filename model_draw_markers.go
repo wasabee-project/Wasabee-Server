@@ -34,7 +34,7 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	if !m.Zone.Valid() {
+	if !m.Zone.Valid() || m.Zone == ZoneAll {
 		m.Zone = zonePrimary
 	}
 
@@ -52,7 +52,7 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.State = "pending"
 	}
 
-	if !m.Zone.Valid() {
+	if !m.Zone.Valid() || m.Zone == ZoneAll {
 		m.Zone = zonePrimary
 	}
 

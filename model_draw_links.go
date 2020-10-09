@@ -32,7 +32,7 @@ func (opID OperationID) insertLink(l Link) error {
 		return nil
 	}
 
-	if !l.Zone.Valid() {
+	if !l.Zone.Valid() || l.Zone == ZoneAll {
 		l.Zone = zonePrimary
 	}
 
@@ -60,7 +60,7 @@ func (opID OperationID) updateLink(l Link) error {
 		return nil
 	}
 
-	if !l.Zone.Valid() {
+	if !l.Zone.Valid() || l.Zone == ZoneAll {
 		l.Zone = zonePrimary
 	}
 

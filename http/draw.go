@@ -1083,13 +1083,6 @@ func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !zone.Valid() {
-		err = fmt.Errorf("zone not set removing permission from op")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "role", role, "zone", zone, "teamID", teamID, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
 	uid, err := op.DelPerm(gid, teamID, role, zone)
 	if err != nil {
 		wasabee.Log.Error(err)

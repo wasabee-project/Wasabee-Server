@@ -16,7 +16,7 @@ const (
 
 // Valid returns a boolean if the zone is in the valid range
 func (z Zone) Valid() bool {
-	if z >= zonePrimary && z <= zoneMax {
+	if z >= ZoneAll && z <= zoneMax {
 		return true
 	}
 	return false
