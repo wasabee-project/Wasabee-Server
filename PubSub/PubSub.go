@@ -131,7 +131,7 @@ func listenForPubSubMessages() {
 		case "location":
 			// the responder should amplify to all requesters
 			if c.responder {
-				location(msg.Attributes["Gid"], msg.Attributes["ll"], msg.Attributes["Sender"])
+				_ = location(msg.Attributes["Gid"], msg.Attributes["ll"], msg.Attributes["Sender"])
 			}
 			tokens := strings.Split(msg.Attributes["ll"], ",")
 			gid := wasabee.GoogleID(msg.Attributes["Gid"])

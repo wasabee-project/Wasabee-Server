@@ -149,7 +149,9 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			if _, err := bot.Send(msg); err != nil {
 				wasabee.Log.Error(err)
 				msg.Text = err.Error()
-				bot.Send(msg)
+				if _, err := bot.Send(msg); err != nil {
+					wasabee.Log.Error(err)
+				}
 				continue
 			}
 		}
