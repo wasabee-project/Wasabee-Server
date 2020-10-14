@@ -297,3 +297,16 @@ func (l LinkID) SetZone(o *Operation, z Zone) (string, error) {
 	}
 	return o.Touch()
 }
+
+// lookup and return a populated Link from an id
+func (o *Operation) GetLink(linkID LinkID) (Link, error) {
+	for _, l := range o.Links {
+		if l.ID == linkID {
+			return l, nil
+		}
+	}
+
+	var l Link
+	err := fmt.Errorf("link not found")
+	return l, err
+}

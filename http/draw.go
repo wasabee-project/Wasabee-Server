@@ -679,6 +679,61 @@ func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, string(j))
 }
 
+func drawLinkFetch(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	// o.Populate determines all or assigned-only
+	read, _ := op.ReadAccess(gid)
+	if !read && !op.AssignedOnlyAccess(gid) {
+		if op.ID.IsDeletedOp() {
+			err := fmt.Errorf("requested deleted op")
+			wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+			http.Error(res, jsonError(err), http.StatusGone)
+			return
+		}
+
+		err := fmt.Errorf("forbidden")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	// populate the whole op, slow, but ensures we only get things we have access to see
+	if err = op.Populate(gid); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	linkID := wasabee.LinkID(vars["link"])
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		wasabee.Log.Error(err)
+		// not really a 404, but close enough, better than a 500 or 403
+		http.Error(res, jsonError(err), http.StatusNotFound)
+		return
+	}
+	j, err := json.Marshal(link)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(res, string(j))
+}
+
 func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
@@ -837,7 +892,7 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	capsule := req.FormValue("capsule")
 
-	// wasabee.Log.Debugw("updating key count", "GID", gid, "resource", op.ID, "portal", portalID, "count", onhand, "capsule", capsule);
+	wasabee.Log.Debugw("updating key count", "GID", gid, "resource", op.ID, "portal", portalID, "count", onhand, "capsule", capsule, "formValue", req.FormValue("count"))
 
 	uid, err := op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
