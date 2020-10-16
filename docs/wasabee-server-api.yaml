@@ -1,0 +1,1398 @@
+openapi: "3.0.0"
+info:
+  version: 0.18.0
+  title: Wasabee Server
+  license:
+    name: MIT
+servers:
+  - url: https://am.wasabee.rocks/
+  - url: https://ap.wasabee.rocks/
+  - url: https://eu.wasabee.rocks/
+paths:
+  /aptok:
+    post:
+      summary: Auth with google auth token
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+      responses:
+        '200':
+          description: success
+
+  /oneTimeToken:
+    post:
+      summary: Auth with OTP
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: success
+
+  /api/v1/me/logout:
+    get:
+      summary: Logout
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: operation uploaded
+
+  /me:
+    get:
+      tags:
+        - "User info"
+      responses:
+        '200':
+          description: User data
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/AgentData"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me/{teamId}:
+    delete:
+      tags:
+        - "User info"
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          description: The id of the team to delete
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw:
+    post:
+      summary: Upload operation
+      tags:
+        - Operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Operation"
+      responses:
+        '200':
+          description: operation uploaded
+
+  /api/v1/draw/{opID}:
+    get:
+      summary: Get operation
+      tags:
+        - Operation
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: The id of the op to fetch
+          schema:
+            $ref: "#/components/schemas/OperationID"
+      responses:
+        '200':
+          description: Server operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operation"
+        '304':
+          description: Not modified
+        '410':
+          description: Operation has been deleted
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    put:
+      summary: Update operation
+      tags:
+        - Operation
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: The id of the op to update
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Operation"
+      responses:
+        '200':
+          description: operation updated
+    delete:
+      summary: Delete operation
+      tags:
+        - Operation
+      responses:
+        '200':
+          description: operation deleted
+
+  /api/v1/draw/{opID}/info:
+    post:
+      summary: Set operation's comment
+      tags:
+        - Operation
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - info
+              properties:
+                info:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+
+  /api/v1/draw/{opID}/marker/{markerID}/assign:
+    post:
+      summary: Assign marker
+      tags:
+        - Operation
+        - Assignment
+        - Marker
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: Operation ID
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: markerID
+          in: path
+          required: true
+          description: Marker ID
+          schema:
+            $ref:  "#/components/schemas/MarkerID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                agent:
+                  required: true
+                  $ref:  "#/components/schemas/GoogleID"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/marker/{markerID}/{action}:
+    get:
+      summary: Set marker state
+      tags:
+        - Operation
+        - Assignment
+        - Marker
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: markerID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/MarkerID"
+        - name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [incomplete,complete]
+      responses:
+        '200':
+          description: Success
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/marker/{markerID}/comment:
+    post:
+      summary: Set marker comment
+      tags:
+        - Operation
+        - Marker
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: markerID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/MarkerID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - comment
+              properties:
+                comment:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/link/{linkID}/swap:
+    get:
+      summary: Reverse link
+      tags:
+        - Operation
+        - Link
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: linkID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/LinkID"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  
+  /api/v1/draw/{opID}/link/{linkID}/assign:
+    post:
+      summary: Assign link
+      tags:
+        - Operation
+        - Assignment
+        - Link
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: Operation ID
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: linkID
+          in: path
+          required: true
+          description: Link ID
+          schema:
+            $ref:  "#/components/schemas/LinkID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                agent:
+                  required: true
+                  $ref:  "#/components/schemas/GoogleID"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/link/{linkID}/{action}:
+    get:
+      summary: Set link state
+      tags:
+        - Operation
+        - Assignment
+        - Link
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: linkID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/LinkID"
+        - name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [incomplete,complete]
+      responses:
+        '200':
+          description: Success
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  
+  /api/v1/draw/{opID}/link/{linkID}/desc:
+    post:
+      summary: Set lin description
+      tags:
+        - Operation
+        - Link
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: linkID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/LinkID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - desc
+              properties:
+                desc:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  
+  /api/v1/draw/{opID}/link/{linkID}/zone:
+    post:
+      summary: Set link zone
+      tags:
+        - Operation
+        - Link
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: linkID
+          in: path
+          required: true
+          schema:
+            $ref:  "#/components/schemas/LinkID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - zone
+              properties:
+                zone:
+                  $ref: "#/components/schemas/Zone"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  
+  /api/v1/draw/{opID}/portal/{portalID}/keyonhand:
+    post:
+      summary: Define key on hand for a portal
+      tags:
+        - Operation
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: Operation ID
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+        - name: portalID
+          in: path
+          required: true
+          description: Portal ID
+          schema:
+            $ref:  "#/components/schemas/PortalID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - count
+                - capsule
+              properties:
+                count:
+                  type: integer
+                capsule:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/perms:
+    post:
+      summary: Add permission
+      tags:
+        - Operation
+        - Permission
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: Operation ID
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - team
+                - role
+              properties:
+                team:
+                  $ref:  "#/components/schemas/TeamID"
+                role:
+                  type: string
+                  enum: [write,read, assignonly]
+                zone:
+                  $ref:  "#/components/schemas/Zone"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    delete:
+      summary: Delete permission
+      tags:
+        - Operation
+        - Permission
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: Operation ID
+          schema:
+            $ref:  "#/components/schemas/OperationID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - team
+                - role
+              properties:
+                team:
+                  $ref:  "#/components/schemas/TeamID"
+                role:
+                  type: string
+                  enum: [write,read, assignonly]
+                zone:
+                  $ref:  "#/components/schemas/Zone"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/agent/${gid}:
+    get:
+      summary: Get Agent
+      tags:
+        - Agent
+      parameters:
+        - name: gid
+          in: path
+          required: true
+          description: Google ID of the agent
+          schema:
+            type: string
+      responses:
+        '200':
+          description: requested agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/agent/${agentID}/target:
+    post:
+      summary: Send a terget to an agent
+      tags:
+        - Agent
+      parameters:
+        - name: agentID
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            $ref:  "#/components/schemas/GoogleID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Name
+                - Lat
+                - Lng
+                - ID
+                - Type
+              properties:
+                Name:
+                  type: string
+                Lat:
+                  type: string
+                Lng:
+                  type: string
+                ID:
+                  $ref:  "#/components/schemas/PortalID"
+                Type:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/team/new?name={name}:
+    get:
+      summary: Create a team
+      tags:
+        - Team
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: success??
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamId}:
+    get:
+      summary: Fetch a team
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          description: ID of the team to fetch
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      responses:
+        '200':
+          description: requested team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamData"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    delete:
+      summary: Delete a team
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/chown?to={newOwner}:
+    get:
+      summary: Change team's owner
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+        - name: newOwner
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/GoogleID"
+      responses:
+        '200':
+          description: success
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/rename:
+    put:
+      summary: Rename a team
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - teamname
+              properties:
+                teamname:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/announce:
+    post:
+      summary: Send an announce to team
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - m
+              properties:
+                m:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/rocks:
+    get:
+      summary: Pull rocks
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      responses:
+        '200':
+          description: success
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/genJoinKey:
+    get:
+      summary: Request join link
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      responses:
+        '200':
+          description: joinlink ???
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/delJoinKey:
+    get:
+      summary: Delete current join link
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          
+          schema:
+            $ref: "#/components/schemas/TeamID"
+      responses:
+        '200':
+          description: success
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/rockscomm={community}&rckskey={apikey}:
+    get:
+      summary: Link team to a rock community
+      tags:
+        - Team
+        - Rocks
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+        - name: community
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: apikey
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: success
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/{agentID}:
+    post:
+      summary: Add agent to team
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+        - name: agentID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/GoogleID"
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    delete:
+      summary: Remove agent from team
+      tags:
+        - Team
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/{agentID}/displayname:
+    post:
+      summary: Set agent display name in the team
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+        - name: agentID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/GoogleID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - displayname
+              properties:
+                displayname:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /api/v1/team/{teamID}/{agentID}/squad:
+    post:
+      summary: Set agent squad in the team
+      tags:
+        - Team
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TeamID"
+        - name: agentID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/GoogleID"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - squad
+              properties:
+                squad:
+                  type: string
+      responses:
+        '200':
+          $ref: "#/components/responses/PostSuccess"
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+    
+components:
+  responses:
+    PostSuccess:
+      description: Success
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              updateID:
+                type: string
+
+    NotLoggedIn:
+      description: The user is not logged
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unexpected:
+      description: unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    EnlID:
+      type: string
+    GoogleID:
+      type: string
+    LinkID:
+      type: string
+    MarkerID:
+      type: string
+    MarkerType:
+      type: string
+    OperationID:
+      type: string
+    PortalID:
+      type: string
+    TeamID:
+      type: string
+    Zone:
+      type: integer
+    AgentData:
+      type: object
+      required:
+        - GoogleID
+        - IngressName
+        - Level
+        - LocationKey
+        - VVerified
+        - VBlacklisted
+        - Vid
+        - RocksVerified
+        - RAID
+        - RISC
+        - ProfileImage
+        - OwnedTeams
+        - Teams
+        - Ops
+        - Assignments
+        - Telegram
+      properties:
+        GoogleID:
+          $ref: "#/components/schemas/GoogleID"
+        IngressName:
+          type: string
+        Level:
+          type: integer
+        LocationKey:
+          type: string
+        VVerified:
+          type: boolean
+        VBlacklisted:
+          type: boolean
+        Vid:
+          $ref: "#/components/schemas/EnlID"
+        RocksVerified:
+          type: boolean
+        RAID:
+          type: boolean
+        RISC:
+          type: boolean
+        ProfileImage:
+          type: string
+        OwnedTeams:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdTeam"
+        Teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdTeam"
+        Ops:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdOperation"
+        Assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Assignment"
+
+    AdTeam:
+      type: object
+      required:
+        - ID
+        - Name
+        - Owner
+        - RocksComm
+        - RocksKey
+        - JoinLinkToken
+        - State
+        - ShareWD
+        - LoadWD
+      properties:
+        ID:
+          $ref: "#/components/schemas/TeamID"
+        Name:
+          type: string
+        RocksComm:
+          type: string
+        RocksKey:
+          type: string
+        JoinLinkToken:
+          type: string
+        State:
+          type: string
+        ShareWD:
+          type: string
+        LoadWD:
+          type: string
+        Owner:
+          $ref: "#/components/schemas/GoogleID"
+
+    AdOperation:
+      type: object
+      properties:
+        ID: 
+          $ref: "#/components/schemas/OperationID"
+        Name: 
+          type: string
+        IsOwner: 
+          type: boolean
+        Color: 
+          type: string
+        TeamID: 
+          type: string
+
+    Assignment:
+      type: object
+      properties:
+        OpID: 
+          $ref:  "#/components/schemas/OperationID"
+        OperationName: 
+          type: string
+
+    Agent:
+      type: object
+      required:
+        - id
+        - name
+        - level
+        - enlid
+        - pic
+        - Vverified
+        - blacklisted
+        - rocks
+        - squad
+        - state
+        - lat
+        - lng
+        - date
+        - shareWD
+        - loadWD
+      properties:
+        id:
+          $ref: "#/components/schemas/GoogleID"
+        name:
+          type: string
+        level:
+          type: integer
+        enlid:
+          $ref: "#/components/schemas/EnlID"
+        pic:
+          type: string
+        Vverified:
+          type: boolean
+        blacklisted:
+          type: boolean
+        rocks:
+          type: boolean
+        squad:
+          type: string
+        state:
+          type: boolean
+        lat:
+          type: number
+        lng:
+          type: number
+        date:
+          type: string
+        shareWD:
+          type: boolean
+        loadWD:
+          type: boolean
+        distance:
+          type: number
+        displayname:
+          type: string
+        cansendto:
+          type: boolean
+    TeamData:
+      type: object
+      required:
+        - name
+        - id
+        - agents
+        - rc
+        - jlt
+      properties:
+        name:
+          type: string
+        id:
+          $ref: "#/components/schemas/TeamID"
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agent"
+        rc:
+          type: string
+        jlt:
+          type: string
+
+    Operation:
+      type: object
+      required:
+        - ID
+        - name
+        - creator
+        - opportals
+        - links
+        - blockers
+        - markers
+        - teamlist
+        - modified
+        - comment
+        - keysonhand
+        - fetched
+        - zones
+      properties:
+        ID:
+          $ref:  "#/components/schemas/TeamID"
+        name:
+          type: string
+        creator:
+          $ref:  "#/components/schemas/GoogleID"
+        opportals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Portal"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+        markers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Marker"
+        teamlist:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpPermission"
+        modified:
+          type: string
+        comment:
+          type: string
+        keysonhand:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeyOnHand"
+        fetched:
+          type: string
+        zones:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZoneListElement"
+    Portal:
+      type: object
+      properties:
+        id:
+          $ref:  "#/components/schemas/PortalID"
+        name:
+          type: string
+        lat:
+          type: string
+        lng:
+          type: string
+        comment:
+          type: string
+        hardness:
+          type: string
+    Link:
+      type: object
+      properties:
+        ID:
+          $ref:  "#/components/schemas/LinkID"
+        fromPortalId:
+          $ref:  "#/components/schemas/PortalID"
+        toPortalId:
+          $ref:  "#/components/schemas/PortalID"
+        description:
+          type: string
+        assignedTo:
+          type: string
+        assignedToNickname:
+          type: string
+        throwOrderPos:
+          type: integer
+        completed:
+          type: boolean
+        color:
+          type: string
+        zone:
+          $ref:  "#/components/schemas/Zone"
+    Marker:
+      type: object
+      properties:
+        ID:
+          $ref:  "#/components/schemas/MarkerID"
+        portalId:
+          $ref:  "#/components/schemas/PortalID"
+        type:
+          $ref:  "#/components/schemas/MarkerType"
+        comment:
+          type: string
+        assignedTo:
+          $ref:  "#/components/schemas/GoogleID"
+        assignedTeam:
+          $ref:  "#/components/schemas/TeamID"
+        assignedNickname:
+          type: string
+        completedBy:
+          type: string
+        completedID:
+          $ref:  "#/components/schemas/GoogleID"
+        state:
+          type: string
+        order:
+          type: integer
+        zone:
+          $ref:  "#/components/schemas/Zone"
+    OpPermission:
+      type: object
+      properties:
+        opid:
+          $ref:  "#/components/schemas/OperationID"
+        teamid:
+          $ref:  "#/components/schemas/OperationID"
+        role:
+          type: string
+        zone:
+          type: integer
+    ZoneListElement:
+      type: object
+      properties:
+        id:
+          $ref:  "#/components/schemas/Zone"
+        name:
+          type: string
+    KeyOnHand:
+      type: object
+      properties:
+        portalId:
+          $ref:  "#/components/schemas/PortalID"
+        gid:
+          $ref:  "#/components/schemas/GoogleID"
+        onhand:
+          type: integer
+        capsule:
+          type: string
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
