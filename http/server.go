@@ -56,7 +56,6 @@ const login = "/login"
 const callback = "/callback"
 const aptoken = "/aptok"
 const apipath = "/api/v1"
-const appUserAgent = "(dart:io)"
 const oneTimeToken = "/oneTimeToken"
 
 // initializeConfig will normalize the options and create the "config" object.
@@ -382,26 +381,6 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 
 func jsonError(e error) string {
 	return fmt.Sprintf(`{"status":"error","error":"%s"}`, e.Error())
-}
-
-// almost everything should return JSON now. The few things that do not redirect elsewhere.
-func wantsJSON(req *http.Request) bool {
-	// if specified, use what is requested
-	sendjson := req.FormValue("json")
-	if sendjson == "y" {
-		return true
-	}
-	if sendjson == "n" {
-		return false
-	}
-
-	// not specified, look for clues
-	if strings.Contains(req.Referer(), "intel.ingress.com") || strings.Contains(req.Header.Get("User-Agent"), appUserAgent) {
-		return true
-	}
-
-	// default to false
-	return false
 }
 
 func debugMW(next http.Handler) http.Handler {

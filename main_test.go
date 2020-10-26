@@ -71,7 +71,7 @@ func TestAgentDataSetup(t *testing.T) {
 	}
 
 	// these values are saved
-	ad.Vid = wasabee.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
+	ad.EnlID = wasabee.EnlID("23e27f48a04e55d6ae89188d3236d769f6629718")
 	ad.Telegram.ID = 1111111111
 	ad.Telegram.Verified = true
 

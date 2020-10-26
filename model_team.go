@@ -36,8 +36,12 @@ type Agent struct {
 	Distance      float64  `json:"distance,omitempty"`
 	DisplayName   string   `json:"displayname,omitempty"`
 	CanSendTo     bool     `json:"cansendto,omitempty"`
-	ShareWD       bool     `json:"shareWD`
-	LoadWD        bool     `json:"loadWD`
+	ShareWD       bool     `json:"shareWD"`
+	LoadWD        bool     `json:"loadWD"`
+	StartLat      float64  `json:"startlat"`
+	StartLon      float64  `json:"startlon"`
+	StartRadius   uint16   `json:"startradius"`
+	ShareStart    bool     `json:"sharestart"`
 }
 
 // AgentInTeam checks to see if a agent is in a team and enabled.

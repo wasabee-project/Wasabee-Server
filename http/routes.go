@@ -131,7 +131,7 @@ func setupAuthRoutes(r *mux.Router) {
 	// manual location post
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
 	// -- do not use, just here for safety
-	r.HandleFunc("/me", meShowRoute).Methods("GET", "POST", "HEAD")
+	r.HandleFunc("/me", meShowRouteJSON).Methods("GET", "POST", "HEAD")
 	// r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
 	// toggle RAID/JEAH polling
 	// r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")

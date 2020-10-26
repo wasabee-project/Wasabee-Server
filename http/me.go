@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -39,6 +40,45 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// almost everything should return JSON now. The few things that do not redirect elsewhere.
+func wantsJSON(req *http.Request) bool {
+	// if specified, use what is requested
+	sendjson := req.FormValue("json")
+	if sendjson == "y" {
+		return true
+	}
+	if sendjson == "n" {
+		return false
+	}
+
+	if strings.Contains(req.Referer(), "intel.ingress.com") {
+		return true
+	}
+
+	return false
+}
+
+func meShowRouteJSON(res http.ResponseWriter, req *http.Request) {
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var ud wasabee.AgentData
+	if err = gid.GetAgentData(&ud); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, _ := json.Marshal(ud)
+	res.Header().Add("Content-Type", jsonType)
+	res.Header().Set("Cache-Control", "no-store")
+	fmt.Fprint(res, string(data))
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {

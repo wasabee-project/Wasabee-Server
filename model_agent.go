@@ -31,23 +31,21 @@ type EnlID string
 
 // AgentData is the complete agent struct, used for the /me page.
 type AgentData struct {
-	GoogleID      GoogleID
-	IngressName   string
-	Level         int64
-	LocationKey   LocKey
-	VVerified     bool
-	VBlacklisted  bool
-	Vid           EnlID
-	RocksVerified bool
-	RAID          bool
-	RISC          bool
-	ProfileImage  string
-	// XXX owned teams needs to go away, merge into teams
-	OwnedTeams  []AdTeam
-	Teams       []AdTeam
-	Ops         []AdOperation
-	Assignments []Assignment
-	Telegram    struct {
+	GoogleID      GoogleID `json:"GoogleID"`
+	IngressName   string   `json:"name"`
+	Level         int64    `json:"level"`
+	LocationKey   LocKey   `json:"lockey"`
+	VVerified     bool     `json:"Vverified"`
+	VBlacklisted  bool     `json:"blacklisted"`
+	EnlID         EnlID    `json:"enlid"`
+	RocksVerified bool     `json:"rocks"`
+	RAID          bool     `json:"RAID"`
+	RISC          bool     `json:"RISC"`
+	ProfileImage  string   `json:"pic"`
+	Teams         []AdTeam
+	Ops           []AdOperation
+	Assignments   []Assignment
+	Telegram      struct {
 		ID        int64
 		Verified  bool
 		Authtoken string
@@ -206,7 +204,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Level:         vdata.Data.Level,
 			VVerified:     vdata.Data.Verified,
 			VBlacklisted:  vdata.Data.Blacklisted,
-			Vid:           vdata.Data.EnlID,
+			EnlID:           vdata.Data.EnlID,
 			RocksVerified: rocks.Verified,
 		}
 
@@ -248,7 +246,7 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	}
 
 	if vid.Valid {
-		ad.Vid = EnlID(vid.String)
+		ad.EnlID = EnlID(vid.String)
 	}
 
 	if lk.Valid {
@@ -257,10 +255,6 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 
 	if pic.Valid {
 		ad.ProfileImage = pic.String
-	}
-
-	if err := gid.adOwnedTeams(ad); err != nil {
-		return err
 	}
 
 	if err = gid.adTeams(ad); err != nil {
@@ -315,40 +309,6 @@ func (gid GoogleID) adTeams(ad *AgentData) error {
 			adteam.JoinLinkToken = ""
 		}
 		ad.Teams = append(ad.Teams, adteam)
-	}
-	return nil
-}
-
-// deprecated - do not use
-func (gid GoogleID) adOwnedTeams(ad *AgentData) error {
-	row, err := db.Query("SELECT teamID, name, rockscomm, rockskey FROM team WHERE owner = ? ORDER BY name", gid)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	var rc, rockskey sql.NullString
-	var ownedTeam AdTeam
-	defer row.Close()
-	for row.Next() {
-		err := row.Scan(&ownedTeam.ID, &ownedTeam.Name, &rc, &rockskey)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		if rc.Valid {
-			ownedTeam.RocksComm = rc.String
-		} else {
-			ownedTeam.RocksComm = ""
-		}
-		if rockskey.Valid {
-			ownedTeam.RocksKey = rockskey.String
-		} else {
-			ownedTeam.RocksKey = ""
-		}
-		ownedTeam.State = "NA"
-		ownedTeam.Owner = gid
-		ad.OwnedTeams = append(ad.OwnedTeams, ownedTeam)
 	}
 	return nil
 }
@@ -798,8 +758,8 @@ func ToGid(in string) (GoogleID, error) {
 // also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
 	_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
-		ad.GoogleID, MakeNullString(ad.IngressName), ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID,
-		MakeNullString(ad.IngressName), ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.Vid), ad.RocksVerified, ad.RAID, ad.RISC)
+		ad.GoogleID, ad.IngressName, ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
+		ad.IngressName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID, ad.RISC)
 	if err != nil {
 		Log.Error(err)
 		return err
