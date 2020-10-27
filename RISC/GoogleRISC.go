@@ -31,13 +31,17 @@ type riscConfig struct {
 
 // the token's event
 // {"subject":{"email":"whoever@gmail.com","iss":"https://accounts.google.com","sub":"...gid...","subject_type":"id_token_claims"}, "reason": ""}
-// we move the Reason into the event and pass that on
 type event struct {
 	Type    string `json:"subject_type"`
-	Reason  string `json:"reason"`
+	Reason  string `json:"reason"` // wasabee change
 	Issuer  string `json:"iss"`
 	Subject string `json:"sub"`
-	// Email   string `json:"email"`
+	Email   string `json:"email"`
+}
+
+type riscmsg struct {
+	Subject event `json:"subject"`
+	Reason  string `json:"reason"`
 }
 
 // Google probably has a type for this somewhere, maybe x/oauth/Google
@@ -149,7 +153,11 @@ func validateToken(rawjwt []byte) error {
 		}
 
 		var err error
-		token, err = jwt.Parse(bytes.NewReader(rawjwt), jwt.WithVerify(jwa.RS256, &pk), jwt.WithIssuer("https://accounts.google.com"))
+		token, err = jwt.Parse(bytes.NewReader(rawjwt),
+		  // jwt.WithValidate(true), // coming soon
+		  jwt.WithVerify(jwa.RS256, &pk),
+		  jwt.WithIssuer("https://accounts.google.com"),
+		)
 		if err != nil {
 			// silently try the next key
 			token = nil
@@ -176,28 +184,36 @@ func validateToken(rawjwt []byte) error {
 
 	// multiple events per message are possible
 	for k, v := range tmp.(map[string]interface{}) {
-		var e event
-		e.Type = k
+		var r riscmsg
+		r.Subject.Type = k
 
 		// just respond to verification requests instantly
 		if k == "https://schemas.openid.net/secevent/risc/event-type/verification" {
-			e.Reason = "ping requsted"
-			riscchan <- e
-			return nil
+			r.Subject.Reason = "ping requsted"
+			riscchan <- r.Subject
+			continue
 		}
 
 		wasabee.Log.Infow("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
 
 		// XXX this is ugly and brittle - it is JSON, just unmarshal it.
-		// {"subject":{"email":"whoever@gmail.com","iss":"https://accounts.google.com","sub":"...gid...","subject_type":"id_token_claims"}, "reason": "whatever"}
 		x := v.(map[string]interface{})
+		
+		/* if err := json.Unmarshal(x, &r); err != nil {
+			wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), "data", x)
+			continue
+		} */
+
 		if x["reason"] != nil {
-			e.Reason = x["reason"].(string)
+			r.Subject.Reason = x["reason"].(string)
 		}
 		y := x["subject"].(map[string]interface{})
-		e.Issuer = y["iss"].(string)
-		e.Subject = y["sub"].(string)
-		riscchan <- e
+		r.Subject.Issuer = y["iss"].(string)
+		r.Subject.Subject = y["sub"].(string)
+		r.Subject.Email = y["email"].(string)
+
+		// r.Subject.Reason = r.Reason
+		riscchan <- r.Subject
 	}
 	return nil
 }
