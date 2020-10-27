@@ -39,7 +39,7 @@ type Agent struct {
 	ShareWD       bool     `json:"shareWD"`
 	LoadWD        bool     `json:"loadWD"`
 	StartLat      float64  `json:"startlat"`
-	StartLon      float64  `json:"startlon"`
+	StartLon      float64  `json:"startlng"`
 	StartRadius   uint16   `json:"startradius"`
 	ShareStart    bool     `json:"sharestart"`
 }
@@ -62,7 +62,7 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var rows *sql.Rows
-	rows, err := db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, x.displayname, sharewd, loadwd "+
+	rows, err := db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.displayname, sharewd, loadwd "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
 		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
 	if err != nil {
@@ -76,8 +76,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 		var state, lat, lon, sharewd, loadwd string
 		var enlID, dn sql.NullString
 
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified,
-			&tmpU.Blacklisted, &enlID, &dn, &sharewd, &loadwd)
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &tmpU.RocksVerified, &dn, &sharewd, &loadwd)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -415,7 +414,7 @@ func (gid GoogleID) SetWDLoad(teamID TeamID, state string) error {
 
 // FetchAgent populates the minimal Agent struct with data anyone can see
 func FetchAgent(id AgentID, agent *Agent) error {
-	var vid sql.NullString
+	var enlid sql.NullString
 	gid, err := id.Gid()
 	if err != nil {
 		Log.Error(err)
@@ -423,13 +422,13 @@ func FetchAgent(id AgentID, agent *Agent) error {
 	}
 
 	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(
-		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &vid, &agent.RocksVerified)
+		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &enlid, &agent.RocksVerified)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	if vid.Valid {
-		agent.EnlID = EnlID(vid.String)
+	if enlid.Valid {
+		agent.EnlID = EnlID(enlid.String)
 	}
 	return nil
 }
