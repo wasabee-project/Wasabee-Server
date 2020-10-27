@@ -149,7 +149,7 @@ func listenForPubSubMessages() {
 				break
 			}
 			// if msg.Attributes["RespondingTo"] != c.hostname { msg.Ack() break }
-			wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"], "data", msg.Data)
+			// wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"], "data", msg.Data)
 			// if msg.Attributes["Authoritative"] == "true" { wasabee.Log.Debug("Authoritative") }
 			var ad wasabee.AgentData
 			err := json.Unmarshal(msg.Data, &ad)
@@ -286,7 +286,7 @@ func respond(g string, sender string) (bool, error) {
 		atts["Authoritative"] = "true"
 	}
 
-	wasabee.Log.Debugw("publishing", "subsystem", "PubSub", "GID", ad.GoogleID, "name", ad.IngressName)
+	// wasabee.Log.Debugw("publishing", "subsystem", "PubSub", "GID", ad.GoogleID, "name", ad.IngressName)
 	c.responseTopic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       d,
