@@ -119,7 +119,6 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if !lastModified.After(modifiedSince) {
-			// wasabee.Log.Debugw("skip sending op", "resource", o.ID, "if-modified-since", modifiedSince.In(time.UTC), "last-modified", lastModified.In(time.UTC))
 			res.Header().Set("Content-Type", "")
 			http.Redirect(res, req, "", http.StatusNotModified)
 			return
@@ -308,8 +307,6 @@ func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 			break
 		}
 	}
-
-	// wasabee.Log.Debugf("requested stock intel -- redirecting to :%s", url)
 	http.Redirect(res, req, url, http.StatusFound)
 }
 
@@ -465,7 +462,6 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	link := wasabee.LinkID(vars["link"])
-	wasabee.Log.Debug(link)
 	zone := wasabee.ZoneFromString(req.FormValue("zone"))
 
 	uid, err := link.SetZone(&op, zone)
@@ -891,8 +887,6 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 		onhand = 3000
 	}
 	capsule := req.FormValue("capsule")
-
-	wasabee.Log.Debugw("updating key count", "GID", gid, "resource", op.ID, "portal", portalID, "count", onhand, "capsule", capsule, "formValue", req.FormValue("count"))
 
 	uid, err := op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {

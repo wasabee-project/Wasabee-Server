@@ -119,14 +119,11 @@ func RegisterGroupCalls(name string, join func(GoogleID, string) (bool, error), 
 // joinChannels is called when a user is added to a team to add them to the proper messaging service channels
 func (gid GoogleID) joinChannels(t TeamID) {
 	for service, joiner := range mc.joiners {
-		Log.Debugw("calling joiner", "service", service, "resource", t, "GID", gid)
-		ok, err := joiner(gid, string(t))
+		// Log.Debugw("calling joiner", "service", service, "resource", t, "GID", gid)
+		_, err := joiner(gid, string(t))
 		if err != nil {
-			Log.Debugw(err.Error(), "service", service, "resource", t, "GID", gid)
+			Log.Errorw(err.Error(), "service", service, "resource", t, "GID", gid)
 			continue
-		}
-		if ok {
-			Log.Debug("success!")
 		}
 	}
 }
@@ -134,14 +131,11 @@ func (gid GoogleID) joinChannels(t TeamID) {
 // leaveChannels is called when a user is removed from a team to remove them from the associated messaging service channels
 func (gid GoogleID) leaveChannels(t TeamID) {
 	for service, leaver := range mc.leavers {
-		Log.Debugw("calling leaver", "service", service, "resource", t, "GID", gid)
-		ok, err := leaver(gid, string(t))
+		// Log.Debugw("calling leaver", "service", service, "resource", t, "GID", gid)
+		_, err := leaver(gid, string(t))
 		if err != nil {
-			Log.Debugw(err.Error(), "service", service, "resource", t, "GID", gid)
+			Log.Errorw(err.Error(), "service", service, "resource", t, "GID", gid)
 			continue
-		}
-		if ok {
-			Log.Debug("success!")
 		}
 	}
 }

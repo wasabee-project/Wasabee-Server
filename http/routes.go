@@ -233,14 +233,14 @@ func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
-	wasabee.Log.Debugf("404: %s", req.URL)
+	// wasabee.Log.Debugf("404: %s", req.URL)
 	http.Error(res, "404: no light here.", http.StatusNotFound)
 }
 
 // called when a resource/endpoint is not found
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 	err := fmt.Errorf("404 not found")
-	wasabee.Log.Debugw(err.Error(), "URL", req.URL)
+	// wasabee.Log.Debugw(err.Error(), "URL", req.URL)
 	incrementScanner(req)
 	http.Error(res, jsonError(err), http.StatusNotFound)
 }
@@ -340,8 +340,6 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Errorw("no iname at end of login?", "GID", m.Gid)
 	}
 	m.Gid.FirebaseAgentLogin()
-	// dump, _ := httputil.DumpRequest(req, false)
-	// wasabee.Log.Debug(string(dump))
 
 	// add random value to help curb login loops
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
@@ -353,13 +351,10 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		if rr[:len(me)] == me || rr[:len(login)] == login {
 			// -- need to invert this logic now
 		} else {
-			// wasabee.Log.Debugw("Oauth2 login flow completed", "redirect", rr, "GID", m.Gid)
 			location = rr
 		}
 		delete(ses.Values, "loginReq")
 	}
-
-	// wasabee.Log.Debugw("redirecting", "location", location)
 	http.Redirect(res, req, location, http.StatusFound) // http.StatusSeeOther
 }
 
@@ -504,7 +499,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	// yes, we've seen this with a bad accessToken
 	if m.Gid == "" {
-		wasabee.Log.Debugf("aptok from client: %v\nfrom google: %v", t, m)
+		wasabee.Log.Errorw("bad aptok", "from client", t, "from google", m)
 		err = fmt.Errorf("no GoogleID set")
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -515,7 +510,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Debugw("aptok cookie error", "error", err.Error())
+		wasabee.Log.Errorw("aptok cookie error", "error", err.Error())
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
@@ -578,8 +573,6 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	)
 	m.Gid.FirebaseAgentLogin()
 
-	// cookie := res.Header().Get("set-cookie")
-	// wasabee.Log.Debugf("Sending Cookie: %s", cookie);
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
 	res.Header().Set("Cache-Control", "no-store")
 

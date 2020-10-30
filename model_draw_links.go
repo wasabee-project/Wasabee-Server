@@ -136,7 +136,7 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) (string, error) {
 	}
 	ra, _ := result.RowsAffected()
 	if ra != 1 {
-		Log.Debugw("AssignLink rows changed", "rows", ra, "resource", o.ID, "GID", gid, "link", linkID)
+		Log.Infow("AssignLink rows changed", "rows", ra, "resource", o.ID, "GID", gid, "link", linkID)
 		return "", nil
 	}
 

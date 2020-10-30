@@ -154,7 +154,7 @@ func validateToken(rawjwt []byte) error {
 
 		var err error
 		token, err = jwt.Parse(bytes.NewReader(rawjwt),
-		  // jwt.WithValidate(true), // coming soon
+		  jwt.WithValidate(true), // coming soon
 		  jwt.WithVerify(jwa.RS256, &pk),
 		  jwt.WithIssuer("https://accounts.google.com"),
 		)

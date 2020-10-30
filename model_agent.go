@@ -134,22 +134,18 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		}
 		if vdata.Data.Quarantine {
 			Log.Warnw("access denied", "GID", gid, "reason", "quarantined at V")
-			Log.Debug(vdata.Data.Agent)
 			authError = true
 		}
 		if vdata.Data.Flagged {
 			Log.Warnw("access denied", "GID", gid, "reason", "flagged at V")
-			Log.Debug(vdata.Data.Agent)
 			authError = true
 		}
 		if vdata.Data.Blacklisted {
 			Log.Warnw("access denied", "GID", gid, "reason", "blacklisted at V")
-			Log.Debug(vdata.Data.Agent)
 			authError = true
 		}
 		if vdata.Data.Banned {
 			Log.Warnw("access denied", "GID", gid, "reason", "blacklisted at V")
-			Log.Debug(vdata.Data.Agent)
 			authError = true
 		}
 	}
@@ -166,7 +162,6 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		}
 		if rocks.Smurf {
 			Log.Warnw("access denied", "GID", gid, "reason", "listed as smurf at enl.rocks")
-			Log.Debug(rocks.Agent)
 			authError = true
 		}
 	}
@@ -684,7 +679,7 @@ func (gid GoogleID) CheckLogout() bool {
 	}
 	if logout {
 		ll.logoutlist[gid] = false
-		Log.Debugw("clearing from logoutlist", "GID", gid)
+		// Log.Debugw("clearing from logoutlist", "GID", gid)
 		delete(ll.logoutlist, gid)
 	}
 	return logout

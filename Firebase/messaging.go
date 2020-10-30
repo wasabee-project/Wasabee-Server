@@ -281,7 +281,7 @@ func genericMulticast(ctx context.Context, c *messaging.Client, data map[string]
 			wasabee.Log.Error(err)
 			// carry on
 		}
-		wasabee.Log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+		// wasabee.Log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 		processBatchResponse(br, subset)
 	}
 
@@ -294,7 +294,7 @@ func genericMulticast(ctx context.Context, c *messaging.Client, data map[string]
 		wasabee.Log.Error(err)
 		// carry on
 	}
-	wasabee.Log.Debugw("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+	// wasabee.Log.Debugw("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 	processBatchResponse(br, tokens)
 }
 
@@ -358,7 +358,7 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 	}
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
-			wasabee.Log.Warnw("[un]subscribe failed; deleting token", "subsystem", "Firebase", "token", tokens[f.Index], "reason", f.Reason)
+			// wasabee.Log.Debugw("[un]subscribe failed; deleting token", "subsystem", "Firebase", "token", tokens[f.Index], "reason", f.Reason)
 			fb.Gid.FirebaseRemoveToken(tokens[f.Index])
 		}
 	}

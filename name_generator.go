@@ -87,7 +87,6 @@ func loadWords(content []byte) error {
 		err := fmt.Errorf("empty word list")
 		return err
 	}
-	// Log.Debugw("startup", "words loaded", len(words))
 	return nil
 }
 

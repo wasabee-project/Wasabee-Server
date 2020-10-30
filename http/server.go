@@ -293,7 +293,7 @@ func authMW(next http.Handler) http.Handler {
 
 		gid := wasabee.GoogleID(id.(string))
 		if gid.CheckLogout() {
-			wasabee.Log.Debugw("honoring previously requested logout", "GID", gid.String())
+			// wasabee.Log.Debugw("honoring previously requested logout", "GID", gid.String())
 			/* delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			ses.Options = &sessions.Options{
@@ -313,13 +313,11 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		// inNonce := in.(string)
 		nonce, pNonce := calculateNonce(gid)
-
 		if in.(string) != nonce {
 			res.Header().Set("Connection", "close")
 			if in.(string) != pNonce {
-				wasabee.Log.Debugw("session timed out", "GID", gid.String())
+				// wasabee.Log.Debugw("session timed out", "GID", gid.String())
 				ses.Values["nonce"] = "unset"
 			} else {
 				ses.Values["nonce"] = nonce
@@ -373,9 +371,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	// the server may have several names/ports ; redirect back to the one the user called
 	oc := config.OauthConfig
 	oc.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
-	// wasabee.Log.Debugf("callback URL: %s", oc.RedirectURL)
 	url := oc.AuthCodeURL(config.oauthStateString)
-	// http.Redirect(res, req, url, http.StatusFound)
 	http.Redirect(res, req, url, http.StatusSeeOther)
 }
 

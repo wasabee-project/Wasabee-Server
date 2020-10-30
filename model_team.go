@@ -292,7 +292,7 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 
 	gid.leaveChannels(teamID)
 	gid.firebaseUnsubscribeTeam(teamID)
-	Log.Infow("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
+	// Log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
 	return nil
 }
 
