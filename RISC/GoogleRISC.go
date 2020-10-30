@@ -142,7 +142,6 @@ func RISC(configfile string) {
 // This is called from the webhook
 func validateToken(rawjwt []byte) error {
 	var token jwt.Token
-	var tokenOK bool
 	for iter := config.keys.Iterate(context.TODO()); iter.Next(context.TODO()); {
 		pair := iter.Pair()
 		key := pair.Value.(jwk.RSAPublicKey)
@@ -154,26 +153,26 @@ func validateToken(rawjwt []byte) error {
 
 		var err error
 		token, err = jwt.Parse(bytes.NewReader(rawjwt),
-		  jwt.WithValidate(true), // coming soon
+		  jwt.WithValidate(true),
 		  jwt.WithVerify(jwa.RS256, &pk),
 		  jwt.WithIssuer("https://accounts.google.com"),
 		)
-		if err != nil {
-			// silently try the next key
-			token = nil
-		} else {
-			// found a good one
-			tokenOK = true
+		if err == nil {
 			break
 		}
+
+		// try the next key
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", token)
+		token = nil
 	}
 
-	// this can be removed now that we are getting verified above
-	if !tokenOK {
+	if token == nil {
 		err := fmt.Errorf("unable to verify RISC event")
 		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error())
 		return err
 	}
+
+	wasabee.Log.Infow("token", "subsystem", "RISC", "message", "token", token)
 
 	tmp, ok := token.Get("events")
 	if !ok {
