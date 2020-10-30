@@ -161,8 +161,8 @@ func validateToken(rawjwt []byte) error {
 			break
 		}
 
+		wasabee.Log.Infow(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", token)
 		// try the next key
-		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", token)
 		token = nil
 	}
 
@@ -172,7 +172,7 @@ func validateToken(rawjwt []byte) error {
 		return err
 	}
 
-	wasabee.Log.Infow("token", "subsystem", "RISC", "message", "token", token)
+	// wasabee.Log.Debugw("token", "subsystem", "RISC", "token", token)
 
 	tmp, ok := token.Get("events")
 	if !ok {
