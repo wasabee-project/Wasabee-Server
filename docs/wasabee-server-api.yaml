@@ -62,7 +62,7 @@ paths:
         '200':
           description: User data
           content:
-            application/json:    
+            application/json:
               schema:
                 $ref: "#/components/schemas/AgentData"
         '401':
@@ -159,6 +159,13 @@ paths:
           description: operation updated
     delete:
       summary: Delete operation
+      parameters:
+        - name: opID
+          in: path
+          required: true
+          description: The id of the op to fetch
+          schema:
+            $ref: "#/components/schemas/OperationID"
       tags:
         - Operation
       responses:
@@ -327,7 +334,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
-  
+
   /api/v1/draw/{opID}/link/{linkID}/assign:
     post:
       summary: Assign link
@@ -398,7 +405,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
-  
+
   /api/v1/draw/{opID}/link/{linkID}/desc:
     post:
       summary: Set lin description
@@ -433,7 +440,7 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
-  
+
   /api/v1/draw/{opID}/link/{linkID}/zone:
     post:
       summary: Set link zone
@@ -468,7 +475,7 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
-  
+
   /api/v1/draw/{opID}/portal/{portalID}/keyonhand:
     post:
       summary: Define key on hand for a portal
@@ -648,7 +655,7 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/team/new?name={name}:
+  /api/v1/team/new:
     get:
       summary: Create a team
       tags:
@@ -668,7 +675,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
-  /api/v1/team/{teamId}:
+  /api/v1/team/{teamID}:
     get:
       summary: Fetch a team
       tags:
@@ -710,7 +717,7 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
-  /api/v1/team/{teamID}/chown?to={newOwner}:
+  /api/v1/team/{teamID}/chown:
     get:
       summary: Change team's owner
       tags:
@@ -800,7 +807,7 @@ paths:
         - name: teamID
           in: path
           required: true
-          
+
           schema:
             $ref: "#/components/schemas/TeamID"
       responses:
@@ -821,7 +828,7 @@ paths:
         - name: teamID
           in: path
           required: true
-          
+
           schema:
             $ref: "#/components/schemas/TeamID"
       responses:
@@ -842,7 +849,7 @@ paths:
         - name: teamID
           in: path
           required: true
-          
+
           schema:
             $ref: "#/components/schemas/TeamID"
       responses:
@@ -854,7 +861,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
-  /api/v1/team/{teamID}/rockscomm={community}&rckskey={apikey}:
+  /api/v1/team/{teamID}/:
     get:
       summary: Link team to a rock community
       tags:
@@ -913,12 +920,16 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamId
+        - name: teamID
           in: path
           required: true
-          
           schema:
-            type: string
+            $ref: "#/components/schemas/TeamID"
+        - name: agentID
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/GoogleID"
       responses:
         '200':
           $ref: "#/components/responses/PostSuccess"
@@ -993,7 +1004,7 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-    
+
 components:
   responses:
     PostSuccess:
@@ -1138,23 +1149,23 @@ components:
     AdOperation:
       type: object
       properties:
-        ID: 
+        ID:
           $ref: "#/components/schemas/OperationID"
-        Name: 
+        Name:
           type: string
-        IsOwner: 
+        IsOwner:
           type: boolean
-        Color: 
+        Color:
           type: string
-        TeamID: 
+        TeamID:
           type: string
 
     Assignment:
       type: object
       properties:
-        OpID: 
+        OpID:
           $ref:  "#/components/schemas/OperationID"
-        OperationName: 
+        OperationName:
           type: string
 
     Agent:
