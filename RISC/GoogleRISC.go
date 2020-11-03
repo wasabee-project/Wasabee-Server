@@ -40,7 +40,7 @@ type event struct {
 }
 
 type riscmsg struct {
-	Subject event `json:"subject"`
+	Subject event  `json:"subject"`
 	Reason  string `json:"reason"`
 }
 
@@ -153,9 +153,9 @@ func validateToken(rawjwt []byte) error {
 
 		var err error
 		token, err = jwt.Parse(bytes.NewReader(rawjwt),
-		  jwt.WithValidate(true),
-		  jwt.WithVerify(jwa.RS256, &pk),
-		  jwt.WithIssuer("https://accounts.google.com"),
+			jwt.WithValidate(true),
+			jwt.WithVerify(jwa.RS256, &pk),
+			jwt.WithIssuer("https://accounts.google.com"),
 		)
 		if err == nil {
 			// found a good key, we are done
@@ -198,7 +198,7 @@ func validateToken(rawjwt []byte) error {
 
 		// XXX this is ugly and brittle - it is JSON, just unmarshal it.
 		x := v.(map[string]interface{})
-		
+
 		/* if err := json.Unmarshal(x, &r); err != nil {
 			wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), "data", x)
 			continue

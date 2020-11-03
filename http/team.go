@@ -535,8 +535,6 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	jRaw := json.RawMessage(jBlob)
-	wasabee.Log.Debug(string(jRaw))
-
 	var requestedteams struct {
 		TeamIDs []wasabee.TeamID `json:"teamids"`
 	}
@@ -586,6 +584,7 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		list = append(list, t)
 	}
 
+	// no valid teams
 	if list == nil || len(list) == 0 {
 		fmt.Fprint(res, "[]")
 		return
@@ -595,9 +594,6 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabee.Log.Warn(err)
 	}
-	out := string(data)
-	if out == "" {
-		out = "[]"
-	}
-	fmt.Fprint(res, out)
+	/* out := string(data) if out == "" { out = "[]" } */
+	fmt.Fprint(res, string(data))
 }

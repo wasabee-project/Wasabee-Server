@@ -413,7 +413,7 @@ func (gid GoogleID) SetWDLoad(teamID TeamID, state string) error {
 }
 
 // FetchAgent populates the minimal Agent struct with data anyone can see
-func FetchAgent(id AgentID, agent *Agent) error {
+func FetchAgent(id AgentID, agent *Agent, caller GoogleID) error {
 	var enlid sql.NullString
 	gid, err := id.Gid()
 	if err != nil {
@@ -421,15 +421,33 @@ func FetchAgent(id AgentID, agent *Agent) error {
 		return err
 	}
 
-	err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(
-		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &enlid, &agent.RocksVerified)
-	if err != nil {
+	if err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(
+		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &enlid, &agent.RocksVerified); err != nil {
 		Log.Error(err)
 		return err
 	}
 	if enlid.Valid {
 		agent.EnlID = EnlID(enlid.String)
 	}
+
+	var count int
+	if err = db.QueryRow("SELECT COUNT(*) FROM agentteams=x, agentteams=y WHERE x.gid = ? AND x.state = 'On' AND y.gid = ?", id, caller).Scan(&count); err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// no sharing location with this agent
+	if count < 1 {
+		return nil
+	}
+
+	var lat, lon string
+	if err = db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", id).Scan(&lat, &lon); err != nil {
+		Log.Error(err)
+		return err
+	}
+	agent.Lat, _ = strconv.ParseFloat(lat, 64)
+	agent.Lon, _ = strconv.ParseFloat(lon, 64)
 	return nil
 }
 

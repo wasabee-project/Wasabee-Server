@@ -31,7 +31,7 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	err = wasabee.FetchAgent(togid, &agent)
+	err = wasabee.FetchAgent(togid, &agent, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
