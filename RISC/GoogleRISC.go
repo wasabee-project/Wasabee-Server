@@ -158,17 +158,18 @@ func validateToken(rawjwt []byte) error {
 		  jwt.WithIssuer("https://accounts.google.com"),
 		)
 		if err == nil {
+			// found a good key, we are done
 			break
 		}
 
-		wasabee.Log.Infow(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", token)
-		// try the next key
+		wasabee.Log.Infow(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", string(rawjwt), "pair", pair, "note", "this is probably harmless unless you see an error following")
 		token = nil
+		// try the next key if one exists
 	}
 
 	if token == nil {
 		err := fmt.Errorf("unable to verify RISC event")
-		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error())
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), token)
 		return err
 	}
 
