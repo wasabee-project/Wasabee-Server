@@ -199,7 +199,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Level:         vdata.Data.Level,
 			VVerified:     vdata.Data.Verified,
 			VBlacklisted:  vdata.Data.Blacklisted,
-			EnlID:           vdata.Data.EnlID,
+			EnlID:         vdata.Data.EnlID,
 			RocksVerified: rocks.Verified,
 		}
 
