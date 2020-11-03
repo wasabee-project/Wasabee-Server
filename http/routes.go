@@ -182,6 +182,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/{gid}/displayname", setAgentTeamDisplaynameRoute).Methods("POST")
 	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")
+	// allow fetching specific teams in bulk - JSON list of teamIDs
+	r.HandleFunc("/teams", bulkTeamFetchRoute).Methods("POST")
 
 	r.HandleFunc("/d", getDefensiveKeys).Methods("GET")
 	r.HandleFunc("/d", setDefensiveKey).Methods("POST")
