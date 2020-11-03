@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server"
 	"html"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -501,4 +502,102 @@ func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprint(res, list)
+}
+
+func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if !contentTypeIs(req, jsonTypeShort) {
+		err := fmt.Errorf("invalid request (needs to be application/json)")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", "bulk team request")
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	jBlob, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if string(jBlob) == "" {
+		err := fmt.Errorf("empty JSON on bulk team request")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", "new operation")
+		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
+		return
+	}
+
+	jRaw := json.RawMessage(jBlob)
+	wasabee.Log.Debug(string(jRaw))
+
+	var requestedteams struct {
+		TeamIDs []wasabee.TeamID `json:"teamids"`
+	}
+
+	if err := json.Unmarshal(jRaw, &requestedteams); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	var list []wasabee.TeamData
+	for _, team := range requestedteams.TeamIDs {
+		var t wasabee.TeamData
+		isowner, err := gid.OwnsTeam(team)
+		if err != nil {
+			wasabee.Log.Error(err)
+			continue
+		}
+
+		onteam, err := gid.AgentInTeam(team)
+		if err != nil {
+			wasabee.Log.Error(err)
+			continue
+		}
+		if !isowner && !onteam {
+			err := fmt.Errorf("not on team - in bulk pull")
+			wasabee.Log.Infow(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
+			continue
+		}
+		err = team.FetchTeam(&t)
+		if err == sql.ErrNoRows {
+			err = fmt.Errorf("team not found while fetching member list - in bulk pull")
+			wasabee.Log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
+			continue
+		}
+		if err != nil {
+			wasabee.Log.Error(err)
+			continue
+		}
+
+		if !isowner {
+			t.RocksComm = ""
+			t.RocksKey = ""
+			t.JoinLinkToken = ""
+		}
+
+		list = append(list, t)
+	}
+
+	if list == nil || len(list) == 0 {
+		fmt.Fprint(res, "[]")
+		return
+	}
+
+	data, err := json.Marshal(list)
+	if err != nil {
+		wasabee.Log.Warn(err)
+	}
+	out := string(data)
+	if out == "" {
+		out = "[]"
+	}
+	fmt.Fprint(res, out)
 }
