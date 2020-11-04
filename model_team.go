@@ -448,6 +448,8 @@ func FetchAgent(id AgentID, agent *Agent, caller GoogleID) error {
 	}
 	agent.Lat, _ = strconv.ParseFloat(lat, 64)
 	agent.Lon, _ = strconv.ParseFloat(lon, 64)
+
+	agent.PictureURL = gid.GetPicture()
 	return nil
 }
 

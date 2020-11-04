@@ -162,18 +162,16 @@ func validateToken(rawjwt []byte) error {
 			break
 		}
 
-		wasabee.Log.Infow(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", string(rawjwt), "pair", pair, "note", "this is probably harmless unless you see an error following")
+		// wasabee.Log.Debugw(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", string(rawjwt), "pair", pair, "note", "this is probably harmless unless you see an error following")
 		token = nil
 		// try the next key if one exists
 	}
 
 	if token == nil {
 		err := fmt.Errorf("unable to verify RISC event")
-		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), token)
+		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
 		return err
 	}
-
-	// wasabee.Log.Debugw("token", "subsystem", "RISC", "token", token)
 
 	tmp, ok := token.Get("events")
 	if !ok {
