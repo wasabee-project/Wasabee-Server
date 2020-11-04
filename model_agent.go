@@ -710,16 +710,19 @@ func (gid GoogleID) UpdatePicture(picurl string) error {
 // GetPicture returns the agent's Google Picture URL
 func (gid GoogleID) GetPicture() string {
 	// XXX don't hardcode this
-	url := "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
+	unset := "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
+	var url sql.NullString
 
 	err := db.QueryRow("SELECT picurl FROM agentextras WHERE gid = ?", gid).Scan(&url)
-	if err == sql.ErrNoRows {
-		// nothing
-	} else if err != nil {
+	if err == sql.ErrNoRows || !url.Valid || url.String == "" {
+		return unset
+	}
+	if err != nil {
 		Log.Error(err)
+		return unset
 	}
 
-	return url
+	return url.String
 }
 
 // ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like (GoogleID, EnlID) otherwise it defaults to agent name

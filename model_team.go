@@ -429,6 +429,7 @@ func FetchAgent(id AgentID, agent *Agent, caller GoogleID) error {
 	if enlid.Valid {
 		agent.EnlID = EnlID(enlid.String)
 	}
+	agent.PictureURL = gid.GetPicture()
 
 	var count int
 	if err = db.QueryRow("SELECT COUNT(*) FROM agentteams=x, agentteams=y WHERE x.gid = ? AND x.state = 'On' AND y.gid = ?", id, caller).Scan(&count); err != nil {
@@ -448,8 +449,6 @@ func FetchAgent(id AgentID, agent *Agent, caller GoogleID) error {
 	}
 	agent.Lat, _ = strconv.ParseFloat(lat, 64)
 	agent.Lon, _ = strconv.ParseFloat(lon, 64)
-
-	agent.PictureURL = gid.GetPicture()
 	return nil
 }
 
