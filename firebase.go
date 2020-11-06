@@ -86,7 +86,7 @@ func (gid GoogleID) firebaseAgentLocation() {
 		return
 	}
 
-	for _, tid := range gid.teamList() {
+	for _, tid := range gid.teamListEnabled() {
 		fbPush(FirebaseCmd{
 			Cmd:    FbccAgentLocationChange,
 			TeamID: tid,
