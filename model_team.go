@@ -485,6 +485,28 @@ func (gid GoogleID) teamList() []TeamID {
 	return x
 }
 
+// teamListEnabled is used for getting a list of agent's enabled teams 
+func (gid GoogleID) teamListEnabled() []TeamID {
+	var tid TeamID
+	var x []TeamID
+
+	rows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On'", gid)
+	if err != nil {
+		Log.Error(err)
+		return x
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&tid); err != nil {
+			Log.Error(err)
+			continue
+		}
+		x = append(x, tid)
+	}
+	return x
+}
+
 // SetSquad sets an agent's squad on a given team
 func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
 	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", MakeNullString(squad), teamID, gid)
