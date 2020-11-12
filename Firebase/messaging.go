@@ -71,17 +71,19 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 		return err
 	}
 
-	// webpush := webpushConfig()
 	data := map[string]string{
-		"gid": string(fb.Gid),
+		// "gid": string(fb.Gid),
 		"msg": fb.Msg,
 		"cmd": fb.Cmd.String(),
+	}
+
+	if fb.Gid != "" {
+		data["gid"] = string(fb.Gid)
 	}
 
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
 		Data:  data,
-		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -99,7 +101,6 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		return err
 	}
 
-	// webpush := webpushConfig()
 	data := map[string]string{
 		"opID":     string(fb.OpID),
 		"markerID": fb.ObjID,
@@ -109,7 +110,6 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
 		Data:  data,
-		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -147,7 +147,6 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 		return err
 	}
 
-	// webpush := webpushConfig()
 	data := map[string]string{
 		"opID":     string(fb.OpID),
 		"msg":      fb.Msg,
@@ -158,7 +157,6 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
 		Data:  data,
-		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -176,7 +174,6 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 		return err
 	}
 
-	// webpush := webpushConfig()
 	data := map[string]string{
 		"opID":   string(fb.OpID),
 		"linkID": fb.ObjID,
@@ -186,7 +183,6 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
 		Data:  data,
-		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -233,7 +229,6 @@ func agentLogin(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
 		Data:  data,
-		// Webpush: &webpush,
 	}
 
 	_, err := c.Send(ctx, &msg)
@@ -364,18 +359,3 @@ func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 	}
 	return nil
 }
-
-/*
-func webpushConfig() messaging.WebpushConfig {
-	wpheaders := map[string]string{
-		"TTL": "0",
-	}
-	wpnotif := messaging.WebpushNotification{
-		Silent: true,
-	}
-	webpush := messaging.WebpushConfig{
-		Headers:      wpheaders,
-		Notification: &wpnotif,
-	}
-	return webpush
-} */

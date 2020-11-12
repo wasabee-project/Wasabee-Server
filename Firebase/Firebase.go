@@ -3,20 +3,30 @@ package wasabeefirebase
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	firebase "firebase.google.com/go"
-
+	"firebase.google.com/go/messaging"
 	"google.golang.org/api/option"
-
 	"github.com/wasabee-project/Wasabee-Server"
 )
 
-// rate limit map
+var mux sync.Mutex
+
+// rate limit map for map changes
 var rlmap map[wasabee.TeamID]rlt
 
 type rlt struct {
 	t time.Time
+	count uint32
+}
+
+var agentLocationMap map[wasabee.TeamID]alm
+
+type alm struct {
+	t time.Time
+        g map[wasabee.GoogleID]time.Time
 }
 
 // ServeFirebase is the main startup function for the Firebase integration
@@ -40,6 +50,7 @@ func ServeFirebase(keypath string) error {
 	}
 
 	rlmap = make(map[wasabee.TeamID]rlt)
+	agentLocationMap = make(map[wasabee.TeamID]alm)
 
 	client, err := app.Auth(ctx)
 	if err != nil {
@@ -56,23 +67,19 @@ func ServeFirebase(keypath string) error {
 		case wasabee.FbccTarget:
 			_ = target(ctx, msg, fb)
 		case wasabee.FbccAgentLocationChange:
-			if rateLimit(fb.TeamID) {
-				_ = agentLocationChange(ctx, msg, fb)
-			}
+			rateLimitAgentLocation(ctx, msg, fb)
 		case wasabee.FbccMapChange:
-			if rateLimit(fb.TeamID) {
+			if rateLimitMapChange(fb.TeamID) {
 				_ = mapChange(ctx, msg, fb)
 			}
 		case wasabee.FbccMarkerStatusChange:
-			if rateLimit(fb.TeamID) {
-				_ = markerStatusChange(ctx, msg, fb)
-			}
+			_ = markerStatusChange(ctx, msg, fb)
+			// if rateLimitMapChange(fb.TeamID) { _ = markerStatusChange(ctx, msg, fb) }
 		case wasabee.FbccMarkerAssignmentChange:
 			_ = markerAssignmentChange(ctx, msg, fb)
 		case wasabee.FbccLinkStatusChange:
-			if rateLimit(fb.TeamID) {
-				_ = linkStatusChange(ctx, msg, fb)
-			}
+			_ = linkStatusChange(ctx, msg, fb)
+			// if rateLimitMapChange(fb.TeamID) { _ = linkStatusChange(ctx, msg, fb) }
 		case wasabee.FbccLinkAssignmentChange:
 			_ = linkAssignmentChange(ctx, msg, fb)
 		case wasabee.FbccSubscribeTeam:
@@ -90,25 +97,83 @@ func ServeFirebase(keypath string) error {
 	return nil
 }
 
-func rateLimit(teamID wasabee.TeamID) bool {
-	rl, ok := rlmap[teamID]
+// determines if clients should request individual agent or full team (if the client supports it)
+func rateLimitAgentLocation(ctx context.Context, msg *messaging.Client, fb wasabee.FirebaseCmd) {
+	// wasabee.Log.Debug(fb)
 	now := time.Now()
+
+	mux.Lock()
+	defer mux.Unlock()
+	rl, ok := agentLocationMap[fb.TeamID]
+
+	// first time sending to this team
+	if !ok {
+		// wasabee.Log.Debugw("first rate limited agent location request for team", "resource", fb.TeamID)
+		rl = alm{
+			t: now,
+			g: make(map[wasabee.GoogleID]time.Time),
+		}
+		rl.g[fb.Gid] = now
+		agentLocationMap[fb.TeamID] = rl
+		_ = agentLocationChange(ctx, msg, fb)
+		return
+	}
+
+	waituntil := rl.t.Add(10 * time.Second)
+	if now.Before(waituntil) {
+		rl.g[fb.Gid] = now
+		agentLocationMap[fb.TeamID] = rl
+		// wasabee.Log.Debugw("skipping agent location firebase send to team", "subsystem", "Firebase", "firebase command", fb)
+		// add to a queue to send in N seconds
+		return
+	}
+
+	// long enough since previous message to this team
+	rl.t = now
+	agentsThrottled := len(rl.g)
+
+	// reset the map and add an entry 
+	rl.g = make(map[wasabee.GoogleID]time.Time)
+	rl.g[fb.Gid] = now
+	agentLocationMap[fb.TeamID] = rl
+
+	if agentsThrottled > 1 {
+		// more than one agent throttled, instruct the clients to fetch whole team
+		fb.Gid = ""
+		// wasabee.Log.Debugw("whole-team agent location firebase send to team", "subsystem", "Firebase", "firebase command", fb)
+	} else {
+		// include GID so client can pull the individual agent directly
+		// wasabee.Log.Debugw("single agent location firebase send to team", "subsystem", "Firebase", "firebase command", fb)
+	}
+	_ = agentLocationChange(ctx, msg, fb)
+}
+
+func rateLimitMapChange(teamID wasabee.TeamID) bool {
+	now := time.Now()
+
+	mux.Lock()
+	defer mux.Unlock()
+	rl, ok := rlmap[teamID]
 
 	// first time sending to this team
 	if !ok {
 		rlmap[teamID] = rlt{
 			t: now,
+			count: 0,
 		}
 		return true
 	}
 
 	waituntil := rl.t.Add(3 * time.Second)
 	if now.Before(waituntil) {
-		// wasabee.Log.Debugw("skipping firebase send to team", "subsystem", "Firebase", "resource", teamID)
+		rl.count++
+		// wasabee.Log.Debugw("skipping map change firebase send to team", "subsystem", "Firebase", "resource", teamID, "skip count", rl.count)
+		// add to a queue to send in 3 seconds
 		return false
 	}
 
 	rl.t = now
+	rl.count = 0
 	rlmap[teamID] = rl
 	return true
 }
