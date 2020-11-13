@@ -8,8 +8,8 @@ import (
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
-	"google.golang.org/api/option"
 	"github.com/wasabee-project/Wasabee-Server"
+	"google.golang.org/api/option"
 )
 
 var mux sync.Mutex
@@ -18,7 +18,7 @@ var mux sync.Mutex
 var rlmap map[wasabee.TeamID]rlt
 
 type rlt struct {
-	t time.Time
+	t     time.Time
 	count uint32
 }
 
@@ -26,7 +26,7 @@ var agentLocationMap map[wasabee.TeamID]alm
 
 type alm struct {
 	t time.Time
-        g map[wasabee.GoogleID]time.Time
+	g map[wasabee.GoogleID]time.Time
 }
 
 // ServeFirebase is the main startup function for the Firebase integration
@@ -132,7 +132,7 @@ func rateLimitAgentLocation(ctx context.Context, msg *messaging.Client, fb wasab
 	rl.t = now
 	agentsThrottled := len(rl.g)
 
-	// reset the map and add an entry 
+	// reset the map and add an entry
 	rl.g = make(map[wasabee.GoogleID]time.Time)
 	rl.g[fb.Gid] = now
 	agentLocationMap[fb.TeamID] = rl
@@ -158,7 +158,7 @@ func rateLimitMapChange(teamID wasabee.TeamID) bool {
 	// first time sending to this team
 	if !ok {
 		rlmap[teamID] = rlt{
-			t: now,
+			t:     now,
 			count: 0,
 		}
 		return true
