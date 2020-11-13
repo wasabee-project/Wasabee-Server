@@ -12,6 +12,7 @@ import (
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
+	res.Header().Add("Cache-Control", "no-store") // location changes frequently
 	var agent wasabee.Agent
 
 	// must be authenticated
