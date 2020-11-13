@@ -485,7 +485,7 @@ func (gid GoogleID) teamList() []TeamID {
 	return x
 }
 
-// teamListEnabled is used for getting a list of agent's enabled teams 
+// teamListEnabled is used for getting a list of agent's enabled teams
 func (gid GoogleID) teamListEnabled() []TeamID {
 	var tid TeamID
 	var x []TeamID

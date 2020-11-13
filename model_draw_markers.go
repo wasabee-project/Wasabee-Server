@@ -26,6 +26,7 @@ type Marker struct {
 	State        string     `json:"state"`
 	Order        int        `json:"order"`
 	Zone         Zone       `json:"zone"`
+	DeltaMinutes int        `json:"deltaminutes"`
 }
 
 // insertMarkers adds a marker to the database

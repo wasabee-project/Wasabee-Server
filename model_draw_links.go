@@ -23,6 +23,7 @@ type Link struct {
 	Completed  bool     `json:"completed"`
 	Color      string   `json:"color"`
 	Zone       Zone     `json:"zone"`
+	DeltaMinutes int    `json:"deltaminutes"`
 }
 
 // insertLink adds a link to the database
