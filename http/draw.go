@@ -51,7 +51,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// the IITC plugin wants the full /me data on draw POST
+	// the IITC plugin wants the full /me data on draw POST so it can update its list of ops
 	var ad wasabee.AgentData
 	if err = gid.GetAgentData(&ad); err != nil {
 		wasabee.Log.Error(err)
@@ -101,14 +101,21 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// basically the same as If-Modified-Since
+	im := req.Header.Get("If-None-Match")
+	if im != "" && im == o.LastEditID {
+		err := fmt.Errorf("local copy matches server copy")
+		// wasabee.Log.Debugw(err.Error(), "GID", gid, "resource", o.ID, "If-None-Match", im, "LastEditID", o.LastEditID)
+		http.Error(res, jsonError(err), http.StatusNotModified)
+		return
+	}
+
 	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", o.Modified, time.UTC)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	res.Header().Set("Last-Modified", lastModified.Format(time.RFC1123))
-	res.Header().Set("Cache-Control", "no-store")
 
 	ims := req.Header.Get("If-Modified-Since")
 	if ims != "" && ims != "null" { // yes, the string "null", seen in the wild
@@ -131,6 +138,9 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	res.Header().Set("Last-Modified", lastModified.Format(time.RFC1123))
+	res.Header().Set("Cache-Control", "no-store")
+	res.Header().Set("ETag", o.LastEditID)
 	fmt.Fprint(res, string(s))
 }
 
@@ -210,13 +220,26 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	s, err := op.ID.Stat()
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	im := req.Header.Get("If-Match")
+	if im != "" && im != s.LastEditID {
+		err := fmt.Errorf("local copy out-of-date")
+		wasabee.Log.Debugw(err.Error(), "GID", gid, "resource", s.ID, "If-Match", im, "LastEditID", s.LastEditID)
+		http.Error(res, jsonError(err), http.StatusPreconditionFailed)
+		return
+	}
+
 	uid, err := wasabee.DrawUpdate(wasabee.OperationID(op.ID), jRaw, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
