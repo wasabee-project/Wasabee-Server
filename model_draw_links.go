@@ -13,17 +13,17 @@ type LinkID string
 
 // Link is defined by the Wasabee IITC plugin.
 type Link struct {
-	ID         LinkID   `json:"ID"`
-	From       PortalID `json:"fromPortalId"`
-	To         PortalID `json:"toPortalId"`
-	Desc       string   `json:"description"`
-	AssignedTo GoogleID `json:"assignedTo"`
-	Iname      string   `json:"assignedToNickname"`
-	ThrowOrder int32    `json:"throwOrderPos"`
-	Completed  bool     `json:"completed"`
-	Color      string   `json:"color"`
-	Zone       Zone     `json:"zone"`
-	DeltaMinutes int    `json:"deltaminutes"`
+	ID           LinkID   `json:"ID"`
+	From         PortalID `json:"fromPortalId"`
+	To           PortalID `json:"toPortalId"`
+	Desc         string   `json:"description"`
+	AssignedTo   GoogleID `json:"assignedTo"`
+	Iname        string   `json:"assignedToNickname"`
+	ThrowOrder   int32    `json:"throwOrderPos"`
+	Completed    bool     `json:"completed"`
+	Color        string   `json:"color"`
+	Zone         Zone     `json:"zone"`
+	DeltaMinutes int      `json:"deltaminutes"`
 }
 
 // insertLink adds a link to the database

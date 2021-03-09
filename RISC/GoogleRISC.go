@@ -1,7 +1,7 @@
 package risc
 
 import (
-	"bytes"
+	// "bytes"
 	"context"
 	"crypto/rsa"
 	"encoding/json"
@@ -25,7 +25,7 @@ type riscConfig struct {
 	RemEndpoint string   `json:"remove_subject_endpoint"`
 	running     bool
 	clientemail string
-	keys        *jwk.Set
+	keys        jwk.Set
 	authdata    []byte
 }
 
@@ -152,7 +152,7 @@ func validateToken(rawjwt []byte) error {
 		}
 
 		var err error
-		token, err = jwt.Parse(bytes.NewReader(rawjwt),
+		token, err = jwt.Parse(rawjwt,
 			jwt.WithValidate(true),
 			jwt.WithVerify(jwa.RS256, &pk),
 			jwt.WithIssuer("https://accounts.google.com"),
@@ -246,7 +246,7 @@ func googleRiscDiscovery() error {
 
 // called hourly to keep the key cache up-to-date
 func googleLoadKeys() error {
-	keys, err := jwk.Fetch(config.JWKURI)
+	keys, err := jwk.Fetch(context.Background(), config.JWKURI)
 	if err != nil {
 		wasabee.Log.Error(err)
 		return err
