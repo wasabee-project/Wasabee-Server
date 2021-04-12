@@ -88,7 +88,7 @@ func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.Fi
 
 	_, err := c.Send(ctx, &msg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Error(err, "fbcmd", fb)
 		return err
 	}
 	return nil
@@ -114,7 +114,7 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 
 	_, err := c.Send(ctx, &msg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Error(err, "fbcmd", fb)
 		return err
 	}
 	return nil
@@ -161,7 +161,7 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 
 	_, err := c.Send(ctx, &msg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Error(err, "fbcmd", fb)
 		return err
 	}
 	return nil
@@ -187,7 +187,7 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 
 	_, err := c.Send(ctx, &msg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Error(err, "fbcmd", fb)
 		return err
 	}
 	return nil
