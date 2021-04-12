@@ -741,12 +741,13 @@ func ToGid(in string) (GoogleID, error) {
 		gid, err = SearchAgentName(in)
 	}
 	if err == sql.ErrNoRows || gid == "" {
-		err = fmt.Errorf("agent [%s] not registered with this wasabee server", in)
-		Log.Infow(err.Error(), "search", in, "message", err.Error())
+		// if you change this message, also change http/team.go
+		err = fmt.Errorf("agent '%s' not registered with this wasabee server", in)
+		Log.Infow(err.Error(), "GID", gid.String(), "search", in, "message", err.Error())
 		return gid, err
 	}
 	if err != nil {
-		Log.Errorw(err.Error(), "search", in, "message", err.Error())
+		Log.Errorw(err.Error(), "GID", gid.String(), "search", in, "message", err.Error())
 		return gid, err
 	}
 	return gid, nil
