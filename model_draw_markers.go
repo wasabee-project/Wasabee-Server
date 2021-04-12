@@ -57,7 +57,7 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ",
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ?",
 		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone,
 		m.Type, m.PortalID, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Zone, m.Order)
 	if err != nil {
