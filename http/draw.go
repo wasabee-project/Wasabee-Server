@@ -29,7 +29,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		wasabee.Log.Error(err)
@@ -211,8 +210,6 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jRaw := json.RawMessage(jBlob)
-
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to update an operation")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -234,7 +231,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := wasabee.DrawUpdate(wasabee.OperationID(op.ID), jRaw, gid)
+	uid, err := wasabee.DrawUpdate(wasabee.OperationID(op.ID), json.RawMessage(jBlob), gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
