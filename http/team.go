@@ -9,6 +9,7 @@ import (
 	"html"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -199,7 +200,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if key != "" { // prevents a bit of log spam
 		togid, err := wasabee.ToGid(key)
-		if err != nil && err.Error() == "unknown agent" {
+		if err != nil && strings.Contains(err.Error(), "not registered with this wasabee server") {
 			// no need to fill the logs with user typos
 			http.Error(res, jsonError(err), http.StatusNotAcceptable)
 			return
