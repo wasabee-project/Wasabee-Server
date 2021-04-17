@@ -20,8 +20,6 @@ type Marker struct {
 	Comment      string     `json:"comment"`
 	AssignedTo   GoogleID   `json:"assignedTo"`
 	AssignedTeam TeamID     `json:"assignedTeam"`
-	IngressName  string     `json:"assignedNickname"`
-	CompletedBy  string     `json:"completedBy"`
 	CompletedID  GoogleID   `json:"completedID"`
 	State        string     `json:"state"`
 	Order        int        `json:"order"`
@@ -80,18 +78,18 @@ func (opID OperationID) deleteMarker(mid MarkerID) error {
 func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 	var tmpMarker Marker
 
-	var assignedGid, comment, assignedNick, completedBy, completedID sql.NullString
+	var assignedGid, comment, completedID sql.NullString
 
 	var err error
 	var rows *sql.Rows
-	rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, a.iname AS assignedTo, b.iname AS completedBy, m.oporder, m.completedby AS completedID, m.zone FROM marker=m LEFT JOIN agent=a ON m.gid = a.gid LEFT JOIN agent=b on m.completedby = b.gid WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
+	rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, m.oporder, m.completedby AS completedID, m.zone FROM marker=m WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &assignedNick, &completedBy, &tmpMarker.Order, &completedID, &tmpMarker.Zone)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &tmpMarker.Order, &completedID, &tmpMarker.Zone)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -105,24 +103,10 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 			tmpMarker.AssignedTo = ""
 		}
 
-		// XXX remove this SOON
-		if assignedNick.Valid {
-			tmpMarker.IngressName = assignedNick.String
-		} else {
-			tmpMarker.IngressName = ""
-		}
-
 		if comment.Valid {
 			tmpMarker.Comment = comment.String
 		} else {
 			tmpMarker.Comment = ""
-		}
-
-		// XXX remove this SOON
-		if completedBy.Valid {
-			tmpMarker.CompletedBy = completedBy.String
-		} else {
-			tmpMarker.CompletedBy = ""
 		}
 
 		if completedID.Valid {
