@@ -20,7 +20,7 @@ type Operation struct {
 	OpPortals  []Portal          `json:"opportals"`
 	Anchors    []PortalID        `json:"anchors"` // We should let the clients build this themselves
 	Links      []Link            `json:"links"`
-	Blockers   []Link            `json:"blockers"` // ignored by Wasabee-Server -- do not store this
+	// Blockers   []Link            `json:"blockers"` // ignored by Wasabee-Server -- do not store this
 	Markers    []Marker          `json:"markers"`
 	Teams      []OpPermission    `json:"teamlist"`
 	Modified   string            `json:"modified"`   // time.RFC1123 format
