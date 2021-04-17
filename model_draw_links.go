@@ -18,7 +18,6 @@ type Link struct {
 	To           PortalID `json:"toPortalId"`
 	Desc         string   `json:"description"`
 	AssignedTo   GoogleID `json:"assignedTo"`
-	Iname        string   `json:"assignedToNickname"`
 	ThrowOrder   int32    `json:"throwOrderPos"`
 	Completed    bool     `json:"completed"`
 	Color        string   `json:"color"`
@@ -78,18 +77,18 @@ func (opID OperationID) updateLink(l Link) error {
 // PopulateLinks fills in the Links list for the Operation. No authorization takes place.
 func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 	var tmpLink Link
-	var description, gid, iname sql.NullString
+	var description, gid sql.NullString
 
 	var err error
 	var rows *sql.Rows
-	rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, a.iname, l.color, l.zone FROM link=l LEFT JOIN agent=a ON l.gid=a.gid WHERE l.opID = ? ORDER BY l.throworder", o.ID)
+	rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, l.color, l.zone FROM link=l WHERE l.opID = ? ORDER BY l.throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &iname, &tmpLink.Color, &tmpLink.Zone)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &tmpLink.Color, &tmpLink.Zone)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -103,11 +102,6 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			tmpLink.AssignedTo = GoogleID(gid.String)
 		} else {
 			tmpLink.AssignedTo = ""
-		}
-		if iname.Valid {
-			tmpLink.Iname = iname.String
-		} else {
-			tmpLink.Iname = ""
 		}
 		// this isn't in a zone with which we are concerned AND not assigned to me, skip
 		if !tmpLink.Zone.inZones(zones) && tmpLink.AssignedTo != inGid {
