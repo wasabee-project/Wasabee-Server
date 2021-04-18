@@ -23,6 +23,7 @@ type Link struct {
 	Color        string   `json:"color"`
 	Zone         Zone     `json:"zone"`
 	DeltaMinutes int      `json:"deltaminutes"`
+	MuCaptured   int      `json:"mu"`
 }
 
 // insertLink adds a link to the database
