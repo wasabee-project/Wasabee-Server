@@ -27,6 +27,7 @@ func Connect(uri string) error {
 	Log.Infow("startup", "database", "connected", "version", version, "message", "connected to database")
 
 	setupTables()
+	upgradeTables()
 	return nil
 }
 
@@ -53,7 +54,7 @@ func setupTables() {
 		{"agentextras", `CREATE TABLE agentextras ( gid varchar(32) NOT NULL, picurl text, UNIQUE KEY gid (gid), CONSTRAINT fk_extra_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"agentteams", `CREATE TABLE agentteams ( teamID varchar(64) NOT NULL, gid varchar(32) NOT NULL, state enum('Off','On') NOT NULL DEFAULT 'Off', color varchar(32) NOT NULL DEFAULT 'boots', displayname varchar(32) DEFAULT NULL,  PRIMARY KEY (teamID,gid), KEY GIDKEY (gid), CONSTRAINT fk_agent_teams FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_t_teams FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"firebase", `CREATE TABLE firebase ( gid varchar(32) NOT NULL, token varchar(4092) NOT NULL, KEY fk_gid (gid), CONSTRAINT fk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
-		{"link", `CREATE TABLE link ( ID varchar(64) NOT NULL, fromPortalID varchar(64) NOT NULL, toPortalID varchar(64) NOT NULL, opID varchar(64) NOT NULL, description text, gid varchar(32) DEFAULT NULL, throworder int(11) DEFAULT '0', completed tinyint(1) NOT NULL DEFAULT '0', color varchar(16) NOT NULL DEFAULT 'main', zone tinyint(4) NOT NULL DEFAULT 1, PRIMARY KEY (ID,opID), KEY fk_operation_id_link (opID), KEY fk_link_gid (gid), CONSTRAINT fk_link_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE SET NULL, CONSTRAINT fk_operation_id_link FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"link", `CREATE TABLE link ( ID varchar(64) NOT NULL, fromPortalID varchar(64) NOT NULL, toPortalID varchar(64) NOT NULL, opID varchar(64) NOT NULL, description text, gid varchar(32) DEFAULT NULL, throworder int(11) DEFAULT '0', completed tinyint(1) NOT NULL DEFAULT '0', color varchar(16) NOT NULL DEFAULT 'main', zone tinyint(4) NOT NULL DEFAULT 1, mu bigint unsigned NOT NULL DEFAULT 0, PRIMARY KEY (ID,opID), KEY fk_operation_id_link (opID), KEY fk_link_gid (gid), CONSTRAINT fk_link_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE SET NULL, CONSTRAINT fk_operation_id_link FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"locations", `CREATE TABLE locations ( gid varchar(32) NOT NULL, upTime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, loc point NOT NULL, PRIMARY KEY (gid)) DEFAULT CHARSET=utf8mb4;`},
 		{"marker", `CREATE TABLE marker ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, type varchar(128) NOT NULL, gid varchar(32) DEFAULT NULL, comment text, complete tinyint(1) NOT NULL DEFAULT '0', state enum('pending','assigned','acknowledged','completed') NOT NULL DEFAULT 'pending', completedBy varchar(32) DEFAULT NULL, oporder int NOT NULL DEFAULT 0, zone tinyint(4) NOT NULL DEFAULT 1, PRIMARY KEY (ID,opID), KEY fk_operation_marker (opID), KEY fk_marker_gid (gid), CONSTRAINT fk_marker_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE SET NULL, CONSTRAINT fk_operation_marker FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"messagelog", `CREATE TABLE messagelog ( timestamp datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32) NOT NULL, message text NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
@@ -114,6 +115,65 @@ func setupTables() {
 		Log.Error(err)
 	}
 	// defer'd func runs here
+}
+
+func upgradeTables() {
+	var upgrades = []struct {
+		test    string // a query that will fail if an upgrade is needed
+		upgrade string // the query to run to make the upgrade
+	}{
+		{"SELECT mu FROM link LIMIT 1", "ALTER TABLE link ADD mu bigint unsigned NOT NULL DEFAULT 0"},
+		{"SELECT delta FROM link LIMIT 1", "ALTER TABLE link ADD delta int NOT NULL DEFAULT 0"},
+		{"SELECT delta FROM marker LIMIT 1", "ALTER TABLE link ADD delta int NOT NULL DEFAULT 0"},
+		{"SELECT starttime FROM operation LIMIT 1", "ALTER TABLE operation ADD starttime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		Log.Error(err)
+		panic(err)
+	}
+	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS=0")
+	if err != nil {
+		Log.Error(err)
+	}
+	defer func() {
+		err := tx.Rollback()
+		if err != nil && err != sql.ErrTxDone {
+			Log.Error(err)
+		}
+		_, err = db.Exec("SET FOREIGN_KEY_CHECKS=1")
+		if err != nil {
+			Log.Error(err)
+		}
+	}()
+
+	// do upgrades
+	var scratch string
+	for _, q := range upgrades {
+		Log.Info(q.test)
+		err = tx.QueryRow(q.test).Scan(&scratch)
+		if err == nil {
+			continue
+		}
+		Log.Error(err)
+		Log.Info(q.upgrade)
+		_, err = tx.Exec(q.upgrade)
+		if err != nil {
+			Log.Error(err)
+			panic(err)
+		}
+	}
+
+	// all upgrades done...
+	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS=1")
+	if err != nil {
+		Log.Error(err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		Log.Error(err)
+	}
 }
 
 // MakeNullString is used for values that may & might be inserted/updated as NULL in the database
