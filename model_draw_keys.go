@@ -57,9 +57,9 @@ func (o *Operation) populateKeys() error {
 		return err
 	}
 
-	var cap sql.NullString
 	defer rows.Close()
 	for rows.Next() {
+		var cap sql.NullString
 		err := rows.Scan(&k.ID, &k.Gid, &k.Onhand, &cap)
 		if err != nil {
 			Log.Error(err)
@@ -67,6 +67,8 @@ func (o *Operation) populateKeys() error {
 		}
 		if cap.Valid {
 			k.Capsule = cap.String
+		} else {
+			k.Capsule = ""
 		}
 		o.Keys = append(o.Keys, k)
 	}
