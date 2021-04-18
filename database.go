@@ -124,7 +124,7 @@ func upgradeTables() {
 	}{
 		{"SELECT mu FROM link LIMIT 1", "ALTER TABLE link ADD mu bigint unsigned NOT NULL DEFAULT 0"},
 		{"SELECT delta FROM link LIMIT 1", "ALTER TABLE link ADD delta int NOT NULL DEFAULT 0"},
-		{"SELECT delta FROM marker LIMIT 1", "ALTER TABLE link ADD delta int NOT NULL DEFAULT 0"},
+		{"SELECT delta FROM marker LIMIT 1", "ALTER TABLE marker ADD delta int NOT NULL DEFAULT 0"},
 		{"SELECT starttime FROM operation LIMIT 1", "ALTER TABLE operation ADD starttime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"},
 	}
 
