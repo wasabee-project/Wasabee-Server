@@ -58,11 +58,11 @@ func setupTables() {
 		{"locations", `CREATE TABLE locations ( gid varchar(32) NOT NULL, upTime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, loc point NOT NULL, PRIMARY KEY (gid)) DEFAULT CHARSET=utf8mb4;`},
 		{"marker", `CREATE TABLE marker ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, type varchar(128) NOT NULL, gid varchar(32) DEFAULT NULL, comment text, complete tinyint(1) NOT NULL DEFAULT '0', state enum('pending','assigned','acknowledged','completed') NOT NULL DEFAULT 'pending', completedBy varchar(32) DEFAULT NULL, oporder int NOT NULL DEFAULT 0, zone tinyint(4) NOT NULL DEFAULT 1, PRIMARY KEY (ID,opID), KEY fk_operation_marker (opID), KEY fk_marker_gid (gid), CONSTRAINT fk_marker_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE SET NULL, CONSTRAINT fk_operation_marker FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"messagelog", `CREATE TABLE messagelog ( timestamp datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32) NOT NULL, message text NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
-		{"opkeys", `CREATE TABLE opkeys ( opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, gid varchar(32) NOT NULL, onhand int(11) NOT NULL DEFAULT '0', capsule varchar(8) DEFAULT NULL, UNIQUE KEY key_unique (opID,portalID,gid), KEY fk_operation_id_keys (opID), CONSTRAINT fk_operation_id_keys FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"opkeys", `CREATE TABLE opkeys ( opID varchar(64) NOT NULL, portalID varchar(64) NOT NULL, gid varchar(32) NOT NULL, onhand int(11) NOT NULL DEFAULT '0', capsule varchar(16) DEFAULT NULL, UNIQUE KEY key_unique (opID,portalID,gid), KEY fk_operation_id_keys (opID), CONSTRAINT fk_operation_id_keys FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"portal", `CREATE TABLE portal ( ID varchar(64) NOT NULL, opID varchar(64) NOT NULL, name varchar(128) NOT NULL, loc point NOT NULL, comment text, hardness varchar(64) DEFAULT NULL, PRIMARY KEY ID (ID,opID), KEY fk_operation_id (opID)) DEFAULT CHARSET=utf8mb4;`},
 		{"telegram", `CREATE TABLE telegram ( telegramID bigint(20) NOT NULL, telegramName varchar(32) NOT NULL, gid varchar(32) NOT NULL, verified tinyint(1) NOT NULL DEFAULT '0', authtoken varchar(32) DEFAULT NULL, PRIMARY KEY (telegramID), UNIQUE KEY gid (gid), CONSTRAINT fk_agent_telegram FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"opteams", `CREATE TABLE opteams (teamID varchar(64) NOT NULL, opID varchar(64) NOT NULL, permission enum('read','write','assignedonly') NOT NULL DEFAULT 'read', zone tinyint(4) NOT NULL DEFAULT 0, KEY opID (opID), KEY teamID (teamID), CONSTRAINT fk_ops_teamID FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE, CONSTRAINT fk_teamIDs_op FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
-		{"defensivekeys", `CREATE TABLE defensivekeys (gid varchar(32) NOT NULL, portalID varchar(64) NOT NULL, capID varchar(12) DEFAULT NULL, count int(3) NOT NULL DEFAULT '0', name varchar(128) DEFAULT NULL, loc point DEFAULT NULL, PRIMARY KEY (portalID, gid), KEY fk_dk_gid (gid), CONSTRAINT fk_dk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
+		{"defensivekeys", `CREATE TABLE defensivekeys (gid varchar(32) NOT NULL, portalID varchar(64) NOT NULL, capID varchar(16) DEFAULT NULL, count int(3) NOT NULL DEFAULT '0', name varchar(128) DEFAULT NULL, loc point DEFAULT NULL, PRIMARY KEY (portalID, gid), KEY fk_dk_gid (gid), CONSTRAINT fk_dk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"deletedops", `CREATE TABLE deletedops ( opID varchar(64) NOT NULL, deletedate datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32), PRIMARY KEY(opID)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"zone", `CREATE TABLE zone ( ID tinyint(4) NOT NULL, opID varchar(64) NOT NULL, name varchar(64) NOT NULL DEFAULT 'zone', PRIMARY KEY (ID,opID), KEY fk_operation_zone (opID), CONSTRAINT fk_operation_zone FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 	}
@@ -126,6 +126,8 @@ func upgradeTables() {
 		{"SELECT delta FROM link LIMIT 1", "ALTER TABLE link ADD delta int NOT NULL DEFAULT 0"},
 		{"SELECT delta FROM marker LIMIT 1", "ALTER TABLE marker ADD delta int NOT NULL DEFAULT 0"},
 		{"SELECT starttime FROM operation LIMIT 1", "ALTER TABLE operation ADD starttime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+		{"SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'opkeys' AND column_name = 'capsule' AND character_maximum_length = 16", "ALTER TABLE opkeys MODIFY capsule varchar(16) DEFAULT NULL"},
+		{"SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'defensivekeys' AND column_name = 'capID' AND character_maximum_length = 16", "ALTER TABLE defensivekeys MODIFY capID varchar(16) DEFAULT NULL"},
 	}
 
 	tx, err := db.Begin()
@@ -151,12 +153,12 @@ func upgradeTables() {
 	// do upgrades
 	var scratch string
 	for _, q := range upgrades {
-		Log.Info(q.test)
+		Log.Debug(q.test)
 		err = tx.QueryRow(q.test).Scan(&scratch)
 		if err == nil {
 			continue
 		}
-		Log.Error(err)
+		Log.Debug(err)
 		Log.Info(q.upgrade)
 		_, err = tx.Exec(q.upgrade)
 		if err != nil {
