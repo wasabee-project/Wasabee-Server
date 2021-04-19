@@ -493,6 +493,45 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
+func drawLinkDeltaRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to set delta")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	link := wasabee.LinkID(vars["link"])
+	delta, err := strconv.ParseInt(req.FormValue("delta"), 10, 32)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid, err := op.LinkDelta(link, int(delta))
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+
 func drawLinkCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	drawLinkCompRoute(res, req, true)
 }
@@ -632,6 +671,45 @@ func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 	marker := wasabee.MarkerID(vars["marker"])
 	zone := wasabee.ZoneFromString(req.FormValue("zone"))
 	uid, err := marker.SetZone(&op, zone)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+
+func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to set delta")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	marker := wasabee.MarkerID(vars["marker"])
+	delta, err := strconv.ParseInt(req.FormValue("delta"), 10, 32)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid, err := marker.Delta(&op, int(delta))
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

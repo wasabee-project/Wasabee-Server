@@ -125,7 +125,7 @@ func upgradeTables() {
 		{"SELECT mu FROM link LIMIT 1", "ALTER TABLE link ADD mu bigint unsigned NOT NULL DEFAULT 0"},
 		{"SELECT delta FROM link LIMIT 1", "ALTER TABLE link ADD delta int NOT NULL DEFAULT 0"},
 		{"SELECT delta FROM marker LIMIT 1", "ALTER TABLE marker ADD delta int NOT NULL DEFAULT 0"},
-		{"SELECT starttime FROM operation LIMIT 1", "ALTER TABLE operation ADD starttime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+		{"SELECT referencetime FROM operation LIMIT 1", "ALTER TABLE operation ADD referencetime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"},
 		{"SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'opkeys' AND column_name = 'capsule' AND character_maximum_length = 16", "ALTER TABLE opkeys MODIFY capsule varchar(16) DEFAULT NULL"},
 		{"SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'defensivekeys' AND column_name = 'capID' AND character_maximum_length = 16", "ALTER TABLE defensivekeys MODIFY capID varchar(16) DEFAULT NULL"},
 	}

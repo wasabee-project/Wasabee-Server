@@ -37,8 +37,8 @@ func (opID OperationID) insertLink(l Link) error {
 		l.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -65,9 +65,9 @@ func (opID OperationID) updateLink(l Link) error {
 		l.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?, gid = ?, completed = ?, throworder = ?",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone,
-		l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone, MakeNullString(l.AssignedTo), l.Completed, l.ThrowOrder)
+	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?, gid = ?, completed = ?, throworder = ?, delta = ?",
+		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone, l.DeltaMinutes,
+		l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone, MakeNullString(l.AssignedTo), l.Completed, l.ThrowOrder, l.DeltaMinutes)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -82,14 +82,14 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 
 	var err error
 	var rows *sql.Rows
-	rows, err = db.Query("SELECT l.ID, l.fromPortalID, l.toPortalID, l.description, l.gid, l.throworder, l.completed, l.color, l.zone FROM link=l WHERE l.opID = ? ORDER BY l.throworder", o.ID)
+	rows, err = db.Query("SELECT ID, fromPortalID, toPortalID, description, gid, throworder, completed, color, zone, delta FROM link WHERE opID = ? ORDER BY throworder", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &tmpLink.Color, &tmpLink.Zone)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &tmpLink.Color, &tmpLink.Zone, &tmpLink.DeltaMinutes)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -206,6 +206,16 @@ func (o *Operation) LinkOrder(order string, gid GoogleID) (string, error) {
 // LinkColor changes the color of a link in an operation
 func (o *Operation) LinkColor(link LinkID, color string) (string, error) {
 	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", color, link, o.ID)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return o.Touch()
+}
+
+// LinkDelta sets the DeltaMinutes of a link in an operation
+func (o *Operation) LinkDelta(link LinkID, delta int) (string, error) {
+	_, err := db.Exec("UPDATE link SET delta = ? WHERE ID = ? and opID = ?", delta, link, o.ID)
 	if err != nil {
 		Log.Error(err)
 		return "", err

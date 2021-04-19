@@ -112,6 +112,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/swap", drawLinkSwapRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}", drawMarkerFetch).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")
@@ -124,6 +125,7 @@ func setupAuthRoutes(r *mux.Router) {
 	// operator verify completing
 	r.HandleFunc("/draw/{document}/marker/{marker}/reject", drawMarkerRejectRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST")

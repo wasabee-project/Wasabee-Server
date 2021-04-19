@@ -37,8 +37,8 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone)
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -55,9 +55,9 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ?",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone,
-		m.Type, m.PortalID, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Zone, m.Order)
+	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ?, delta = ?",
+		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone, m.DeltaMinutes,
+		m.Type, m.PortalID, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Zone, m.Order, m.DeltaMinutes)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -82,14 +82,14 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 
 	var err error
 	var rows *sql.Rows
-	rows, err = db.Query("SELECT m.ID, m.PortalID, m.type, m.gid, m.comment, m.state, m.oporder, m.completedby AS completedID, m.zone FROM marker=m WHERE m.opID = ? ORDER BY m.oporder, m.type", o.ID)
+	rows, err = db.Query("SELECT ID, PortalID, type, gid, comment, state, oporder, completedby AS completedID, zone, delta FROM marker WHERE opID = ? ORDER BY oporder, type", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &tmpMarker.Order, &completedID, &tmpMarker.Zone)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &tmpMarker.Order, &completedID, &tmpMarker.Zone, &tmpMarker.DeltaMinutes)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -179,6 +179,15 @@ func (o *Operation) MarkerComment(markerID MarkerID, comment string) (string, er
 // Zone updates the marker's zone
 func (m MarkerID) Zone(o *Operation, z Zone) (string, error) {
 	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, m, o.ID); err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return o.Touch()
+}
+
+// Delta updates the marker's DeltaMinutes
+func (m MarkerID) Delta(o *Operation, delta int) (string, error) {
+	if _, err := db.Exec("UPDATE marker SET delta = ? WHERE ID = ? AND opID = ?", delta, m, o.ID); err != nil {
 		Log.Error(err)
 		return "", err
 	}
