@@ -13,13 +13,13 @@ type OperationID string
 // Operation is defined by the Wasabee IITC plugin.
 // It is the top level item in the JSON file.
 type Operation struct {
-	ID         OperationID       `json:"ID"`      // 40-char string
-	Name       string            `json:"name"`    // freeform
-	Gid        GoogleID          `json:"creator"` // IITC plugin sends agent name on first upload, we convert to GID
-	Color      string            `json:"color"`   // now free-form
-	OpPortals  []Portal          `json:"opportals"`
-	Anchors    []PortalID        `json:"anchors"` // We should let the clients build this themselves
-	Links      []Link            `json:"links"`
+	ID        OperationID `json:"ID"`      // 40-char string
+	Name      string      `json:"name"`    // freeform
+	Gid       GoogleID    `json:"creator"` // IITC plugin sends agent name on first upload, we convert to GID
+	Color     string      `json:"color"`   // now free-form
+	OpPortals []Portal    `json:"opportals"`
+	Anchors   []PortalID  `json:"anchors"` // We should let the clients build this themselves
+	Links     []Link      `json:"links"`
 	// Blockers   []Link            `json:"blockers"` // ignored by Wasabee-Server -- do not store this
 	Markers    []Marker          `json:"markers"`
 	Teams      []OpPermission    `json:"teamlist"`
@@ -72,8 +72,15 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 }
 
 func drawOpInsertWorker(o Operation, gid GoogleID) error {
+	// convert from RFC1123 to SQL format
+	starttime, err := time.Parse(time.RFC1123, o.StartTime)
+	if err != nil {
+		Log.Error(err)
+		starttime = time.Now()
+	}
+
 	// start the insert process
-	_, err := db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment))
+	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment, starttime) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment), starttime.Format("2006-01-02 15:04:05"))
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -173,8 +180,14 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 }
 
 func drawOpUpdateWorker(o Operation) error {
-	_, err := db.Exec("UPDATE operation SET name = ?, color = ?, comment = ? WHERE ID = ?",
-		o.Name, o.Color, MakeNullString(o.Comment), o.ID)
+	starttime, err := time.Parse(time.RFC1123, o.StartTime)
+	if err != nil {
+		Log.Error(err)
+		starttime = time.Now()
+	}
+
+	_, err = db.Exec("UPDATE operation SET name = ?, color = ?, comment = ?, starttime = ? WHERE ID = ?",
+		o.Name, o.Color, MakeNullString(o.Comment), starttime.Format("2006-01-02 15:04:05"), o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -366,8 +379,8 @@ func (opID OperationID) IsDeletedOp() bool {
 func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
 	// permission check and populate Operation top level
-	r := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID)
+	r := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, starttime FROM operation WHERE ID = ?", o.ID)
+	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.StartTime)
 
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")
@@ -381,6 +394,14 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 	t := time.Now().UTC()
 	o.Fetched = fmt.Sprint(t.Format(time.RFC1123))
+
+	// convert from SQL to RFC1123 for start time
+	st, err := time.ParseInLocation("2006-01-02 15:04:05", o.StartTime, time.UTC)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	o.StartTime = st.Format(time.RFC1123)
 
 	if err := o.PopulateTeams(); err != nil {
 		Log.Error(err)
@@ -409,6 +430,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 	if comment.Valid {
 		o.Comment = comment.String
+	} else {
+		o.Comment = ""
 	}
 
 	// start with everything -- filter after the rest is set up
