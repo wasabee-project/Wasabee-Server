@@ -384,7 +384,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")
-		Log.Error(err.Error(), "resource", o.ID, "GID", gid)
+		Log.Errorw(err.Error(), "resource", o.ID, "GID", gid)
 		return err
 	}
 	if err != nil {

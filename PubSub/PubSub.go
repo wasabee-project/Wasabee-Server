@@ -144,7 +144,7 @@ func listenForPubSubMessages() {
 		case "agent":
 			if c.responder {
 				// anyone on the responder subscription can Ack it
-				wasabee.Log.Error("agent response on the request topic", "subsystem", "PubSub", "responder", msg.Attributes["Sender"])
+				wasabee.Log.Errorw("agent response on the request topic", "subsystem", "PubSub", "responder", msg.Attributes["Sender"])
 				msg.Ack()
 				break
 			}

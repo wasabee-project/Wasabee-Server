@@ -111,7 +111,7 @@ func RISC(configfile string) {
 			wasabee.Log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			_ = gid.Unlock(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
-			wasabee.Log.Errorf("deleting account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
+			wasabee.Log.Errorw("deleting account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			gid.Logout(e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":

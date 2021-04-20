@@ -116,7 +116,7 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 func (opID OperationID) Chown(gid GoogleID, to string) error {
 	if !opID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied: not current owner")
-		Log.Error(err.Error(), "GID", gid, "resource", opID)
+		Log.Errorw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
 
@@ -128,7 +128,7 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 
 	if x, err := togid.IngressName(); x == "" || err != nil {
 		err := fmt.Errorf("unknown user")
-		Log.Error(err.Error(), "to", to)
+		Log.Errorw(err.Error(), "to", to)
 		return err
 	}
 
@@ -165,7 +165,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone) (string, error) {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied: not current owner of op")
-		Log.Error(err.Error(), "GID", gid, "resource", o.ID)
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID)
 		return "", err
 	}
 
@@ -203,7 +203,7 @@ func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone)
 func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Zone) (string, error) {
 	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("not current owner of op")
-		Log.Error(err.Error(), "GID", gid, "resource", o.ID)
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID)
 		return "", err
 	}
 

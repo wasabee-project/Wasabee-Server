@@ -345,7 +345,7 @@ func StatusServerPoller() {
 	}
 
 	// loop forever
-	Log.Info("startup", "status", "Starting status.enl.one Poller")
+	Log.Infow("startup", "status", "Starting status.enl.one Poller")
 	for {
 		// get list of agents who say they use JEAH/RAID
 		row, err := db.Query("SELECT gid, Vid FROM agent WHERE RAID = 1")
@@ -365,7 +365,7 @@ func StatusServerPoller() {
 				continue
 			}
 			if !vid.Valid {
-				Log.Error("agent requested RAID poll, but has not configured V", "GID", gid.String())
+				Log.Errorw("agent requested RAID poll, but has not configured V", "GID", gid.String())
 				_ = gid.StatusLocationDisable()
 				continue
 			}

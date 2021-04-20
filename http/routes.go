@@ -311,7 +311,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
 	if !authorized {
-		wasabee.Log.Error("smurf detected", "GID", m.Gid)
+		wasabee.Log.Errorw("smurf detected", "GID", m.Gid)
 		http.Error(res, "Smurf go away!", http.StatusForbidden)
 		return
 	}
