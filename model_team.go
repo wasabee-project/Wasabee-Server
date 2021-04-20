@@ -62,7 +62,7 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var rows *sql.Rows
-	rows, err := db.Query("SELECT u.gid, u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.displayname, sharewd, loadwd "+
+	rows, err := db.Query("SELECT u.gid, u.iname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.displayname, sharewd, loadwd "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
 		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
 	if err != nil {
@@ -172,7 +172,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 		Log.Error(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, color, displayname, shareWD, loadWD) VALUES (?,?,'On','operator',NULL, 'Off', 'Off')", team, gid)
+	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, state, squad, displayname, shareWD, loadWD) VALUES (?,?,'On','operator',NULL, 'Off', 'Off')", team, gid)
 	if err != nil {
 		Log.Error(err)
 		return TeamID(team), err
@@ -236,7 +236,7 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, color, displayname, shareWD, loadWD) VALUES (?, ?, 'Off', '', NULL, 'Off', 'Off')", teamID, gid)
+	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, squad, displayname, shareWD, loadWD) VALUES (?, ?, 'Off', 'agents', NULL, 'Off', 'Off')", teamID, gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -249,7 +249,7 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 
 	gid.joinChannels(teamID)
 	gid.firebaseSubscribeTeam(teamID)
-	Log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
+	// Log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
 	return nil
 }
 
@@ -327,7 +327,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	// Log.Debug("Teammates Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
 	// no ST_Distance_Sphere in MariaDB yet...
-	rows, err = db.Query("SELECT DISTINCT u.iname, x.color, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, "+
+	rows, err = db.Query("SELECT DISTINCT u.iname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
 		"FROM agentteams=x, agent=u, locations=l "+
 		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
@@ -509,7 +509,10 @@ func (gid GoogleID) teamListEnabled() []TeamID {
 
 // SetSquad sets an agent's squad on a given team
 func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
-	_, err := db.Exec("UPDATE agentteams SET color = ? WHERE teamID = ? and gid = ?", MakeNullString(squad), teamID, gid)
+	if squad == "" {
+		squad = "agents"
+	}
+	_, err := db.Exec("UPDATE agentteams SET squad = ? WHERE teamID = ? and gid = ?", squad, teamID, gid)
 	if err != nil {
 		Log.Error(err)
 		return err

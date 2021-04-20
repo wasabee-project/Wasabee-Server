@@ -128,6 +128,7 @@ func upgradeTables() {
 		{"SELECT referencetime FROM operation LIMIT 1", "ALTER TABLE operation ADD referencetime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"},
 		{"SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'opkeys' AND column_name = 'capsule' AND character_maximum_length = 16", "ALTER TABLE opkeys MODIFY capsule varchar(16) DEFAULT NULL"},
 		{"SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'defensivekeys' AND column_name = 'capID' AND character_maximum_length = 16", "ALTER TABLE defensivekeys MODIFY capID varchar(16) DEFAULT NULL"},
+		{"SELECT squad FROM agentteams LIMIT 1", "ALTER TABLE agentteams CHANGE color squad varchar(32) NOT NULL DEFAULT 'agents'"},
 	}
 
 	tx, err := db.Begin()
