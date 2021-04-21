@@ -75,7 +75,7 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 	// convert from RFC1123 to SQL format
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
-		Log.Error(err)
+		Log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
 		reftime = time.Now()
 	}
 
