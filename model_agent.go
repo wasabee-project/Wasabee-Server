@@ -122,6 +122,21 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		Log.Error(e2)
 	}
 
+	// rocks agent names are less trustworthy than V, let V overwrite
+	if rocks.Agent != "" {
+		// if we got data, and the user already exists (not first login) update if necessary
+		err = RocksUpdate(gid, &rocks)
+		if err != nil {
+			Log.Info(err)
+			return false, err
+		}
+		tmpName = rocks.Agent
+		if rocks.Smurf {
+			Log.Warnw("access denied", "GID", gid, "reason", "listed as smurf at enl.rocks")
+			authError = true
+		}
+	}
+
 	if vdata.Data.Agent != "" {
 		// if we got data, and the user already exists (not first login) update if necessary
 		err = gid.VUpdate(&vdata)
@@ -129,9 +144,8 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Error(err)
 			return false, err
 		}
-		if tmpName == "" {
-			tmpName = vdata.Data.Agent
-		}
+		// overwrite what we got from rocks
+		tmpName = vdata.Data.Agent
 		if vdata.Data.Quarantine {
 			Log.Warnw("access denied", "GID", gid, "reason", "quarantined at V")
 			authError = true
@@ -140,28 +154,8 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Warnw("access denied", "GID", gid, "reason", "flagged at V")
 			authError = true
 		}
-		if vdata.Data.Blacklisted {
+		if vdata.Data.Blacklisted || vdata.Data.Banned {
 			Log.Warnw("access denied", "GID", gid, "reason", "blacklisted at V")
-			authError = true
-		}
-		if vdata.Data.Banned {
-			Log.Warnw("access denied", "GID", gid, "reason", "blacklisted at V")
-			authError = true
-		}
-	}
-
-	if rocks.Agent != "" {
-		// if we got data, and the user already exists (not first login) update if necessary
-		err = RocksUpdate(gid, &rocks)
-		if err != nil {
-			Log.Info(err)
-			return false, err
-		}
-		if tmpName == "" {
-			tmpName = rocks.Agent
-		}
-		if rocks.Smurf {
-			Log.Warnw("access denied", "GID", gid, "reason", "listed as smurf at enl.rocks")
 			authError = true
 		}
 	}
@@ -175,8 +169,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	if err != nil && err == sql.ErrNoRows {
 		Log.Infow("first login", "GID", gid.String(), "message", "first login for "+gid.String())
 
-		// still no name? last resort ; -hidden- is sent by rocks for users marked private
-		if tmpName == "" || tmpName == "-hidden-" {
+		if tmpName == "" {
 			// triggered this in testing -- should never happen IRL
 			length := 15
 			if tmp := len(gid); tmp < length {
