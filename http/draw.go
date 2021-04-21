@@ -24,7 +24,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", "new operation")
+		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", "new operation")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -38,14 +38,14 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	if string(jBlob) == "" {
 		err := fmt.Errorf("empty JSON on operation upload")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", "new operation")
+		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", "new operation")
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 	if err = wasabee.DrawInsert(jRaw, gid); err != nil {
-		wasabee.Log.Error(err)
+		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", "new operation")
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -83,7 +83,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	if !read && !o.AssignedOnlyAccess(gid) {
 		if o.ID.IsDeletedOp() {
 			err := fmt.Errorf("requested deleted op")
-			wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", o.ID)
+			wasabee.Log.Infow(err.Error(), "GID", gid, "resource", o.ID)
 			http.Error(res, jsonError(err), http.StatusGone)
 			return
 		}
