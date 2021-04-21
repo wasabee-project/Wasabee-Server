@@ -89,11 +89,11 @@ func StartPubSub(config Configuration) error {
 		c.mc <- msg
 	})
 	if err != nil {
-		wasabee.Log.Error(err)
-		return err
+		wasabee.Log.Errorw("PubSub failure", "message", err.Error(), "subsystem", "PubSub")
+		// return err
 	}
 	wasabee.Log.Infow("shutdown", "subsystem", "PubSub", "message", "shutting down PubSub")
-	return nil
+	return err
 }
 
 func listenForPubSubMessages() {
