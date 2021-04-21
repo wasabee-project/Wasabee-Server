@@ -182,7 +182,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 func drawOpUpdateWorker(o Operation) error {
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
-		Log.Debugw(err, "message", "bad reference time, defaulting to now()")
+		Log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
 		reftime = time.Now()
 	}
 
