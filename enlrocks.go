@@ -146,7 +146,7 @@ func RocksUpdate(id AgentID, agent *RocksAgent) error {
 		// doppelkeks error
 		if err != nil && strings.Contains(err.Error(), "Error 1062") {
 			iname := fmt.Sprintf("%s-%s", agent.Agent, gid)
-			Log.Errorw("dupliate ingress agent name detected", "GID", agent.Agent, "new name", iname)
+			Log.Warnw("dupliate ingress agent name detected", "GID", agent.Agent, "new name", iname)
 			if _, err := db.Exec("UPDATE agent SET iname = ?, RocksVerified = ? WHERE gid = ?", iname, agent.Verified, gid); err != nil {
 				Log.Error(err)
 				return err
