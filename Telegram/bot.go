@@ -143,18 +143,18 @@ func runUpdate(update tgbotapi.Update) error {
 }
 
 func newUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	var lockey wasabee.LocKey
+	var ott wasabee.OneTimeToken
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) == 2 {
-			lockey = wasabee.LocKey(strings.TrimSpace(tokens[1]))
+			ott = wasabee.OneTimeToken(strings.TrimSpace(tokens[1]))
 		}
 	} else {
-		lockey = wasabee.LocKey(strings.TrimSpace(inMsg.Message.Text))
+		ott = wasabee.OneTimeToken(strings.TrimSpace(inMsg.Message.Text))
 	}
 
 	tid := wasabee.TelegramID(inMsg.Message.From.ID)
-	err := tid.InitAgent(inMsg.Message.From.UserName, lockey)
+	err := tid.InitAgent(inMsg.Message.From.UserName, ott)
 	if err != nil {
 		wasabee.Log.Error(err)
 		tmp, _ := templateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)

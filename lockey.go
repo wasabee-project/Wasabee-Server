@@ -15,20 +15,20 @@ import (
  */
 
 // LocKey is the location share key, a transitory ID for an agent
-type LocKey string
+type OneTimeToken string
 
 // String is a stringer for LocKey
-func (lockey LocKey) String() string {
-	return string(lockey)
+func (ott OneTimeToken) String() string {
+	return string(ott)
 }
 
 // Gid converts a location share key to a agent's gid
-func (lockey LocKey) Gid() (GoogleID, error) {
+func (ott OneTimeToken) Gid() (GoogleID, error) {
 	var gid GoogleID
 
-	err := db.QueryRow("SELECT gid FROM agent WHERE lockey = ?", lockey).Scan(&gid)
+	err := db.QueryRow("SELECT gid FROM agent WHERE OneTimeToken = ?", ott).Scan(&gid)
 	if err != nil && err == sql.ErrNoRows {
-		err := fmt.Errorf("invalid LocKey")
+		err := fmt.Errorf("invalid OneTimeToken")
 		Log.Info(err)
 		return "", err
 	}
@@ -41,16 +41,32 @@ func (lockey LocKey) Gid() (GoogleID, error) {
 }
 
 // NewLocKey generates a new LocationKey for an agent -- exported for use in test scripts
-func (gid GoogleID) NewLocKey() (LocKey, error) {
-	lk, err := GenerateSafeName()
+func (gid GoogleID) NewOneTimeToken() (OneTimeToken, error) {
+	// we could just use UUID() here...
+	ott, err := GenerateSafeName()
 	if err != nil {
 		Log.Error(err)
 		return "", err
 	}
-	if _, err = db.Exec("UPDATE agent SET LocKey = ? WHERE gid = ?", lk, gid); err != nil {
+	if _, err = db.Exec("UPDATE agent SET OneTimeToken = ? WHERE gid = ?", ott, gid); err != nil {
 		Log.Error(err)
 		return "", err
 	}
-	l := LocKey(lk)
-	return l, err
+	o := OneTimeToken(ott)
+	return o, nil
+}
+
+// Validate attempts to resolve a submitted OTT and updates it if valid
+func (ott OneTimeToken) Increment() (GoogleID, error) {
+	gid, err := ott.Gid()
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	_, err = gid.NewOneTimeToken()
+	if err != nil {
+		Log.Warn(err)
+	}
+	return gid, nil
 }

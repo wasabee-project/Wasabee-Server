@@ -31,17 +31,17 @@ type EnlID string
 
 // AgentData is the complete agent struct, used for the /me page.
 type AgentData struct {
-	GoogleID      GoogleID `json:"GoogleID"`
-	IngressName   string   `json:"name"`
-	Level         int64    `json:"level"`
-	LocationKey   LocKey   `json:"lockey"`
-	VVerified     bool     `json:"Vverified"`
-	VBlacklisted  bool     `json:"blacklisted"`
-	EnlID         EnlID    `json:"enlid"`
-	RocksVerified bool     `json:"rocks"`
-	RAID          bool     `json:"RAID"`
-	RISC          bool     `json:"RISC"`
-	ProfileImage  string   `json:"pic"`
+	GoogleID      GoogleID     `json:"GoogleID"`
+	IngressName   string       `json:"name"`
+	Level         int64        `json:"level"`
+	OneTimeToken  OneTimeToken `json:"lockey"` // historical name, is this used by any clients?
+	VVerified     bool         `json:"Vverified"`
+	VBlacklisted  bool         `json:"blacklisted"`
+	EnlID         EnlID        `json:"enlid"`
+	RocksVerified bool         `json:"rocks"`
+	RAID          bool         `json:"RAID"`
+	RISC          bool         `json:"RISC"`
+	ProfileImage  string       `json:"pic"`
 	Teams         []AdTeam
 	Ops           []AdOperation
 	Assignments   []Assignment
@@ -179,7 +179,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 			Log.Infow("using UnverifiedAgent name", "GID", gid.String(), "name", tmpName)
 		}
 
-		lockey, err := GenerateSafeName()
+		ott, err := GenerateSafeName()
 		if err != nil {
 			Log.Error(err)
 			return false, err
@@ -188,7 +188,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		ad := AgentData{
 			GoogleID:      gid,
 			IngressName:   tmpName,
-			LocationKey:   LocKey(lockey),
+			OneTimeToken:  OneTimeToken(ott),
 			Level:         vdata.Data.Level,
 			VVerified:     vdata.Data.Verified,
 			VBlacklisted:  vdata.Data.Blacklisted,
@@ -221,9 +221,9 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 // GetAgentData populates a AgentData struct based on the gid
 func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	ad.GoogleID = gid
-	var vid, lk, pic sql.NullString
+	var vid, pic sql.NullString
 
-	err := db.QueryRow("SELECT a.iname, a.level, a.lockey, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.Level, &lk, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
+	err := db.QueryRow("SELECT a.iname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
@@ -235,10 +235,6 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 
 	if vid.Valid {
 		ad.EnlID = EnlID(vid.String)
-	}
-
-	if lk.Valid {
-		ad.LocationKey = LocKey(lk.String)
 	}
 
 	if pic.Valid {
@@ -736,11 +732,11 @@ func ToGid(in string) (GoogleID, error) {
 	if err == sql.ErrNoRows || gid == "" {
 		// if you change this message, also change http/team.go
 		err = fmt.Errorf("agent '%s' not registered with this wasabee server", in)
-		Log.Infow(err.Error(), "GID", gid.String(), "search", in, "message", err.Error())
+		Log.Infow(err.Error(), "search", in, "message", err.Error())
 		return gid, err
 	}
 	if err != nil {
-		Log.Errorw(err.Error(), "GID", gid.String(), "search", in, "message", err.Error())
+		Log.Errorw(err.Error(), "search", in, "message", err.Error())
 		return gid, err
 	}
 	return gid, nil
@@ -749,8 +745,8 @@ func ToGid(in string) (GoogleID, error) {
 // Save is called by InitAgent and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
-	_, err := db.Exec("INSERT INTO agent (gid, iname, level, lockey, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
-		ad.GoogleID, ad.IngressName, ad.Level, MakeNullString(ad.LocationKey), ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
+	_, err := db.Exec("INSERT INTO agent (gid, iname, level, OneTimeToken, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
+		ad.GoogleID, ad.IngressName, ad.Level, ad.OneTimeToken, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
 		ad.IngressName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID, ad.RISC)
 	if err != nil {
 		Log.Error(err)
@@ -769,29 +765,6 @@ func (ad AgentData) Save() error {
 		}
 	}
 	return nil
-}
-
-// OneTimeToken attempts to verify a submitted OTT and updates it if valid
-func OneTimeToken(token LocKey) (GoogleID, error) {
-	var gid GoogleID
-
-	err := db.QueryRow("SELECT gid FROM agent WHERE LocKey = ?", token).Scan(&gid)
-	if err != nil && err == sql.ErrNoRows {
-		err := fmt.Errorf("invalid OneTimeToken")
-		Log.Info(err)
-		return "", err
-	}
-
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
-	_, err = gid.NewLocKey()
-	if err != nil {
-		Log.Warn(err)
-	}
-	return gid, nil
 }
 
 // SetAgentName updates an agent's name -- used only for test scripts presently

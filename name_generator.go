@@ -111,7 +111,7 @@ func GenerateSafeName() (string, error) {
 			err := fmt.Errorf("name generation failed")
 			return "", err
 		}
-		err := db.QueryRow("SELECT COUNT(lockey) FROM agent WHERE lockey = ?", name).Scan(&i)
+		err := db.QueryRow("SELECT COUNT(OneTimeToken) FROM agent WHERE OneTimeToken = ?", name).Scan(&i)
 		if err != nil {
 			return "", err
 		}

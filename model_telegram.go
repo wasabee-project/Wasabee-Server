@@ -102,13 +102,13 @@ func (gid GoogleID) TelegramName() (string, error) {
 }
 
 // InitAgent establishes a new telegram user in the database and begins the verification process
-func (tgid TelegramID) InitAgent(name string, lockey LocKey) error {
+func (tgid TelegramID) InitAgent(name string, ott OneTimeToken) error {
 	authtoken := GenerateName()
 
-	gid, err := lockey.Gid()
+	gid, err := ott.Gid()
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("location share key is not recognized")
-		Log.Warnw(err.Error(), "resource", lockey, "tgid", tgid, "name", name)
+		Log.Warnw(err.Error(), "resource", ott, "tgid", tgid, "name", name)
 		return err
 	}
 	if err != nil {
