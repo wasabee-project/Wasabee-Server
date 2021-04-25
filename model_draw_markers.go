@@ -194,28 +194,40 @@ func (m MarkerID) Delta(o *Operation, delta int) (string, error) {
 	return o.Touch()
 }
 
-// Acknowledge that a marker has been assigned
-// gid must be the assigned agent.
-func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) (string, error) {
+func (m MarkerID) isAssignee(o *Operation, gid GoogleID) (bool, error) {
 	var ns sql.NullString
 	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, o.ID).Scan(&ns)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
-		return "", err
+		return false, err
 	}
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("no such marker")
 		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
-		return "", err
+		return false, err
 	}
 	if !ns.Valid {
 		err = fmt.Errorf("marker not assigned")
 		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
-		return "", err
+		return false, err
 	}
 	markerGid := GoogleID(ns.String)
-	if gid != markerGid {
-		err = fmt.Errorf("marker assigned to someone else")
+	if gid == markerGid {
+		return true, nil
+	}
+	return false, nil
+}
+
+// Acknowledge that a marker has been assigned
+// gid must be the assigned agent.
+func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) (string, error) {
+	assignee, err := m.isAssignee(o, gid)
+	if err != nil {
+		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
+		return "", err
+	}
+	if !assignee {
+		err := fmt.Errorf("marker not assigned to you")
 		Log.Warnw(err.Error(), "resource", o.ID, "marker", m)
 		return "", err
 	}
@@ -229,7 +241,13 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) (string, error) {
 
 // Complete marks a marker as completed
 func (m MarkerID) Complete(o Operation, gid GoogleID) (string, error) {
-	if read, _ := o.ReadAccess(gid); !read {
+	write := o.WriteAccess(gid)
+	assignee, err := m.isAssignee(&o, gid)
+	if err != nil {
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
+		return "", err
+	}
+	if !assignee && !write {
 		err := fmt.Errorf("permission denied")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return "", err
@@ -244,7 +262,13 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) (string, error) {
 
 // Incomplete marks a marker as not-completed
 func (m MarkerID) Incomplete(o Operation, gid GoogleID) (string, error) {
-	if read, _ := o.ReadAccess(gid); !read {
+	write := o.WriteAccess(gid)
+	assignee, err := m.isAssignee(&o, gid)
+	if err != nil {
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
+		return "", err
+	}
+	if !assignee && !write {
 		err := fmt.Errorf("permission denied")
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return "", err
@@ -260,26 +284,14 @@ func (m MarkerID) Incomplete(o Operation, gid GoogleID) (string, error) {
 // Reject allows an agent to refuse to take a target
 // gid must be the assigned agent.
 func (m MarkerID) Reject(o *Operation, gid GoogleID) (string, error) {
-	var ns sql.NullString
-	err := db.QueryRow("SELECT gid FROM marker WHERE ID = ? and opID = ?", m, o.ID).Scan(&ns)
-	if err != nil && err != sql.ErrNoRows {
-		Log.Error(err)
+	assignee, err := m.isAssignee(o, gid)
+	if err != nil {
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return "", err
 	}
-	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf("no such marker")
-		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
-		return "", err
-	}
-	if !ns.Valid {
-		err = fmt.Errorf("marker not assigned")
-		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
-		return "", err
-	}
-	markerGid := GoogleID(ns.String)
-	if gid != markerGid {
-		err = fmt.Errorf("marker assigned to someone else")
-		Log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
+	if !assignee {
+		err := fmt.Errorf("marker not assigned to you")
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return "", err
 	}
 	if _, err = db.Exec("UPDATE marker SET state = 'pending', gid = NULL WHERE ID = ? AND opID = ?", m, o.ID); err != nil {
