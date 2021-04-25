@@ -1087,29 +1087,6 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
-func drawStatRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-	_, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-	s, err := op.ID.Stat()
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	data, _ := json.Marshal(s)
-
-	fmt.Fprint(res, string(data))
-}
-
 func drawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {

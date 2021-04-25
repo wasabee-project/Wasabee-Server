@@ -561,8 +561,8 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 			continue
 		}
 		if !isowner && !onteam {
-			err := fmt.Errorf("not on team - in bulk pull")
-			wasabee.Log.Infow(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
+			err := fmt.Errorf("not on team - in bulk pull; probably an op where agent can't see all teams")
+			wasabee.Log.Debugw(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
 			continue
 		}
 		err = team.FetchTeam(&t)
