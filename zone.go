@@ -9,6 +9,7 @@ type Zone int
 
 // ZoneAll is a reserved name for the wildcard zone
 const (
+	ZoneAssignOnly Zone = -1
 	ZoneAll     Zone = 0
 	zonePrimary Zone = 1
 	zoneMax          = 32
