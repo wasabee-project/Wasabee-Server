@@ -101,6 +101,9 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 			Log.Warnw("portalID missing from portal list", "portal", m.PortalID, "resource", o.ID)
 			continue
 		}
+
+		// assignments here would be invalid since teams are not known
+		m.AssignedTo = ""
 		if err = o.ID.insertMarker(m); err != nil {
 			Log.Error(err)
 			continue
@@ -118,6 +121,8 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 			Log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
 			continue
 		}
+		// assignments here would be invalid since teams are not known
+		l.AssignedTo = ""
 		if err = o.ID.insertLink(l); err != nil {
 			Log.Error(err)
 			continue
@@ -193,12 +198,39 @@ func drawOpUpdateWorker(o Operation) error {
 		return err
 	}
 
+	portalMap, err := drawOpUpdatePortals(&o)
+	if err != nil {
+		return err
+	}
+
+	agentMap, err := allOpAgents(o.Teams)
+	if err != nil {
+		return err
+	}
+
+	if err := drawOpUpdateMarkers(&o, portalMap, agentMap); err != nil {
+		return err
+	}
+
+	if err := drawOpUpdateLinks(&o, portalMap, agentMap); err != nil {
+		return err
+	}
+
+	if err := drawOpUpdateZones(&o); err != nil {
+		return err
+	}
+
+	// XXX TBD remove unused opkey portals?
+	return nil
+}
+
+func drawOpUpdatePortals(o *Operation) (map[PortalID]Portal, error) {
 	// get the current portal list and stash in map
 	curPortals := make(map[PortalID]PortalID)
 	portalRows, err := db.Query("SELECT ID FROM portal WHERE OpID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
-		return err
+		return nil, err
 	}
 	var pid PortalID
 	defer portalRows.Close()
@@ -228,7 +260,10 @@ func drawOpUpdateWorker(o Operation) error {
 			continue
 		}
 	}
+	return portalMap, nil
+}
 
+func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool) error {
 	curMarkers := make(map[MarkerID]MarkerID)
 	markerRows, err := db.Query("SELECT ID FROM marker WHERE OpID = ?", o.ID)
 	if err != nil {
@@ -252,6 +287,11 @@ func drawOpUpdateWorker(o Operation) error {
 			Log.Warnw("portal missing from portal list", "marker", m.PortalID, "resource", o.ID)
 			continue
 		}
+		_, ok = agentMap[GoogleID(m.AssignedTo)]
+		if !ok {
+			Log.Warnw("marker assigned to agent not on any current team", "marker", m.PortalID, "resource", o.ID)
+			m.AssignedTo = ""
+		}
 		if err = o.ID.updateMarker(m); err != nil {
 			Log.Error(err)
 			continue
@@ -266,7 +306,10 @@ func drawOpUpdateWorker(o Operation) error {
 			continue
 		}
 	}
+	return nil
+}
 
+func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool) error {
 	curLinks := make(map[LinkID]LinkID)
 	linkRows, err := db.Query("SELECT ID FROM link WHERE OpID = ?", o.ID)
 	if err != nil {
@@ -294,6 +337,11 @@ func drawOpUpdateWorker(o Operation) error {
 			Log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
 			continue
 		}
+		_, ok = agentMap[GoogleID(l.AssignedTo)]
+		if !ok {
+			Log.Warnw("link assigned to agent not on any current team", "link", l.ID, "resource", o.ID)
+			l.AssignedTo = ""
+		}
 		if err = o.ID.updateLink(l); err != nil {
 			Log.Error(err)
 			continue
@@ -307,21 +355,21 @@ func drawOpUpdateWorker(o Operation) error {
 			continue
 		}
 	}
+	return nil
+}
 
+func drawOpUpdateZones(o *Operation) error {
 	// pre 0.18 clients do not send zone info
 	if len(o.Zones) == 0 {
 		o.Zones = defaultZones()
 	}
 	// update and insert are the saem
 	for _, z := range o.Zones {
-		if err = o.insertZone(z); err != nil {
+		if err := o.insertZone(z); err != nil {
 			Log.Error(err)
 			continue
 		}
 	}
-
-	// XXX TBD remove unused opkey portals?
-
 	return nil
 }
 
@@ -545,4 +593,29 @@ func (opID OperationID) Rename(gid GoogleID, name string) error {
 		return err
 	}
 	return nil
+}
+
+func allOpAgents(perms []OpPermission) (map[GoogleID]bool, error) {
+	agentMap := make(map[GoogleID]bool)
+
+	for _, p := range perms {
+		for _, tid := range p.TeamID {
+			agentRows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", tid)
+			if err != nil {
+				Log.Error(err)
+				return agentMap, err
+			}
+			var gid GoogleID
+			defer agentRows.Close()
+			for agentRows.Next() {
+				err := agentRows.Scan(&gid)
+				if err != nil {
+					Log.Error(err)
+					continue
+				}
+				agentMap[gid] = true
+			}
+		}
+	}
+	return agentMap, nil
 }
