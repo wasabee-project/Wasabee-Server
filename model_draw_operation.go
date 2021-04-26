@@ -290,7 +290,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 		_, ok = agentMap[GoogleID(m.AssignedTo)]
 		if !ok {
 			Log.Debugw("marker assigned to agent not on any current team", "marker", m.PortalID, "resource", o.ID)
-			// m.AssignedTo = ""
+			m.AssignedTo = ""
 		}
 		if err = o.ID.updateMarker(m); err != nil {
 			Log.Error(err)
@@ -340,7 +340,7 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 		_, ok = agentMap[GoogleID(l.AssignedTo)]
 		if !ok {
 			Log.Debugw("link assigned to agent not on any current team", "link", l.ID, "resource", o.ID)
-			// l.AssignedTo = ""
+			l.AssignedTo = ""
 		}
 		if err = o.ID.updateLink(l); err != nil {
 			Log.Error(err)
@@ -586,24 +586,22 @@ func (opID OperationID) Rename(gid GoogleID, name string) error {
 func allOpAgents(perms []OpPermission) (map[GoogleID]bool, error) {
 	agentMap := make(map[GoogleID]bool)
 
+	var gid GoogleID
 	for _, p := range perms {
-		for _, tid := range p.TeamID {
-			agentRows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", tid)
+		agentRows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", p.TeamID)
+		if err != nil {
+			Log.Error(err)
+			return agentMap, err
+		}
+		for agentRows.Next() {
+			err := agentRows.Scan(&gid)
 			if err != nil {
 				Log.Error(err)
-				return agentMap, err
+				continue
 			}
-			var gid GoogleID
-			defer agentRows.Close()
-			for agentRows.Next() {
-				err := agentRows.Scan(&gid)
-				if err != nil {
-					Log.Error(err)
-					continue
-				}
-				agentMap[gid] = true
-			}
+			agentMap[gid] = true
 		}
+		agentRows.Close()
 	}
 	return agentMap, nil
 }
