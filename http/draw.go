@@ -78,22 +78,23 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	var o wasabee.Operation
 	o.ID = wasabee.OperationID(id)
 
-	// o.Populate determines all or assigned-only
-	read, _ := o.ReadAccess(gid)
-	if !read && !o.AssignedOnlyAccess(gid) {
-		if o.ID.IsDeletedOp() {
-			err := fmt.Errorf("requested deleted op")
-			wasabee.Log.Infow(err.Error(), "GID", gid, "resource", o.ID)
-			http.Error(res, jsonError(err), http.StatusGone)
-			return
-		}
+	if o.ID.IsDeletedOp() {
+		err := fmt.Errorf("requested deleted op")
+		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", o.ID)
+		http.Error(res, jsonError(err), http.StatusGone)
+		return
+	}
 
+	read, _ := o.ReadAccess(gid)
+	assignOnly := o.AssignedOnlyAccess(gid)
+	if !read && !assignOnly {
 		err := fmt.Errorf("forbidden")
 		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", o.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
+	// o.Populate determines all, zone, or assigned-only
 	if err = o.Populate(gid); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -1085,53 +1086,6 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	wasabee.Log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-}
-
-func drawMyRouteRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-
-	var a wasabee.Assignments
-	err = gid.Assignments(op.ID, &a)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	lls := "https://maps.google.com/maps/dir/?api=1"
-	stops := len(a.Links) - 1
-
-	if stops < 1 {
-		res.Header().Set("Content-Type", jsonType)
-		fmt.Fprint(res, `{ "status": "no assignments" }`)
-		return
-	}
-
-	for i, l := range a.Links {
-		if i == 0 {
-			lls = fmt.Sprintf("%s&origin=%s,%s&waypoints=", lls, a.Portals[l.From].Lat, a.Portals[l.From].Lon)
-		}
-		// Google only allows 9 waypoints
-		// we could do something fancy and show every (n) link based on len(a.Links) / 8
-		// this is good enough for now
-		if i < 7 {
-			lls = fmt.Sprintf("%s|%s,%s", lls, a.Portals[l.From].Lat, a.Portals[l.From].Lon)
-		}
-		if i == stops { // last one -- even if > 10 in list
-			lls = fmt.Sprintf("%s&destination=%s,%s", lls, a.Portals[l.From].Lat, a.Portals[l.From].Lon)
-		}
-	}
-
-	http.Redirect(res, req, lls, http.StatusFound)
 }
 
 func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
