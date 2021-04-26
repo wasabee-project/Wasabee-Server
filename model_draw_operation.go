@@ -289,8 +289,8 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 		}
 		_, ok = agentMap[GoogleID(m.AssignedTo)]
 		if !ok {
-			Log.Warnw("marker assigned to agent not on any current team", "marker", m.PortalID, "resource", o.ID)
-			m.AssignedTo = ""
+			Log.Debugw("marker assigned to agent not on any current team", "marker", m.PortalID, "resource", o.ID)
+			// m.AssignedTo = ""
 		}
 		if err = o.ID.updateMarker(m); err != nil {
 			Log.Error(err)
@@ -339,8 +339,8 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 		}
 		_, ok = agentMap[GoogleID(l.AssignedTo)]
 		if !ok {
-			Log.Warnw("link assigned to agent not on any current team", "link", l.ID, "resource", o.ID)
-			l.AssignedTo = ""
+			Log.Debugw("link assigned to agent not on any current team", "link", l.ID, "resource", o.ID)
+			// l.AssignedTo = ""
 		}
 		if err = o.ID.updateLink(l); err != nil {
 			Log.Error(err)
@@ -426,7 +426,6 @@ func (opID OperationID) IsDeletedOp() bool {
 // checks to see that either the gid created the operation or the gid is on the team assigned to the operation
 func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
-	// permission check and populate Operation top level
 	r := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, referencetime FROM operation WHERE ID = ?", o.ID)
 	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.ReferenceTime)
 
@@ -456,30 +455,20 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	read, zones := o.ReadAccess(gid)
-	if !read {
-		if o.AssignedOnlyAccess(gid) {
-			var a Assignments
-			err = gid.Assignments(o.ID, &a)
-			if err != nil {
-				Log.Error(err)
-				return err
-			}
-			for _, p := range a.Portals {
-				o.OpPortals = append(o.OpPortals, p)
-			}
-			o.Markers = append(o.Markers, a.Markers...)
-			o.Links = append(o.Links, a.Links...)
-
-			return nil
-		}
-		return fmt.Errorf("unauthorized: you are not on a team authorized to see this operation (%s: %s)", gid, o.ID)
-	}
-
 	if comment.Valid {
 		o.Comment = comment.String
 	} else {
 		o.Comment = ""
+	}
+
+	read, zones := o.ReadAccess(gid)
+	assignedOnly := o.AssignedOnlyAccess(gid)
+	if !read {
+		if assignedOnly {
+			zones = []Zone{ZoneAssignOnly}
+		} else {
+			return fmt.Errorf("unauthorized: you are not on a team authorized to see this full operation (%s: %s)", gid, o.ID)
+		}
 	}
 
 	// start with everything -- filter after the rest is set up
@@ -504,14 +493,19 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	if err = o.populateKeys(); err != nil {
-		Log.Error(err)
-		return err
+	if assignedOnly {
+		if err = o.populateMyKeys(gid); err != nil {
+			Log.Error(err)
+			return err
+		}
+	} else {
+		if err = o.populateKeys(); err != nil {
+			Log.Error(err)
+			return err
+		}
 	}
 
-	// it wouldn't hurt to filter even for ZoneAll
 	if !ZoneAll.inZones(zones) {
-		// populate portals, links and anchors first
 		if err = o.filterPortals(); err != nil {
 			Log.Error(err)
 			return err
@@ -522,14 +516,8 @@ func (o *Operation) Populate(gid GoogleID) error {
 		Log.Error(err)
 		return err
 	}
-
 	return nil
 }
-
-/*
-type objectID interface {
-	fmt.Stringer
-} */
 
 // SetInfo changes the description of an operation
 func (o *Operation) SetInfo(info string, gid GoogleID) (string, error) {
