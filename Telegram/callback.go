@@ -41,52 +41,6 @@ func teamKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
 	return tmp
 }
 
-func assignmentKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
-	var ud wasabee.AgentData
-	var rows [][]tgbotapi.InlineKeyboardButton
-	var a wasabee.Assignments
-
-	limiter := 0
-	if err := gid.GetAgentData(&ud); err == nil {
-		for _, op := range ud.Assignments {
-			if limiter > 10 {
-				break
-			}
-			err = gid.Assignments(op.OpID, &a)
-			if err != nil {
-				wasabee.Log.Error(err)
-				continue
-			}
-			for _, marker := range a.Markers {
-				var row []tgbotapi.InlineKeyboardButton
-				var action, reject tgbotapi.InlineKeyboardButton
-				title := fmt.Sprintf("%s %s - Complete", marker.Type, a.Portals[marker.PortalID].Name)
-				cmd := fmt.Sprintf("marker/complete/%s", marker.ID)
-				rcmd := fmt.Sprintf("marker/reject/%s", marker.ID)
-				action = tgbotapi.NewInlineKeyboardButtonData(title, cmd)
-				reject = tgbotapi.NewInlineKeyboardButtonData("reject", rcmd)
-				row = append(row, action)
-				row = append(row, reject)
-				rows = append(rows, row)
-				limiter++
-				if limiter > 10 {
-					break
-				}
-			}
-		}
-	}
-
-	tmp := tgbotapi.InlineKeyboardMarkup{
-		InlineKeyboard: rows,
-	}
-	wasabee.Log.Debug(tmp)
-	return tmp
-}
-
-func nearbyAssignmentKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
-	return assignmentKeyboard(gid)
-}
-
 // callback is where to determine which callback is called, and what to do with it
 func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var resp tgbotapi.APIResponse
@@ -127,23 +81,6 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Team Updated", ShowAlert: false},
 		)
 		msg.ReplyMarkup = teamKeyboard(gid)
-	case "operation": // XXX nothing yet
-		_ = callbackOperation(command[1], command[2], gid, lang, &msg)
-		resp, err = bot.AnswerCallbackQuery(
-			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Operation not supported yet"},
-		)
-		msg.ReplyMarkup = assignmentKeyboard(gid)
-	case "marker": // XXX nothing yet
-		_ = callbackMarker(command[1], command[2], gid, lang, &msg)
-		resp, err = bot.AnswerCallbackQuery(
-			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Marker Updated"},
-		)
-		msg.ReplyMarkup = assignmentKeyboard(gid)
-	case "assignments":
-		resp, err = bot.AnswerCallbackQuery(
-			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Assignments"},
-		)
-		msg.ReplyMarkup = assignmentKeyboard(gid)
 	default:
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Unknown Callback"},
@@ -194,23 +131,6 @@ func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *t
 		}
 	default:
 		err = fmt.Errorf("unknown team state: %s", action)
-		wasabee.Log.Error(err)
-	}
-	return nil
-}
-
-func callbackOperation(action, op string, gid wasabee.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
-	return nil
-}
-
-func callbackMarker(action, target string, gid wasabee.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
-	switch action {
-	case "complete":
-		msg.Text = "assignment completion coming soon"
-	case "reject":
-		msg.Text = "assignment rejection coming soon"
-	default:
-		err := fmt.Errorf("unknown marker action: %s", action)
 		wasabee.Log.Error(err)
 	}
 	return nil
