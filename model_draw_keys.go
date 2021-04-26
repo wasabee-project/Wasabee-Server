@@ -75,6 +75,35 @@ func (o *Operation) populateKeys() error {
 	return nil
 }
 
+// PopulateKeys fills in the Keys on hand list for the Operation. No authorization takes place.
+func (o *Operation) populateMyKeys(gid GoogleID) error {
+	var k KeyOnHand
+	k.Gid = gid
+
+	rows, err := db.Query("SELECT portalID, onhand, capsule FROM opkeys WHERE opID = ? AND gid = ?", o.ID, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var cap sql.NullString
+		err := rows.Scan(&k.ID, &k.Onhand, &cap)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		if cap.Valid {
+			k.Capsule = cap.String
+		} else {
+			k.Capsule = ""
+		}
+		o.Keys = append(o.Keys, k)
+	}
+	return nil
+}
+
 // KeyOnHand updates a user's key-count for linking
 func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, capsule string) (string, error) {
 	k := KeyOnHand{
