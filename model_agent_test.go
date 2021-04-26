@@ -169,13 +169,13 @@ func TestLocKey(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	if ad.LocationKey == "" {
+	if ad.OneTimeToken == "" {
 		// t.Errorf("location key unset")
 		wasabee.Log.Info("location key unset")
-		ad.LocationKey, _ = gid.NewLocKey()
+		ad.OneTimeToken, _ = gid.OneTimeToken()
 	}
 
-	ngid, err := ad.LocationKey.Gid()
+	ngid, err := ad.OneTimeToken.Gid()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
