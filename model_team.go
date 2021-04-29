@@ -22,20 +22,22 @@ type TeamData struct {
 type Agent struct {
 	Gid           GoogleID `json:"id"`
 	Name          string   `json:"name"`
+	VName         string   `json:"vname"`
+	RocksName     string   `json:"rocksname"`
+	IntelName     string   `json:"intelname"`
 	Level         int64    `json:"level"`
 	EnlID         EnlID    `json:"enlid"`
 	PictureURL    string   `json:"pic"`
 	Verified      bool     `json:"Vverified"`
 	Blacklisted   bool     `json:"blacklisted"`
 	RocksVerified bool     `json:"rocks"`
+	IntelFaction  string   `json:"intelfaction"`
 	Squad         string   `json:"squad"`
 	State         bool     `json:"state"`
 	Lat           float64  `json:"lat"`
 	Lon           float64  `json:"lng"`
 	Date          string   `json:"date"`
 	Distance      float64  `json:"distance,omitempty"`
-	DisplayName   string   `json:"displayname,omitempty"`
-	CanSendTo     bool     `json:"cansendto,omitempty"`
 	ShareWD       bool     `json:"shareWD"`
 	LoadWD        bool     `json:"loadWD"`
 	StartLat      float64  `json:"startlat"`
@@ -62,7 +64,7 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var rows *sql.Rows
-	rows, err := db.Query("SELECT u.gid, u.iname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.displayname, sharewd, loadwd "+
+	rows, err := db.Query("SELECT u.gid, u.name, u.Vname, u.Rocksname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.sharewd, x.loadwd, u.intelfaction "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
 		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
 	if err != nil {
@@ -74,9 +76,10 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	for rows.Next() {
 		var tmpU Agent
 		var state, lat, lon, sharewd, loadwd string
-		var enlID, dn sql.NullString
+		var enlID sql.NullString
+		var faction int8
 
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &tmpU.RocksVerified, &dn, &sharewd, &loadwd)
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.VName, &tmpU.RocksName, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &tmpU.RocksVerified, &sharewd, &loadwd, &faction)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -96,12 +99,6 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 			tmpU.EnlID = ""
 		}
 		tmpU.PictureURL = tmpU.Gid.GetPicture()
-		if dn.Valid {
-			tmpU.Name = dn.String
-			tmpU.DisplayName = dn.String
-		} else {
-			tmpU.DisplayName = ""
-		}
 		if sharewd == "On" {
 			tmpU.ShareWD = true
 		} else {
@@ -112,6 +109,15 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 		} else {
 			tmpU.LoadWD = false
 		}
+		switch faction {
+		case -1:
+			tmpU.IntelFaction = "unset"
+		case 0:
+			tmpU.IntelFaction = "RES"
+		case 1:
+			tmpU.IntelFaction = "ENL"
+		}
+
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 
@@ -236,7 +242,7 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, squad, displayname, shareWD, loadWD) VALUES (?, ?, 'Off', 'agents', NULL, 'Off', 'Off')", teamID, gid)
+	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, state, squad, shareWD, loadWD) VALUES (?, ?, 'Off', 'agents', 'Off', 'Off')", teamID, gid)
 	if err != nil {
 		Log.Error(err)
 		return err

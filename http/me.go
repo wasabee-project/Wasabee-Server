@@ -1,6 +1,8 @@
 package wasabeehttps
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +14,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server"
 )
 
+// this can probably be simplified now
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -26,6 +29,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	ud.QueryToken = formValidationToken(req)
 
 	if wantsJSON(req) {
 		data, _ := json.Marshal(ud)
@@ -40,6 +44,14 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		wasabee.Log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// use this to verify that form data is sent from a client that requested it
+func formValidationToken(req *http.Request) string {
+	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("UserAgent"), req.RemoteAddr, config.OauthConfig.ClientSecret)
+	hasher := sha256.New()
+	hasher.Write([]byte(toHash))
+	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 }
 
 // almost everything should return JSON now. The few things that do not redirect elsewhere.

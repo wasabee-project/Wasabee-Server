@@ -269,7 +269,7 @@ func respond(g string, sender string) (bool, error) {
 	// ad.OwnedTeams = nil
 	ad.Teams = nil
 	ad.Ops = nil
-	ad.Assignments = nil
+	// ad.Assignments = nil
 
 	d, err := json.Marshal(ad)
 	if err != nil {

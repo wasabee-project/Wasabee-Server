@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	"strings"
+	// "strings"
 	"sync"
 )
 
@@ -33,6 +33,9 @@ type EnlID string
 type AgentData struct {
 	GoogleID      GoogleID     `json:"GoogleID"`
 	IngressName   string       `json:"name"`
+	VName         string       `json:"vname"`
+	RocksName     string       `json:"rocksname"`
+	IntelName     string       `json:"intelname"`
 	Level         int64        `json:"level"`
 	OneTimeToken  OneTimeToken `json:"lockey"` // historical name, is this used by any clients?
 	VVerified     bool         `json:"Vverified"`
@@ -44,12 +47,12 @@ type AgentData struct {
 	ProfileImage  string       `json:"pic"`
 	Teams         []AdTeam
 	Ops           []AdOperation
-	Assignments   []Assignment
 	Telegram      struct {
 		ID        int64
 		Verified  bool
 		Authtoken string
 	}
+	QueryToken string `json:"querytoken"`
 }
 
 // AdTeam is a sub-struct of AgentData
@@ -78,12 +81,6 @@ type AdOperation struct {
 type AgentID interface {
 	Gid() (GoogleID, error)
 	fmt.Stringer
-}
-
-// Assignment is used for assigning targets
-type Assignment struct {
-	OpID          OperationID
-	OperationName string
 }
 
 // InitAgent is called from Oauth callback to set up a agent for the first time or revalidate them on subsequent logins.
@@ -213,7 +210,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	return true, nil
 }
 
-// Gid just satisfies the AgentID function
+// Gid just satisfies the AgentID interface
 func (gid GoogleID) Gid() (GoogleID, error) {
 	return gid, nil
 }
@@ -223,7 +220,7 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	ad.GoogleID = gid
 	var vid, pic sql.NullString
 
-	err := db.QueryRow("SELECT a.iname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
+	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
@@ -250,10 +247,6 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	}
 
 	if err = gid.adOps(ad); err != nil {
-		return err
-	}
-
-	if err = gid.adAssignments(ad); err != nil {
 		return err
 	}
 
@@ -361,7 +354,7 @@ func (gid GoogleID) adOps(ad *AgentData) error {
 }
 
 // adAssignments lists operations in which one has assignments
-func (gid GoogleID) adAssignments(ad *AgentData) error {
+/* func (gid GoogleID) adAssignments(ad *AgentData) error {
 	assignMap := make(map[OperationID]string)
 
 	var opID OperationID
@@ -404,7 +397,7 @@ func (gid GoogleID) adAssignments(ad *AgentData) error {
 		})
 	}
 	return nil
-}
+} */
 
 // AgentLocation updates the database to reflect a agent's current location
 func (gid GoogleID) AgentLocation(lat, lon string) error {
@@ -439,49 +432,10 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 // IngressName returns an agent's name for a given GoogleID.
 // returns err == sql.ErrNoRows if there is no such agent.
 func (gid GoogleID) IngressName() (string, error) {
-	var iname string
-	err := db.QueryRow("SELECT iname FROM agent WHERE gid = ?", gid).Scan(&iname)
-	return iname, err
-}
-
-// IngressNameTeam returns the display name for an agent on a particular team, or the IngressName if not set
-func (gid GoogleID) IngressNameTeam(teamID TeamID) (string, error) {
-	var displayname sql.NullString
-	err := db.QueryRow("SELECT displayname FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid).Scan(&displayname)
-	if (err != nil && err == sql.ErrNoRows) || !displayname.Valid {
-		return gid.IngressName()
-	}
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
-	return displayname.String, nil
-}
-
-// IngressNameOperation returns an agent's display name on a given operation
-// if the agent is on multiple teams associated with the op, the first one found is used -- this is non-deterministic
-func (gid GoogleID) IngressNameOperation(o *Operation) (string, error) {
-	var iname string
-
-	err := o.PopulateTeams()
-	if err != nil {
-		Log.Error(err)
-		return "", err
-	}
-
-	for _, t := range o.Teams {
-		iname, err := gid.IngressNameTeam(t.TeamID)
-		if err != nil && err != sql.ErrNoRows {
-			Log.Error(err)
-			// keep looking
-		}
-		if iname != "" {
-			break
-		}
-	}
-
-	return iname, nil
+	var name string // , rocksname, vname, intelname string
+	// err := db.QueryRow("SELECT name, rocksname, vname, intelname FROM agent WHERE gid = ?", gid).Scan(&name, &rocksname, &vname, &intelname)
+	err := db.QueryRow("SELECT name FROM agent WHERE gid = ?", gid).Scan(&name)
+	return name, err
 }
 
 func (gid GoogleID) String() string {
@@ -543,8 +497,8 @@ func RevalidateEveryone() error {
 func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
 
-	// if it starts with an @ and not the placeholder, search tg
-	if agent[0] == '@' && !strings.EqualFold("@unused", agent) {
+	// if it starts with an @ search tg
+	if agent[0] == '@' {
 		err := db.QueryRow("SELECT gid FROM telegram WHERE LOWER(telegramName) LIKE LOWER(?)", agent[1:]).Scan(&gid)
 		if err != nil && err != sql.ErrNoRows {
 			Log.Error(err)
@@ -555,14 +509,75 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		}
 	}
 
-	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(iname) LIKE LOWER(?)", agent).Scan(&gid)
+	// agent.name has a unique key
+	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(name) LIKE LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
 		return "", err
 	}
-	return gid, nil
+	if gid != "" { // found a match
+		return gid, nil
+	}
 
-	// XXX where else can we search by name? Rocks? V?
+	// Vname does NOT have a unique key
+	var count int
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(Vname) LIKE LOWER(?)", agent).Scan(&count)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	if count == 1 {
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(Vname) LIKE LOWER(?)", gid).Scan(&gid)
+		if err != nil {
+			Log.Error(err)
+			return "", err
+		}
+		return gid, nil
+	}
+	if count > 1 {
+		err := fmt.Errorf("multiple V matches found, not using V results")
+		Log.Error(err)
+	}
+
+	// rocks does NOT have a unique key
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(rocksname) LIKE LOWER(?)", agent).Scan(&count)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	if count == 1 {
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(rocks) LIKE LOWER(?)", gid).Scan(&gid)
+		if err != nil {
+			Log.Error(err)
+			return "", err
+		}
+		return gid, nil
+	}
+	if count > 1 {
+		err := fmt.Errorf("multiple rocks matches found, not using V results")
+		Log.Error(err)
+	}
+
+	// intelname does NOT have a unique key
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(intelname) LIKE LOWER(?)", agent).Scan(&count)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	if count == 1 {
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(intelname) LIKE LOWER(?)", gid).Scan(&gid)
+		if err != nil {
+			Log.Error(err)
+			return "", err
+		}
+		return gid, nil
+	}
+	if count > 1 {
+		err := fmt.Errorf("multiple intelname matches found, not using V results")
+		Log.Error(err)
+	}
+	err = fmt.Errorf("no matches found")
+	return "", err
 }
 
 // Delete removes an agent and all associated data
@@ -727,7 +742,7 @@ func ToGid(in string) (GoogleID, error) {
 	case 21:
 		gid = GoogleID(in)
 	default:
-		gid, err = SearchAgentName(in)
+		gid, err = SearchAgentName(in) // telegram @names covered here
 	}
 	if err == sql.ErrNoRows || gid == "" {
 		// if you change this message, also change http/team.go
@@ -745,9 +760,9 @@ func ToGid(in string) (GoogleID, error) {
 // Save is called by InitAgent and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
-	_, err := db.Exec("INSERT INTO agent (gid, iname, level, OneTimeToken, VVerified, VBlacklisted, Vid, RocksVerified, RAID, RISC) VALUES (?,?,?,?,?,?,?,?,?,0) ON DUPLICATE KEY UPDATE iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
-		ad.GoogleID, ad.IngressName, ad.Level, ad.OneTimeToken, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
-		ad.IngressName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID, ad.RISC)
+	_, err := db.Exec("INSERT INTO agent (gid, name, vname, rocksname, level, OneTimeToken, VVerified, VBlacklisted, Vid, RocksVerified, RAID)  VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name = ?, vname = ?, rocksname = ? , level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
+		ad.GoogleID, ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.OneTimeToken, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
+		ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID, ad.RISC)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -769,7 +784,7 @@ func (ad AgentData) Save() error {
 
 // SetAgentName updates an agent's name -- used only for test scripts presently
 func (gid GoogleID) SetAgentName(newname string) error {
-	_, err := db.Exec("UPDATE agent SET iname = ? WHERE gid = ?", newname, gid)
+	_, err := db.Exec("UPDATE agent SET name = ? WHERE gid = ?", newname, gid)
 
 	if err != nil {
 		Log.Error(err)

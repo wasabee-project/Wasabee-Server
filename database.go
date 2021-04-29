@@ -130,6 +130,8 @@ func upgradeTables() {
 		{"SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'defensivekeys' AND column_name = 'capID' AND character_maximum_length = 16", "ALTER TABLE defensivekeys MODIFY capID varchar(16) DEFAULT NULL"},
 		{"SELECT squad FROM agentteams LIMIT 1", "ALTER TABLE agentteams CHANGE color squad varchar(32) NOT NULL DEFAULT 'agents'"},
 		{"SELECT OneTimeToken FROM agent LIMIT 1", "ALTER TABLE agent DROP INDEX lockey, DROP lockey, ADD OneTimeToken varchar(64) NOT NULL DEFAULT LEFT(UUID(),60), ADD UNIQUE (OneTimeToken)"},
+		{"SELECT name FROM agent LIMIT 1", "ALTER TABLE agent CHANGE iname name NOT NULL"},
+		{"SELECT intelname FROM agent LIMIT 1", "ALTER TABLE agent ADD intelname varchar(64) NOT NULL DEFAULT '', ADD intelfaction tinyint(1) NOT NULL DEFAULT '-1', ADD Vname varchar(64) NOT NULL DEFAULT '', ADD rocksname varchar(64) NOT NULL DEFAULT ''"},
 	}
 
 	tx, err := db.Begin()
