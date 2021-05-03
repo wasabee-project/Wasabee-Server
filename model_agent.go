@@ -52,7 +52,8 @@ type AgentData struct {
 		Verified  bool
 		Authtoken string
 	}
-	QueryToken string `json:"querytoken"`
+	IntelFaction string `json:"intelfaction"`
+	QueryToken   string `json:"querytoken"`
 }
 
 // AdTeam is a sub-struct of AgentData
@@ -220,7 +221,7 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	ad.GoogleID = gid
 	var vid, pic sql.NullString
 
-	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &pic)
+	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &ad.IntelFaction, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
@@ -760,7 +761,7 @@ func ToGid(in string) (GoogleID, error) {
 // Save is called by InitAgent and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad AgentData) Save() error {
-	_, err := db.Exec("INSERT INTO agent (gid, name, vname, rocksname, level, OneTimeToken, VVerified, VBlacklisted, Vid, RocksVerified, RAID)  VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name = ?, vname = ?, rocksname = ? , level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
+	_, err := db.Exec("INSERT INTO agent (gid, name, vname, rocksname, level, OneTimeToken, VVerified, VBlacklisted, Vid, RocksVerified, RAID)  VALUES (?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name = ?, vname = ?, rocksname = ? , level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
 		ad.GoogleID, ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.OneTimeToken, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
 		ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID, ad.RISC)
 	if err != nil {
