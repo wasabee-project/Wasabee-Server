@@ -83,7 +83,7 @@ func TestAgentDataSetup(t *testing.T) {
 		wasabee.Log.Error(err)
 		t.Error(err.Error())
 	}
-	if _, err := gid.NewLocKey(); err != nil {
+	if _, err := gid.NewOneTimeToken(); err != nil {
 		wasabee.Log.Error(err)
 		t.Error(err.Error())
 	}
@@ -92,19 +92,28 @@ func TestAgentDataSetup(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Infof("got '%s' for 'unknown'", fgid)
+	if fgid != "" {
+		t.Errorf(fmt.Sprintf("got '%s' for 'unknown', expected ''", fgid))
+	}
+	// wasabee.Log.Infof("got '%s' for 'unknown'", fgid)
 
 	fgid, err = wasabee.SearchAgentName("@unused")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Infof("got '%s' for '@unused'", fgid)
+	if fgid != "" {
+		t.Errorf(fmt.Sprintf("got '%s' for '@unused', expected ''", fgid))
+	}
+	// wasabee.Log.Infof("got '%s' for '@unused'", fgid)
 
 	fgid, err = wasabee.SearchAgentName("@deviousness")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Infof("got '%s' for '@deviousness'", fgid)
+	if fgid != "" {
+		t.Errorf(fmt.Sprintf("got '%s' for '@deviousness', expected ''", fgid))
+	}
+	// wasabee.Log.Infof("got '%s' for '@deviousness'", fgid)
 
 	if err = tgid.UpdateName("deviousness"); err != nil {
 		t.Errorf(err.Error())
@@ -113,7 +122,9 @@ func TestAgentDataSetup(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Infof("got '%s' for '@deviousness'", fgid)
+	if fgid != "118281765050946915735" {
+		t.Errorf(fmt.Sprintf("got '%s' for '@deviousness', expected '118281765050946915735'", fgid))
+	}
 }
 
 func TestLoadWordsFile(t *testing.T) {

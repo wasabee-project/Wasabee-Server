@@ -66,7 +66,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var rows *sql.Rows
 	rows, err := db.Query("SELECT u.gid, u.name, u.Vname, u.Rocksname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.sharewd, x.loadwd, u.intelfaction "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
-		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.iname", teamID)
+		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.name", teamID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -320,7 +320,7 @@ func (teamID TeamID) Chown(to AgentID) error {
 }
 
 // TeammatesNear identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
-func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
+/* func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
 	var state, lat, lon string
 	var tmpU Agent
 	var rows *sql.Rows
@@ -333,7 +333,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 	// Log.Debug("Teammates Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
 
 	// no ST_Distance_Sphere in MariaDB yet...
-	rows, err = db.Query("SELECT DISTINCT u.iname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, "+
+	rows, err = db.Query("SELECT DISTINCT u.name, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, "+
 		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
 		"FROM agentteams=x, agent=u, locations=l "+
 		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
@@ -361,7 +361,7 @@ func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamDat
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
 	return nil
-}
+} */
 
 // SetRocks links a team to a community at enl.rocks.
 // Does not check team ownership -- caller should take care of authorization.

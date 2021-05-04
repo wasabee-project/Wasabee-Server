@@ -53,7 +53,6 @@ func (gid GoogleID) PSRequest() {
 // Push an Agent's location to PubSub
 func (gid GoogleID) PSLocation(lat, lon string) {
 	if !ps.running {
-		Log.Debug("Pub/Sub Location request but not running")
 		return
 	}
 

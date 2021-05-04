@@ -494,7 +494,8 @@ func RevalidateEveryone() error {
 	return nil
 }
 
-// SearchAgentName gets a GoogleID from an Agent's name
+// SearchAgentName gets a GoogleID from an Agent's name, searching local name, V name (if known), Rocks name (if known) and telegram name (if known)
+// returns "" on no match
 func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
 
@@ -577,8 +578,9 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		err := fmt.Errorf("multiple intelname matches found, not using V results")
 		Log.Error(err)
 	}
-	err = fmt.Errorf("no matches found")
-	return "", err
+
+	// no match found, return ""
+	return "", nil
 }
 
 // Delete removes an agent and all associated data

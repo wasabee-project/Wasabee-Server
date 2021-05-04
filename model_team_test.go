@@ -87,22 +87,6 @@ func TestNewTeam(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	displayname, err := gid.IngressNameTeam(teamID)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	wasabee.Log.Infof("display name set to %s", displayname)
-
-	if err := teamID.SetDisplayname(gid, "developerness"); err != nil {
-		t.Error(err.Error())
-	}
-
-	displayname, err = gid.IngressNameTeam(teamID)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	wasabee.Log.Infof("display name set to %s", displayname)
-
 	tok, err := teamID.GenerateJoinToken()
 	if err != nil {
 		t.Error(err.Error())
@@ -148,6 +132,7 @@ func BenchmarkDeleteTeam(b *testing.B) {
 	}
 }
 
+/*
 func TestTeammatesNear(t *testing.T) {
 	var td wasabee.TeamData
 
@@ -159,4 +144,4 @@ func TestTeammatesNear(t *testing.T) {
 	for _, v := range td.Agent {
 		fmt.Printf("%s is %fkm away\n", v.Name, v.Distance)
 	}
-}
+} */

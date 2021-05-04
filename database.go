@@ -49,7 +49,7 @@ func setupTables() {
 		// agent must come first, team must come second, operation must come third, the rest can be in alphabetical order
 		{"agent", `CREATE TABLE agent ( gid varchar(32) NOT NULL, name varchar(64) DEFAULT NULL, level tinyint(4) NOT NULL DEFAULT '1', OneTimeToken varchar(64) NOT NULL DEFAULT UUID(), VVerified tinyint(1) NOT NULL DEFAULT '0', Vblacklisted tinyint(1) NOT NULL DEFAULT '0', Vid varchar(40) DEFAULT NULL, RocksVerified tinyint(1) NOT NULL DEFAULT '0', RAID tinyint(1) NOT NULL DEFAULT '0', RISC tinyint(1) NOT NULL DEFAULT '0', PRIMARY KEY (gid), UNIQUE KEY name (name), UNIQUE KEY OneTimeToken (OneTimeToken), UNIQUE KEY Vid (Vid)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"team", `CREATE TABLE team ( teamID varchar(64) NOT NULL, owner varchar(32) NOT NULL, name varchar(64) DEFAULT NULL, rockskey varchar(32) DEFAULT NULL, rockscomm varchar(32) DEFAULT NULL, joinLinkToken varchar(64), telegram bigint signed, PRIMARY KEY (teamID), KEY fk_team_owner (owner), CONSTRAINT fk_team_owner FOREIGN KEY (owner) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
-		{"operation", `CREATE TABLE operation ( ID varchar(64) NOT NULL, name varchar(128) NOT NULL DEFAULT 'new op', gid varchar(32) NOT NULL, color varchar(16) NOT NULL DEFAULT 'groupa', teamID varchar(64) NOT NULL DEFAULT '', modified datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, comment text, PRIMARY KEY (ID), KEY gid (gid), KEY teamID (teamID), CONSTRAINT fk_operation_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
+		{"operation", `CREATE TABLE operation ( ID varchar(64) NOT NULL, name varchar(128) NOT NULL DEFAULT 'new op', gid varchar(32) NOT NULL, color varchar(16) NOT NULL DEFAULT 'green', teamID varchar(64) NOT NULL DEFAULT '', modified datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, comment text, lasteditid varchar(40) NOT NULL DEFAULT 'unset', referencetime datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (ID), KEY gid (gid), KEY teamID (teamID), CONSTRAINT fk_operation_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 
 		{"agentextras", `CREATE TABLE agentextras ( gid varchar(32) NOT NULL, picurl text, UNIQUE KEY gid (gid), CONSTRAINT fk_extra_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"agentteams", `CREATE TABLE agentteams ( teamID varchar(64) NOT NULL, gid varchar(32) NOT NULL, state enum('Off','On') NOT NULL DEFAULT 'Off', squad varchar(32) NOT NULL DEFAULT 'agents', shareWD enum('Off','On') NOT NULL DEFAULT 'Off', loadWD enum('Off','On') NOT NULL DEFAULT 'Off', PRIMARY KEY (teamID,gid), KEY GIDKEY (gid), CONSTRAINT fk_agent_teams FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_t_teams FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
@@ -122,6 +122,7 @@ func upgradeTables() {
 		test    string // a query that will fail if an upgrade is needed
 		upgrade string // the query to run to make the upgrade
 	}{
+		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() and table_name = 'operation' and column_name = 'lasteditid'", "ALTER TABLE operation ADD lasteditid varchar(40) NOT NULL DEFAULT 'unset'"},
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'link' AND column_name = 'mu'", "ALTER TABLE link ADD mu bigint unsigned NOT NULL DEFAULT 0"},
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() and table_name = 'link' and column_name = 'delta'", "ALTER TABLE link ADD delta int NOT NULL DEFAULT 0"},
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() and table_name = 'marker' and column_name = 'delta'", "ALTER TABLE delta ADD delta int NOT NULL DEFAULT 0"},
@@ -158,13 +159,11 @@ func upgradeTables() {
 	// do upgrades
 	var scratch string
 	for _, q := range upgrades {
-		Log.Debug(q.test)
 		err = tx.QueryRow(q.test).Scan(&scratch)
 		if err == nil {
 			continue
 		}
-		Log.Debug(err)
-		Log.Info(q.upgrade)
+		Log.Debugw("schema check failed", "test", q.test, "error", err.Error(), "doing upgrade", q.upgrade)
 		_, err = tx.Exec(q.upgrade)
 		if err != nil {
 			Log.Error(err)

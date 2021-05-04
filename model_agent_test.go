@@ -126,40 +126,40 @@ func TestToGid(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Info(tgid)
+	// wasabee.Log.Info(tgid)
 
 	if tgid != gid {
 		t.Errorf("failed to roundtrip gid")
 	}
-	wasabee.Log.Info(tgid)
+	// wasabee.Log.Info(tgid)
 
 	// not in database, but still a GID
 	tgid, err = wasabee.ToGid("104743827901423568948")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Info(tgid)
+	// wasabee.Log.Info(tgid)
 
 	// normal handle
 	tgid, err = wasabee.ToGid("deviousness")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Info(tgid)
+	// wasabee.Log.Info(tgid)
 
 	// telegram ID
 	tgid, err = wasabee.ToGid("@deviousness")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Info(tgid)
+	// wasabee.Log.Info(tgid)
 
 	// enl id
 	tgid, err = wasabee.ToGid("23e27f48a04e55d6ae89188d3236d769f6629718")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	wasabee.Log.Info(tgid)
+	// wasabee.Log.Info(tgid)
 }
 
 func TestLocKey(t *testing.T) {
@@ -171,8 +171,8 @@ func TestLocKey(t *testing.T) {
 
 	if ad.OneTimeToken == "" {
 		// t.Errorf("location key unset")
-		wasabee.Log.Info("location key unset")
-		ad.OneTimeToken, _ = gid.OneTimeToken()
+		wasabee.Log.Info("ott unset")
+		ad.OneTimeToken, _ = gid.NewOneTimeToken()
 	}
 
 	ngid, err := ad.OneTimeToken.Gid()
@@ -183,7 +183,7 @@ func TestLocKey(t *testing.T) {
 		t.Errorf("unable to round-trip gid->lockey->gid")
 	}
 
-	ngid, err = wasabee.OneTimeToken(ad.LocationKey)
+	ngid, err = ad.OneTimeToken.Gid()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -191,7 +191,7 @@ func TestLocKey(t *testing.T) {
 		t.Errorf("OneTimeToken did not round-trip")
 	}
 
-	if _, err := wasabee.LocKey("bogus").Gid(); err == nil {
+	if _, err := wasabee.OneTimeToken("bogus").Gid(); err == nil {
 		t.Errorf("wrongly returned result for bogus LocKey.Gid()")
 	}
 }
