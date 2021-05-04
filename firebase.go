@@ -428,13 +428,13 @@ func (gid GoogleID) FirebaseUpdateAuthData() error {
 	ctx := context.Background()
 
 	var utu auth.UserToUpdate
-	iname, err := gid.IngressName()
+	name, err := gid.IngressName()
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
-	utu.DisplayName(iname)
-	utu.Email(fmt.Sprintf("%s@wasabee.rocks", iname))
+	utu.DisplayName(name)
+	utu.Email(fmt.Sprintf("%s@wasabee.rocks", name))
 	if _, err := fb.client.UpdateUser(ctx, gid.String(), &utu); err != nil {
 		Log.Infow("firebase auth update failed", "GID", gid.String())
 	}

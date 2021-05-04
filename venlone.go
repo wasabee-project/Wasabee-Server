@@ -141,15 +141,15 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 	}
 
 	if vres.Status == "ok" && vres.Data.Agent != "" {
-		_, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
+		_, err := db.Exec("UPDATE agent SET Vname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
 			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid)
 
 		// doppelkeks error
 		if err != nil && strings.Contains(err.Error(), "Error 1062") {
-			iname := fmt.Sprintf("%s-%s", vres.Data.Agent, gid)
-			Log.Warnw("dupliate ingress agent name detected", "GID", vres.Data.Agent, "new name", iname)
-			if _, err := db.Exec("UPDATE agent SET iname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
-				iname, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid); err != nil {
+			vname := fmt.Sprintf("%s-%s", vres.Data.Agent, gid)
+			Log.Warnw("dupliate ingress agent name detected at v", "GID", vres.Data.Agent, "new name", vname)
+			if _, err := db.Exec("UPDATE agent SET Vname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
+				vname, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid); err != nil {
 				Log.Error(err)
 				return err
 			}

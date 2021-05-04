@@ -239,7 +239,7 @@ func run(c *cli.Context) error {
 	// this one should not use GOOGLE_APPLICATION_CREDENTIALS because it requires odd privs
 	riscPath := path.Join(c.String("certs"), "risc.json")
 	if _, err := os.Stat(riscPath); err != nil {
-		wasabee.Log.Infof("startup", "message", "credentials do not exist, not enabling RISC", "credentials", riscPath)
+		wasabee.Log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", riscPath)
 	} else {
 		go risc.RISC(riscPath)
 	}

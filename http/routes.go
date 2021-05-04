@@ -337,9 +337,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	_ = ses.Save(req, res)
-	iname, err := m.Gid.IngressName()
+	name, err := m.Gid.IngressName()
 	if err != nil {
-		wasabee.Log.Errorw("no iname at end of login?", "GID", m.Gid)
+		wasabee.Log.Errorw("no name at end of login?", "GID", m.Gid)
 	}
 	m.Gid.FirebaseAgentLogin()
 
@@ -347,7 +347,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
 	location := fmt.Sprintf("%s?r=%s", me, h)
-	wasabee.Log.Infow("WebUI login", "GID", m.Gid, "name", iname, "message", iname+" WebUI login")
+	wasabee.Log.Infow("WebUI login", "GID", m.Gid, "name", name, "message", name+" WebUI login")
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		if rr[:len(me)] == me || rr[:len(login)] == login {
@@ -554,7 +554,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	iname, err := m.Gid.IngressName()
+	name, err := m.Gid.IngressName()
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
@@ -569,8 +569,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	wasabee.Log.Infow("iitc/app login",
 		"GID", m.Gid,
-		"name", iname,
-		"message", iname+" login",
+		"name", name,
+		"message", name+" login",
 		"client", req.Header.Get("User-Agent"),
 	)
 	m.Gid.FirebaseAgentLogin()
@@ -655,7 +655,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	iname, err := gid.IngressName()
+	name, err := gid.IngressName()
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
@@ -668,7 +668,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	data, _ := json.Marshal(ud)
 
-	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", iname, "message", iname+" oneTimeToken login")
+	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", name, "message", name+" oneTimeToken login")
 	gid.FirebaseAgentLogin()
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2

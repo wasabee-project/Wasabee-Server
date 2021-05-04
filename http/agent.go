@@ -38,7 +38,6 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	agent.CanSendTo = gid.CanSendTo(togid)
 
 	data, _ := json.Marshal(agent)
 	fmt.Fprint(res, string(data))
@@ -236,7 +235,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	iname, err := gid.IngressName()
+	name, err := gid.IngressName()
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
@@ -255,7 +254,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		Lat:    target.Lat,
 		Lon:    target.Lng,
 		Type:   target.Type,
-		Sender: iname,
+		Sender: name,
 	}
 
 	msg, err := gid.ExecuteTemplate("target", templateData)
@@ -325,7 +324,7 @@ func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 	lls := strings.Split(ll, ",")
 	lls = lls[:2] // make it be exactly 2 long
 
-	iname, err := gid.IngressName()
+	name, err := gid.IngressName()
 	if err != nil {
 		wasabee.Log.Error(err)
 	}
@@ -341,7 +340,7 @@ func agentTargetRouteOld(res http.ResponseWriter, req *http.Request) {
 		Lat:    lls[0],
 		Lon:    lls[1],
 		Type:   "ad-hoc target",
-		Sender: iname,
+		Sender: name,
 	}
 
 	msg, err := gid.ExecuteTemplate("target", templateData)

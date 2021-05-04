@@ -130,7 +130,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 				}
 				if m.State != "pending" && m.AssignedTo != "" {
 					p, _ := o.PortalDetails(m.PortalID, gid)
-					a, _ := m.AssignedTo.IngressNameTeam(teamID)
+					a, _ := m.AssignedTo.IngressName()
 					tg, _ := m.AssignedTo.TelegramName()
 					if tg != "" {
 						a = fmt.Sprintf("@%s", tg)
@@ -310,7 +310,7 @@ func AddToChat(gid wasabee.GoogleID, t string) (bool, error) {
 		return false, err
 	}
 
-	name, _ := gid.IngressNameTeam(teamID)
+	name, _ := gid.IngressName()
 	text := fmt.Sprintf("%s joined the linked team (%s)", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
@@ -336,7 +336,7 @@ func RemoveFromChat(gid wasabee.GoogleID, t string) (bool, error) {
 		wasabee.Log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
 		return false, err
 	}
-	name, _ := gid.IngressNameTeam(teamID)
+	name, _ := gid.IngressName()
 	text := fmt.Sprintf("%s left the linked team (%s)", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
