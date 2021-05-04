@@ -95,20 +95,9 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 		}
 	} else if inMsg.Message.Text != "" {
 		switch inMsg.Message.Text {
-		/* case "My Assignments":
-			msg.ReplyMarkup = assignmentKeyboard(gid)
-			msg.Text = "My Assignments"
-		case "Nearby Tasks":
-			msg.ReplyMarkup = nearbyAssignmentKeyboard(gid)
-			msg.Text = "Nearby Tasks" */
 		case "Teams":
 			msg.ReplyMarkup = teamKeyboard(gid)
 			msg.Text = "Your Teams"
-		case "Teammates Nearby":
-			tmp, _ := teammatesNear(gid, inMsg)
-			msg.Text = tmp
-			msg.ReplyMarkup = config.baseKbd
-			msg.DisableWebPagePreview = true
 		default:
 			msg.ReplyMarkup = config.baseKbd
 		}
@@ -128,24 +117,4 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 	}
 
 	return nil
-}
-
-func teammatesNear(gid wasabee.GoogleID, inMsg *tgbotapi.Update) (string, error) {
-	var td wasabee.TeamData
-	var txt = ""
-	maxdistance := 500
-	maxresults := 10
-
-	err := gid.TeammatesNear(maxdistance, maxresults, &td)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return txt, err
-	}
-	txt, err = templateExecute("Teammates", inMsg.Message.From.LanguageCode, &td)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return txt, err
-	}
-
-	return txt, nil
 }

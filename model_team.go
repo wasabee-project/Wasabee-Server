@@ -319,50 +319,6 @@ func (teamID TeamID) Chown(to AgentID) error {
 	return nil
 }
 
-// TeammatesNear identifies other agents who are on ANY mutual team within maxdistance km, returning at most maxresults
-/* func (gid GoogleID) TeammatesNear(maxdistance, maxresults int, teamList *TeamData) error {
-	var state, lat, lon string
-	var tmpU Agent
-	var rows *sql.Rows
-
-	err := db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	// Log.Debug("Teammates Near: " + gid.String() + " @ " + lat.String + "," + lon.String + " " + strconv.Itoa(maxdistance) + " " + strconv.Itoa(maxresults))
-
-	// no ST_Distance_Sphere in MariaDB yet...
-	rows, err = db.Query("SELECT DISTINCT u.name, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, "+
-		"ROUND(6371 * acos (cos(radians(?)) * cos(radians(Y(l.loc))) * cos(radians(X(l.loc)) - radians(?)) + sin(radians(?)) * sin(radians(Y(l.loc))))) AS distance "+
-		"FROM agentteams=x, agent=u, locations=l "+
-		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND state = 'On') "+
-		"AND x.state = 'On' AND x.gid = u.gid AND x.gid = l.gid AND l.upTime > SUBTIME(UTC_TIMESTAMP(), '12:00:00') "+
-		"HAVING distance < ? AND distance > 0 ORDER BY distance LIMIT 0,?", lat, lon, lat, gid, maxdistance, maxresults)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&tmpU.Name, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &tmpU.Distance)
-		if err != nil {
-			Log.Error(err)
-			return err
-		}
-		if state == "On" {
-			tmpU.State = true
-		} else {
-			tmpU.State = false
-		}
-		tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
-		tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
-		teamList.Agent = append(teamList.Agent, tmpU)
-	}
-	return nil
-} */
-
 // SetRocks links a team to a community at enl.rocks.
 // Does not check team ownership -- caller should take care of authorization.
 // Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).
