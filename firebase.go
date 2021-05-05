@@ -411,6 +411,9 @@ func FirebaseBroadcastList() ([]string, error) {
 
 // FirebaseCustomToken creates and registers a token with Google, allowing the agent to communicate directly with Firebase
 func (gid GoogleID) FirebaseCustomToken() (string, error) {
+	if !fb.running {
+		return "", nil
+	}
 	ctx := context.Background()
 	token, err := fb.client.CustomToken(ctx, gid.String())
 	if err != nil {
@@ -425,6 +428,9 @@ func (gid GoogleID) FirebaseCustomToken() (string, error) {
 
 // FirebaseUpdateAuthData updates the user information in the Firebase Auth list -- unused for now
 func (gid GoogleID) FirebaseUpdateAuthData() error {
+	if !fb.running {
+		return nil
+	}
 	ctx := context.Background()
 
 	var utu auth.UserToUpdate
