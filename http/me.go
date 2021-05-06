@@ -373,6 +373,5 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 
 	wasabee.Log.Infow("setting intel data", "name", name, "faction", faction)
 	gid.SetIntelData(name, faction)
-
 	fmt.Fprint(res, jsonStatusOK)
 }

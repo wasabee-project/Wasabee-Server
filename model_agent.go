@@ -163,7 +163,7 @@ func (gid GoogleID) InitAgent() (bool, error) {
 	}
 
 	// if the agent doesn't exist, prepopulate everything
-	_, err = gid.IngressName()
+	name, err := gid.IngressName()
 	if err != nil && err == sql.ErrNoRows {
 		Log.Infow("first login", "GID", gid.String(), "message", "first login for "+gid.String())
 
@@ -205,7 +205,13 @@ func (gid GoogleID) InitAgent() (bool, error) {
 
 	if gid.RISC() {
 		err := fmt.Errorf("account locked by Google RISC")
-		Log.Warnw(err.Error(), "GID", gid.String())
+		Log.Warnw(err.Error(), "GID", gid.String(), "name", name)
+		return false, err
+	}
+
+	if gid.IntelSmurf() {
+		err := fmt.Errorf("intel account self-identified as RES")
+		Log.Warnw(err.Error(), "GID", gid.String(), "name", name)
 		return false, err
 	}
 	return true, nil
@@ -800,7 +806,7 @@ func (gid GoogleID) SetAgentName(newname string) error {
 }
 
 // Stores the untrusted data from IITC - do not depend on these values for authorization
-// but if someone says they are a smurf, who are we to stop them?
+// but if someone says they are a smurf, who are we to ignore their self-identity?
 func (gid GoogleID) SetIntelData(name string, faction string) error {
 	if name == "" {
 		return nil
@@ -813,5 +819,25 @@ func (gid GoogleID) SetIntelData(name string, faction string) error {
 		Log.Error(err)
 		return err
 	}
+
+	if ifac == factionRes {
+		Log.Errorw("self identified as RES", "sent name", name, "GID", gid)
+		gid.Logout("self identified as RES")
+	}
 	return nil
+}
+
+// Check to see if the agent has self-proclaimed to be a smurf (unset is OK)
+func (gid GoogleID) IntelSmurf() bool {
+	var ifac IntelFaction
+
+	err := db.QueryRow("SELECT intelfaction FROM agent WHERE GID = ?", gid).Scan(&ifac)
+	if err != nil {
+		Log.Error(err)
+		return false
+	}
+	if ifac == factionRes {
+		return true
+	}
+	return false
 }

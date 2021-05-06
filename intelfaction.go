@@ -12,7 +12,7 @@ const (
 // FactionFromString takes a string and returns the int
 func FactionFromString(in string) IntelFaction {
 	switch in {
-	case "RESISTENCE", "RES", "res", "0":
+	case "RESISTANCE", "RES", "res", "0":
 		return factionRes
 	case "ENLIGHTENED", "ENL", "enl", "1":
 		return factionEnl
@@ -25,7 +25,7 @@ func FactionFromString(in string) IntelFaction {
 func (f IntelFaction) String() string {
 	switch f {
 	case factionRes:
-		return "RESISTENCE"
+		return "RESISTANCE"
 	case factionEnl:
 		return "ENLIGHTENED"
 	default:
