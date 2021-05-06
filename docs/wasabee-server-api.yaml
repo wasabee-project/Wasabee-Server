@@ -72,6 +72,24 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
+  /api/v1/me/intelid
+	put:
+	  tags:
+		- "User Info"
+	  parameters:
+		- name: string
+          description: the name to store
+          required: true
+		- qt: string
+          description: the querytoken from the /me data
+          required: true
+		- faction: string
+          description: ENLIGHTENED or RESISTANCE
+          required: true
+	  responses:
+		'200':
+		  description: data stored
+
   /api/v1/me/{teamId}:
     delete:
       tags:
@@ -1191,6 +1209,14 @@ components:
           $ref: "#/components/schemas/GoogleID"
         name:
           type: string
+        vname:
+          type: string
+        rocksname:
+          type: string
+        intelname:
+          type: string
+        intelfaction:
+          type: string
         level:
           type: integer
         enlid:
@@ -1219,10 +1245,6 @@ components:
           type: boolean
         distance:
           type: number
-        displayname:
-          type: string
-        cansendto:
-          type: boolean
     TeamData:
       type: object
       required:
