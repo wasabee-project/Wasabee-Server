@@ -64,7 +64,7 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var rows *sql.Rows
-	rows, err := db.Query("SELECT u.gid, u.name, u.Vname, u.Rocksname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.sharewd, x.loadwd, u.intelfaction "+
+	rows, err := db.Query("SELECT u.gid, u.name, u.Vname, u.IntelName, u.Rocksname, x.squad, x.state, Y(l.loc), X(l.loc), l.upTime, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified, x.sharewd, x.loadwd, u.intelfaction "+
 		"FROM team=t, agentteams=x, agent=u, locations=l "+
 		"WHERE t.teamID = ? AND t.teamID = x.teamID AND x.gid = u.gid AND x.gid = l.gid ORDER BY u.name", teamID)
 	if err != nil {
@@ -77,9 +77,9 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 		var tmpU Agent
 		var state, lat, lon, sharewd, loadwd string
 		var enlID sql.NullString
-		var faction int8
+		var faction IntelFaction
 
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.VName, &tmpU.RocksName, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &tmpU.RocksVerified, &sharewd, &loadwd, &faction)
+		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &tmpU.VName, &tmpU.IntelName, &tmpU.RocksName, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &tmpU.Verified, &tmpU.Blacklisted, &enlID, &tmpU.RocksVerified, &sharewd, &loadwd, &faction)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -109,14 +109,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 		} else {
 			tmpU.LoadWD = false
 		}
-		switch faction {
-		case -1:
-			tmpU.IntelFaction = "unset"
-		case 0:
-			tmpU.IntelFaction = "RES"
-		case 1:
-			tmpU.IntelFaction = "ENL"
-		}
+		tmpU.IntelFaction = faction.String()
 
 		teamList.Agent = append(teamList.Agent, tmpU)
 	}
@@ -377,20 +370,22 @@ func (gid GoogleID) SetWDLoad(teamID TeamID, state string) error {
 // FetchAgent populates the minimal Agent struct with data anyone can see
 func FetchAgent(id AgentID, agent *Agent, caller GoogleID) error {
 	var enlid sql.NullString
+	var ifac IntelFaction
 	gid, err := id.Gid()
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err = db.QueryRow("SELECT u.gid, u.iname, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(
-		&agent.Gid, &agent.Name, &agent.Level, &agent.Verified, &agent.Blacklisted, &enlid, &agent.RocksVerified); err != nil {
+	if err = db.QueryRow("SELECT u.gid, u.name, u.vname, u.rocksname, u.intelname, u.intelfaction, u.level, u.VVerified, u.VBlacklisted, u.Vid, u.RocksVerified FROM agent=u WHERE u.gid = ?", gid).Scan(
+		&agent.Gid, &agent.Name, &agent.VName, &agent.RocksName, &agent.IntelName, &ifac, &agent.Level, &agent.Verified, &agent.Blacklisted, &enlid, &agent.RocksVerified); err != nil {
 		Log.Error(err)
 		return err
 	}
 	if enlid.Valid {
 		agent.EnlID = EnlID(enlid.String)
 	}
+	agent.IntelFaction = ifac.String()
 	agent.PictureURL = gid.GetPicture()
 
 	var count int

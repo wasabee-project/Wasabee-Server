@@ -220,8 +220,9 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	ad.GoogleID = gid
 	var vid, pic sql.NullString
+	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &ad.IntelFaction, &pic)
+	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &ifac, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
@@ -250,6 +251,8 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	if err = gid.adOps(ad); err != nil {
 		return err
 	}
+
+	ad.IntelFaction = ifac.String()
 
 	return nil
 }
@@ -794,4 +797,21 @@ func (gid GoogleID) SetAgentName(newname string) error {
 		return err
 	}
 	return err
+}
+
+// Stores the untrusted data from IITC - do not depend on these values for authorization
+// but if someone says they are a smurf, who are we to stop them?
+func (gid GoogleID) SetIntelData(name string, faction string) error {
+	if name == "" {
+		return nil
+	}
+
+	ifac := FactionFromString(faction)
+
+	_, err := db.Exec("UPDATE agent SET intelname = ?, intelfaction = ? WHERE GID = ?", name, ifac, gid)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }

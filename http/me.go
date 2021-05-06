@@ -48,7 +48,12 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 
 // use this to verify that form data is sent from a client that requested it
 func formValidationToken(req *http.Request) string {
-	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("UserAgent"), req.RemoteAddr, config.OauthConfig.ClientSecret)
+	idx := strings.LastIndex(req.RemoteAddr, ":")
+	if idx == -1 {
+		idx = len(req.RemoteAddr)
+	}
+	ip := req.RemoteAddr[0:idx]
+	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("User-Agent"), ip, config.OauthConfig.ClientSecret)
 	hasher := sha256.New()
 	hasher.Write([]byte(toHash))
 	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
@@ -73,22 +78,22 @@ func wantsJSON(req *http.Request) bool {
 }
 
 func meShowRouteJSON(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	var ud wasabee.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	data, _ := json.Marshal(ud)
-	res.Header().Add("Content-Type", jsonType)
 	res.Header().Set("Cache-Control", "no-store")
 	fmt.Fprint(res, string(data))
 }
@@ -206,10 +211,20 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	qt := req.FormValue("qt")
+	qtTest := formValidationToken(req)
+	if qt != qtTest {
+		err := fmt.Errorf("invalid form validation token")
+		wasabee.Log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -217,7 +232,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	wasabee.Log.Errorw("agent requested delete", "GID", gid.String())
 	if err = gid.Delete(); err != nil {
 		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -262,7 +277,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		wasabee.Log.Error(err)
 		_ = ses.Save(req, res)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -325,10 +340,39 @@ func meFirebaseGenTokenRoute(res http.ResponseWriter, req *http.Request) {
 	token, err := gid.FirebaseCustomToken()
 	if err != nil {
 		wasabee.Log.Error(err)
+		res.Header().Add("Content-Type", jsonType)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	res.Header().Add("Content-Type", "application/jwt")
 	fmt.Fprint(res, token)
+}
+
+func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	req.ParseMultipartForm(1024)
+	qt := req.FormValue("qt")
+	name := req.FormValue("name")
+	faction := req.FormValue("faction")
+
+	qtTest := formValidationToken(req)
+	if qt != qtTest {
+		err := fmt.Errorf("invalid form validation token")
+		wasabee.Log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	wasabee.Log.Infow("setting intel data", "name", name, "faction", faction)
+	gid.SetIntelData(name, faction)
+
+	fmt.Fprint(res, jsonStatusOK)
 }
