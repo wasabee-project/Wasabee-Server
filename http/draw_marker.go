@@ -50,6 +50,38 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
+func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	marker := wasabee.MarkerID(vars["marker"])
+	if err = op.Populate(gid); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid, err := op.ClaimMarker(marker, gid)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	wasabee.Log.Infow("claimed marker", "GID", gid, "resource", op.ID, "marker", marker, "message", "claimed marker")
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+
 func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 

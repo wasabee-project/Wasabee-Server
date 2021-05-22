@@ -154,7 +154,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID) (string, error
 	return o.Touch()
 }
 
-// lookup and return a populated Marker from an id
+// GetMarker lookup and return a populated Marker from an id
 func (o *Operation) GetMarker(markerID MarkerID) (Marker, error) {
 	for _, m := range o.Markers {
 		if m.ID == markerID {
@@ -165,6 +165,23 @@ func (o *Operation) GetMarker(markerID MarkerID) (Marker, error) {
 	var m Marker
 	err := fmt.Errorf("marker not found")
 	return m, err
+}
+
+// ClaimMarker assigns a marker to the claiming agent
+func (o *Operation) ClaimMarker(markerID MarkerID, gid GoogleID) (string, error) {
+	m, err := o.GetMarker(markerID)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	if m.AssignedTo != "" {
+		err := fmt.Errorf("can only claim unassigned markers")
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", markerID)
+		return "", err
+	}
+
+	return o.AssignMarker(markerID, gid)
 }
 
 // MarkerComment updates the comment on a marker

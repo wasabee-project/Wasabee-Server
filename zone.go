@@ -1,6 +1,7 @@
 package wasabee
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -60,36 +61,50 @@ func (z Zone) inZones(zones []Zone) bool {
 
 // ZoneListElement is used to map display names to zones
 type ZoneListElement struct {
-	Zone Zone   `json:"id"`
-	Name string `json:"name"`
+	Zone   Zone    `json:"id"`
+	Name   string  `json:"name"`
+	Points []zonepoint `json:"points"` // just a string for the client to parse
+	Color  string  `json:"color"`
+}
+
+type zonepoint struct {
+  Position uint8 `json:"pos"`
+  Lat float64 `json:"lat"`
+  Lon float64 `json:"lng"`
 }
 
 func defaultZones() []ZoneListElement {
 	zones := []ZoneListElement{
-		{zonePrimary, "Primary"},
-		{2, "Alpha"},
-		{3, "Beta"},
-		{4, "Gamma"},
-		{5, "Delta"},
-		{6, "Epsilon"},
-		{7, "Zeta"},
-		{8, "Eta"},
-		{9, "Theta"},
+		{zonePrimary, "Primary", nil, "purple"},
+		{2, "Alpha", nil, "red"},
+		{3, "Beta", nil, "yellow"},
+		{4, "Gamma", nil, "green"},
 	}
 	return zones
 }
 
 func (o *Operation) insertZone(z ZoneListElement) error {
-	_, err := db.Exec("INSERT INTO zone (ID, opID, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = ?", z.Zone, o.ID, z.Name, z.Name)
+	_, err := db.Exec("INSERT INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = ?", z.Zone, o.ID, z.Name, z.Name, z.Color)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
+	
+	for _, p := range z.Points {
+	    sqpoint := fmt.Sprintf("(%f,%f)", p.Lat, p.Lon)
+		_, err := db.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE point = ?", z.Zone, o.ID, p.Position, sqpoint, sqpoint)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
+    // XXX do points
+
 	return nil
 }
 
 func (o *Operation) populateZones() error {
-	rows, err := db.Query("SELECT ID, name FROM zone WHERE opID = ? ORDER BY ID", o.ID)
+	rows, err := db.Query("SELECT ID, name, color FROM zone WHERE opID = ? ORDER BY ID", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -98,12 +113,14 @@ func (o *Operation) populateZones() error {
 	defer rows.Close()
 	var tmpZone ZoneListElement
 	for rows.Next() {
-		err := rows.Scan(&tmpZone.Zone, &tmpZone.Name)
+		err := rows.Scan(&tmpZone.Zone, &tmpZone.Name, &tmpZone.Color)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
 		o.Zones = append(o.Zones, tmpZone)
+
+		// XXX do points
 	}
 
 	// use default for old ops w/o set zones

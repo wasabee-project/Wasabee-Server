@@ -64,7 +64,8 @@ func setupTables() {
 		{"opteams", `CREATE TABLE opteams (teamID varchar(64) NOT NULL, opID varchar(64) NOT NULL, permission enum('read','write','assignedonly') NOT NULL DEFAULT 'read', zone tinyint(4) NOT NULL DEFAULT 0, KEY opID (opID), KEY teamID (teamID), CONSTRAINT fk_ops_teamID FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE, CONSTRAINT fk_teamIDs_op FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"defensivekeys", `CREATE TABLE defensivekeys (gid varchar(32) NOT NULL, portalID varchar(64) NOT NULL, capID varchar(16) DEFAULT NULL, count int(3) NOT NULL DEFAULT '0', name varchar(128) DEFAULT NULL, loc point DEFAULT NULL, PRIMARY KEY (portalID, gid), KEY fk_dk_gid (gid), CONSTRAINT fk_dk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 		{"deletedops", `CREATE TABLE deletedops ( opID varchar(64) NOT NULL, deletedate datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, gid varchar(32), PRIMARY KEY(opID)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
-		{"zone", `CREATE TABLE zone ( ID tinyint(4) NOT NULL, opID varchar(64) NOT NULL, name varchar(64) NOT NULL DEFAULT 'zone', PRIMARY KEY (ID,opID), KEY fk_operation_zone (opID), CONSTRAINT fk_operation_zone FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
+		{"zone", `CREATE TABLE zone ( ID tinyint(4) NOT NULL, opID varchar(64) NOT NULL, name varchar(64) NOT NULL DEFAULT 'zone', color varchar(10) NOT NULL DEFAULT 'green', PRIMARY KEY (ID,opID), KEY fk_operation_zone (opID), CONSTRAINT fk_operation_zone FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
+		{"zonepoints", `CREATE TABLE zonepoints ( zoneID tinyint(4) NOT NULL, opID varchar(64) NOT NULL, position tinyint(4) NOT NULL, point point NOT NULL, PRIMARY KEY (zoneID,opID,position), KEY fk_operation_zonepoint (opID), CONSTRAINT fk_operation_zonepoint FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 	}
 
 	var table string
@@ -134,6 +135,7 @@ func upgradeTables() {
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'agent' AND column_name = 'name'", "ALTER TABLE agent CHANGE iname name varchar(64) NOT NULL"},
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'agent' AND column_name = 'intelname'", "ALTER TABLE agent ADD intelname varchar(64) NOT NULL DEFAULT '', ADD intelfaction tinyint(1) NOT NULL DEFAULT '-1', ADD Vname varchar(64) NOT NULL DEFAULT '', ADD rocksname varchar(64) NOT NULL DEFAULT ''"},
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'agentteams' AND column_name = 'shareWD'", "ALTER TABLE agentteams ADD shareWD enum('Off','On') NOT NULL DEFAULT 'Off', ADD loadWD enum('Off','On') NOT NULL DEFAULT 'Off'"},
+		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'zone' AND column_name = 'color'", "ALTER TABLE zone ADD color varchar(10) NOT NULL DEFAULT 'green'"},
 	}
 
 	tx, err := db.Begin()
