@@ -118,7 +118,7 @@ func (l LinkID) String() string {
 	return string(l)
 }
 
-// AssignLink assigns a link to an agent
+// AssignLink assigns a link to an agent -- this is backwards, use LinkID.Assign
 func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) (string, error) {
 	// gid of 0 unsets the assignment
 	if gid == "0" {
@@ -138,6 +138,25 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) (string, error) {
 
 	if gid != "" {
 		o.ID.firebaseAssignLink(gid, linkID)
+	}
+	return o.Touch()
+}
+
+// Assign assigns a link to an agent -- use this one
+func (l LinkID) Assign(o *Operation, gid GoogleID) (string, error) {
+	// gid of 0 unsets the assignment
+	if gid == "0" {
+		gid = ""
+	}
+
+	_, err := db.Exec("UPDATE link SET gid = ? WHERE ID = ? AND opID = ?", MakeNullString(gid), l, o.ID)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	if gid != "" {
+		o.ID.firebaseAssignLink(gid, l)
 	}
 	return o.Touch()
 }
@@ -163,7 +182,7 @@ func (o *Operation) LinkCompleted(linkID LinkID, completed bool) (string, error)
 	return o.Touch()
 }
 
-// AssignedTo checks to see if a link is assigned to a particular agent
+// AssignedTo checks to see if a link is assigned to a particular agent -- this is backwards, use LinkID.AssignedTo
 func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 	var x int
 
@@ -176,6 +195,21 @@ func (opID OperationID) AssignedTo(link LinkID, gid GoogleID) bool {
 		return false
 	}
 	return true
+}
+
+// AssignedTo checks to see if a link is assigned to a particular agent -- use this one
+func (l LinkID) AssignedTo(opID OperationID, gid GoogleID) (bool, error) {
+	var x int
+
+	err := db.QueryRow("SELECT COUNT(*) FROM link WHERE opID = ? AND ID = ? AND gid = ?", opID, l, gid).Scan(&x)
+	if err != nil {
+		Log.Error(err)
+		return false, err
+	}
+	if x != 1 {
+		return false, err
+	}
+	return true, nil
 }
 
 // LinkOrder changes the order of the throws for an operation
@@ -315,4 +349,38 @@ func (o *Operation) GetLink(linkID LinkID) (Link, error) {
 	var l Link
 	err := fmt.Errorf("link not found")
 	return l, err
+}
+
+// Reject allows an agent to refuse to take a target
+// gid must be the assigned agent.
+func (l LinkID) Reject(o *Operation, gid GoogleID) (string, error) {
+	toMe, err := l.AssignedTo(o.ID, gid)
+	if err != nil {
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "link", l)
+		return "", err
+	}
+	if !toMe {
+		err := fmt.Errorf("link not assigned to you")
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "link", l)
+		return "", err
+	}
+	return l.Assign(o, "")
+}
+
+func (l LinkID) Claim(o *Operation, gid GoogleID) (string, error) {
+	var assignedTo sql.NullString
+	err := db.QueryRow("SELECT gid FROM link WHERE opID = ? AND ID = ?", o.ID, l).Scan(&assignedTo)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+
+	// link already assigned to someone (even claiming agent)
+	if assignedTo.Valid {
+		err := fmt.Errorf("link already assigned")
+		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "link", l)
+		return "", err
+	}
+
+	return l.Assign(o, gid)
 }

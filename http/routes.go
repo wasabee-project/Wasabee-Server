@@ -108,6 +108,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/link/{link}/desc", drawLinkDescRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/complete", drawLinkCompleteRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/link/{link}/reject", drawLinkRejectRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/link/{link}/claim", drawLinkClaimRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/swap", drawLinkSwapRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")

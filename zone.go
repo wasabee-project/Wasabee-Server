@@ -61,16 +61,16 @@ func (z Zone) inZones(zones []Zone) bool {
 
 // ZoneListElement is used to map display names to zones
 type ZoneListElement struct {
-	Zone   Zone    `json:"id"`
-	Name   string  `json:"name"`
+	Zone   Zone        `json:"id"`
+	Name   string      `json:"name"`
 	Points []zonepoint `json:"points"` // just a string for the client to parse
-	Color  string  `json:"color"`
+	Color  string      `json:"color"`
 }
 
 type zonepoint struct {
-  Position uint8 `json:"pos"`
-  Lat float64 `json:"lat"`
-  Lon float64 `json:"lng"`
+	Position uint8   `json:"pos"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lng"`
 }
 
 func defaultZones() []ZoneListElement {
@@ -89,16 +89,16 @@ func (o *Operation) insertZone(z ZoneListElement) error {
 		Log.Error(err)
 		return err
 	}
-	
+
 	for _, p := range z.Points {
-	    sqpoint := fmt.Sprintf("(%f,%f)", p.Lat, p.Lon)
+		sqpoint := fmt.Sprintf("(%f,%f)", p.Lat, p.Lon)
 		_, err := db.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE point = ?", z.Zone, o.ID, p.Position, sqpoint, sqpoint)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
 	}
-    // XXX do points
+	// XXX do points
 
 	return nil
 }
