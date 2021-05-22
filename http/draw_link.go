@@ -277,7 +277,7 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.LinkClaim(link)
+	uid, err := link.Claim(&op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -310,7 +310,7 @@ func drawLinkRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.LinkReject(link)
+	uid, err := link.Reject(&op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
