@@ -74,3 +74,18 @@ func (gid GoogleID) PSLocation(lat, lon string) {
 		Data:    ll,
 	}
 }
+
+// Pushes the agent name from intel to PubSub
+func (gid GoogleID) psIntelData(name, faction string) {
+	if !ps.running {
+		return
+	}
+
+	data := fmt.Sprintf("%s,%s", name, faction)
+
+	ps.c <- PSCommand{
+		Command: "inteldata",
+		Param: gid.String(),
+		Data: data,
+	}
+}

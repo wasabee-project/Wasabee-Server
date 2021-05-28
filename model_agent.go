@@ -807,7 +807,7 @@ func (gid GoogleID) SetAgentName(newname string) error {
 
 // Stores the untrusted data from IITC - do not depend on these values for authorization
 // but if someone says they are a smurf, who are we to ignore their self-identity?
-func (gid GoogleID) SetIntelData(name string, faction string) error {
+func (gid GoogleID) SetIntelData(name, faction string) error {
 	if name == "" {
 		return nil
 	}
@@ -824,6 +824,8 @@ func (gid GoogleID) SetIntelData(name string, faction string) error {
 		Log.Errorw("self identified as RES", "sent name", name, "GID", gid)
 		gid.Logout("self identified as RES")
 	}
+
+	gid.psIntelData(name, faction)
 	return nil
 }
 

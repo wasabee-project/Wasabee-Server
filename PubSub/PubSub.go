@@ -131,11 +131,24 @@ func listenForPubSubMessages() {
 		case "location":
 			// the responder should amplify to all requesters
 			if c.responder {
-				_ = location(msg.Attributes["Gid"], msg.Attributes["ll"], msg.Attributes["Sender"])
+				location(msg.Attributes["Gid"], msg.Attributes["ll"], msg.Attributes["Sender"])
 			}
 			tokens := strings.Split(msg.Attributes["ll"], ",")
 			gid := wasabee.GoogleID(msg.Attributes["Gid"])
 			if err := gid.AgentLocation(tokens[0], tokens[1]); err != nil {
+				wasabee.Log.Error(err)
+				msg.Nack()
+				break
+			}
+			msg.Ack()
+		case "inteldata":
+			// the responder should amplify to all requesters
+			if c.responder {
+				inteldata(msg.Attributes["Gid"], msg.Attributes["Data"], msg.Attributes["Sender"])
+			}
+			tokens := strings.Split(msg.Attributes["Data"], ",")
+			gid := wasabee.GoogleID(msg.Attributes["Gid"])
+			if err := gid.SetIntelData(tokens[0], tokens[1]); err != nil {
 				wasabee.Log.Error(err)
 				msg.Nack()
 				break
@@ -178,15 +191,11 @@ func listenForWasabeeCommands() {
 	for cmd := range cmdchan {
 		switch cmd.Command {
 		case "request":
-			err := request(cmd.Param)
-			if err != nil {
-				wasabee.Log.Error(err)
-			}
+			request(cmd.Param)
 		case "location":
-			err := location(cmd.Param, cmd.Data, "")
-			if err != nil {
-				wasabee.Log.Error(err)
-			}
+			location(cmd.Param, cmd.Data, "")
+		case "inteldata":
+			inteldata(cmd.Param, cmd.Data, "")
 		default:
 			wasabee.Log.Warnw("unknown PubSub command", "command", cmd.Command)
 		}
@@ -200,7 +209,7 @@ func Shutdown() {
 	cancel()
 }
 
-func request(gid string) error {
+func request(gid string) {
 	ctx := context.Background()
 
 	atts := make(map[string]string)
@@ -212,11 +221,9 @@ func request(gid string) error {
 		Attributes: atts,
 		Data:       []byte(""),
 	})
-
-	return nil
 }
 
-func location(gid, ll, sender string) error {
+func location(gid, ll, sender string) {
 	ctx := context.Background()
 
 	if sender == "" {
@@ -238,7 +245,30 @@ func location(gid, ll, sender string) error {
 			Attributes: atts,
 		})
 	}
-	return nil
+}
+
+func inteldata(gid, data, sender string) {
+	ctx := context.Background()
+
+	if sender == "" {
+		sender = c.hostname
+	}
+
+	atts := make(map[string]string)
+	atts["Type"] = "location"
+	atts["Gid"] = gid
+	atts["Sender"] = sender
+	atts["Data"] = data
+
+	if c.responder {
+		c.responseTopic.Publish(ctx, &pubsub.Message{
+			Attributes: atts,
+		})
+	} else {
+		c.requestTopic.Publish(ctx, &pubsub.Message{
+			Attributes: atts,
+		})
+	}
 }
 
 func respond(g string, sender string) (bool, error) {
