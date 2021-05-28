@@ -129,10 +129,17 @@ func listenForPubSubMessages() {
 				msg.Nack()
 			}
 		case "location":
+			if msg.Attributes["ll"] == ""  {
+				wasabee.Log.Errorw("pubsub location ll not set")
+				msg.Ack()
+				break
+			}
+
 			// the responder should amplify to all requesters
 			if c.responder {
 				location(msg.Attributes["Gid"], msg.Attributes["ll"], msg.Attributes["Sender"])
 			}
+
 			tokens := strings.Split(msg.Attributes["ll"], ",")
 			gid := wasabee.GoogleID(msg.Attributes["Gid"])
 			if len(tokens) != 2 {
@@ -147,10 +154,6 @@ func listenForPubSubMessages() {
 			}
 			msg.Ack()
 		case "inteldata":
-			// the responder should amplify to all requesters
-			if c.responder {
-				inteldata(msg.Attributes["Gid"], msg.Attributes["Data"], msg.Attributes["Sender"])
-			}
 			tokens := strings.Split(msg.Attributes["Data"], ",")
 			gid := wasabee.GoogleID(msg.Attributes["Gid"])
 			if len(tokens) != 2 {
