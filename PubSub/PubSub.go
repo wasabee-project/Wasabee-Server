@@ -265,7 +265,7 @@ func inteldata(gid, data, sender string) {
 	}
 
 	atts := make(map[string]string)
-	atts["Type"] = "location"
+	atts["Type"] = "inteldata"
 	atts["Gid"] = gid
 	atts["Sender"] = sender
 	atts["Data"] = data
