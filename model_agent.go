@@ -826,10 +826,6 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 		Log.Errorw("self identified as RES", "sent name", name, "GID", gid)
 		gid.Logout("self identified as RES")
 	}
-
-	Log.Debugw("done updating inteldata in db", "gid", gid, "name", name, "faction", ifac)
-
-	// gid.psIntelData(name, faction)
 	return nil
 }
 
