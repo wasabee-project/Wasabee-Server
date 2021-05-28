@@ -129,7 +129,7 @@ func listenForPubSubMessages() {
 				msg.Nack()
 			}
 		case "location":
-			if msg.Attributes["ll"] == ""  {
+			if msg.Attributes["ll"] == "" {
 				wasabee.Log.Errorw("pubsub location ll not set")
 				msg.Ack()
 				break
@@ -241,6 +241,11 @@ func location(gid, ll, sender string) {
 
 	if sender == "" {
 		sender = c.hostname
+	}
+
+	if ll == "" {
+		wasabee.Log.Errorw("PubSub Location announce missing LL")
+		return
 	}
 
 	atts := make(map[string]string)
