@@ -135,6 +135,11 @@ func listenForPubSubMessages() {
 			}
 			tokens := strings.Split(msg.Attributes["ll"], ",")
 			gid := wasabee.GoogleID(msg.Attributes["Gid"])
+			if len(tokens) != 2 {
+				wasabee.Log.Errorw("pubsub location ll invalid", "ll", msg.Attributes["ll"])
+				msg.Ack()
+				break
+			}
 			if err := gid.AgentLocation(tokens[0], tokens[1]); err != nil {
 				wasabee.Log.Error(err)
 				msg.Nack()
@@ -148,6 +153,11 @@ func listenForPubSubMessages() {
 			}
 			tokens := strings.Split(msg.Attributes["Data"], ",")
 			gid := wasabee.GoogleID(msg.Attributes["Gid"])
+			if len(tokens) != 2 {
+				wasabee.Log.Errorw("pubsub inteldata invalid", "Data", msg.Attributes["Data"])
+				msg.Ack()
+				break
+			}
 			if err := gid.SetIntelData(tokens[0], tokens[1]); err != nil {
 				wasabee.Log.Error(err)
 				msg.Nack()

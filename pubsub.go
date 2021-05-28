@@ -85,7 +85,7 @@ func (gid GoogleID) psIntelData(name, faction string) {
 
 	ps.c <- PSCommand{
 		Command: "inteldata",
-		Param: gid.String(),
-		Data: data,
+		Param:   gid.String(),
+		Data:    data,
 	}
 }
