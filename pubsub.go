@@ -77,6 +77,7 @@ func (gid GoogleID) PSLocation(lat, lon string) {
 
 // Pushes the agent name from intel to PubSub
 func (gid GoogleID) psIntelData(name, faction string) {
+	Log.Debugw("sending IntelData via pubsub", "gid", gid, "name", name, "faction", faction)
 	if !ps.running {
 		return
 	}

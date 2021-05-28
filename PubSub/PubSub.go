@@ -272,6 +272,8 @@ func inteldata(gid, data, sender string) {
 		sender = c.hostname
 	}
 
+	wasabee.Log.Debugw("publishing inteldata", "gid", gid, "data", data, "sender", sender)
+
 	atts := make(map[string]string)
 	atts["Type"] = "inteldata"
 	atts["Gid"] = gid

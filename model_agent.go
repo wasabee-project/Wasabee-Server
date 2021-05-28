@@ -814,6 +814,8 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 
 	ifac := FactionFromString(faction)
 
+	Log.Debugw("updating inteldata in db", "gid", gid, "name", name, "faction", ifac)
+
 	_, err := db.Exec("UPDATE agent SET intelname = ?, intelfaction = ? WHERE GID = ?", name, ifac, gid)
 	if err != nil {
 		Log.Error(err)
@@ -825,7 +827,9 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 		gid.Logout("self identified as RES")
 	}
 
-	gid.psIntelData(name, faction)
+	Log.Debugw("done updating inteldata in db", "gid", gid, "name", name, "faction", ifac)
+
+	// gid.psIntelData(name, faction)
 	return nil
 }
 
