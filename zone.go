@@ -1,7 +1,7 @@
 package wasabee
 
 import (
-	"fmt"
+	// "fmt"
 	"strconv"
 )
 
@@ -68,7 +68,7 @@ type ZoneListElement struct {
 }
 
 type zonepoint struct {
-	Position uint8   `json:"pos"`
+	Position uint8   `json:"position"`
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lng"`
 }
@@ -76,29 +76,32 @@ type zonepoint struct {
 func defaultZones() []ZoneListElement {
 	zones := []ZoneListElement{
 		{zonePrimary, "Primary", nil, "purple"},
-		{2, "Alpha", nil, "red"},
-		{3, "Beta", nil, "yellow"},
-		{4, "Gamma", nil, "green"},
 	}
 	return zones
 }
 
 func (o *Operation) insertZone(z ZoneListElement) error {
-	_, err := db.Exec("INSERT INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = ?", z.Zone, o.ID, z.Name, z.Name, z.Color)
+	_, err := db.Exec("INSERT INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, color = ?", z.Zone, o.ID, z.Name, z.Color, z.Name, z.Color)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// don't be too smart, just delete and re-add the points
+	_, err = db.Exec("DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, z.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
 	for _, p := range z.Points {
-		sqpoint := fmt.Sprintf("(%f,%f)", p.Lat, p.Lon)
-		_, err := db.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE point = ?", z.Zone, o.ID, p.Position, sqpoint, sqpoint)
+		// Log.Debug("inserting point", "pos", p.Position, "zone", z.Zone, "op", o.ID)
+		_, err := db.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, POINT(?, ?))", z.Zone, o.ID, p.Position, p.Lat, p.Lon)
 		if err != nil {
 			Log.Error(err)
 			return err
 		}
 	}
-	// XXX do points
 
 	return nil
 }
@@ -113,14 +116,28 @@ func (o *Operation) populateZones() error {
 	defer rows.Close()
 	var tmpZone ZoneListElement
 	for rows.Next() {
-		err := rows.Scan(&tmpZone.Zone, &tmpZone.Name, &tmpZone.Color)
+		if err := rows.Scan(&tmpZone.Zone, &tmpZone.Name, &tmpZone.Color); err != nil {
+			Log.Error(err)
+			continue
+		}
+
+		pointrows, err := db.Query("SELECT position, X(point), Y(point) FROM zonepoints WHERE opID = ? AND zoneID = ? ORDER BY position", o.ID, tmpZone.Zone)
 		if err != nil {
 			Log.Error(err)
 			continue
 		}
-		o.Zones = append(o.Zones, tmpZone)
+		defer pointrows.Close()
+		for pointrows.Next() {
+			var tmpPoint zonepoint
+			if err := pointrows.Scan(&tmpPoint.Position, &tmpPoint.Lat, &tmpPoint.Lon); err != nil {
+				Log.Error(err)
+				continue
+			}
+			tmpZone.Points = append(tmpZone.Points, tmpPoint)
+		}
 
-		// XXX do points
+		o.Zones = append(o.Zones, tmpZone)
+		tmpZone.Points = nil
 	}
 
 	// use default for old ops w/o set zones
