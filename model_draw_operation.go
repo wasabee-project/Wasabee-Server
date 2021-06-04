@@ -63,6 +63,11 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 		Log.Infow(err.Error(), "GID", gid)
 		return err
 	}
+	if o.ID.IsDeletedOp() {
+		err := fmt.Errorf("attempt to reuse a deleted opID; duplicate and upload the copy instead")
+		Log.Infow(err.Error(), "GID", gid, "opID", o.ID)
+		return err
+	}
 
 	if err = drawOpInsertWorker(o, gid); err != nil {
 		Log.Error(err)
@@ -164,6 +169,12 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 	if opID != o.ID {
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
 		Log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
+		return "", err
+	}
+
+	if o.ID.IsDeletedOp() {
+		err := fmt.Errorf("attempt to update a deleted opID; duplicate and upload the copy instead")
+		Log.Infow(err.Error(), "GID", gid, "opID", o.ID)
 		return "", err
 	}
 
