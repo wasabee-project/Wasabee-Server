@@ -54,6 +54,7 @@ type AgentData struct {
 	}
 	IntelFaction string `json:"intelfaction"`
 	QueryToken   string `json:"querytoken"`
+	VAPIkey      string `json:"-"`
 }
 
 // AdTeam is a sub-struct of AgentData
@@ -829,7 +830,7 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 	return nil
 }
 
-// Check to see if the agent has self-proclaimed to be a smurf (unset is OK)
+// IntelSmurf checks to see if the agent has self-proclaimed to be a smurf (unset is OK)
 func (gid GoogleID) IntelSmurf() bool {
 	var ifac IntelFaction
 
@@ -842,4 +843,28 @@ func (gid GoogleID) IntelSmurf() bool {
 		return true
 	}
 	return false
+}
+
+// VAPIkey (gid GoogleID) loads an agents's V API key (this should be unusual); "" is "not set"
+func (gid GoogleID) VAPIkey() (string, error) {
+	var v sql.NullString
+
+	err := db.QueryRow("SELECT VAPIkey FROM agentextras WHERE GID = ?", gid).Scan(&v)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	if !v.Valid {
+		return "", nil
+	}
+	return v.String, nil
+}
+
+// SetVAPIkey stores
+func (gid GoogleID) SetVAPIkey(key string) error {
+	if _, err := db.Exec("UPDATE agentextras SET VAPIkey = ? WHERE GID = ?", key, gid); err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }

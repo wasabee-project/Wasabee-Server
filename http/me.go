@@ -375,3 +375,24 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	gid.PSIntelData(name, faction)
 	fmt.Fprint(res, jsonStatusOK)
 }
+
+func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	v := req.FormValue("v")
+
+	wasabee.Log.Infow("agent submitted V API token", "GID", gid.String())
+	if err = gid.SetVAPIkey(v); err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(res, jsonStatusOK)
+}

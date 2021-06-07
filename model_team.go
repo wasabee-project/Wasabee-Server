@@ -15,6 +15,8 @@ type TeamData struct {
 	RocksComm     string  `json:"rc,omitempty"`
 	RocksKey      string  `json:"rk,omitempty"`
 	JoinLinkToken string  `json:"jlt,omitempty"`
+	VTeam         int64   `json:"vt,omitempty"`
+	VRole         int64   `json:"vr,omitempty"`
 	// telegramChannel int64
 }
 
@@ -115,7 +117,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	}
 
 	var rockscomm, rockskey, joinlinktoken sql.NullString
-	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken); err != nil {
+	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken, vteam, vrole FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken, &teamList.VTeam, &teamList.VRole); err != nil {
 		Log.Error(err)
 		return err
 	}

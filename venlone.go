@@ -15,6 +15,7 @@ type Vconfig struct {
 	APIEndpoint    string
 	APIKey         string
 	StatusEndpoint string
+	TeamEndpoint   string
 	configured     bool
 }
 
@@ -29,19 +30,26 @@ type Vresult struct {
 
 // vagent is set by the V API
 type vagent struct {
-	EnlID       EnlID    `json:"enlid"`
-	Gid         GoogleID `json:"gid"`
-	Vlevel      int64    `json:"vlevel"`
-	Vpoints     int64    `json:"vpoints"`
-	Agent       string   `json:"agent"`
-	Level       int64    `json:"level"`
-	Quarantine  bool     `json:"quarantine"`
-	Active      bool     `json:"active"`
-	Blacklisted bool     `json:"blacklisted"`
-	Verified    bool     `json:"verified"`
-	Flagged     bool     `json:"flagged"`
-	Banned      bool     `json:"banned_by_nia"`
-	Cellid      string   `json:"cellid"`
+	EnlID       EnlID      `json:"enlid"`
+	Gid         GoogleID   `json:"gid"`
+	Vlevel      int64      `json:"vlevel"`
+	Vpoints     int64      `json:"vpoints"`
+	Agent       string     `json:"agent"`
+	Level       int64      `json:"level"`
+	Quarantine  bool       `json:"quarantine"`
+	Active      bool       `json:"active"`
+	Blacklisted bool       `json:"blacklisted"`
+	Verified    bool       `json:"verified"`
+	Flagged     bool       `json:"flagged"`
+	Banned      bool       `json:"banned_by_nia"`
+	Cellid      string     `json:"cellid"`
+	TelegramID  TelegramID `json:"telegramid"`
+	Telegram    string     `json:"telegram"`
+	Email       string     `json:"email"`
+	StartLat    float64    `json:"lat"`
+	StartLon    float64    `json:"lon"`
+	Distance    int64      `json:"distance"`
+	Roles       []role     `json:"roles"`
 }
 
 // v team is set by the V API
@@ -54,6 +62,17 @@ type vteam struct {
 type vtagent struct {
 	EnlID EnlID    `json:"enlid"`
 	Gid   GoogleID `json:"gid"`
+}
+
+// Version 2.0 of the team query
+type VTeamResult struct {
+	Status string   `json:"status"`
+	Agents []vagent `json:"data"`
+}
+
+type role struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // SetVEnlOne is called from main() to initialize the config
@@ -75,6 +94,13 @@ func SetVEnlOne(w Vconfig) {
 	} else {
 		vc.StatusEndpoint = "https://status.enl.one/api/location"
 	}
+
+	if w.TeamEndpoint != "" {
+		vc.TeamEndpoint = w.TeamEndpoint
+	} else {
+		vc.TeamEndpoint = "https://v.enl.one/api/v2/teams" //teams/{teamid}?apikey={apikey}
+	}
+
 	vc.configured = true
 }
 
@@ -159,65 +185,6 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 		}
 
 	}
-	return nil
-}
-
-// VPullTeam pulls a V team's member list into a WASABEE team
-// do not use the server's api key, this is per-team... we do not want to store this key info
-func (teamID TeamID) VPullTeam(gid GoogleID, vteamid string, vapikey string) error {
-	owns, err := gid.OwnsTeam(teamID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	if !owns {
-		err := fmt.Errorf("not team owner")
-		Log.Error(err)
-		return err
-	}
-
-	// no need to check if V is configured since it doesn't apply in this case
-	// XXX need the V2 API -- ugly
-	url := fmt.Sprintf("%s/%s?apikey=%s", "https://v.enl.one/api/v2/teams", vteamid, vapikey)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-	client := &http.Client{
-		Timeout: GetTimeout(3 * time.Second),
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	var vt vteam
-	err = json.Unmarshal(body, &vt)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
-
-	for _, agent := range vt.Agents {
-		if _, err := agent.Gid.InitAgent(); err != nil {
-			Log.Error(err)
-			return err
-		}
-		if err = teamID.AddAgent(agent.Gid); err != nil {
-			Log.Error(err)
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -396,4 +363,143 @@ func (eid EnlID) Gid() (GoogleID, error) {
 		return "", err
 	}
 	return gid, nil
+}
+
+// VTeam gets the confimgured V team information for a teamID
+func (teamID TeamID) VTeam() (int64, int64, error) {
+	var team, role int64
+	err := db.QueryRow("SELECT vteam, vrole FROM team WHERE teamID = ?", teamID).Scan(&team, &role)
+	if err != nil {
+		Log.Error(err)
+		return 0, 0, err
+	}
+	return team, role, nil
+}
+
+// VSync pulls a team (and role) from V to sync with a Wasabee team
+func (teamID TeamID) VSync(key string) error {
+	vteamID, role, err := teamID.VTeam()
+	if err != nil {
+		return err
+	}
+	if vteamID == 0 {
+		return nil
+	}
+
+	apiurl := fmt.Sprintf("%s/%d?apikey=%s", vc.TeamEndpoint, vteamID, key)
+	req, err := http.NewRequest("GET", apiurl, nil)
+	if err != nil {
+		// Log.Error(err) // do not leak API key to logs
+		err := fmt.Errorf("error establishing team pull request")
+		Log.Error(err)
+		return err
+	}
+	client := &http.Client{
+		Timeout: GetTimeout(3 * time.Second),
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		err := fmt.Errorf("error executing team pull request")
+		Log.Error(err)
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	var vt VTeamResult
+	err = json.Unmarshal(body, &vt)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// a map to track added agents
+	atv := make(map[GoogleID]bool)
+
+	for _, agent := range vt.Agents {
+		_, err = agent.Gid.IngressName()
+		if err == sql.ErrNoRows {
+			Log.Infow("Importing previously unknown agent", "GID", agent.Gid)
+			_, err = agent.Gid.InitAgent()
+			if err != nil {
+				Log.Info(err)
+				continue
+			}
+			// XXX we could setup telegram here, if available
+		}
+		if err != nil && err != sql.ErrNoRows {
+			Log.Info(err)
+			continue
+		}
+
+		if role != 0 { // role 0 means "any"
+			thisrole := false
+			for _, r := range agent.Roles {
+				if r.ID == role {
+					thisrole = true
+					break
+				}
+			}
+			if !thisrole {
+				// agent is not in the proper role to be on this team
+				return nil
+			}
+		}
+
+		// team is set to all roles (0) or the role is present for this agent: add them
+		atv[agent.Gid] = true
+
+		// don't re-add them if already in the team
+		in, err := agent.Gid.AgentInTeam(teamID)
+		if err != nil {
+			Log.Info(err)
+			continue
+		}
+		if in {
+			Log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
+			continue
+		}
+
+		Log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
+		if err := teamID.AddAgent(agent.Gid); err != nil {
+			Log.Info(err)
+			continue
+		}
+		// XXX set startlat, startlon, etc...
+	}
+
+	// remove those not present at V
+	var t TeamData
+	err = teamID.FetchTeam(&t)
+	if err != nil {
+		Log.Info(err)
+		return err
+	}
+	for _, a := range t.Agent {
+		_, ok := atv[a.Gid]
+		if !ok {
+			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
+			Log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
+			err = teamID.RemoveAgent(a.Gid)
+			if err != nil {
+				Log.Error(err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// VConfigure sets V connection for a Wasabee team -- caller should verify ownership
+func (teamID TeamID) VConfigure(v int64, role int64) error {
+	_, err := db.Exec("UPDATE team SET vteam = ? AND vrole = ? WHERE teamID = ?", v, role, teamID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	return nil
 }
