@@ -54,7 +54,7 @@ type AgentData struct {
 	}
 	IntelFaction string `json:"intelfaction"`
 	QueryToken   string `json:"querytoken"`
-	VAPIkey      string `json:"-"`
+	VAPIkey      string `json:"vapi"`
 }
 
 // AdTeam is a sub-struct of AgentData
@@ -226,10 +226,10 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 // GetAgentData populates a AgentData struct based on the gid
 func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	ad.GoogleID = gid
-	var vid, pic sql.NullString
+	var vid, pic, vapi sql.NullString
 	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &ifac, &pic)
+	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return err
@@ -260,6 +260,15 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 	}
 
 	ad.IntelFaction = ifac.String()
+
+	if vapi.Valid {
+		// if the user set a short string... don't panic
+		len := len(vapi.String)
+		if len > 6 {
+			len = 6
+		}
+		ad.VAPIkey = vapi.String[0:len] + "..." // never show the full thing
+	}
 
 	return nil
 }

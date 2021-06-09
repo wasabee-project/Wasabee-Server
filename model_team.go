@@ -16,7 +16,7 @@ type TeamData struct {
 	RocksKey      string  `json:"rk,omitempty"`
 	JoinLinkToken string  `json:"jlt,omitempty"`
 	VTeam         int64   `json:"vt,omitempty"`
-	VRole         int64   `json:"vr,omitempty"`
+	VRole         int8    `json:"vr,omitempty"`
 	// telegramChannel int64
 }
 

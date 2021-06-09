@@ -445,7 +445,19 @@ func (teamID TeamID) VSync(key string) error {
 				}
 			}
 			if !thisrole {
-				// agent is not in the proper role to be on this team
+				// agent is not in the proper role to be on this team -- remove if necessary
+				in, err := agent.Gid.AgentInTeam(teamID)
+				if err != nil {
+					Log.Info(err)
+					continue
+				}
+				if in {
+					Log.Debugf("%s no longer in role %d", agent.Gid, role)
+					err = teamID.RemoveAgent(agent.Gid)
+					if err != nil {
+						Log.Error(err)
+					}
+				}
 				return nil
 			}
 		}
@@ -480,6 +492,7 @@ func (teamID TeamID) VSync(key string) error {
 		return err
 	}
 	for _, a := range t.Agent {
+		Log.Debugf("checking agent for delete: %s", a.Gid)
 		_, ok := atv[a.Gid]
 		if !ok {
 			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
@@ -495,11 +508,57 @@ func (teamID TeamID) VSync(key string) error {
 }
 
 // VConfigure sets V connection for a Wasabee team -- caller should verify ownership
-func (teamID TeamID) VConfigure(v int64, role int64) error {
-	_, err := db.Exec("UPDATE team SET vteam = ? AND vrole = ? WHERE teamID = ?", v, role, teamID)
+func (teamID TeamID) VConfigure(vteam int64, role uint8) error {
+	_, ok := vroles[role]
+	if !ok {
+		err := fmt.Errorf("invalid role")
+		Log.Error(err)
+		return err
+	}
+
+	Log.Infow("linking team to V", "teamID", teamID, "vteam", vteam, "role", role)
+
+	_, err := db.Exec("UPDATE team SET vteam = ?, vrole = ? WHERE teamID = ?", vteam, role, teamID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	return nil
+}
+
+var vroles = map[uint8]string{
+	0:   "All",
+	1:   "Planner",
+	2:   "Operator",
+	3:   "Linker",
+	4:   "Keyfarming",
+	5:   "Cleaner",
+	6:   "Field Agent",
+	7:   "Item Sponsor",
+	8:   "Key Transport",
+	9:   "Recharging",
+	10:  "Software Support",
+	11:  "Anomaly TL",
+	12:  "Team Lead",
+	13:  "Other",
+	100: "Team-0",
+	101: "Team-1",
+	102: "Team-2",
+	103: "Team-3",
+	104: "Team-4",
+	105: "Team-5",
+	106: "Team-6",
+	107: "Team-7",
+	108: "Team-8",
+	109: "Team-9",
+	110: "Team-10",
+	111: "Team-11",
+	112: "Team-12",
+	113: "Team-13",
+	114: "Team-14",
+	115: "Team-15",
+	116: "Team-16",
+	117: "Team-17",
+	118: "Team-18",
+	119: "Team-19",
 }

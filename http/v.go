@@ -88,20 +88,22 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vteam, err := strconv.ParseInt(vars["vteam"], 10, 64) // "0" to reset
+	vteam, err := strconv.ParseInt(req.FormValue("vteam"), 10, 64) // "0" to disable
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	role, err := strconv.ParseInt(vars["role"], 10, 64) // "0" for all roles
+	r, err := strconv.ParseInt(req.FormValue("role"), 10, 8) // "0" for all roles
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	role := uint8(r)
 
+	wasabee.Log.Infow("linking team to V", "GID", gid, "teamID", team, "vteam", vteam, "role", role)
 	if err := team.VConfigure(vteam, role); err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
