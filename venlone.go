@@ -71,16 +71,16 @@ type VTeamResult struct {
 }
 
 type role struct {
-	ID   int64  `json:"id"`
+	ID   uint8  `json:"id"`
 	Name string `json:"name"`
 }
 
 type AgentVTeams struct {
 	Status string       `json:"status"`
-	Teams  []agentvteam `json:"data"`
+	Teams  []AgentVTeam `json:"data"`
 }
 
-type agentvteam struct {
+type AgentVTeam struct {
 	TeamID int64  `json:"teamid"`
 	Name   string `json:"team"`
 	Roles  []role `json:"roles"`
@@ -377,9 +377,10 @@ func (eid EnlID) Gid() (GoogleID, error) {
 	return gid, nil
 }
 
-// VTeam gets the confimgured V team information for a teamID
-func (teamID TeamID) VTeam() (int64, int64, error) {
-	var team, role int64
+// VTeam gets the configured V team information for a teamID
+func (teamID TeamID) VTeam() (int64, uint8, error) {
+	var team int64
+	var role uint8
 	err := db.QueryRow("SELECT vteam, vrole FROM team WHERE teamID = ?", teamID).Scan(&team, &role)
 	if err != nil {
 		Log.Error(err)
@@ -393,6 +394,11 @@ func (gid GoogleID) VTeams() (AgentVTeams, error) {
 	var v AgentVTeams
 	key, err := gid.VAPIkey()
 	if err != nil {
+		Log.Error(err)
+		return v, err
+	}
+	if key == "" {
+		err := fmt.Errorf("cannot get V teams if no V API key set")
 		Log.Error(err)
 		return v, err
 	}
@@ -428,6 +434,50 @@ func (gid GoogleID) VTeams() (AgentVTeams, error) {
 	return v, nil
 }
 
+func VGetTeam(vteamID int64, key string) (VTeamResult, error) {
+	var vt VTeamResult
+	if vteamID == 0 {
+		return vt, nil
+	}
+
+	if key == "" {
+		err := fmt.Errorf("cannot get V team if no V API key set")
+		Log.Error(err)
+		return vt, err
+	}
+
+	apiurl := fmt.Sprintf("%s/%d?apikey=%s", vc.TeamEndpoint, vteamID, key)
+	req, err := http.NewRequest("GET", apiurl, nil)
+	if err != nil {
+		// Log.Error(err) // do not leak API key to logs
+		err := fmt.Errorf("error establishing team pull request")
+		Log.Error(err)
+		return vt, err
+	}
+	client := &http.Client{
+		Timeout: GetTimeout(3 * time.Second),
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		err := fmt.Errorf("error executing team pull request")
+		Log.Error(err)
+		return vt, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return vt, err
+	}
+
+	err = json.Unmarshal(body, &vt)
+	if err != nil {
+		Log.Error(err)
+		return vt, err
+	}
+	return vt, nil
+}
+
 // VSync pulls a team (and role) from V to sync with a Wasabee team
 func (teamID TeamID) VSync(key string) error {
 	vteamID, role, err := teamID.VTeam()
@@ -438,36 +488,19 @@ func (teamID TeamID) VSync(key string) error {
 		return nil
 	}
 
-	apiurl := fmt.Sprintf("%s/%d?apikey=%s", vc.TeamEndpoint, vteamID, key)
-	req, err := http.NewRequest("GET", apiurl, nil)
-	if err != nil {
-		// Log.Error(err) // do not leak API key to logs
-		err := fmt.Errorf("error establishing team pull request")
+	if key == "" {
+		err := fmt.Errorf("cannot sync V team if no V API key set")
 		Log.Error(err)
 		return err
 	}
-	client := &http.Client{
-		Timeout: GetTimeout(3 * time.Second),
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		err := fmt.Errorf("error executing team pull request")
-		Log.Error(err)
-		return err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+
+	vt, err := VGetTeam(vteamID, key)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	var vt VTeamResult
-	err = json.Unmarshal(body, &vt)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
+	Log.Debug(vt)
 
 	// do not remove the owner from the team
 	owner, err := teamID.Owner()
@@ -480,6 +513,7 @@ func (teamID TeamID) VSync(key string) error {
 	atv := make(map[GoogleID]bool)
 
 	for _, agent := range vt.Agents {
+		Log.Debug(agent)
 		_, err = agent.Gid.IngressName()
 		if err == sql.ErrNoRows {
 			Log.Infow("Importing previously unknown agent", "GID", agent.Gid)
@@ -496,33 +530,15 @@ func (teamID TeamID) VSync(key string) error {
 		}
 
 		if role != 0 { // role 0 means "any"
-			thisrole := false
 			for _, r := range agent.Roles {
 				if r.ID == role {
-					thisrole = true
+					atv[agent.Gid] = true
 					break
 				}
 			}
-			if !thisrole {
-				// agent is not in the proper role to be on this team -- remove if necessary
-				in, err := agent.Gid.AgentInTeam(teamID)
-				if err != nil {
-					Log.Info(err)
-					continue
-				}
-				if in {
-					Log.Debugf("%s no longer in role %d", agent.Gid, role)
-					err = teamID.RemoveAgent(agent.Gid)
-					if err != nil {
-						Log.Error(err)
-					}
-				}
-				return nil
-			}
+		} else {
+			atv[agent.Gid] = true
 		}
-
-		// team is set to all roles (0) or the role is present for this agent: add them
-		atv[agent.Gid] = true
 
 		// don't re-add them if already in the team
 		in, err := agent.Gid.AgentInTeam(teamID)
@@ -534,13 +550,14 @@ func (teamID TeamID) VSync(key string) error {
 			Log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
 			continue
 		}
-
-		Log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
-		if err := teamID.AddAgent(agent.Gid); err != nil {
-			Log.Info(err)
-			continue
+		if _, ok := atv[agent.Gid]; ok {
+			Log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
+			if err := teamID.AddAgent(agent.Gid); err != nil {
+				Log.Info(err)
+				continue
+			}
+			// XXX set startlat, startlon, etc...
 		}
-		// XXX set startlat, startlon, etc...
 	}
 
 	// remove those not present at V
@@ -551,9 +568,12 @@ func (teamID TeamID) VSync(key string) error {
 		return err
 	}
 	for _, a := range t.Agent {
-		Log.Debugf("checking agent for delete: %s", a.Gid)
+		if a.Gid == owner {
+			Log.Debug("skipping team owner")
+			continue
+		}
 		_, ok := atv[a.Gid]
-		if !ok && a.Gid != owner {
+		if !ok {
 			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
 			Log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
 			err = teamID.RemoveAgent(a.Gid)

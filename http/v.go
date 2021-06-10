@@ -120,6 +120,12 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	key, err := gid.VAPIkey()
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 
 	vars := mux.Vars(req)
 	mode := vars["mode"]
@@ -140,10 +146,23 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var teamstomake []vTeamToMake
-	if mode == "role" {
-		teamstomake, err = vProcessRoleTeams(data, agent.Teams)
-	} else {
+	switch mode {
+	case "role":
+		teamstomake, err = vProcessRoleTeams(data, agent.Teams, key)
+	case "team":
 		teamstomake, err = vProcessTeams(data, agent.Teams)
+	default:
+		id, err := strconv.ParseInt(mode, 10, 64)
+		if err != nil {
+			wasabee.Log.Error(err)
+			return
+		}
+		for _, t := range data.Teams {
+			if t.TeamID == id {
+				teamstomake, err = vProcessRoleSingleTeam(t, agent.Teams, key)
+				break
+			}
+		}
 	}
 
 	for _, t := range teamstomake {
@@ -155,12 +174,6 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		err = teamID.VConfigure(t.id, t.role)
-		if err != nil {
-			wasabee.Log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-		key, err := gid.VAPIkey()
 		if err != nil {
 			wasabee.Log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -183,9 +196,99 @@ type vTeamToMake struct {
 	name string
 }
 
-func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam) ([]vTeamToMake, error) {
+func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string) ([]vTeamToMake, error) {
 	var m []vTeamToMake
-	// do the things
+
+	raw := make(map[int64]map[uint8]bool)
+
+	// for every team of which I am an admin
+	for _, t := range v.Teams {
+		if !t.Admin {
+			wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			continue
+		}
+		roles := make(map[uint8]bool)
+
+		// load all agents
+		vt, err := wasabee.VGetTeam(t.TeamID, key)
+		if err != nil {
+			return m, err
+		}
+
+		// for every role of every agent
+		for _, a := range vt.Agents {
+			for _, r := range a.Roles {
+				// don't make duplicates
+				already := false
+				for _, adt := range teams {
+					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
+						wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						already = true
+						break
+					}
+				}
+				if already {
+					continue
+				}
+
+				_, ok := roles[r.ID]
+				if !ok { // first time we've seen this team/role
+					m = append(m, vTeamToMake{
+						id:   t.TeamID,
+						role: r.ID,
+						name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
+					})
+					roles[r.ID] = true
+				}
+			}
+		}
+		raw[t.TeamID] = roles
+	}
+
+	return m, nil
+}
+
+func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key string) ([]vTeamToMake, error) {
+	var m []vTeamToMake
+
+	if !t.Admin {
+		wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+		return m, nil
+	}
+	roles := make(map[uint8]bool)
+
+	vt, err := wasabee.VGetTeam(t.TeamID, key)
+	if err != nil {
+		return m, err
+	}
+
+	// for every role of every agent -- this logic order is better, update the vProcessRoleTeams to use it...
+	for _, a := range vt.Agents {
+		for _, r := range a.Roles {
+			_, ok := roles[r.ID]
+			if !ok { // first time we've seen this team/role
+				roles[r.ID] = true
+
+				already := false
+				for _, adt := range teams {
+					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
+						wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						already = true
+						break
+					}
+				}
+				if already {
+					continue
+				}
+
+				m = append(m, vTeamToMake{
+					id:   t.TeamID,
+					role: r.ID,
+					name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
+				})
+			}
+		}
+	}
 
 	return m, nil
 }
