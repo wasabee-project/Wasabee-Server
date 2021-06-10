@@ -135,16 +135,24 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	return nil
 }
 
-// OwnsTeam returns true if the GoogleID owns the team identified by teamID
-func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
+func (teamID TeamID) Owner() (GoogleID, error) {
 	var owner GoogleID
 
 	err := db.QueryRow("SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
 	if err != nil && err == sql.ErrNoRows {
-		Log.Warnw("non-existent team ownership queried", "resource", teamID, "GID", gid)
-		return false, nil
+		Log.Warnw("non-existent team ownership queried", "resource", teamID)
+		return "", nil
 	} else if err != nil {
 		Log.Error(err)
+		return "", err
+	}
+	return owner, nil
+}
+
+// OwnsTeam returns true if the GoogleID owns the team identified by teamID
+func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
+	owner, err := teamID.Owner()
+	if err != nil {
 		return false, err
 	}
 	if gid != owner {
@@ -168,7 +176,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 		name = team
 	}
 
-	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm, telegram) VALUES (?,?,?,NULL,NULL,NULL)", team, gid, name)
+	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm, telegram, vteam, vrole) VALUES (?,?,?,NULL,NULL,NULL,0,0)", team, gid, name)
 	if err != nil {
 		Log.Error(err)
 		return "", err

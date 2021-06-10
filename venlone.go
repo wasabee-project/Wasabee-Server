@@ -75,6 +75,18 @@ type role struct {
 	Name string `json:"name"`
 }
 
+type AgentVTeams struct {
+	Status string       `json:"status"`
+	Teams  []agentvteam `json:"data"`
+}
+
+type agentvteam struct {
+	TeamID int64  `json:"teamid"`
+	Name   string `json:"team"`
+	Roles  []role `json:"roles"`
+	Admin  bool   `json:"admin"`
+}
+
 // SetVEnlOne is called from main() to initialize the config
 func SetVEnlOne(w Vconfig) {
 	if w.APIKey == "" {
@@ -376,6 +388,46 @@ func (teamID TeamID) VTeam() (int64, int64, error) {
 	return team, role, nil
 }
 
+// VTeams pulls a list of teams the agent is on at V
+func (gid GoogleID) VTeams() (AgentVTeams, error) {
+	var v AgentVTeams
+	key, err := gid.VAPIkey()
+	if err != nil {
+		Log.Error(err)
+		return v, err
+	}
+
+	apiurl := fmt.Sprintf("%s?apikey=%s", vc.TeamEndpoint, key)
+	req, err := http.NewRequest("GET", apiurl, nil)
+	if err != nil {
+		err := fmt.Errorf("error establishing agent's team pull request")
+		Log.Error(err)
+		return v, err
+	}
+	client := &http.Client{
+		Timeout: GetTimeout(3 * time.Second),
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		err := fmt.Errorf("error executing team pull request")
+		Log.Error(err)
+		return v, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return v, err
+	}
+
+	err = json.Unmarshal(body, &v)
+	if err != nil {
+		Log.Error(err)
+		return v, err
+	}
+	return v, nil
+}
+
 // VSync pulls a team (and role) from V to sync with a Wasabee team
 func (teamID TeamID) VSync(key string) error {
 	vteamID, role, err := teamID.VTeam()
@@ -412,6 +464,13 @@ func (teamID TeamID) VSync(key string) error {
 
 	var vt VTeamResult
 	err = json.Unmarshal(body, &vt)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	// do not remove the owner from the team
+	owner, err := teamID.Owner()
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -494,7 +553,7 @@ func (teamID TeamID) VSync(key string) error {
 	for _, a := range t.Agent {
 		Log.Debugf("checking agent for delete: %s", a.Gid)
 		_, ok := atv[a.Gid]
-		if !ok {
+		if !ok && a.Gid != owner {
 			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
 			Log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
 			err = teamID.RemoveAgent(a.Gid)

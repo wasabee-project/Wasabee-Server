@@ -170,6 +170,7 @@ func setupAuthRoutes(r *mux.Router) {
 	// teams
 	// create a new team
 	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")
+	r.HandleFunc("/team/vbulkimport", vBulkImportRoute).Methods("GET").Queries("mode", "{mode}")
 	r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}")
 	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")
