@@ -500,8 +500,6 @@ func (teamID TeamID) VSync(key string) error {
 		return err
 	}
 
-	Log.Debug(vt)
-
 	// do not remove the owner from the team
 	owner, err := teamID.Owner()
 	if err != nil {
@@ -513,7 +511,6 @@ func (teamID TeamID) VSync(key string) error {
 	atv := make(map[GoogleID]bool)
 
 	for _, agent := range vt.Agents {
-		Log.Debug(agent)
 		_, err = agent.Gid.IngressName()
 		if err == sql.ErrNoRows {
 			Log.Infow("Importing previously unknown agent", "GID", agent.Gid)
@@ -569,7 +566,6 @@ func (teamID TeamID) VSync(key string) error {
 	}
 	for _, a := range t.Agent {
 		if a.Gid == owner {
-			Log.Debug("skipping team owner")
 			continue
 		}
 		_, ok := atv[a.Gid]

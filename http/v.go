@@ -204,7 +204,7 @@ func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string
 	// for every team of which I am an admin
 	for _, t := range v.Teams {
 		if !t.Admin {
-			wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			// wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
 			continue
 		}
 		roles := make(map[uint8]bool)
@@ -222,7 +222,7 @@ func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string
 				already := false
 				for _, adt := range teams {
 					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
-						wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						// wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
 						already = true
 						break
 					}
@@ -252,7 +252,7 @@ func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key st
 	var m []vTeamToMake
 
 	if !t.Admin {
-		wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+		// wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
 		return m, nil
 	}
 	roles := make(map[uint8]bool)
@@ -272,7 +272,7 @@ func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key st
 				already := false
 				for _, adt := range teams {
 					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
-						wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						// wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
 						already = true
 						break
 					}
@@ -297,7 +297,7 @@ func vProcessTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam) ([]vTeamToMake
 	var m []vTeamToMake
 	for _, t := range v.Teams {
 		if !t.Admin {
-			wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			// wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
 			continue
 		}
 
@@ -305,7 +305,7 @@ func vProcessTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam) ([]vTeamToMake
 		already := false
 		for _, adt := range teams {
 			if adt.VTeam == t.TeamID && adt.VTeamRole == 0 {
-				wasabee.Log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
+				// wasabee.Log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
 				already = true
 				break
 			}
