@@ -166,7 +166,7 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, t := range teamstomake {
-		wasabee.Log.Debugw("Creating Wasabee team for V team", "v team", t.id, "role", 0)
+		wasabee.Log.Debugw("Creating Wasabee team for V team", "v team", t.id, "role", t.role)
 		teamID, err := gid.NewTeam(t.name)
 		if err != nil {
 			wasabee.Log.Error(err)
