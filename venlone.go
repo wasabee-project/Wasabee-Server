@@ -19,7 +19,11 @@ type Vconfig struct {
 	configured     bool
 }
 
-var vc Vconfig
+var vc = Vconfig{
+	APIEndpoint: "https://v.enl.one/api/v1",
+	StatusEndpoint: "https://status.enl.one/api/location",
+	TeamEndpoint: "https://v.enl.one/api/v2/teams",
+}
 
 // Vresult is set by the V API
 type Vresult struct {
@@ -97,20 +101,14 @@ func SetVEnlOne(w Vconfig) {
 
 	if w.APIEndpoint != "" {
 		vc.APIEndpoint = w.APIEndpoint
-	} else {
-		vc.APIEndpoint = "https://v.enl.one/api/v1"
 	}
 
 	if w.StatusEndpoint != "" {
 		vc.StatusEndpoint = w.StatusEndpoint
-	} else {
-		vc.StatusEndpoint = "https://status.enl.one/api/location"
 	}
 
 	if w.TeamEndpoint != "" {
 		vc.TeamEndpoint = w.TeamEndpoint
-	} else {
-		vc.TeamEndpoint = "https://v.enl.one/api/v2/teams" //teams/{teamid}?apikey={apikey}
 	}
 
 	vc.configured = true
