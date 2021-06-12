@@ -728,7 +728,7 @@ func (gid GoogleID) RISC() bool {
 
 // UpdatePicture sets/updates the agent's google picture URL
 func (gid GoogleID) UpdatePicture(picurl string) error {
-	if _, err := db.Exec("REPLACE INTO agentextras (gid, picurl) VALUES (?,?) ", gid, picurl); err != nil {
+	if _, err := db.Exec("REPLACE INTO agentextras (gid, picurl) VALUES (?,?)", gid, picurl); err != nil {
 		Log.Error(err)
 		return err
 	}
@@ -873,7 +873,7 @@ func (gid GoogleID) VAPIkey() (string, error) {
 
 // SetVAPIkey stores
 func (gid GoogleID) SetVAPIkey(key string) error {
-	if _, err := db.Exec("UPDATE agentextras SET VAPIkey = ? WHERE GID = ?", key, gid); err != nil {
+	if _, err := db.Exec("REPLACE INTO agentextras (gid, VAPIkey) VALUES (?,?)", gid, key); err != nil {
 		Log.Error(err)
 		return err
 	}
