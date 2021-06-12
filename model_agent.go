@@ -863,7 +863,7 @@ func (gid GoogleID) VAPIkey() (string, error) {
 	err := db.QueryRow("SELECT VAPIkey FROM agentextras WHERE GID = ?", gid).Scan(&v)
 	if err != nil {
 		Log.Error(err)
-		return "", err
+		return "", nil
 	}
 	if !v.Valid {
 		return "", nil
