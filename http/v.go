@@ -11,7 +11,63 @@ import (
 
 func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
-	// see what V sends us...
+
+	// the POST is empty, all we have is the teamID from the URL
+	vars := mux.Vars(req)
+	id := vars["teamID"]
+	if id == "" {
+		err := fmt.Errorf("V hook called with empty team ID")
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	wasabee.Log.Infow("V requested team sync", "server", req.RemoteAddr, "team", id)
+
+	vteam, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	teams, err := wasabee.GetTeamsByVID(vteam)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	keys := make(map[wasabee.GoogleID]string)
+
+	for _, teamID := range teams {
+		gid, err := teamID.Owner()
+		if err != nil {
+			wasabee.Log.Error(err)
+			continue
+		}
+
+		key, ok := keys[gid]
+		if !ok {
+			key, err = gid.VAPIkey()
+			if err != nil {
+				wasabee.Log.Error(err)
+				continue
+			}
+			if key == "" {
+				wasabee.Log.Errorw("no VAPI key for team owner, skipping sync", "GID", gid, "teamID", teamID, "vteam", vteam)
+				continue
+			}
+			keys[gid] = key
+		}
+
+		err = teamID.VSync(key)
+		if err != nil {
+			wasabee.Log.Error(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	}
 
 	fmt.Fprint(res, jsonStatusOK)
 }

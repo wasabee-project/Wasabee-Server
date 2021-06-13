@@ -49,6 +49,7 @@ func setupRouter() *mux.Router {
 	// do not make these static -- they should be translated via the templates system
 	router.HandleFunc("/privacy", privacyRoute).Methods("GET")
 	router.HandleFunc("/", frontRoute).Methods("GET")
+	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
 
 	// /api/v1/... route
 	api := wasabee.Subrouter(apipath)
@@ -68,20 +69,12 @@ func setupRouter() *mux.Router {
 	meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
-	// /rocks route -- why a subrouter? for JSON error messages
+	// /rocks route -- why a subrouter? for JSON error messages -- no longer necessary
 	rocks := wasabee.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
-
-	// /v route
-	v := wasabee.Subrouter("/v")
-	v.HandleFunc("", vTeamRoute).Methods("POST")
-	v.HandleFunc("/{teamID}", vTeamRoute).Methods("POST")
-	v.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-	v.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-	v.PathPrefix("/v").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
 	static := wasabee.Subrouter("/static")

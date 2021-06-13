@@ -20,9 +20,9 @@ type Vconfig struct {
 }
 
 var vc = Vconfig{
-	APIEndpoint: "https://v.enl.one/api/v1",
+	APIEndpoint:    "https://v.enl.one/api/v1",
 	StatusEndpoint: "https://status.enl.one/api/location",
-	TeamEndpoint: "https://v.enl.one/api/v2/teams",
+	TeamEndpoint:   "https://v.enl.one/api/v2/teams",
 }
 
 // Vresult is set by the V API
@@ -634,4 +634,26 @@ var vroles = map[uint8]string{
 	117: "Team-17",
 	118: "Team-18",
 	119: "Team-19",
+}
+
+func GetTeamsByVID(v int64) ([]TeamID, error) {
+	var teams []TeamID
+
+	row, err := db.Query("SELECT teamID FROM team WHERE vteam = ?", v)
+	if err != nil {
+		Log.Error(err)
+		return teams, err
+	}
+	defer row.Close()
+
+	var teamID TeamID
+	for row.Next() {
+		err = row.Scan(&teamID)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		teams = append(teams, teamID)
+	}
+	return teams, nil
 }
