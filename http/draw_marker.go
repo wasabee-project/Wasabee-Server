@@ -262,6 +262,7 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	wasabee.Log.Infow("completed marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "completed marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -285,6 +286,7 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	wasabee.Log.Infow("incompleted marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "incompleted marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -307,6 +309,8 @@ func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	wasabee.Log.Infow("reject marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "rejected marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
