@@ -49,6 +49,7 @@ func setupRouter() *mux.Router {
 	// do not make these static -- they should be translated via the templates system
 	router.HandleFunc("/privacy", privacyRoute).Methods("GET")
 	router.HandleFunc("/", frontRoute).Methods("GET")
+	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
 	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
 
 	// /api/v1/... route
@@ -135,10 +136,10 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
 	// -- do not use, just here for safety
 	r.HandleFunc("/me", meShowRouteJSON).Methods("GET", "POST", "HEAD")
-	// r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
-	// toggle RAID/JEAH polling
+	r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
 	// r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")
 	// r.HandleFunc("/me/operations", meOperationsRoute).Methods("GET")
+	// toggle RAID/JEAH polling
 	r.HandleFunc("/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
@@ -576,7 +577,12 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ud.QueryToken = formValidationToken(req)
-	data, _ := json.Marshal(ud)
+	data, err := json.Marshal(ud)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	wasabee.Log.Infow("iitc/app login",
 		"GID", m.Gid,
@@ -678,9 +684,18 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ud.QueryToken = formValidationToken(req)
-	data, _ := json.Marshal(ud)
+	data, err := json.Marshal(ud)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	wasabee.Log.Infow("oneTimeToken login", "GID", gid, "name", name, "message", name+" oneTimeToken login")
+	wasabee.Log.Infow("oneTimeToken login",
+		"GID", gid,
+		"name", name,
+		"message", name+" oneTimeToken login",
+		"client", req.Header.Get("User-Agent"))
 	gid.FirebaseAgentLogin()
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
