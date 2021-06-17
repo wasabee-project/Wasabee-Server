@@ -24,6 +24,7 @@ type Link struct {
 	Zone         Zone     `json:"zone"`
 	DeltaMinutes int      `json:"deltaminutes"`
 	MuCaptured   int      `json:"mu"`
+	Changed      bool     `json:"changed,omitempty"`
 }
 
 // insertLink adds a link to the database
@@ -72,6 +73,11 @@ func (opID OperationID) updateLink(l Link) error {
 		Log.Error(err)
 		return err
 	}
+
+	if l.Changed && l.AssignedTo != "" {
+		opID.firebaseAssignLink(l.AssignedTo, l.ID, "assigned")  
+	}
+
 	return nil
 }
 
@@ -137,7 +143,7 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) (string, error) {
 	}
 
 	if gid != "" {
-		o.ID.firebaseAssignLink(gid, linkID)
+		o.ID.firebaseAssignLink(gid, linkID, "assigned")
 	}
 	return o.Touch()
 }
@@ -156,7 +162,7 @@ func (l LinkID) Assign(o *Operation, gid GoogleID) (string, error) {
 	}
 
 	if gid != "" {
-		o.ID.firebaseAssignLink(gid, l)
+		o.ID.firebaseAssignLink(gid, l, "assigned")
 	}
 	return o.Touch()
 }

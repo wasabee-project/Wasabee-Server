@@ -136,7 +136,7 @@ func (teamID TeamID) FirebaseTarget(msg string) {
 }
 
 // notifiy the agent that they have a new assigned marker in a given op
-func (opID OperationID) firebaseAssignMarker(gid GoogleID, markerID MarkerID) {
+func (opID OperationID) firebaseAssignMarker(gid GoogleID, markerID MarkerID, status string) {
 	if !fb.running {
 		return
 	}
@@ -146,7 +146,7 @@ func (opID OperationID) firebaseAssignMarker(gid GoogleID, markerID MarkerID) {
 		OpID:  opID,
 		ObjID: string(markerID),
 		Gid:   gid,
-		Msg:   "assigned",
+		Msg:   status,
 	})
 }
 
@@ -171,7 +171,7 @@ func (o *Operation) firebaseMarkerStatus(markerID MarkerID, status string) {
 }
 
 // notifiy the agent that they have a new assigned marker in a given op
-func (opID OperationID) firebaseAssignLink(gid GoogleID, linkID LinkID) {
+func (opID OperationID) firebaseAssignLink(gid GoogleID, linkID LinkID, status string) {
 	if !fb.running {
 		return
 	}
@@ -181,7 +181,7 @@ func (opID OperationID) firebaseAssignLink(gid GoogleID, linkID LinkID) {
 		OpID:  opID,
 		ObjID: string(linkID),
 		Gid:   gid,
-		Msg:   "assigned",
+		Msg:   status,
 	})
 }
 

@@ -25,6 +25,7 @@ type Marker struct {
 	Order        int        `json:"order"`
 	Zone         Zone       `json:"zone"`
 	DeltaMinutes int        `json:"deltaminutes"`
+	Changed      bool       `json:"changed,omitempty"`
 }
 
 // insertMarkers adds a marker to the database
@@ -62,6 +63,11 @@ func (opID OperationID) updateMarker(m Marker) error {
 		Log.Error(err)
 		return err
 	}
+
+	if m.Changed && m.AssignedTo != "" { 
+		opID.firebaseAssignMarker(m.AssignedTo, m.ID, m.State)
+	}
+
 	return nil
 }
 
@@ -149,7 +155,7 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID) (string, error
 	}
 
 	if gid.String() != "" {
-		o.ID.firebaseAssignMarker(gid, markerID)
+		o.ID.firebaseAssignMarker(gid, markerID, "assigned")
 	}
 	return o.Touch()
 }
