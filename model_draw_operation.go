@@ -203,7 +203,7 @@ func drawOpUpdateWorker(o Operation) error {
 	}
 	defer func() {
 		Log.Debug("unlocking")
-		if _, err := db.Exec("SELECT RELEASE_LOCK(?), o.ID"); err != nil {
+		if _, err := db.Exec("SELECT RELEASE_LOCK(?)", o.ID); err != nil {
 			Log.Error(err)
 		}
 	}()
