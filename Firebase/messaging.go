@@ -106,6 +106,7 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		"markerID": fb.ObjID,
 		"msg":      fb.Msg,
 		"cmd":      fb.Cmd.String(),
+		"updateID": fb.UpdateID,
 	}
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
@@ -135,6 +136,7 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 		"markerID": fb.ObjID,
 		"msg":      fb.Msg,
 		"cmd":      fb.Cmd.String(),
+		"updateID": fb.UpdateID,
 	}
 	genericMulticast(ctx, c, data, tokens)
 	return nil
@@ -150,7 +152,7 @@ func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd)
 	data := map[string]string{
 		"opID":     string(fb.OpID),
 		"msg":      fb.Msg,
-		"updateID": fb.ObjID,
+		"updateID": fb.UpdateID,
 		"cmd":      fb.Cmd.String(),
 	}
 
@@ -175,10 +177,11 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 	}
 
 	data := map[string]string{
-		"opID":   string(fb.OpID),
-		"linkID": fb.ObjID,
-		"msg":    fb.Msg,
-		"cmd":    fb.Cmd.String(),
+		"opID":     string(fb.OpID),
+		"linkID":   fb.ObjID,
+		"msg":      fb.Msg,
+		"cmd":      fb.Cmd.String(),
+		"updateID": fb.UpdateID,
 	}
 	msg := messaging.Message{
 		Topic: string(fb.TeamID),
@@ -205,10 +208,11 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 	}
 
 	data := map[string]string{
-		"opID":   string(fb.OpID),
-		"linkID": fb.ObjID,
-		"msg":    fb.Msg,
-		"cmd":    fb.Cmd.String(),
+		"opID":     string(fb.OpID),
+		"linkID":   fb.ObjID,
+		"msg":      fb.Msg,
+		"cmd":      fb.Cmd.String(),
+		"updateID": fb.UpdateID,
 	}
 	genericMulticast(ctx, c, data, tokens)
 	return nil

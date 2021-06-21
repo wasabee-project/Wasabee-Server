@@ -75,7 +75,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 	}
 
 	if l.Changed && l.AssignedTo != "" {
-		opID.firebaseAssignLink(l.AssignedTo, l.ID, "assigned")
+		opID.firebaseAssignLink(l.AssignedTo, l.ID, "assigned", "")
 	}
 
 	return nil
@@ -142,10 +142,11 @@ func (o *Operation) AssignLink(linkID LinkID, gid GoogleID) (string, error) {
 		return "", nil
 	}
 
+	updateID, err := o.Touch()
 	if gid != "" {
-		o.ID.firebaseAssignLink(gid, linkID, "assigned")
+		o.ID.firebaseAssignLink(gid, linkID, "assigned", updateID)
 	}
-	return o.Touch()
+	return updateID, err
 }
 
 // Assign assigns a link to an agent -- use this one
@@ -161,10 +162,11 @@ func (l LinkID) Assign(o *Operation, gid GoogleID) (string, error) {
 		return "", err
 	}
 
+	updateID, err := o.Touch()
 	if gid != "" {
-		o.ID.firebaseAssignLink(gid, l, "assigned")
+		o.ID.firebaseAssignLink(gid, l, "assigned", updateID)
 	}
-	return o.Touch()
+	return updateID, err
 }
 
 // LinkDescription updates the description for a link
@@ -184,8 +186,9 @@ func (o *Operation) LinkCompleted(linkID LinkID, completed bool) (string, error)
 		Log.Error(err)
 		return "", err
 	}
-	o.firebaseLinkStatus(linkID, completed)
-	return o.Touch()
+	updateID, err := o.Touch()
+	o.firebaseLinkStatus(linkID, completed, updateID)
+	return updateID, err
 }
 
 // AssignedTo checks to see if a link is assigned to a particular agent -- this is backwards, use LinkID.AssignedTo

@@ -65,7 +65,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	}
 
 	if m.Changed && m.AssignedTo != "" {
-		opID.firebaseAssignMarker(m.AssignedTo, m.ID, m.State)
+		opID.firebaseAssignMarker(m.AssignedTo, m.ID, m.State, "")
 	}
 
 	return nil
@@ -154,10 +154,11 @@ func (o *Operation) AssignMarker(markerID MarkerID, gid GoogleID) (string, error
 		return "", err
 	}
 
+	updateID, err := o.Touch()
 	if gid.String() != "" {
-		o.ID.firebaseAssignMarker(gid, markerID, "assigned")
+		o.ID.firebaseAssignMarker(gid, markerID, "assigned", updateID)
 	}
-	return o.Touch()
+	return updateID, err
 }
 
 // GetMarker lookup and return a populated Marker from an id
@@ -258,8 +259,9 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) (string, error) {
 		Log.Error(err)
 		return "", err
 	}
-	o.firebaseMarkerStatus(m, "acknowledged")
-	return o.Touch()
+	updateID, err := o.Touch()
+	o.firebaseMarkerStatus(m, "acknowledged", updateID)
+	return updateID, err
 }
 
 // Complete marks a marker as completed
@@ -279,8 +281,9 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) (string, error) {
 		Log.Error(err)
 		return "", err
 	}
-	o.firebaseMarkerStatus(m, "completed")
-	return o.Touch()
+	updateID, err := o.Touch()
+	o.firebaseMarkerStatus(m, "completed", updateID)
+	return updateID, err
 }
 
 // Incomplete marks a marker as not-completed
@@ -300,8 +303,9 @@ func (m MarkerID) Incomplete(o Operation, gid GoogleID) (string, error) {
 		Log.Error(err)
 		return "", err
 	}
-	o.firebaseMarkerStatus(m, "assigned")
-	return o.Touch()
+	updateID, err := o.Touch()
+	o.firebaseMarkerStatus(m, "assigned", updateID)
+	return updateID, err
 }
 
 // Reject allows an agent to refuse to take a target
@@ -321,8 +325,9 @@ func (m MarkerID) Reject(o *Operation, gid GoogleID) (string, error) {
 		Log.Error(err)
 		return "", err
 	}
-	o.firebaseMarkerStatus(m, "pending")
-	return o.Touch()
+	updateID, err := o.Touch()
+	o.firebaseMarkerStatus(m, "pending", updateID)
+	return updateID, err
 }
 
 // MarkerOrder changes the order of the throws for an operation

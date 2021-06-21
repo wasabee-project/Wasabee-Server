@@ -41,12 +41,13 @@ func (cc FirebaseCommandCode) String() string {
 
 // FirebaseCmd is the struct passed to the Firebase module to take actions -- required params depend on the FBCC
 type FirebaseCmd struct {
-	Cmd    FirebaseCommandCode
-	TeamID TeamID
-	OpID   OperationID
-	ObjID  string // either LinkID, MarkerID ... XXX define ObjectID type?
-	Gid    GoogleID
-	Msg    string
+	Cmd      FirebaseCommandCode
+	TeamID   TeamID
+	OpID     OperationID
+	ObjID    string // either LinkID, MarkerID ... XXX define ObjectID type?
+	Gid      GoogleID
+	UpdateID string
+	Msg      string
 }
 
 // FirebaseInit creates the channel used to pass messages to the Firebase subsystem
@@ -136,22 +137,23 @@ func (teamID TeamID) FirebaseTarget(msg string) {
 }
 
 // notifiy the agent that they have a new assigned marker in a given op
-func (opID OperationID) firebaseAssignMarker(gid GoogleID, markerID MarkerID, status string) {
+func (opID OperationID) firebaseAssignMarker(gid GoogleID, markerID MarkerID, status string, updateID string) {
 	if !fb.running {
 		return
 	}
 
 	fbPush(FirebaseCmd{
-		Cmd:   FbccMarkerAssignmentChange,
-		OpID:  opID,
-		ObjID: string(markerID),
-		Gid:   gid,
-		Msg:   status,
+		Cmd:      FbccMarkerAssignmentChange,
+		OpID:     opID,
+		ObjID:    string(markerID),
+		Gid:      gid,
+		Msg:      status,
+		UpdateID: updateID,
 	})
 }
 
 // notify a team that a marker's status has changed
-func (o *Operation) firebaseMarkerStatus(markerID MarkerID, status string) {
+func (o *Operation) firebaseMarkerStatus(markerID MarkerID, status string, updateID string) {
 	if !fb.running {
 		return
 	}
@@ -161,31 +163,33 @@ func (o *Operation) firebaseMarkerStatus(markerID MarkerID, status string) {
 	}
 	for _, t := range o.Teams {
 		fbPush(FirebaseCmd{
-			Cmd:    FbccMarkerStatusChange,
-			TeamID: t.TeamID,
-			OpID:   o.ID,
-			ObjID:  string(markerID),
-			Msg:    status,
+			Cmd:      FbccMarkerStatusChange,
+			TeamID:   t.TeamID,
+			OpID:     o.ID,
+			ObjID:    string(markerID),
+			Msg:      status,
+			UpdateID: updateID,
 		})
 	}
 }
 
 // notifiy the agent that they have a new assigned marker in a given op
-func (opID OperationID) firebaseAssignLink(gid GoogleID, linkID LinkID, status string) {
+func (opID OperationID) firebaseAssignLink(gid GoogleID, linkID LinkID, status string, updateID string) {
 	if !fb.running {
 		return
 	}
 
 	fbPush(FirebaseCmd{
-		Cmd:   FbccLinkAssignmentChange,
-		OpID:  opID,
-		ObjID: string(linkID),
-		Gid:   gid,
-		Msg:   status,
+		Cmd:      FbccLinkAssignmentChange,
+		OpID:     opID,
+		ObjID:    string(linkID),
+		Gid:      gid,
+		Msg:      status,
+		UpdateID: updateID,
 	})
 }
 
-func (o *Operation) firebaseLinkStatus(linkID LinkID, completed bool) {
+func (o *Operation) firebaseLinkStatus(linkID LinkID, completed bool, updateID string) {
 	if !fb.running {
 		return
 	}
@@ -200,11 +204,12 @@ func (o *Operation) firebaseLinkStatus(linkID LinkID, completed bool) {
 	}
 	for _, t := range o.Teams {
 		fbPush(FirebaseCmd{
-			Cmd:    FbccLinkStatusChange,
-			TeamID: t.TeamID,
-			OpID:   o.ID,
-			ObjID:  string(linkID),
-			Msg:    msg,
+			Cmd:      FbccLinkStatusChange,
+			TeamID:   t.TeamID,
+			OpID:     o.ID,
+			ObjID:    string(linkID),
+			Msg:      msg,
+			UpdateID: updateID,
 		})
 	}
 }
@@ -219,11 +224,11 @@ func (o *Operation) firebaseMapChange(updateID string) {
 	}
 	for _, t := range o.Teams {
 		fbPush(FirebaseCmd{
-			Cmd:    FbccMapChange,
-			TeamID: t.TeamID,
-			OpID:   o.ID,
-			ObjID:  updateID,
-			Msg:    "changed",
+			Cmd:      FbccMapChange,
+			TeamID:   t.TeamID,
+			OpID:     o.ID,
+			Msg:      "changed",
+			UpdateID: updateID,
 		})
 	}
 	// Log.Debugw("sending mapchange via firebase", "subsystem", "Firebase", "resource", o.ID)

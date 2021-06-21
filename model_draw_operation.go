@@ -196,19 +196,16 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 }
 
 func drawOpUpdateWorker(o Operation) error {
-	Log.Debug("Locking tables")
 	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
 		Log.Error(err)
 		return err
 	}
 	defer func() {
-		Log.Debug("unlocking")
 		if _, err := db.Exec("SELECT RELEASE_LOCK(?)", o.ID); err != nil {
 			Log.Error(err)
 		}
 	}()
 
-	Log.Debug("Starting Transaction")
 	tx, err := db.Begin()
 	if err != nil {
 		Log.Error(err)
@@ -262,7 +259,6 @@ func drawOpUpdateWorker(o Operation) error {
 		return err
 	}
 
-	Log.Debug("Commiting Transaction")
 	if err := tx.Commit(); err != nil {
 		Log.Error(err)
 		return err
