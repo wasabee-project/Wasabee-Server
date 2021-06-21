@@ -2,6 +2,7 @@ package wasabee
 
 import (
 	// "fmt"
+	"database/sql"
 	"strconv"
 )
 
@@ -80,15 +81,26 @@ func defaultZones() []ZoneListElement {
 	return zones
 }
 
-func (o *Operation) insertZone(z ZoneListElement) error {
-	_, err := db.Exec("INSERT INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, color = ?", z.Zone, o.ID, z.Name, z.Color, z.Name, z.Color)
+func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
+	if tx == nil {
+		tx, _ = db.Begin()
+
+		defer func() {
+			err := tx.Rollback()
+			if err != nil && err != sql.ErrTxDone {
+				Log.Error(err)
+			}
+		}()
+	}
+
+	_, err := tx.Exec("INSERT INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, color = ?", z.Zone, o.ID, z.Name, z.Color, z.Name, z.Color)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
 	// don't be too smart, just delete and re-add the points
-	_, err = db.Exec("DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, z.Zone)
+	_, err = tx.Exec("DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, z.Zone)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -96,7 +108,7 @@ func (o *Operation) insertZone(z ZoneListElement) error {
 
 	for _, p := range z.Points {
 		// Log.Debug("inserting point", "pos", p.Position, "zone", z.Zone, "op", o.ID)
-		_, err := db.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, POINT(?, ?))", z.Zone, o.ID, p.Position, p.Lat, p.Lon)
+		_, err := tx.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, POINT(?, ?))", z.Zone, o.ID, p.Position, p.Lat, p.Lon)
 		if err != nil {
 			Log.Error(err)
 			return err

@@ -146,7 +146,7 @@ func drawOpInsertWorker(o Operation, gid GoogleID) error {
 		o.Zones = defaultZones()
 	}
 	for _, z := range o.Zones {
-		if err = o.insertZone(z); err != nil {
+		if err = o.insertZone(z, nil); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -196,38 +196,75 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 }
 
 func drawOpUpdateWorker(o Operation) error {
+	Log.Debug("Locking tables")
+	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer func() {
+		Log.Debug("unlocking")
+		if _, err := db.Exec("SELECT RELEASE_LOCK(?), o.ID"); err != nil {
+			Log.Error(err)
+		}
+	}()
+
+	Log.Debug("Starting Transaction")
+	tx, err := db.Begin()
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	defer func() {
+		err := tx.Rollback()
+		if err != nil && err != sql.ErrTxDone {
+			Log.Error(err)
+		}
+	}()
+
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
-		Log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
+		// Log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
 		reftime = time.Now()
 	}
 
-	_, err = db.Exec("UPDATE operation SET name = ?, color = ?, comment = ?, referencetime = ? WHERE ID = ?",
+	_, err = tx.Exec("UPDATE operation SET name = ?, color = ?, comment = ?, referencetime = ? WHERE ID = ?",
 		o.Name, o.Color, MakeNullString(o.Comment), reftime.Format("2006-01-02 15:04:05"), o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	portalMap, err := drawOpUpdatePortals(&o)
+	portalMap, err := drawOpUpdatePortals(&o, tx)
 	if err != nil {
+		Log.Error(err)
 		return err
 	}
 
-	agentMap, err := allOpAgents(o.Teams)
+	agentMap, err := allOpAgents(o.Teams, tx)
 	if err != nil {
+		Log.Error(err)
 		return err
 	}
 
-	if err := drawOpUpdateMarkers(&o, portalMap, agentMap); err != nil {
+	if err := drawOpUpdateMarkers(&o, portalMap, agentMap, tx); err != nil {
+		Log.Error(err)
 		return err
 	}
 
-	if err := drawOpUpdateLinks(&o, portalMap, agentMap); err != nil {
+	if err := drawOpUpdateLinks(&o, portalMap, agentMap, tx); err != nil {
+		Log.Error(err)
 		return err
 	}
 
-	if err := drawOpUpdateZones(&o); err != nil {
+	if err := drawOpUpdateZones(&o, tx); err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	Log.Debug("Commiting Transaction")
+	if err := tx.Commit(); err != nil {
+		Log.Error(err)
 		return err
 	}
 
@@ -235,10 +272,10 @@ func drawOpUpdateWorker(o Operation) error {
 	return nil
 }
 
-func drawOpUpdatePortals(o *Operation) (map[PortalID]Portal, error) {
+func drawOpUpdatePortals(o *Operation, tx *sql.Tx) (map[PortalID]Portal, error) {
 	// get the current portal list and stash in map
 	curPortals := make(map[PortalID]PortalID)
-	portalRows, err := db.Query("SELECT ID FROM portal WHERE OpID = ?", o.ID)
+	portalRows, err := tx.Query("SELECT ID FROM portal WHERE OpID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return nil, err
@@ -257,7 +294,7 @@ func drawOpUpdatePortals(o *Operation) (map[PortalID]Portal, error) {
 	portalMap := make(map[PortalID]Portal)
 	for _, p := range o.OpPortals {
 		portalMap[p.ID] = p
-		if err = o.ID.updatePortal(p); err != nil {
+		if err = o.ID.updatePortal(p, tx); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -265,8 +302,7 @@ func drawOpUpdatePortals(o *Operation) (map[PortalID]Portal, error) {
 	}
 	// clear portals that were not sent in this update
 	for k := range curPortals {
-		err := o.ID.deletePortal(k)
-		if err != nil {
+		if err := o.ID.deletePortal(k, tx); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -274,9 +310,9 @@ func drawOpUpdatePortals(o *Operation) (map[PortalID]Portal, error) {
 	return portalMap, nil
 }
 
-func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool) error {
+func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool, tx *sql.Tx) error {
 	curMarkers := make(map[MarkerID]MarkerID)
-	markerRows, err := db.Query("SELECT ID FROM marker WHERE OpID = ?", o.ID)
+	markerRows, err := tx.Query("SELECT ID FROM marker WHERE OpID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -300,10 +336,10 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 		}
 		_, ok = agentMap[GoogleID(m.AssignedTo)]
 		if !ok {
-			Log.Debugw("marker assigned to agent not on any current team", "marker", m.PortalID, "resource", o.ID)
+			// Log.Debugw("marker assigned to agent not on any current team", "marker", m.PortalID, "resource", o.ID)
 			m.AssignedTo = ""
 		}
-		if err = o.ID.updateMarker(m); err != nil {
+		if err = o.ID.updateMarker(m, tx); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -311,7 +347,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 	}
 	// remove all markers not sent in this update
 	for k := range curMarkers {
-		err = o.ID.deleteMarker(k)
+		err = o.ID.deleteMarker(k, tx)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -320,9 +356,9 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 	return nil
 }
 
-func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool) error {
+func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool, tx *sql.Tx) error {
 	curLinks := make(map[LinkID]LinkID)
-	linkRows, err := db.Query("SELECT ID FROM link WHERE OpID = ?", o.ID)
+	linkRows, err := tx.Query("SELECT ID FROM link WHERE OpID = ?", o.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -350,17 +386,17 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 		}
 		_, ok = agentMap[GoogleID(l.AssignedTo)]
 		if !ok {
-			Log.Debugw("link assigned to agent not on any current team", "link", l.ID, "resource", o.ID)
+			// Log.Debugw("link assigned to agent not on any current team", "link", l.ID, "resource", o.ID)
 			l.AssignedTo = ""
 		}
-		if err = o.ID.updateLink(l); err != nil {
+		if err = o.ID.updateLink(l, tx); err != nil {
 			Log.Error(err)
 			continue
 		}
 		delete(curLinks, l.ID)
 	}
 	for k := range curLinks {
-		err = o.ID.deleteLink(k)
+		err = o.ID.deleteLink(k, tx)
 		if err != nil {
 			Log.Error(err)
 			continue
@@ -369,14 +405,14 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 	return nil
 }
 
-func drawOpUpdateZones(o *Operation) error {
+func drawOpUpdateZones(o *Operation, tx *sql.Tx) error {
 	// pre 0.18 clients do not send zone info
 	if len(o.Zones) == 0 {
 		o.Zones = defaultZones()
 	}
 	// update and insert are the saem
 	for _, z := range o.Zones {
-		if err := o.insertZone(z); err != nil {
+		if err := o.insertZone(z, tx); err != nil {
 			Log.Error(err)
 			continue
 		}
@@ -594,19 +630,18 @@ func (opID OperationID) Rename(gid GoogleID, name string) error {
 	return nil
 }
 
-func allOpAgents(perms []OpPermission) (map[GoogleID]bool, error) {
+func allOpAgents(perms []OpPermission, tx *sql.Tx) (map[GoogleID]bool, error) {
 	agentMap := make(map[GoogleID]bool)
 
 	var gid GoogleID
 	for _, p := range perms {
-		agentRows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", p.TeamID)
+		agentRows, err := tx.Query("SELECT gid FROM agentteams WHERE teamID = ?", p.TeamID)
 		if err != nil {
 			Log.Error(err)
-			return agentMap, err
+			continue
 		}
 		for agentRows.Next() {
-			err := agentRows.Scan(&gid)
-			if err != nil {
+			if err := agentRows.Scan(&gid); err != nil {
 				Log.Error(err)
 				continue
 			}

@@ -47,7 +47,7 @@ func (opID OperationID) insertMarker(m Marker) error {
 	return nil
 }
 
-func (opID OperationID) updateMarker(m Marker) error {
+func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	if m.State == "" {
 		m.State = "pending"
 	}
@@ -56,7 +56,7 @@ func (opID OperationID) updateMarker(m Marker) error {
 		m.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ?, delta = ?",
+	_, err := tx.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ?, delta = ?",
 		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone, m.DeltaMinutes,
 		m.Type, m.PortalID, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Zone, m.Order, m.DeltaMinutes)
 	if err != nil {
@@ -64,15 +64,15 @@ func (opID OperationID) updateMarker(m Marker) error {
 		return err
 	}
 
-	if m.Changed && m.AssignedTo != "" { 
+	if m.Changed && m.AssignedTo != "" {
 		opID.firebaseAssignMarker(m.AssignedTo, m.ID, m.State)
 	}
 
 	return nil
 }
 
-func (opID OperationID) deleteMarker(mid MarkerID) error {
-	_, err := db.Exec("DELETE FROM marker WHERE opID = ? and ID = ?", opID, mid)
+func (opID OperationID) deleteMarker(mid MarkerID, tx *sql.Tx) error {
+	_, err := tx.Exec("DELETE FROM marker WHERE opID = ? and ID = ?", opID, mid)
 	if err != nil {
 		Log.Error(err)
 		return err

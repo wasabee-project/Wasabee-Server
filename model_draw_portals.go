@@ -29,8 +29,8 @@ func (opID OperationID) insertPortal(p Portal) error {
 	return nil
 }
 
-func (opID OperationID) updatePortal(p Portal) error {
-	_, err := db.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
+func (opID OperationID) updatePortal(p Portal, tx *sql.Tx) error {
+	_, err := tx.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
 		p.ID, opID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
 	if err != nil {
 		Log.Error(err)
@@ -39,8 +39,8 @@ func (opID OperationID) updatePortal(p Portal) error {
 	return nil
 }
 
-func (opID OperationID) deletePortal(p PortalID) error {
-	_, err := db.Exec("DELETE FROM portal WHERE ID = ? AND opID = ?", p, opID)
+func (opID OperationID) deletePortal(p PortalID, tx *sql.Tx) error {
+	_, err := tx.Exec("DELETE FROM portal WHERE ID = ? AND opID = ?", p, opID)
 	if err != nil {
 		Log.Error(err)
 		return err

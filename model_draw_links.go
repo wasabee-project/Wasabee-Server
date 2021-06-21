@@ -47,8 +47,8 @@ func (opID OperationID) insertLink(l Link) error {
 	return nil
 }
 
-func (opID OperationID) deleteLink(lid LinkID) error {
-	_, err := db.Exec("DELETE FROM link WHERE OpID = ? and ID = ?", opID, lid)
+func (opID OperationID) deleteLink(lid LinkID, tx *sql.Tx) error {
+	_, err := tx.Exec("DELETE FROM link WHERE OpID = ? and ID = ?", opID, lid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -56,7 +56,7 @@ func (opID OperationID) deleteLink(lid LinkID) error {
 	return nil
 }
 
-func (opID OperationID) updateLink(l Link) error {
+func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 	if l.To == l.From {
 		Log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
@@ -66,7 +66,7 @@ func (opID OperationID) updateLink(l Link) error {
 		l.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?, gid = ?, completed = ?, throworder = ?, delta = ?",
+	_, err := tx.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?, gid = ?, completed = ?, throworder = ?, delta = ?",
 		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone, l.DeltaMinutes,
 		l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone, MakeNullString(l.AssignedTo), l.Completed, l.ThrowOrder, l.DeltaMinutes)
 	if err != nil {
@@ -75,7 +75,7 @@ func (opID OperationID) updateLink(l Link) error {
 	}
 
 	if l.Changed && l.AssignedTo != "" {
-		opID.firebaseAssignLink(l.AssignedTo, l.ID, "assigned")  
+		opID.firebaseAssignLink(l.AssignedTo, l.ID, "assigned")
 	}
 
 	return nil
