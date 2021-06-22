@@ -81,7 +81,7 @@ func StartPubSub(config Configuration) error {
 	go listenForWasabeeCommands()
 
 	// send some heartbeats for testing
-	go heartbeats()
+	// go heartbeats()
 
 	// Receive blocks until the context is cancelled or an error occurs.
 	err = c.sub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
@@ -129,8 +129,9 @@ func listenForPubSubMessages() {
 				msg.Nack()
 			}
 		case "location":
+			wasabee.Log.Debugw("got pubsub location", "sender", msg.Attributes["Sender"])
 			if msg.Attributes["ll"] == "" {
-				wasabee.Log.Errorw("pubsub location lat/lng not set")
+				wasabee.Log.Error("pubsub location lat/lng not set")
 				msg.Ack()
 				break
 			}
@@ -154,6 +155,7 @@ func listenForPubSubMessages() {
 			}
 			msg.Ack()
 		case "inteldata":
+			wasabee.Log.Debugw("got pubsub inteldata", "sender", msg.Attributes["Sender"])
 			if msg.Attributes["Data"] == "" {
 				wasabee.Log.Errorw("pubsub inteldata not set")
 				msg.Ack()
@@ -174,6 +176,7 @@ func listenForPubSubMessages() {
 			}
 			msg.Ack()
 		case "agent":
+			wasabee.Log.Debugw("got pubsub agent", "sender", msg.Attributes["Sender"])
 			if c.responder {
 				// anyone on the responder subscription can Ack it
 				wasabee.Log.Errorw("agent response on the request topic", "subsystem", "PubSub", "responder", msg.Attributes["Sender"])
@@ -264,11 +267,10 @@ func location(gid, ll, sender string) {
 		c.responseTopic.Publish(ctx, &pubsub.Message{
 			Attributes: atts,
 		})
-	} else {
-		c.requestTopic.Publish(ctx, &pubsub.Message{
-			Attributes: atts,
-		})
 	}
+	c.requestTopic.Publish(ctx, &pubsub.Message{
+		Attributes: atts,
+	})
 }
 
 func inteldata(gid, data, sender string) {
@@ -290,11 +292,10 @@ func inteldata(gid, data, sender string) {
 		c.responseTopic.Publish(ctx, &pubsub.Message{
 			Attributes: atts,
 		})
-	} else {
-		c.requestTopic.Publish(ctx, &pubsub.Message{
-			Attributes: atts,
-		})
 	}
+	c.requestTopic.Publish(ctx, &pubsub.Message{
+		Attributes: atts,
+	})
 }
 
 func respond(g string, sender string) (bool, error) {
