@@ -255,7 +255,7 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	uid, err := markerID.Complete(op, gid)
+	uid, err := markerID.Complete(&op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -279,7 +279,7 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	var op wasabee.Operation
 	op.ID = wasabee.OperationID(vars["document"])
 	markerID := wasabee.MarkerID(vars["marker"])
-	uid, err := markerID.Incomplete(op, gid)
+	uid, err := markerID.Incomplete(&op, gid)
 	if err != nil {
 		wasabee.Log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

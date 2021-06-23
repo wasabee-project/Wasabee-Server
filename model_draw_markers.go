@@ -265,9 +265,9 @@ func (m MarkerID) Acknowledge(o *Operation, gid GoogleID) (string, error) {
 }
 
 // Complete marks a marker as completed
-func (m MarkerID) Complete(o Operation, gid GoogleID) (string, error) {
+func (m MarkerID) Complete(o *Operation, gid GoogleID) (string, error) {
 	write := o.WriteAccess(gid)
-	assignee, err := m.isAssignee(&o, gid)
+	assignee, err := m.isAssignee(o, gid)
 	if err != nil {
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return "", err
@@ -287,9 +287,9 @@ func (m MarkerID) Complete(o Operation, gid GoogleID) (string, error) {
 }
 
 // Incomplete marks a marker as not-completed
-func (m MarkerID) Incomplete(o Operation, gid GoogleID) (string, error) {
+func (m MarkerID) Incomplete(o *Operation, gid GoogleID) (string, error) {
 	write := o.WriteAccess(gid)
-	assignee, err := m.isAssignee(&o, gid)
+	assignee, err := m.isAssignee(o, gid)
 	if err != nil {
 		Log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "marker", m)
 		return "", err

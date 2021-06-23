@@ -69,14 +69,14 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	if err = drawOpInsertWorker(o, gid); err != nil {
+	if err = drawOpInsertWorker(&o, gid); err != nil {
 		Log.Error(err)
 		return err
 	}
 	return nil
 }
 
-func drawOpInsertWorker(o Operation, gid GoogleID) error {
+func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 	// convert from RFC1123 to SQL format
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
@@ -188,14 +188,14 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 		return "", err
 	}
 
-	if err := drawOpUpdateWorker(o); err != nil {
+	if err := drawOpUpdateWorker(&o); err != nil {
 		Log.Error(err)
 		return "", err
 	}
 	return o.Touch()
 }
 
-func drawOpUpdateWorker(o Operation) error {
+func drawOpUpdateWorker(o *Operation) error {
 	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
 		Log.Error(err)
 		return err
@@ -232,7 +232,7 @@ func drawOpUpdateWorker(o Operation) error {
 		return err
 	}
 
-	portalMap, err := drawOpUpdatePortals(&o, tx)
+	portalMap, err := drawOpUpdatePortals(o, tx)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -244,17 +244,17 @@ func drawOpUpdateWorker(o Operation) error {
 		return err
 	}
 
-	if err := drawOpUpdateMarkers(&o, portalMap, agentMap, tx); err != nil {
+	if err := drawOpUpdateMarkers(o, portalMap, agentMap, tx); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err := drawOpUpdateLinks(&o, portalMap, agentMap, tx); err != nil {
+	if err := drawOpUpdateLinks(o, portalMap, agentMap, tx); err != nil {
 		Log.Error(err)
 		return err
 	}
 
-	if err := drawOpUpdateZones(&o, tx); err != nil {
+	if err := drawOpUpdateZones(o, tx); err != nil {
 		Log.Error(err)
 		return err
 	}
