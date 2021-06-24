@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	// "strings"
+	"strings"
 	"sync"
 )
 
@@ -217,6 +217,15 @@ func (gid GoogleID) InitAgent() (bool, error) {
 		Log.Warnw(err.Error(), "GID", gid.String(), "name", name)
 		return false, err
 	}
+
+	if tmpName != "" && strings.HasPrefix(name, "UnverifiedAgent_") {
+		Log.Infow("updating agent name", "GID", gid.String(), "name", name, "new", tmpName)
+		if err := gid.SetAgentName(tmpName); err != nil {
+			Log.Warnw(err.Error(), "GID", gid.String(), "name", name, "new", tmpName)
+			return true, nil
+		}
+	}
+
 	return true, nil
 }
 

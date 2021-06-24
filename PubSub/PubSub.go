@@ -129,7 +129,6 @@ func listenForPubSubMessages() {
 				msg.Nack()
 			}
 		case "location":
-			wasabee.Log.Debugw("got pubsub location", "sender", msg.Attributes["Sender"])
 			if msg.Attributes["ll"] == "" {
 				wasabee.Log.Error("pubsub location lat/lng not set")
 				msg.Ack()
