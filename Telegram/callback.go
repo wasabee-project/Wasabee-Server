@@ -74,22 +74,30 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 
 	// data is in format class/action/id e.g. "team/deactivate/wibbly-wobbly-9988"
 	command := strings.SplitN(update.CallbackQuery.Data, "/", 3)
+	if len(command) == 0 {
+		err := fmt.Errorf("callback wthout command")
+		wasabee.Log.Error(err)
+		return msg, err
+	}
 	switch command[0] {
 	case "team":
 		_ = callbackTeam(command[1], command[2], gid, lang, &msg)
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Team Updated", ShowAlert: false},
 		)
+		if err != nil {
+			wasabee.Log.Error(err)
+			return msg, err
+		}
 		msg.ReplyMarkup = teamKeyboard(gid)
 	default:
 		resp, err = bot.AnswerCallbackQuery(
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Unknown Callback"},
 		)
-	}
-
-	if err != nil {
-		wasabee.Log.Error(err)
-		return msg, err
+		if err != nil {
+			wasabee.Log.Error(err)
+			return msg, err
+		}
 	}
 	if !resp.Ok {
 		wasabee.Log.Error(resp.Description)
