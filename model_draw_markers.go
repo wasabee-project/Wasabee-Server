@@ -25,7 +25,6 @@ type Marker struct {
 	Order        int        `json:"order"`
 	Zone         Zone       `json:"zone"`
 	DeltaMinutes int        `json:"deltaminutes"`
-	Changed      bool       `json:"changed,omitempty"`
 }
 
 // insertMarkers adds a marker to the database
@@ -56,6 +55,19 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		m.Zone = zonePrimary
 	}
 
+	assignmentChanged := false
+	if m.AssignedTo != "" {
+		var count uint8
+		err := tx.QueryRow("SELECT COUNT(*) FROM marker WHERE ID = ? AND opID = ? AND gid = ?", m.ID, opID, m.AssignedTo).Scan(&count)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		if count != 1 {
+			assignmentChanged = true
+		}
+	}
+
 	_, err := tx.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ?, delta = ?",
 		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone, m.DeltaMinutes,
 		m.Type, m.PortalID, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Zone, m.Order, m.DeltaMinutes)
@@ -64,7 +76,8 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		return err
 	}
 
-	if m.Changed && m.AssignedTo != "" {
+	if assignmentChanged {
+		Log.Debugw("marker assignment changed, sending FB", "marker", m.ID, "resource", opID, "GID", m.AssignedTo)
 		opID.firebaseAssignMarker(m.AssignedTo, m.ID, m.State, "")
 	}
 
