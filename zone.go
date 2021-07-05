@@ -118,7 +118,7 @@ func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
 	return nil
 }
 
-func (o *Operation) populateZones() error {
+func (o *Operation) populateZones(zones []Zone) error {
 	rows, err := db.Query("SELECT ID, name, color FROM zone WHERE opID = ? ORDER BY ID", o.ID)
 	if err != nil {
 		Log.Error(err)
@@ -130,6 +130,9 @@ func (o *Operation) populateZones() error {
 	for rows.Next() {
 		if err := rows.Scan(&tmpZone.Zone, &tmpZone.Name, &tmpZone.Color); err != nil {
 			Log.Error(err)
+			continue
+		}
+		if !tmpZone.Zone.inZones(zones) {
 			continue
 		}
 

@@ -61,6 +61,7 @@ func target(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) er
 			return err
 		}
 	}
+	wasabee.Log.Debugw("target", "subsystem", "Firebase", "msg", fb.Msg)
 	return nil
 }
 
@@ -118,6 +119,7 @@ func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fir
 		wasabee.Log.Errorw(err.Error(), "fbcmd", fb)
 		return err
 	}
+	wasabee.Log.Debugw("marker status", "subsystem", "Firebase", "msg", data)
 	return nil
 }
 
@@ -139,6 +141,7 @@ func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee
 		"updateID": fb.UpdateID,
 	}
 	genericMulticast(ctx, c, data, tokens)
+	wasabee.Log.Debugw("marker assignment", "subsystem", "Firebase", "msg", data)
 	return nil
 }
 
@@ -193,6 +196,7 @@ func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.Fireb
 		wasabee.Log.Errorw(err.Error(), "fbcmd", fb)
 		return err
 	}
+	wasabee.Log.Debugw("link status", "subsystem", "Firebase", "msg", data)
 	return nil
 }
 
@@ -215,6 +219,7 @@ func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.F
 		"updateID": fb.UpdateID,
 	}
 	genericMulticast(ctx, c, data, tokens)
+	wasabee.Log.Debugw("link assignment", "subsystem", "Firebase", "msg", data)
 	return nil
 }
 

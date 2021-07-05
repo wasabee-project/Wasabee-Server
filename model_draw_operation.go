@@ -555,7 +555,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		}
 	}
 
-	if err = o.populateZones(); err != nil {
+	if err = o.populateZones(zones); err != nil {
 		Log.Error(err)
 		return err
 	}
