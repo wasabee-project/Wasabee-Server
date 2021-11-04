@@ -531,39 +531,42 @@ func SearchAgentName(agent string) (GoogleID, error) {
 
 	// if it starts with an @ search tg
 	if agent[0] == '@' {
-		err := db.QueryRow("SELECT gid FROM telegram WHERE LOWER(telegramName) LIKE LOWER(?)", agent[1:]).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM telegram WHERE LOWER(telegramName) =  LOWER(?)", agent[1:]).Scan(&gid)
 		if err != nil && err != sql.ErrNoRows {
 			Log.Error(err)
 			return "", err
 		}
 		if gid != "" {
+			Log.Debugw("SearchAgentName", "search", agent, "Found GID from telegram", gid)
 			return gid, nil
 		}
 	}
 
 	// agent.name has a unique key
-	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(name) LIKE LOWER(?)", agent).Scan(&gid)
+	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(name) =  LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
 		Log.Error(err)
 		return "", err
 	}
 	if gid != "" { // found a match
+			Log.Debugw("SearchAgentName", "search", agent, "Found GID from internal name", gid)
 		return gid, nil
 	}
 
 	// Vname does NOT have a unique key
 	var count int
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(Vname) LIKE LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(Vname) =  LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		Log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(Vname) LIKE LOWER(?)", gid).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(Vname) =  LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			Log.Error(err)
 			return "", err
 		}
+			Log.Debugw("SearchAgentName", "search", agent, "Found GID from V", gid)
 		return gid, nil
 	}
 	if count > 1 {
@@ -572,36 +575,38 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// rocks does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(rocksname) LIKE LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(rocksname) =  LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		Log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(rocks) LIKE LOWER(?)", gid).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(rocksname) =  LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			Log.Error(err)
 			return "", err
 		}
+			Log.Debugw("SearchAgentName", "search", agent, "Found GID from rocks", gid)
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf("multiple rocks matches found, not using V results")
+		err := fmt.Errorf("multiple rocks matches found, not using rocks results")
 		Log.Error(err)
 	}
 
 	// intelname does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(intelname) LIKE LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(intelname) =  LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		Log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(intelname) LIKE LOWER(?)", gid).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(intelname) =  LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			Log.Error(err)
 			return "", err
 		}
+			Log.Debugw("SearchAgentName", "search", agent, "Found GID from intelname", gid)
 		return gid, nil
 	}
 	if count > 1 {
@@ -610,6 +615,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// no match found, return ""
+			Log.Debugw("SearchAgentName", "search", agent, "Found nothing", "")
 	return "", nil
 }
 
@@ -770,10 +776,10 @@ func ToGid(in string) (GoogleID, error) {
 	switch len(in) {
 	case 0:
 		err = fmt.Errorf("empty agent request")
-	case 40:
-		gid, err = EnlID(in).Gid()
+		return "", err
 	case 21:
 		gid = GoogleID(in)
+		return gid, nil
 	default:
 		gid, err = SearchAgentName(in) // telegram @names covered here
 	}
@@ -781,11 +787,11 @@ func ToGid(in string) (GoogleID, error) {
 		// if you change this message, also change http/team.go
 		err = fmt.Errorf("agent '%s' not registered with this wasabee server", in)
 		Log.Infow(err.Error(), "search", in, "message", err.Error())
-		return gid, err
+		return "", err
 	}
 	if err != nil {
 		Log.Errorw(err.Error(), "search", in, "message", err.Error())
-		return gid, err
+		return "", err
 	}
 	return gid, nil
 }
