@@ -320,7 +320,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 
 	// if it starts with an @ search tg
 	if agent[0] == '@' {
-		err := db.QueryRow("SELECT gid FROM telegram WHERE LOWER(telegramName) LIKE LOWER(?)", agent[1:]).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM telegram WHERE LOWER(telegramName) = LOWER(?)", agent[1:]).Scan(&gid)
 		if err != nil && err != sql.ErrNoRows {
 			log.Error(err)
 			return "", err
@@ -331,7 +331,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// agent.name has a unique key
-	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(name) LIKE LOWER(?)", agent).Scan(&gid)
+	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(name) = LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return "", err
@@ -342,13 +342,13 @@ func SearchAgentName(agent string) (GoogleID, error) {
 
 	// Vname does NOT have a unique key
 	var count int
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(Vname) LIKE LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(Vname) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(Vname) LIKE LOWER(?)", gid).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(Vname) = LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -361,13 +361,13 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// rocks does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(rocksname) LIKE LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(rocksname) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(rocks) LIKE LOWER(?)", gid).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(rocks) = LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -380,13 +380,13 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// intelname does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(intelname) LIKE LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(intelname) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(intelname) LIKE LOWER(?)", gid).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(intelname) = LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			log.Error(err)
 			return "", err
