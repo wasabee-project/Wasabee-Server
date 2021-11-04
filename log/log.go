@@ -1,4 +1,4 @@
-package wasabee
+package log
 
 import (
 	"context"
@@ -118,3 +118,52 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 
 	return fileCore, nil
 }
+
+func Debug(args ...interface{}) {
+	Log.Debug(args)
+}
+
+func Debugw(msg string, args ...interface{}) {
+	Log.Debugw(msg, args)
+}
+
+func Error(args ...interface{}) {
+	Log.Error(args)
+}
+
+func Errorw(msg string, args ...interface{}) {
+	Log.Errorw(msg, args)
+}
+
+func Fatal(args ...interface{}) {
+	Log.Fatal(args)
+}
+
+func Fatalw(msg string, args ...interface{}) {
+	Log.Fatalw(msg, args)
+}
+
+func Info(args ...interface{}) {
+	Log.Info(args)
+}
+
+func Infow(msg string, args ...interface{}) {
+	Log.Infow(msg, args)
+}
+
+func Panic(args ...interface{}) {
+	Log.Panic(args)
+}
+
+func Panicw(msg string, args ...interface{}) {
+	Log.Panicw(msg, args)
+}
+
+func Warn(args ...interface{}) {
+	Log.Warn(args)
+}
+
+func Warnw(msg string, args ...interface{}) {
+	Log.Warnw(msg, args)
+}
+

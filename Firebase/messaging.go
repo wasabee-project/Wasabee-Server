@@ -1,10 +1,11 @@
-package wasabeefirebase
+package wfb
 
 import (
 	"context"
 	"firebase.google.com/go/messaging"
 	"fmt"
-	"github.com/wasabee-project/Wasabee-Server"
+
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 // SendMessage is registered with Wasabee for sending messages

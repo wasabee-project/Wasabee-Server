@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
 var once sync.Once
@@ -20,7 +21,7 @@ var wasabeeHTTPSConfig struct {
 func NewRouter() *mux.Router {
 	// http://marcio.io/2015/07/singleton-pattern-in-go/
 	once.Do(func() {
-		Log.Debugw("startup", "router", "main HTTPS router")
+		log.Debugw("startup", "router", "main HTTPS router")
 		wasabeeHTTPSConfig.router = mux.NewRouter()
 	})
 	return wasabeeHTTPSConfig.router
@@ -28,7 +29,7 @@ func NewRouter() *mux.Router {
 
 // Subrouter creates a Gorilla subroute with a prefix
 func Subrouter(prefix string) *mux.Router {
-	Log.Debugw("startup", "router", prefix)
+	log.Debugw("startup", "router", prefix)
 	if wasabeeHTTPSConfig.router == nil {
 		NewRouter()
 	}

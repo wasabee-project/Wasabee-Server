@@ -6,7 +6,8 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
 func vTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -17,23 +18,23 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 	id := vars["teamID"]
 	if id == "" {
 		err := fmt.Errorf("V hook called with empty team ID")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	wasabee.Log.Infow("V requested team sync", "server", req.RemoteAddr, "team", id)
+	log.Infow("V requested team sync", "server", req.RemoteAddr, "team", id)
 
 	vteam, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	teams, err := wasabee.GetTeamsByVID(vteam)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -43,7 +44,7 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 	for _, teamID := range teams {
 		gid, err := teamID.Owner()
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			continue
 		}
 
@@ -51,19 +52,19 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 		if !ok {
 			key, err = gid.VAPIkey()
 			if err != nil {
-				wasabee.Log.Error(err)
+				log.Error(err)
 				continue
 			}
 			if key == "" {
-				wasabee.Log.Errorw("no VAPI key for team owner, skipping sync", "GID", gid, "teamID", teamID, "vteam", vteam)
+				log.Errorw("no VAPI key for team owner, skipping sync", "GID", gid, "teamID", teamID, "vteam", vteam)
 				continue
 			}
 			keys[gid] = key
 		}
 
-		err = teamID.VSync(key)
+		err = v.Sync(teamID, key)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -76,7 +77,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -86,32 +87,32 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !owns {
 		err := fmt.Errorf("attempt to pull V for a team owned by someone else")
-		wasabee.Log.Errorw(err.Error(), "GID", gid, "teamID", team)
+		log.Errorw(err.Error(), "GID", gid, "teamID", team)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	vkey, err := gid.VAPIkey()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if vkey == "" {
 		err := fmt.Errorf("V API key not configured")
-		wasabee.Log.Errorw(err.Error(), "GID", gid)
+		log.Errorw(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err := team.VSync(vkey); err != nil {
-		wasabee.Log.Error(err)
+	if err := v.Sync(team, vkey); err != nil {
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -123,7 +124,7 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -133,35 +134,35 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !owns {
 		err := fmt.Errorf("attempt to configure V for a team owned by someone else")
-		wasabee.Log.Errorw(err.Error(), "gid", gid, "teamID", team)
+		log.Errorw(err.Error(), "gid", gid, "teamID", team)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	vteam, err := strconv.ParseInt(req.FormValue("vteam"), 10, 64) // "0" to disable
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	r, err := strconv.ParseInt(req.FormValue("role"), 10, 8) // "0" for all roles
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	role := uint8(r)
 
-	wasabee.Log.Infow("linking team to V", "GID", gid, "teamID", team, "vteam", vteam, "role", role)
+	log.Infow("linking team to V", "GID", gid, "teamID", team, "vteam", vteam, "role", role)
 	if err := team.VConfigure(vteam, role); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -172,13 +173,13 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	key, err := gid.VAPIkey()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -189,14 +190,14 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	var agent wasabee.AgentData
 	err = gid.GetAgentData(&agent)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	data, err := gid.VTeams()
+	data, err := v.VTeams(gid, key)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -210,7 +211,7 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	default:
 		id, err := strconv.ParseInt(mode, 10, 64)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			return
 		}
 		for _, t := range data.Teams {
@@ -222,22 +223,22 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, t := range teamstomake {
-		wasabee.Log.Debugw("Creating Wasabee team for V team", "v team", t.id, "role", t.role)
+		log.Debugw("Creating Wasabee team for V team", "v team", t.id, "role", t.role)
 		teamID, err := gid.NewTeam(t.name)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 		err = teamID.VConfigure(t.id, t.role)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
-		err = teamID.VSync(key)
+		err = v.Sync(teamID, key)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -260,7 +261,7 @@ func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string
 	// for every team of which I am an admin
 	for _, t := range v.Teams {
 		if !t.Admin {
-			// wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
 			continue
 		}
 		roles := make(map[uint8]bool)
@@ -278,7 +279,7 @@ func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string
 				already := false
 				for _, adt := range teams {
 					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
-						// wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
 						already = true
 						break
 					}
@@ -308,7 +309,7 @@ func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key st
 	var m []vTeamToMake
 
 	if !t.Admin {
-		// wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+		// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
 		return m, nil
 	}
 	roles := make(map[uint8]bool)
@@ -328,7 +329,7 @@ func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key st
 				already := false
 				for _, adt := range teams {
 					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
-						// wasabee.Log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
 						already = true
 						break
 					}
@@ -353,7 +354,7 @@ func vProcessTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam) ([]vTeamToMake
 	var m []vTeamToMake
 	for _, t := range v.Teams {
 		if !t.Admin {
-			// wasabee.Log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
 			continue
 		}
 
@@ -361,7 +362,7 @@ func vProcessTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam) ([]vTeamToMake
 		already := false
 		for _, adt := range teams {
 			if adt.VTeam == t.TeamID && adt.VTeamRole == 0 {
-				// wasabee.Log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
+				// log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
 				already = true
 				break
 			}

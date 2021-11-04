@@ -1,4 +1,4 @@
-package wasabeefirebase
+package wfb
 
 import (
 	"context"
@@ -8,8 +8,9 @@ import (
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
-	"github.com/wasabee-project/Wasabee-Server"
 	"google.golang.org/api/option"
+
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 var mux sync.Mutex

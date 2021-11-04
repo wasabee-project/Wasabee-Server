@@ -3,6 +3,9 @@ package wasabee
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 var ps struct {
@@ -32,7 +35,7 @@ func PubSubInit() <-chan PSCommand {
 // PubSubClose shuts down the channel when done
 func PubSubClose() {
 	if ps.running {
-		Log.Infow("shutdown", "subsystem", "PubSub", "message", "shutting down PubSub")
+		log.Infow("shutdown", "subsystem", "PubSub", "message", "shutting down PubSub")
 		ps.running = false
 		close(ps.c)
 	}
@@ -58,12 +61,12 @@ func (gid GoogleID) PSLocation(lat, lon string) {
 
 	flat, err := strconv.ParseFloat(lat, 64)
 	if err != nil {
-		Log.Error(err)
+		log.Error(err)
 		flat = float64(0)
 	}
 	flon, err := strconv.ParseFloat(lon, 64)
 	if err != nil {
-		Log.Error(err)
+		log.Error(err)
 		flon = float64(0)
 	}
 	ll := fmt.Sprintf("%s,%s", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
