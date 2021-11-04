@@ -114,7 +114,7 @@ func listenForPubSubMessages() {
 				msg.Ack()
 				break
 			}
-			// wasabee.Log.Debugw("request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+			wasabee.Log.Debugw("request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 			ack, err := respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
 			if err != nil {
 				wasabee.Log.Warnw(err.Error(), "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
@@ -122,7 +122,7 @@ func listenForPubSubMessages() {
 				break
 			}
 			if ack {
-				// wasabee.Log.Debugw("ACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+				wasabee.Log.Debugw("ACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 				msg.Ack()
 			} else {
 				wasabee.Log.Warnw("NACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
@@ -183,7 +183,7 @@ func listenForPubSubMessages() {
 				break
 			}
 			// if msg.Attributes["RespondingTo"] != c.hostname { msg.Ack() break }
-			// wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"], "data", msg.Data)
+			wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"], "data", msg.Data)
 			// if msg.Attributes["Authoritative"] == "true" { wasabee.Log.Debug("Authoritative") }
 			var ad wasabee.AgentData
 			err := json.Unmarshal(msg.Data, &ad)
