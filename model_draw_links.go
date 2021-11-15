@@ -25,6 +25,7 @@ type Link struct {
 	DeltaMinutes int      `json:"deltaminutes"`
 	MuCaptured   int      `json:"mu"`
 	Changed      bool     `json:"changed,omitempty"`
+	DependsOn    []TaskID `json:"dependsOn"`
 }
 
 // insertLink adds a link to the database

@@ -74,11 +74,13 @@ type AdTeam struct {
 
 // AdOperation is a sub-struct of AgentData
 type AdOperation struct {
-	ID      OperationID
-	Name    string
-	IsOwner bool
-	Color   string
-	TeamID  TeamID
+	ID         OperationID
+	Name       string
+	IsOwner    bool
+	Color      string
+	TeamID     TeamID
+	Modified   string
+	LastEditID string
 }
 
 // AgentID is anything that can be converted to a GoogleID or a string
@@ -341,7 +343,7 @@ func (gid GoogleID) adTelegram(ad *AgentData) error {
 func (gid GoogleID) adOps(ad *AgentData) error {
 	seen := make(map[OperationID]bool)
 
-	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ? ORDER BY Name", gid)
+	rowOwned, err := db.Query("SELECT ID, Name, Color, modified, lasteditid FROM operation WHERE gid = ? ORDER BY Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -349,7 +351,7 @@ func (gid GoogleID) adOps(ad *AgentData) error {
 	defer rowOwned.Close()
 	for rowOwned.Next() {
 		var op AdOperation
-		err := rowOwned.Scan(&op.ID, &op.Name, &op.Color)
+		err := rowOwned.Scan(&op.ID, &op.Name, &op.Color, &op.Modified, &op.LastEditID)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -362,7 +364,7 @@ func (gid GoogleID) adOps(ad *AgentData) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID ORDER BY o.Name", gid)
+	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID, o.modified, o.lasteditid FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID ORDER BY o.Name", gid)
 	if err != nil {
 		Log.Error(err)
 		return err
@@ -370,7 +372,7 @@ func (gid GoogleID) adOps(ad *AgentData) error {
 	defer rowTeam.Close()
 	for rowTeam.Next() {
 		var op AdOperation
-		err := rowTeam.Scan(&op.ID, &op.Name, &op.Color, &op.TeamID)
+		err := rowTeam.Scan(&op.ID, &op.Name, &op.Color, &op.TeamID, &op.Modified, &op.LastEditID)
 		if err != nil {
 			Log.Error(err)
 			return err
@@ -549,7 +551,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return "", err
 	}
 	if gid != "" { // found a match
-			Log.Debugw("SearchAgentName", "search", agent, "Found GID from internal name", gid)
+		Log.Debugw("SearchAgentName", "search", agent, "Found GID from internal name", gid)
 		return gid, nil
 	}
 
@@ -566,7 +568,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 			Log.Error(err)
 			return "", err
 		}
-			Log.Debugw("SearchAgentName", "search", agent, "Found GID from V", gid)
+		Log.Debugw("SearchAgentName", "search", agent, "Found GID from V", gid)
 		return gid, nil
 	}
 	if count > 1 {
@@ -586,7 +588,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 			Log.Error(err)
 			return "", err
 		}
-			Log.Debugw("SearchAgentName", "search", agent, "Found GID from rocks", gid)
+		Log.Debugw("SearchAgentName", "search", agent, "Found GID from rocks", gid)
 		return gid, nil
 	}
 	if count > 1 {
@@ -606,7 +608,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 			Log.Error(err)
 			return "", err
 		}
-			Log.Debugw("SearchAgentName", "search", agent, "Found GID from intelname", gid)
+		Log.Debugw("SearchAgentName", "search", agent, "Found GID from intelname", gid)
 		return gid, nil
 	}
 	if count > 1 {
@@ -615,7 +617,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// no match found, return ""
-			Log.Debugw("SearchAgentName", "search", agent, "Found nothing", "")
+	Log.Debugw("SearchAgentName", "search", agent, "Found nothing", "")
 	return "", nil
 }
 

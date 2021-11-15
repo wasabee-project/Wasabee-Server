@@ -12,19 +12,33 @@ type MarkerID string
 // MarkerType will be an enum once we figure out the full list
 type MarkerType string
 
+// MarkerAttributeID wrapper to ensure type safety
+type MarkerAttributeID string
+
 // Marker is defined by the Wasabee IITC plugin.
 type Marker struct {
-	ID           MarkerID   `json:"ID"`
-	PortalID     PortalID   `json:"portalId"`
-	Type         MarkerType `json:"type"`
-	Comment      string     `json:"comment"`
-	AssignedTo   GoogleID   `json:"assignedTo"`
-	AssignedTeam TeamID     `json:"assignedTeam"`
-	CompletedID  GoogleID   `json:"completedID"`
-	State        string     `json:"state"`
-	Order        int        `json:"order"`
-	Zone         Zone       `json:"zone"`
-	DeltaMinutes int        `json:"deltaminutes"`
+	ID           MarkerID          `json:"ID"`
+	PortalID     PortalID          `json:"portalId"`
+	Type         MarkerType        `json:"type"`
+	Comment      string            `json:"comment"`
+	AssignedTo   GoogleID          `json:"assignedTo"`
+	AssignedTeam TeamID            `json:"assignedTeam"`
+	CompletedID  GoogleID          `json:"completedID"`
+	State        string            `json:"state"`
+	Order        int               `json:"order"`
+	Zone         Zone              `json:"zone"`
+	DeltaMinutes int               `json:"deltaminutes"`
+	Attributes   []MarkerAttribute `json:"attributes"`
+	DependsOn    []TaskID          `json:"dependsOn"`
+}
+
+// MarkerAttribute is used for the per-marker-type extended attributes
+type MarkerAttribute struct {
+	ID         MarkerAttributeID `json:"ID"`
+	AssignedTo GoogleID          `json:"assignedTo"`
+	// AssignedTeam TeamID `json:"assignedTeam"` -- perhaps...
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // insertMarkers adds a marker to the database
@@ -42,6 +56,26 @@ func (opID OperationID) insertMarker(m Marker) error {
 	if err != nil {
 		Log.Error(err)
 		return err
+	}
+
+	for _, ma := range m.Attributes {
+		Log.Debugw("marker attributes set", "attribute", ma)
+		_, err := db.Exec("INSERT INTO markerattributes (ID, opID, markerID, assignedTo, name, value) VALUES (?, ?, ?, ?, ?, ?)",
+			ma.ID, opID, m.ID, ma.AssignedTo, ma.Key, ma.Value)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
+
+	for _, d := range m.DependsOn {
+		Log.Debugw("marker depends set", "marker", m.ID, "depends on", d)
+		_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)",
+			opID, m.ID, d)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
 	}
 	return nil
 }
@@ -81,6 +115,35 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		opID.firebaseAssignMarker(m.AssignedTo, m.ID, m.State, "")
 	}
 
+	_, err = db.Exec("DELETE FROM markerattributes WHERE opID = ? AND markerID = ?", opID, m.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	for _, ma := range m.Attributes {
+		Log.Debugw("marker attributes set", "attribute", ma)
+		_, err := db.Exec("INSERT INTO markerattributes (ID, opID, markerID, assignedTo, name, value) VALUES (?, ?, ?, ?, ?, ?)",
+			ma.ID, opID, m.ID, ma.AssignedTo, ma.Key, ma.Value)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
+
+	_, err = db.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ?", opID, m.ID)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	for _, d := range m.DependsOn {
+		Log.Debugw("marker depends set", "marker", m.ID, "depends on", d)
+		_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)",
+			opID, m.ID, d)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -138,10 +201,71 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 		if !tmpMarker.Zone.inZones(zones) && tmpMarker.AssignedTo != gid {
 			continue
 		}
+
+		if tmpMarker.Attributes, err = tmpMarker.ID.populateAttributes(o.ID); err != nil {
+			Log.Error(err)
+		}
+
+		if tmpMarker.DependsOn, err = tmpMarker.ID.populateDepends(o.ID); err != nil {
+			Log.Error(err)
+		}
+
 		o.Markers = append(o.Markers, tmpMarker)
 	}
 
 	return nil
+}
+
+func (m MarkerID) populateAttributes(opID OperationID) ([]MarkerAttribute, error) {
+	var attrs []MarkerAttribute
+	var t MarkerAttribute
+	var gid sql.NullString
+
+	var err error
+	var rows *sql.Rows
+	rows, err = db.Query("SELECT ID, name, value, assignedTo FROM markerattributes WHERE markerID = ? AND  opID = ?", m, opID)
+	if err != nil {
+		Log.Error(err)
+		return attrs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&t.ID, &t.Key, &t.Value, &gid)
+		if err != nil {
+			Log.Error(err)
+			return attrs, err
+		}
+		if gid.Valid {
+			t.AssignedTo = GoogleID(gid.String)
+		} else {
+			t.AssignedTo = ""
+		}
+		attrs = append(attrs, t)
+	}
+	return attrs, nil
+}
+
+func (t MarkerID) populateDepends(opID OperationID) ([]TaskID, error) {
+	var deps []TaskID
+	var d TaskID
+
+	var err error
+	var rows *sql.Rows
+	rows, err = db.Query("SELECT dependsOn FROM depends WHERE taskID = ? AND opID = ?", t, opID)
+	if err != nil {
+		Log.Error(err)
+		return deps, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&d)
+		if err != nil {
+			Log.Error(err)
+			return deps, err
+		}
+		deps = append(deps, d)
+	}
+	return deps, nil
 }
 
 // String returns the string version of a PortalID
