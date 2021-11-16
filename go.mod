@@ -22,21 +22,21 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/jonstaryuk/gcloudzap v0.1.1
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lestrrat-go/jwx v1.2.9
+	github.com/lestrrat-go/jwx v1.2.11
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/unrolled/logger v0.0.0-20201216141554-31a3694fe979
 	github.com/urfave/cli v1.22.5
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.1
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20211101193420-4a448f8816b3 // indirect
-	golang.org/x/oauth2 v0.0.0-20211028175245-ba495a64dcb5
-	golang.org/x/sys v0.0.0-20211103235746-7861aae1554b // indirect
+	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
+	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
+	golang.org/x/sys v0.0.0-20211113001501-0c823b97ae02 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 	golang.org/x/tools v0.1.6 // indirect
 	google.golang.org/api v0.60.0
-	google.golang.org/genproto v0.0.0-20211102202547-e9cf271f7f2c // indirect
+	google.golang.org/genproto v0.0.0-20211115160612-a5da7257a6f7 // indirect
 	google.golang.org/grpc v1.42.0 // indirect
 	googlemaps.github.io/maps v1.3.2
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
