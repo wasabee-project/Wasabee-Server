@@ -7,7 +7,9 @@ import (
 	"syscall"
 
 	"github.com/urfave/cli"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/background"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +32,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "wasabee-reaper"
-	app.Version = "0.3.0"
+	app.Version = "1.0.0"
 	app.Usage = "WASABI Background Process"
 	app.Authors = []cli.Author{
 		{
@@ -55,7 +57,7 @@ func run(c *cli.Context) error {
 		return nil
 	}
 
-	logconf := wasabee.LogConfiguration{
+	logconf := log.LogConfiguration{
 		Console:      true,
 		ConsoleLevel: zap.InfoLevel,
 		FilePath:     c.String("log"),
@@ -63,12 +65,12 @@ func run(c *cli.Context) error {
 	if c.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	wasabee.SetupLogging(logconf)
+	log.SetupLogging(logconf)
 
 	// Connect to database
-	err := wasabee.Connect(c.String("database"))
+	err := model.Connect(c.String("database"))
 	if err != nil {
-		wasabee.Log.Errorf("Error connecting to database: %s", err)
+		log.Errorw("Error connecting to database", "error",  err)
 		return err
 	}
 
@@ -77,9 +79,9 @@ func run(c *cli.Context) error {
 
 	// this will loop until an OS signal is sent
 	// Location cleanup, waypoint expiration, etc
-	wasabee.BackgroundTasks(sigch)
+	background.BackgroundTasks(sigch)
 
-	wasabee.Disconnect()
+	model.Disconnect()
 
 	return nil
 }
