@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 	"io/ioutil"
 	"net/http"
 	// "net/http/httputil"
@@ -21,7 +22,7 @@ var scannerMux sync.Mutex
 
 func setupRouter() *mux.Router {
 	// Main Router
-	router := wasabee.NewRouter()
+	router := NewRouter()
 
 	// apply to all
 	router.Use(headersMW)
@@ -53,7 +54,7 @@ func setupRouter() *mux.Router {
 	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
 
 	// /api/v1/... route
-	api := wasabee.Subrouter(apipath)
+	api := Subrouter(apipath)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	setupAuthRoutes(api)
 	api.Use(authMW)
@@ -62,7 +63,7 @@ func setupRouter() *mux.Router {
 	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
 
 	// /me route
-	meRouter := wasabee.Subrouter(me)
+	meRouter := Subrouter(me)
 	meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	meRouter.HandleFunc("", meShowRoute).Methods("GET", "POST", "HEAD")
 	meRouter.Use(authMW)
@@ -71,14 +72,14 @@ func setupRouter() *mux.Router {
 	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
 	// /rocks route -- why a subrouter? for JSON error messages -- no longer necessary
-	rocks := wasabee.Subrouter("/rocks")
+	rocks := Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
-	static := wasabee.Subrouter("/static")
+	static := Subrouter("/static")
 	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
 	// static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
@@ -217,7 +218,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	err := templateExecute(res, req, "index", nil)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -226,34 +227,34 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 func privacyRoute(res http.ResponseWriter, req *http.Request) {
 	err := templateExecute(res, req, "privacy", nil)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 // this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
-func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
+/* func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	var err error
 	config.TemplateSet, err = wasabee.TemplateConfig(config.FrontendPath) // XXX KLUDGE FOR NOW -- this does not update the other protocols
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprintf(res, "Templates reloaded")
-}
+} */
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
-	// wasabee.Log.Debugf("404: %s", req.URL)
+	// log.Debugf("404: %s", req.URL)
 	http.Error(res, "404: no light here.", http.StatusNotFound)
 }
 
 // called when a resource/endpoint is not found
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 	err := fmt.Errorf("404 not found")
-	// wasabee.Log.Debugw(err.Error(), "URL", req.URL)
+	// log.Debugw(err.Error(), "URL", req.URL)
 	incrementScanner(req)
 	http.Error(res, jsonError(err), http.StatusNotFound)
 }
@@ -285,13 +286,13 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	content, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return
 	}
 
 	var m googleData
 	if err = json.Unmarshal(content, &m); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -300,7 +301,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Error("Cookie error: ", err)
+		log.Error("Cookie error: ", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
@@ -310,7 +311,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		}
 		// := creates a new err, not overwriting
 		if err := ses.Save(req, res); err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -320,19 +321,19 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
 	if !authorized {
-		wasabee.Log.Errorw("smurf detected", "GID", m.Gid)
+		log.Errorw("smurf detected", "GID", m.Gid)
 		http.Error(res, "Internal Error", http.StatusForbidden)
 		return
 	}
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = m.Gid.UpdatePicture(m.Pic)
 	if err != nil {
-		wasabee.Log.Info(err)
+		log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -350,7 +351,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	_ = ses.Save(req, res)
 	name, err := m.Gid.IngressName()
 	if err != nil {
-		wasabee.Log.Errorw("no name at end of login?", "GID", m.Gid)
+		log.Errorw("no name at end of login?", "GID", m.Gid)
 	}
 	m.Gid.FirebaseAgentLogin()
 
@@ -358,7 +359,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
 	location := fmt.Sprintf("%s?r=%s", me, h)
-	wasabee.Log.Infow("WebUI login", "GID", m.Gid, "name", name, "message", name+" WebUI login")
+	log.Infow("WebUI login", "GID", m.Gid, "name", name, "message", name+" WebUI login")
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		if rr[:len(me)] == me || rr[:len(login)] == login {
@@ -373,7 +374,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 
 // the secret value exchanged / verified each request
 // not really a nonce, but it started life as one
-func calculateNonce(gid wasabee.GoogleID) (string, string) {
+func calculateNonce(gid model.GoogleID) (string, string) {
 	t := time.Now()
 	y := t.Add(0 - 24*time.Hour)
 	now := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())  // t.Round(time.Hour).String()
@@ -412,7 +413,7 @@ func getOauthUserInfo(accessToken string) ([]byte, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return nil, err
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
@@ -421,13 +422,13 @@ func getOauthUserInfo(accessToken string) ([]byte, error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return nil, err
 	}
 	return body, nil
@@ -435,20 +436,19 @@ func getOauthUserInfo(accessToken string) ([]byte, error) {
 
 // read the gid from the session cookie and return it
 // this is the primary way to ensure a agent is authenticated
-func getAgentID(req *http.Request) (wasabee.GoogleID, error) {
+func getAgentID(req *http.Request) (model.GoogleID, error) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		return "", err
 	}
 
-	// XXX I think this is impossible to trigger now
 	if ses.Values["id"] == nil {
 		err := errors.New("getAgentID called for unauthenticated agent")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return "", err
 	}
 
-	var agentID = wasabee.GoogleID(ses.Values["id"].(string))
+	var agentID = model.GoogleID(ses.Values["id"].(string))
 	return agentID, nil
 }
 
@@ -474,25 +474,25 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid aptok send (needs to be application/json)")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		wasabee.Log.Warn(err)
+		log.Warn(err)
 		return
 	}
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON in aptok route")
-		wasabee.Log.Warn(err)
+		log.Warn(err)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 	jRaw := json.RawMessage(jBlob)
 	if err = json.Unmarshal(jRaw, &t); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -500,21 +500,21 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	contents, err := getOauthUserInfo(t.AccessToken)
 	if err != nil {
 		err = fmt.Errorf("aptok failed getting agent info from Google")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if err = json.Unmarshal(contents, &m); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// yes, we've seen this with a bad accessToken
 	if m.Gid == "" {
-		wasabee.Log.Errorw("bad aptok", "from client", t, "from google", m)
+		log.Errorw("bad aptok", "from client", t, "from google", m)
 		err = fmt.Errorf("no GoogleID set")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -523,7 +523,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Errorw("aptok cookie error", "error", err.Error())
+		log.Errorw("aptok cookie error", "error", err.Error())
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
@@ -540,12 +540,12 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
 	if !authorized {
 		err = fmt.Errorf("access denied: %s", err.Error())
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -561,30 +561,30 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = ses.Save(req, res)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	name, err := m.Gid.IngressName()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 	}
 
 	var ud wasabee.AgentData
 	if err = m.Gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	ud.QueryToken = formValidationToken(req)
 	data, err := json.Marshal(ud)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	wasabee.Log.Infow("iitc/app login",
+	log.Infow("iitc/app login",
 		"GID", m.Gid,
 		"name", name,
 		"message", name+" login",
@@ -605,7 +605,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	if !contentTypeIs(req, "multipart/form-data") {
 		err := fmt.Errorf("invalid content-type (needs to be multipart/form-data)")
-		wasabee.Log.Warn(err)
+		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -613,7 +613,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	token := wasabee.OneTimeToken(req.FormValue("token"))
 	if token == "" {
 		err := fmt.Errorf("token not set")
-		wasabee.Log.Warn(err)
+		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -622,7 +622,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		incrementScanner(req)
 		err := fmt.Errorf("invalid one-time token")
-		wasabee.Log.Warn(err)
+		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -631,7 +631,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	ses, err := config.store.Get(req, config.sessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Errorf("Cookie error: %s", err)
+		log.Errorf("Cookie error: %s", err)
 		ses = sessions.NewSession(config.store, config.sessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
@@ -652,7 +652,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -668,30 +668,30 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = ses.Save(req, res)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	name, err := gid.IngressName()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 	}
 
 	var ud wasabee.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	ud.QueryToken = formValidationToken(req)
 	data, err := json.Marshal(ud)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	wasabee.Log.Infow("oneTimeToken login",
+	log.Infow("oneTimeToken login",
 		"GID", gid,
 		"name", name,
 		"message", name+" oneTimeToken login",

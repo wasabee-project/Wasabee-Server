@@ -17,22 +17,22 @@ type KeyOnHand struct {
 }
 
 // insertKey adds a user keycount to the database
-func (o *Operation) insertKey(k KeyOnHand) (string, error) {
+func (o *Operation) insertKey(k KeyOnHand) error {
 	details, err := o.PortalDetails(k.ID, k.Gid)
 	if err != nil {
 		log.Error(err.Error())
-		return "", err
+		return err
 	}
 	if details.Name == "" {
 		log.Infow("attempt to assign key count to portal not in op", "GID", k.Gid, "resource", o.ID, "portal", k.ID)
-		return "", nil
+		return nil
 	}
 
 	if k.Onhand == 0 {
 		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? and gid = ?", o.ID, k.ID, k.Gid); err != nil {
 			log.Info(err)
 			err := fmt.Errorf("unable to remove key count for portal")
-			return "", err
+			return err
 		}
 	} else {
 		_, err = db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?, capsule = ?",
@@ -40,14 +40,14 @@ func (o *Operation) insertKey(k KeyOnHand) (string, error) {
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
 			err := fmt.Errorf("unable to record keys, ensure the op on the server is up-to-date")
-			return "", err
+			return err
 		}
 		if err != nil {
 			log.Error(err)
-			return "", err
+			return err
 		}
 	}
-	return o.Touch()
+	return nil
 }
 
 // PopulateKeys fills in the Keys on hand list for the Operation. No authorization takes place.
@@ -108,7 +108,7 @@ func (o *Operation) populateMyKeys(gid GoogleID) error {
 }
 
 // KeyOnHand updates a user's key-count for linking
-func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, capsule string) (string, error) {
+func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, capsule string) error {
 	k := KeyOnHand{
 		ID:      portalID,
 		Gid:     gid,

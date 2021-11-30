@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 func templateExecute(name, lang string, data interface{}) (string, error) {

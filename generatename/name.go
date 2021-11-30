@@ -3,7 +3,6 @@ package generatename
 import (
 	"crypto/rand"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/big"
 	"strings"
@@ -12,20 +11,15 @@ import (
 )
 
 var words = []string{}
-var characters = strings.Split("abcdefghijklmnopqrstuvwxyz0123456789", "")
+var characters = strings.Split("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", "")
 
-func randomWord(array []string, try int) string {
-	if try > 10 {
-		log.Fatalw("crypto/rand failed 10 times, giving up")
-		return ""
-	}
-
-	i, err := rand.Int(rand.Reader, big.NewInt(int64(len(array))))
+func randomWord() string {
+	i, err := rand.Int(rand.Reader, big.NewInt(int64(len(words))))
 	if err != nil {
 		log.Error(err)
-		return randomWord(array, try+1)
+		return ""
 	}
-	return array[i.Int64()]
+	return words[i.Int64()]
 }
 
 // GenerateID generates a random ASCII-safe string of specified length
@@ -60,22 +54,6 @@ func LoadWordsFile(filename string) error {
 	return nil
 }
 
-// LoadWordsStream reads the words file from a stream such as Google Cloud Storage
-func LoadWordsStream(r io.Reader) error {
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	err = loadWords(content)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
-}
-
 func loadWords(content []byte) error {
 	source := strings.Split(string(content), "\n")
 	words = make([]string, 0)
@@ -94,8 +72,8 @@ func loadWords(content []byte) error {
 
 // GenerateName generates a slug in the format "cornflake-peddling-bp0q".
 func GenerateName() string {
-	first := randomWord(words, 0)
-	second := randomWord(words, 0)
+	first := randomWord()
+	second := randomWord()
 	third := GenerateID(5)
 
 	return fmt.Sprintf("%s-%s-%s", first, second, third)

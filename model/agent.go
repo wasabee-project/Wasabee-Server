@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
 // GoogleID is the primary location for interfacing with the agent type
 type GoogleID string
 
-// AgentData is the complete agent struct, used for the /me page.
-type AgentData struct {
+// Agent is the complete agent struct, used for the /me page.
+type Agent struct {
 	GoogleID      GoogleID     `json:"GoogleID"`
 	IngressName   string       `json:"name"`
 	VName         string       `json:"vname"`
@@ -39,7 +40,7 @@ type AgentData struct {
 	VAPIkey      string `json:"vapi"`
 }
 
-// AdTeam is a sub-struct of AgentData
+// AdTeam is a sub-struct of Agent
 type AdTeam struct {
 	ID            TeamID
 	Name          string
@@ -54,7 +55,7 @@ type AdTeam struct {
 	VTeamRole     uint8
 }
 
-// AdOperation is a sub-struct of AgentData
+// AdOperation is a sub-struct of Agent
 type AdOperation struct {
 	ID      OperationID
 	Name    string
@@ -74,20 +75,23 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 	return gid, nil
 }
 
-// GetAgentData populates a AgentData struct based on the gid
-func (gid GoogleID) GetAgentData(ad *AgentData) error {
-	ad.GoogleID = gid
+// GetAgent populates an Agent struct based on the gid
+func (gid GoogleID) GetAgent() (Agent, error) {
+	var a Agent
+	a.GoogleID = gid
 	var vid, pic, vapi sql.NullString
 	var ifac IntelFaction
+
+	ad := &a
 
 	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
-		return err
+		return a, err
 	}
 	if err != nil {
 		log.Error(err)
-		return err
+		return a, err
 	}
 
 	if vid.Valid {
@@ -98,16 +102,16 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 		ad.ProfileImage = pic.String
 	}
 
-	if err = gid.adTeams(ad); err != nil {
-		return err
+	if err = adTeams(ad); err != nil {
+		return a, err
 	}
 
-	if err = gid.adTelegram(ad); err != nil {
-		return err
+	if err = adTelegram(ad); err != nil {
+		return a, err
 	}
 
-	if err = gid.adOps(ad); err != nil {
-		return err
+	if err = adOps(ad); err != nil {
+		return a, err
 	}
 
 	ad.IntelFaction = ifac.String()
@@ -121,11 +125,11 @@ func (gid GoogleID) GetAgentData(ad *AgentData) error {
 		ad.VAPIkey = vapi.String[0:len] + "..." // never show the full thing
 	}
 
-	return nil
+	return a, nil
 }
 
-func (gid GoogleID) adTeams(ad *AgentData) error {
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state, x.shareWD, x.loadWD, t.rockscomm, t.rockskey, t.owner, t.joinLinkToken, t.vteam, t.vrole FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", gid)
+func adTeams(ad *Agent) error {
+	rows, err := db.Query("SELECT t.teamID, t.name, x.state, x.shareWD, x.loadWD, t.rockscomm, t.rockskey, t.owner, t.joinLinkToken, t.vteam, t.vrole FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -145,7 +149,7 @@ func (gid GoogleID) adTeams(ad *AgentData) error {
 		} else {
 			adteam.RocksComm = ""
 		}
-		if rk.Valid && adteam.Owner == gid {
+		if rk.Valid && adteam.Owner == ad.GoogleID {
 			// only share RocksKey with owner
 			adteam.RocksKey = rk.String
 		} else {
@@ -161,9 +165,9 @@ func (gid GoogleID) adTeams(ad *AgentData) error {
 	return nil
 }
 
-func (gid GoogleID) adTelegram(ad *AgentData) error {
+func adTelegram(ad *Agent) error {
 	var authtoken sql.NullString
-	err := db.QueryRow("SELECT telegramID, verified, authtoken FROM telegram WHERE gid = ?", gid).Scan(&ad.Telegram.ID, &ad.Telegram.Verified, &authtoken)
+	err := db.QueryRow("SELECT telegramID, verified, authtoken FROM telegram WHERE gid = ?", ad.GoogleID).Scan(&ad.Telegram.ID, &ad.Telegram.Verified, &authtoken)
 	if err != nil && err == sql.ErrNoRows {
 		ad.Telegram.ID = 0
 		ad.Telegram.Verified = false
@@ -178,10 +182,10 @@ func (gid GoogleID) adTelegram(ad *AgentData) error {
 	return nil
 }
 
-func (gid GoogleID) adOps(ad *AgentData) error {
+func adOps(ad *Agent) error {
 	seen := make(map[OperationID]bool)
 
-	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ? ORDER BY Name", gid)
+	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ? ORDER BY Name", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -202,7 +206,7 @@ func (gid GoogleID) adOps(ad *AgentData) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID ORDER BY o.Name", gid)
+	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID ORDER BY o.Name", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -225,7 +229,7 @@ func (gid GoogleID) adOps(ad *AgentData) error {
 }
 
 // adAssignments lists operations in which one has assignments
-/* func (gid GoogleID) adAssignments(ad *AgentData) error {
+/* func (gid GoogleID) adAssignments(ad *Agent) error {
 	assignMap := make(map[OperationID]string)
 
 	var opID OperationID
@@ -296,7 +300,10 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 		return err
 	}
 
-	gid.firebaseAgentLocation()
+	// announce to teams with which this agent is sharing location information
+	for teamID := range gid.teamListEnabled() {
+		wfb.AgentLocation(wfb.TeamID(teamID))
+	}
 	return nil
 }
 
@@ -554,7 +561,7 @@ func ToGid(in string) (GoogleID, error) {
 
 // Save is called by InitAgent and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
-func (ad AgentData) Save() error {
+func (ad Agent) Save() error {
 	_, err := db.Exec("INSERT INTO agent (gid, name, vname, rocksname, level, OneTimeToken, VVerified, VBlacklisted, Vid, RocksVerified, RAID)  VALUES (?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name = ?, vname = ?, rocksname = ? , level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
 		ad.GoogleID, ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.OneTimeToken, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
 		ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID, ad.RISC)
@@ -597,8 +604,6 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 
 	ifac := FactionFromString(faction)
 
-	log.Debugw("updating inteldata in db", "gid", gid, "name", name, "faction", ifac)
-
 	_, err := db.Exec("UPDATE agent SET intelname = ?, intelfaction = ? WHERE GID = ?", name, ifac, gid)
 	if err != nil {
 		log.Error(err)
@@ -607,7 +612,6 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 
 	if ifac == factionRes {
 		log.Errorw("self identified as RES", "sent name", name, "GID", gid)
-		// auth.Logout(gid, "self identified as RES")
 	}
 	return nil
 }
@@ -628,7 +632,7 @@ func (gid GoogleID) IntelSmurf() bool {
 }
 
 // VAPIkey (gid GoogleID) loads an agents's V API key (this should be unusual); "" is "not set"
-func (gid GoogleID) VAPIkey() (string, error) {
+func (gid GoogleID) GetVAPIkey() (string, error) {
 	var v sql.NullString
 
 	err := db.QueryRow("SELECT VAPIkey FROM agentextras WHERE GID = ?", gid).Scan(&v)

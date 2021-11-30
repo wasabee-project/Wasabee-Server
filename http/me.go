@@ -11,21 +11,21 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
 // this can probably be simplified now
 func meShowRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	var ud wasabee.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -41,7 +41,7 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 
 	// templateExecute runs the "me" template and outputs directly to the res
 	if err = templateExecute(res, req, "me", ud); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -81,14 +81,14 @@ func meShowRouteJSON(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	var ud wasabee.AgentData
 	if err = gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -102,7 +102,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -112,7 +112,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	state := vars["state"]
 
 	if err = gid.SetTeamState(team, state); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -125,7 +125,7 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -135,7 +135,7 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 	state := vars["state"]
 
 	if err = gid.SetWDShare(team, state); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -146,7 +146,7 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -156,7 +156,7 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 	state := vars["state"]
 
 	if err = gid.SetWDLoad(team, state); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -167,7 +167,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -176,7 +176,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := wasabee.TeamID(vars["team"])
 
 	if err = team.RemoveAgent(gid); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -188,7 +188,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -199,7 +199,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 
 	// do the work
 	if err = gid.AgentLocation(lat, lon); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -214,7 +214,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -223,15 +223,15 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	qtTest := formValidationToken(req)
 	if qt != qtTest {
 		err := fmt.Errorf("invalid form validation token")
-		wasabee.Log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
+		log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// do the work
-	wasabee.Log.Errorw("agent requested delete", "GID", gid.String())
+	log.Errorw("agent requested delete", "GID", gid.String())
 	if err = gid.Delete(); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -244,7 +244,7 @@ func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -264,7 +264,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -275,7 +275,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Connection", "close")
 
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		_ = ses.Save(req, res)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -298,14 +298,14 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	t, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -314,13 +314,13 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 
 	if token == "" {
 		err := fmt.Errorf("token empty")
-		wasabee.Log.Warn(err)
+		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	err = gid.FirebaseInsertToken(token)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -331,7 +331,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 func meFirebaseGenTokenRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		res.Header().Add("Content-Type", jsonType)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -339,7 +339,7 @@ func meFirebaseGenTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	token, err := gid.FirebaseCustomToken()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		res.Header().Add("Content-Type", jsonType)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -353,7 +353,7 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -366,7 +366,7 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	qtTest := formValidationToken(req)
 	if qt != qtTest {
 		err := fmt.Errorf("invalid form validation token")
-		wasabee.Log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
+		log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -380,16 +380,16 @@ func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	v := req.FormValue("v")
 
-	wasabee.Log.Infow("agent submitted V API token", "GID", gid.String())
+	log.Infow("agent submitted V API token", "GID", gid.String())
 	if err = gid.SetVAPIkey(v); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

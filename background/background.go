@@ -10,8 +10,8 @@ import (
 
 // BackgroundTasks runs the database cleaning tasks such as expiring stale user locations
 func BackgroundTasks(c chan os.Signal) {
-	Log.Infow("startup", "message", "running initial background tasks")
-	locationClean()
+	log.Infow("startup", "message", "running initial background tasks")
+	model.LocationClean()
 
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
@@ -19,7 +19,7 @@ func BackgroundTasks(c chan os.Signal) {
 	for {
 		select {
 		case x := <-c:
-			Log.Infow("shutdown", "message", "background tasks shutting down", "signal", x)
+			log.Infow("shutdown", "message", "background tasks shutting down", "signal", x)
 			return
 		case <-ticker.C:
 			model.LocationClean()

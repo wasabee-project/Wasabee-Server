@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
 // TelegramID is a user ID from telegram

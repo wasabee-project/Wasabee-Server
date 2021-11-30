@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
 func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
@@ -21,14 +21,14 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	// defer req.Body.Close()
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
 		err := fmt.Errorf("empty JSON on rocks community sync")
-		wasabee.Log.Warnw(err.Error())
+		log.Warnw(err.Error())
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
@@ -36,7 +36,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	jRaw := json.RawMessage(jBlob)
 	err = wasabee.RocksCommunitySync(jRaw)
 	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "content", jRaw)
+		log.Errorw(err.Error(), "content", jRaw)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 
 		// XXX get the team owner
@@ -52,7 +52,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -62,20 +62,20 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden: only the team owner can pull the .rocks community")
-		wasabee.Log.Warnw(err.Error(), "GID", gid.String(), "resource", team)
+		log.Warnw(err.Error(), "GID", gid.String(), "resource", team)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	err = team.RocksCommunityMemberPull()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -87,7 +87,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -99,19 +99,19 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden: only the team owner can configure the .rocks community")
-		wasabee.Log.Warnw(err.Error(), "GID", gid.String(), "resource", team)
+		log.Warnw(err.Error(), "GID", gid.String(), "resource", team)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	err = team.SetRocks(rk, rc)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

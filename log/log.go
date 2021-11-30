@@ -120,50 +120,49 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 }
 
 func Debug(args ...interface{}) {
-	Log.Debug(args)
+	Log.Debug(args...)
 }
 
 func Debugw(msg string, args ...interface{}) {
-	Log.Debugw(msg, args)
+	Log.Debugw(msg, args...)
 }
 
 func Error(args ...interface{}) {
-	Log.Error(args)
+	Log.Error(args...)
 }
 
 func Errorw(msg string, args ...interface{}) {
-	Log.Errorw(msg, args)
+	Log.Errorw(msg, args...)
 }
 
 func Fatal(args ...interface{}) {
-	Log.Fatal(args)
+	Log.Fatal(args...)
 }
 
 func Fatalw(msg string, args ...interface{}) {
-	Log.Fatalw(msg, args)
+	Log.Fatalw(msg, args...)
 }
 
 func Info(args ...interface{}) {
-	Log.Info(args)
+	Log.Info(args...)
 }
 
 func Infow(msg string, args ...interface{}) {
-	Log.Infow(msg, args)
+	Log.Infow(msg, args...)
 }
 
 func Panic(args ...interface{}) {
-	Log.Panic(args)
+	Log.Panic(args...)
 }
 
 func Panicw(msg string, args ...interface{}) {
-	Log.Panicw(msg, args)
+	Log.Panicw(msg, args...)
 }
 
 func Warn(args ...interface{}) {
-	Log.Warn(args)
+	Log.Warn(args...)
 }
 
 func Warnw(msg string, args ...interface{}) {
-	Log.Warnw(msg, args)
+	Log.Warnw(msg, args...)
 }
-

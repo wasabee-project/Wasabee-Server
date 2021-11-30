@@ -1,32 +1,41 @@
 package model
 
 import (
+	"fmt"
+	"time"
+	"strconv"
+
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/v"
-	"database/sql"
 )
 
-// VUpdate updates the database to reflect an agent's current status at V.
-// It should be called whenever a agent logs in via a new service (if appropriate); currently only https does.
-func (gid GoogleID) VUpdate(vres *Vresult) error {
-	if !vc.configured {
+func init() {
+	v.Callbacks.Team = vTeam
+	v.Callbacks.FromDB = vFromDB
+	v.Callbacks.ToDB = vToDB
+}
+
+// vToDB updates the database to reflect an agent's current status at V.
+// callback
+func vToDB(a v.Agent) error {
+	if a.Agent == "" {
 		return nil
 	}
+	_, err := db.Exec("REPLACE INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())",
+		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.Cellid, a.TelegramID, a.StartLat, a.StartLon, a.Distance)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 
-	if vres.Status == "ok" && vres.Data.Agent != "" {
-		_, err := db.Exec("UPDATE agent SET Vname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
-			vres.Data.Agent, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid)
-
-		// doppelkeks error
-		if err != nil && strings.Contains(err.Error(), "Error 1062") {
-			vname := fmt.Sprintf("%s-%s", vres.Data.Agent, gid)
-			log.Warnw("dupliate ingress agent name detected at v", "GID", vres.Data.Agent, "new name", vname)
-			if _, err := db.Exec("UPDATE agent SET Vname = ?, level = ?, VVerified = ?, VBlacklisted = ?, Vid = ? WHERE gid = ?",
-				vname, vres.Data.Level, vres.Data.Verified, vres.Data.Blacklisted, MakeNullString(vres.Data.EnlID), gid); err != nil {
-				log.Error(err)
-				return err
-			}
-		} else if err != nil {
+	// we trust .v to verify telegram info; if it is not already set for a agent, just import it.
+	tgid, err := strconv.ParseInt(a.TelegramID, 10, 64)
+	if err != nil {
+		log.Error(err)
+		return nil // not a deal-breaker
+	}
+	if tgid > 0 { // negative numbers are group chats, 0 is invalid
+		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", tgid, a.Telegram, a.Gid); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -34,35 +43,28 @@ func (gid GoogleID) VUpdate(vres *Vresult) error {
 	return nil
 }
 
-// EnlID returns the V EnlID for a agent if it is known.
-/* func (gid GoogleID) EnlID() (v.EnlID, error) {
-	var vid sql.NullString
-	err := db.QueryRow("SELECT Vid FROM agent WHERE gid = ?", gid).Scan(&vid)
+// callback
+func vFromDB(g v.GoogleID) (v.Agent, time.Time, error) {
+	gid := GoogleID(g)
+
+	var a v.Agent
+	var fetched string
+	var t time.Time
+
+	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &a.Gid, &a.Vlevel, &a.Vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &a.TelegramID, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
 	if err != nil {
-		log.Error(err)
-		return "", err
+		return a, t, err
 	}
-	if !vid.Valid {
-		return "", nil
-	}
-	e := EnlID(vid.String)
 
-	return e, err
-} */
-
-// Gid looks up a GoogleID from an EnlID
-/* func (eid EnlID) Gid() (GoogleID, error) {
-	var gid GoogleID
-	err := db.QueryRow("SELECT gid FROM agent WHERE Vid = ?", eid).Scan(&gid)
+	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
 	if err != nil {
-		log.Error(err)
-		return "", err
+		return a, t, err
 	}
-	return gid, nil
-} */
+	return a, t, nil
+}
 
-// VTeam gets the configured V team information for a teamID
-func (teamID TeamID) VTeam() (int64, uint8, error) {
+// callback
+func vTeam(teamID v.TeamID) (int64, uint8, error) {
 	var team int64
 	var role uint8
 	err := db.QueryRow("SELECT vteam, vrole FROM team WHERE teamID = ?", teamID).Scan(&team, &role)
@@ -71,4 +73,45 @@ func (teamID TeamID) VTeam() (int64, uint8, error) {
 		return 0, 0, err
 	}
 	return team, role, nil
+}
+
+func getTeamsByVID(v int64) ([]TeamID, error) {
+	var teams []TeamID
+
+	row, err := db.Query("SELECT teamID FROM team WHERE vteam = ?", v)
+	if err != nil {
+		log.Error(err)
+		return teams, err
+	}
+	defer row.Close()
+
+	var teamID TeamID
+	for row.Next() {
+		err = row.Scan(&teamID)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		teams = append(teams, teamID)
+	}
+	return teams, nil
+}
+
+// VConfigure sets V connection for a Wasabee team -- caller should verify ownership
+func (teamID TeamID) VConfigure(vteam int64, role uint8) error {
+	_, ok := v.Roles[role]
+	if !ok {
+		err := fmt.Errorf("invalid role")
+		log.Error(err)
+		return err
+	}
+
+	log.Infow("linking team to V", "teamID", teamID, "vteam", vteam, "role", role)
+
+	_, err := db.Exec("UPDATE team SET vteam = ?, vrole = ? WHERE teamID = ?", vteam, role, teamID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
 }

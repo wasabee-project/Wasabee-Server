@@ -4,13 +4,13 @@ import (
 	"fmt"
 	// "encoding/json"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/model"
 	"strconv"
 	"strings"
 )
 
-func teamKeyboard(gid wasabee.GoogleID) tgbotapi.InlineKeyboardMarkup {
-	var ud wasabee.AgentData
+func teamKeyboard(gid model.GoogleID) tgbotapi.InlineKeyboardMarkup {
+	var ud model.AgentData
 	var rows [][]tgbotapi.InlineKeyboardButton
 
 	if err := gid.GetAgentData(&ud); err == nil {
@@ -46,21 +46,21 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var resp tgbotapi.APIResponse
 	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
 	lang := update.CallbackQuery.Message.From.LanguageCode
-	gid, err := wasabee.TelegramID(update.CallbackQuery.From.ID).Gid()
+	gid, err := model.TelegramID(update.CallbackQuery.From.ID).Gid()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return msg, err
 	}
 
 	// s, _ := json.MarshalIndent(update.CallbackQuery, "", " " )
-	// wasabee.Log.Debug(string(s))
+	// log.Debug(string(s))
 
 	if update.CallbackQuery.Message.Location != nil && update.CallbackQuery.Message.Location.Latitude != 0 {
 		lat := strconv.FormatFloat(update.CallbackQuery.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(update.CallbackQuery.Message.Location.Longitude, 'f', -1, 64)
 		err = gid.AgentLocation(lat, lon)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			return msg, err
 		}
 		msg.Text = "Location Processed"
@@ -68,7 +68,7 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	}
 
 	if update.CallbackQuery.Message.Chat.Type != "private" {
-		wasabee.Log.Errorf("Not in private chat: %s", update.CallbackQuery.Message.Chat.Type)
+		log.Errorf("Not in private chat: %s", update.CallbackQuery.Message.Chat.Type)
 		return msg, nil
 	}
 
@@ -76,7 +76,7 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	command := strings.SplitN(update.CallbackQuery.Data, "/", 3)
 	if len(command) == 0 {
 		err := fmt.Errorf("callback wthout command")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return msg, err
 	}
 	switch command[0] {
@@ -86,7 +86,7 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Team Updated", ShowAlert: false},
 		)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			return msg, err
 		}
 		msg.ReplyMarkup = teamKeyboard(gid)
@@ -95,26 +95,26 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 			tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID, Text: "Unknown Callback"},
 		)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			return msg, err
 		}
 	}
 	if !resp.Ok {
-		wasabee.Log.Error(resp.Description)
+		log.Error(resp.Description)
 	}
 	return msg, nil
 }
 
-func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
+func callbackTeam(action, team string, gid model.GoogleID, lang string, msg *tgbotapi.MessageConfig) error {
 	type tStruct struct {
 		State string
 		Team  string
 	}
 
-	t := wasabee.TeamID(team)
+	t := model.TeamID(team)
 	name, err := t.Name()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 
@@ -126,7 +126,7 @@ func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *t
 		})
 		err = gid.SetTeamState(t, "On")
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 		}
 	case "deactivate":
 		msg.Text, _ = templateExecute("TeamStateChange", lang, tStruct{
@@ -135,11 +135,11 @@ func callbackTeam(action, team string, gid wasabee.GoogleID, lang string, msg *t
 		})
 		err = gid.SetTeamState(t, "Off")
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 		}
 	default:
 		err = fmt.Errorf("unknown team state: %s", action)
-		wasabee.Log.Error(err)
+		log.Error(err)
 	}
 	return nil
 }

@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/auth"
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 	// "google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -31,9 +34,9 @@ type Configuration struct {
 var c Configuration
 
 // StartPubSub is the main startup function for the PubSub subsystem
-func StartPubSub(config Configuration) error {
-	c = config
-	wasabee.Log.Infow("startup", "subsystem", "PubSub", "credentials", c.Cert, "GC project", c.Project, "message", "starting PubSub")
+func StartPubSub(incoming Configuration) error {
+	c = incoming
+	log.Infow("startup", "subsystem", "PubSub", "credentials", c.Cert, "GC project", c.Project, "message", "starting PubSub")
 	c.hostname, _ = os.Hostname()
 
 	var cctx context.Context
@@ -45,7 +48,7 @@ func StartPubSub(config Configuration) error {
 
 	client, err := pubsub.NewClient(ctx, c.Project, opt)
 	if err != nil {
-		wasabee.Log.Errorw("startup", "subsystem", "PubSub", "error", err.Error())
+		log.Errorw("startup", "subsystem", "PubSub", "error", err.Error())
 		return err
 	}
 	defer client.Close()
@@ -55,7 +58,8 @@ func StartPubSub(config Configuration) error {
 	c.requestTopic = client.Topic("requests")
 
 	// are we a responder or a requester
-	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
+	w := config.Get()
+	if !w.V && !w.Rocks {
 		// use a subscription for one who requests
 		c.responder = false
 		c.subscription = c.hostname
@@ -65,7 +69,7 @@ func StartPubSub(config Configuration) error {
 		c.subscription = "requests"
 	}
 
-	wasabee.Log.Infow("startup", "subsystem", "PubSub", "subscription", c.subscription, "message", "using PubSub subscription "+c.subscription)
+	log.Infow("startup", "subsystem", "PubSub", "subscription", c.subscription, "message", "using PubSub subscription "+c.subscription)
 	// if !responder ... create subscription if it does not exist
 	c.sub = client.Subscription(c.subscription)
 	c.sub.ReceiveSettings.Synchronous = false
@@ -76,7 +80,7 @@ func StartPubSub(config Configuration) error {
 	// spin up listener to listen for messages on the main channel
 	go listenForPubSubMessages()
 
-	// spin up listener for commands from wasabee
+	// spin up listener for commands from model
 	// if !c.responder { }
 	go listenForWasabeeCommands()
 
@@ -89,10 +93,10 @@ func StartPubSub(config Configuration) error {
 		c.mc <- msg
 	})
 	if err != nil {
-		wasabee.Log.Errorw("PubSub failure", "message", err.Error(), "subsystem", "PubSub")
+		log.Errorw("PubSub failure", "message", err.Error(), "subsystem", "PubSub")
 		// return err
 	}
-	wasabee.Log.Infow("shutdown", "subsystem", "PubSub", "message", "shutting down PubSub")
+	log.Infow("shutdown", "subsystem", "PubSub", "message", "shutting down PubSub")
 	return err
 }
 
@@ -110,27 +114,27 @@ func listenForPubSubMessages() {
 		case "request":
 			if !c.responder {
 				// anyone on the requester subscription can Ack it
-				wasabee.Log.Errorw("request on the response topic?", "subsystem", "PubSub")
+				log.Errorw("request on the response topic?", "subsystem", "PubSub")
 				msg.Ack()
 				break
 			}
-			// wasabee.Log.Debugw("request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+			// log.Debugw("request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 			ack, err := respond(msg.Attributes["Gid"], msg.Attributes["Sender"])
 			if err != nil {
-				wasabee.Log.Warnw(err.Error(), "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+				log.Warnw(err.Error(), "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 				msg.Ack()
 				break
 			}
 			if ack {
-				// wasabee.Log.Debugw("ACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+				// log.Debugw("ACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 				msg.Ack()
 			} else {
-				wasabee.Log.Warnw("NACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
+				log.Warnw("NACK request", "subsystem", "PubSub", "requester", msg.Attributes["Sender"], "GID", msg.Attributes["Gid"])
 				msg.Nack()
 			}
 		case "location":
 			if msg.Attributes["ll"] == "" {
-				wasabee.Log.Error("pubsub location lat/lng not set")
+				log.Error("pubsub location lat/lng not set")
 				msg.Ack()
 				break
 			}
@@ -141,66 +145,66 @@ func listenForPubSubMessages() {
 			}
 
 			tokens := strings.Split(msg.Attributes["ll"], ",")
-			gid := wasabee.GoogleID(msg.Attributes["Gid"])
+			gid := model.GoogleID(msg.Attributes["Gid"])
 			if len(tokens) != 2 {
-				wasabee.Log.Errorw("pubsub location ll invalid", "ll", msg.Attributes["ll"])
+				log.Errorw("pubsub location ll invalid", "ll", msg.Attributes["ll"])
 				msg.Ack()
 				break
 			}
 			if err := gid.AgentLocation(tokens[0], tokens[1]); err != nil {
-				wasabee.Log.Error(err)
+				log.Error(err)
 				msg.Nack()
 				break
 			}
 			msg.Ack()
 		case "inteldata":
-			wasabee.Log.Debugw("got pubsub inteldata", "sender", msg.Attributes["Sender"])
+			log.Debugw("got pubsub inteldata", "sender", msg.Attributes["Sender"])
 			if msg.Attributes["Data"] == "" {
-				wasabee.Log.Errorw("pubsub inteldata not set")
+				log.Errorw("pubsub inteldata not set")
 				msg.Ack()
 				break
 			}
 
 			tokens := strings.Split(msg.Attributes["Data"], ",")
 			if len(tokens) != 2 {
-				wasabee.Log.Errorw("pubsub inteldata invalid", "Data", msg.Attributes["Data"])
+				log.Errorw("pubsub inteldata invalid", "Data", msg.Attributes["Data"])
 				msg.Ack()
 				break
 			}
-			gid := wasabee.GoogleID(msg.Attributes["Gid"])
+			gid := model.GoogleID(msg.Attributes["Gid"])
 			if err := gid.SetIntelData(tokens[0], tokens[1]); err != nil {
-				wasabee.Log.Error(err)
+				log.Error(err)
 				msg.Nack()
 				break
 			}
 			msg.Ack()
 		case "agent":
-			wasabee.Log.Debugw("got pubsub agent", "sender", msg.Attributes["Sender"])
+			log.Debugw("got pubsub agent", "sender", msg.Attributes["Sender"])
 			if c.responder {
 				// anyone on the responder subscription can Ack it
-				wasabee.Log.Errorw("agent response on the request topic", "subsystem", "PubSub", "responder", msg.Attributes["Sender"])
+				log.Errorw("agent response on the request topic", "subsystem", "PubSub", "responder", msg.Attributes["Sender"])
 				msg.Ack()
 				break
 			}
 			// if msg.Attributes["RespondingTo"] != c.hostname { msg.Ack() break }
-			// wasabee.Log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"], "data", msg.Data)
-			// if msg.Attributes["Authoritative"] == "true" { wasabee.Log.Debug("Authoritative") }
-			var ad wasabee.AgentData
+			// log.Debugw("response", "subsystem", "PubSub", "GID", msg.Attributes["Gid"], "responder", msg.Attributes["Sender"], "data", msg.Data)
+			// if msg.Attributes["Authoritative"] == "true" { log.Debug("Authoritative") }
+			var ad model.Agent
 			err := json.Unmarshal(msg.Data, &ad)
 			if err != nil {
-				wasabee.Log.Error(err)
+				log.Error(err)
 				msg.Nack()
 				break
 			}
 			err = ad.Save()
 			if err != nil {
-				wasabee.Log.Error(err)
+				log.Error(err)
 				msg.Nack()
 				break
 			}
 			msg.Ack()
 		default:
-			wasabee.Log.Warnw("unknown message", "subsystem", "PubSub", "type", msg.Attributes["Type"], "sender", msg.Attributes["Sender"])
+			log.Warnw("unknown message", "subsystem", "PubSub", "type", msg.Attributes["Type"], "sender", msg.Attributes["Sender"])
 			// get it off the subscription quickly
 			msg.Ack()
 		}
@@ -208,7 +212,7 @@ func listenForPubSubMessages() {
 }
 
 func listenForWasabeeCommands() {
-	cmdchan := wasabee.PubSubInit()
+	cmdchan := PubSubInit()
 	for cmd := range cmdchan {
 		switch cmd.Command {
 		case "request":
@@ -218,7 +222,7 @@ func listenForWasabeeCommands() {
 		case "inteldata":
 			inteldata(cmd.Param, cmd.Data, "")
 		default:
-			wasabee.Log.Warnw("unknown PubSub command", "command", cmd.Command)
+			log.Warnw("unknown PubSub command", "command", cmd.Command)
 		}
 
 	}
@@ -252,7 +256,7 @@ func location(gid, ll, sender string) {
 	}
 
 	if ll == "" {
-		wasabee.Log.Errorw("PubSub Location announce missing LL")
+		log.Errorw("PubSub Location announce missing LL")
 		return
 	}
 
@@ -279,7 +283,7 @@ func inteldata(gid, data, sender string) {
 		sender = c.hostname
 	}
 
-	wasabee.Log.Debugw("publishing inteldata", "gid", gid, "data", data, "sender", sender)
+	log.Debugw("publishing inteldata", "gid", gid, "data", data, "sender", sender)
 
 	atts := make(map[string]string)
 	atts["Type"] = "inteldata"
@@ -299,25 +303,24 @@ func inteldata(gid, data, sender string) {
 
 func respond(g string, sender string) (bool, error) {
 	// if the APIs are not running, don't respond
-	if !wasabee.GetvEnlOne() && !wasabee.GetEnlRocks() {
+	w := config.Get()
+	if !w.V && !w.Rocks {
 		return false, nil
 	}
 
 	ctx := context.Background()
 
-	gid := wasabee.GoogleID(g)
+	gid := model.GoogleID(g)
 
 	// make sure we have the most current info from the APIs
-	_, err := gid.InitAgent()
-	if err != nil {
-		wasabee.Log.Error(err)
+	if _, err := auth.Authorize(gid); err != nil {
+		log.Error(err)
 		return false, err
 	}
 
-	var ad wasabee.AgentData
-	err = gid.GetAgentData(&ad)
+	ad, err := gid.GetAgent()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return false, err
 	}
 
@@ -329,7 +332,7 @@ func respond(g string, sender string) (bool, error) {
 
 	d, err := json.Marshal(ad)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return false, err
 	}
 
@@ -338,11 +341,9 @@ func respond(g string, sender string) (bool, error) {
 	atts["Gid"] = g
 	atts["Sender"] = c.hostname
 	atts["RespondingTo"] = sender
-	if wasabee.GetvEnlOne() && wasabee.GetEnlRocks() {
-		atts["Authoritative"] = "true"
-	}
+	// if w.V && w.Rocks { atts["Authoritative"] = "true" }
 
-	// wasabee.Log.Debugw("publishing", "subsystem", "PubSub", "GID", ad.GoogleID, "name", ad.IngressName)
+	// log.Debugw("publishing", "subsystem", "PubSub", "GID", ad.GoogleID, "name", ad.IngressName)
 	c.responseTopic.Publish(ctx, &pubsub.Message{
 		Attributes: atts,
 		Data:       d,

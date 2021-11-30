@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server"
 )
 
 func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {

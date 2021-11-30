@@ -4,20 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	res.Header().Add("Cache-Control", "no-store") // location changes frequently
-	var agent wasabee.Agent
 
 	// must be authenticated
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -25,15 +28,15 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	togid, err := wasabee.ToGid(id)
+	togid, err := model.ToGid(id)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	err = wasabee.FetchAgent(togid, &agent, gid)
+	agent, err := model.FetchAgent(togid, gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -46,16 +49,16 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
 	id := vars["id"]
-	togid, err := wasabee.ToGid(id)
+	togid, err := model.ToGid(id)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -65,22 +68,22 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	ok := gid.CanSendTo(togid)
+	ok := messaging.CanSendTo(gid, togid)
 	if !ok {
 		err := fmt.Errorf("forbidden: only team owners can send to agents on the team")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", togid)
+		log.Warnw(err.Error(), "GID", gid, "resource", togid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	ok, err = togid.SendMessage(message)
+	ok, err = messaging.SendMessage(togid, message)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
 		err := fmt.Errorf("message did not send")
-		wasabee.Log.Warnw(err.Error(), "from", gid, "to", togid, "contents", message)
+		log.Warnw(err.Error(), "from", gid, "to", togid, "contents", message)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -91,37 +94,37 @@ func agentFBMessageRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
 	id := vars["id"]
-	togid, err := wasabee.ToGid(id)
+	togid, err := model.ToGid(id)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", togid)
+		log.Warnw(err.Error(), "GID", gid, "resource", togid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
 		err := fmt.Errorf("empty JSON on firebase message")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", togid)
+		log.Warnw(err.Error(), "GID", gid, "resource", togid)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
@@ -135,25 +138,24 @@ func agentFBMessageRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = json.Unmarshal(jRaw, &msg); err != nil {
-		wasabee.Log.Errorw(err.Error(), "GID", gid, "content", jRaw)
+		log.Errorw(err.Error(), "GID", gid, "content", jRaw)
 		return
 	}
 
 	if msg.Sender, err = gid.IngressName(); err != nil {
-		wasabee.Log.Errorw("sender ingress name unknown", "GID", gid)
+		log.Errorw("sender ingress name unknown", "GID", gid)
 		return
 	}
 
 	toSend, err := json.Marshal(msg)
 	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "GID", gid, "content", jRaw)
+		log.Errorw(err.Error(), "GID", gid, "content", jRaw)
 		return
 	}
 
-	// XXX for now anyone can send to anyone
-	togid.FirebaseGenericMessage(string(toSend))
+	ok, err := wfb.SendMessage(wfb.GoogleID(togid), string(toSend))
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -164,36 +166,36 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("must use content-type: %s", jsonTypeShort)
-		wasabee.Log.Errorw(err.Error(), "GID", gid)
+		log.Errorw(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	vars := mux.Vars(req)
 	id := vars["id"]
-	togid, err := wasabee.ToGid(id)
+	togid, err := model.ToGid(id)
 	if err != nil {
-		wasabee.Log.Error(err.Error())
+		log.Error(err.Error())
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
-		wasabee.Log.Warnw("empty JSON", "GID", gid)
+		log.Warnw("empty JSON", "GID", gid)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
@@ -202,41 +204,41 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 
 	var target struct {
 		Name string
-		ID   wasabee.PortalID
+		ID   model.PortalID
 		Lat  string
 		Lng  string
 		Type string
 	}
 	err = json.Unmarshal(jRaw, &target)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if target.Name == "" {
 		err := fmt.Errorf("portal not set")
-		wasabee.Log.Warnw(err.Error(), "GID", gid)
+		log.Warnw(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	if target.Lat == "" || target.Lng == "" {
 		err := fmt.Errorf("lat/ng not set")
-		wasabee.Log.Warnw(err.Error(), "GID", gid)
+		log.Warnw(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	name, err := gid.IngressName()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 	}
 
 	// Lng vs Lon ...
 	templateData := struct {
 		Name   string
-		ID     wasabee.PortalID
+		ID     model.PortalID
 		Lat    string
 		Lon    string
 		Type   string
@@ -252,45 +254,45 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 
 	msg, err := gid.ExecuteTemplate("target", templateData)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		msg = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
 		// do not report send errors up the chain, just log
 	}
 
-	ok, err := togid.SendMessage(msg)
+	ok, err := messaging.SendMessage(togid, msg)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
 		err := fmt.Errorf("message did not send")
-		wasabee.Log.Infow(err.Error(), "from", gid, "to", togid, "msg", msg)
+		log.Infow(err.Error(), "from", gid, "to", togid, "msg", msg)
 		// continue and send via firebase
 	}
 
 	out, err := json.Marshal(templateData)
 	if err != nil {
-		wasabee.Log.Warnw(err.Error(), "raw", templateData)
+		log.Warnw(err.Error(), "raw", templateData)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 	}
-	togid.FirebaseTarget(string(out))
+	wfb.SendTarget(wfb.GoogleID(togid), string(out))
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	_, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
 	id := vars["id"]
-	togid, err := wasabee.ToGid(id)
+	togid, err := model.ToGid(id)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

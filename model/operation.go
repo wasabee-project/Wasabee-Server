@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
 // OperationID wrapper to ensure type safety
@@ -138,7 +139,7 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 	}
 
 	for _, k := range o.Keys {
-		if _, err = o.insertKey(k); err != nil {
+		if err := o.insertKey(k); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -434,7 +435,7 @@ func (o *Operation) Delete(gid GoogleID) error {
 		// carry on
 	}
 
-	firebaseBroadcastDelete(o.ID)
+	wfb.DeleteOperation(string(o.ID))
 
 	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
@@ -567,7 +568,6 @@ func (o *Operation) Populate(gid GoogleID) error {
 
 // SetInfo changes the description of an operation
 func (o *Operation) SetInfo(info string, gid GoogleID) (string, error) {
-	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
 	_, err := db.Exec("UPDATE operation SET comment = ? WHERE ID = ?", info, o.ID)
 	if err != nil {
 		log.Error(err)
@@ -586,7 +586,7 @@ func (o *Operation) Touch() (string, error) {
 		return "", err
 	}
 
-	o.firebaseMapChange(updateID)
+	// wfb.MapChange(updateID) // let the caller do it, so they don't get a "marker change" and "map change" update in the same go
 	return updateID, nil
 }
 

@@ -4,7 +4,8 @@ import (
 	"strconv"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 func processDirectMessage(inMsg *tgbotapi.Update) error {

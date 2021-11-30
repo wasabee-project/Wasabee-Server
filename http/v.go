@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
@@ -32,14 +33,14 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	teams, err := wasabee.GetTeamsByVID(vteam)
+	teams, err := model.GetTeamsByVID(vteam)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	keys := make(map[wasabee.GoogleID]string)
+	keys := make(map[model.GoogleID]string)
 
 	for _, teamID := range teams {
 		gid, err := teamID.Owner()
@@ -83,7 +84,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	team := model.TeamID(vars["team"])
 
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
@@ -130,7 +131,7 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	team := model.TeamID(vars["team"])
 
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
@@ -187,15 +188,14 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	mode := vars["mode"]
 
-	var agent wasabee.AgentData
-	err = gid.GetAgentData(&agent)
+	agent, err := gid.GetAgentData()
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	data, err := v.VTeams(gid, key)
+	data, err := v.Teams(gid, key)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -253,7 +253,7 @@ type vTeamToMake struct {
 	name string
 }
 
-func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string) ([]vTeamToMake, error) {
+func vProcessRoleTeams(data v.AgentVTeams, teams []model.AdTeam, key string) ([]vTeamToMake, error) {
 	var m []vTeamToMake
 
 	raw := make(map[int64]map[uint8]bool)
@@ -267,7 +267,7 @@ func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string
 		roles := make(map[uint8]bool)
 
 		// load all agents
-		vt, err := wasabee.VGetTeam(t.TeamID, key)
+		vt, err := model.VGetTeam(t.TeamID, key)
 		if err != nil {
 			return m, err
 		}
@@ -305,7 +305,7 @@ func vProcessRoleTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam, key string
 	return m, nil
 }
 
-func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key string) ([]vTeamToMake, error) {
+func vProcessRoleSingleTeam(t v.AgentVTeam, teams []model.AdTeam, key string) ([]vTeamToMake, error) {
 	var m []vTeamToMake
 
 	if !t.Admin {
@@ -314,7 +314,7 @@ func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key st
 	}
 	roles := make(map[uint8]bool)
 
-	vt, err := wasabee.VGetTeam(t.TeamID, key)
+	vt, err := model.VGetTeam(t.TeamID, key)
 	if err != nil {
 		return m, err
 	}
@@ -350,7 +350,7 @@ func vProcessRoleSingleTeam(t wasabee.AgentVTeam, teams []wasabee.AdTeam, key st
 	return m, nil
 }
 
-func vProcessTeams(v wasabee.AgentVTeams, teams []wasabee.AdTeam) ([]vTeamToMake, error) {
+func vProcessTeams(vt v.AgentVTeams, teams []model.AdTeam) ([]vTeamToMake, error) {
 	var m []vTeamToMake
 	for _, t := range v.Teams {
 		if !t.Admin {

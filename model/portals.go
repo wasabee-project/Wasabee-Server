@@ -12,12 +12,13 @@ type PortalID string
 
 // Portal is defined by the Wasabee IITC plugin.
 type Portal struct {
-	ID       PortalID `json:"id"`
-	Name     string   `json:"name"`
-	Lat      string   `json:"lat"` // passing these as strings saves me parsing them
-	Lon      string   `json:"lng"`
-	Comment  string   `json:"comment"`
-	Hardness string   `json:"hardness"` // string for now, enum in the future
+	ID       PortalID    `json:"id"`
+	Name     string      `json:"name"`
+	Lat      string      `json:"lat"` // passing these as strings saves me parsing them
+	Lon      string      `json:"lng"`
+	Comment  string      `json:"comment"`
+	Hardness string      `json:"hardness"` // string for now, enum in the future
+	opID     OperationID `json:"_"`
 }
 
 // insertPortal adds a portal to the database
@@ -53,6 +54,7 @@ func (opID OperationID) deletePortal(p PortalID, tx *sql.Tx) error {
 // PopulatePortals fills in the OpPortals list for the Operation. No authorization takes place.
 func (o *Operation) populatePortals() error {
 	var tmpPortal Portal
+	tmpPortal.opID = o.ID
 
 	var comment, hardness sql.NullString
 
@@ -112,9 +114,6 @@ func (o *Operation) filterPortals() error {
 	return nil
 }
 
-// PopulateAnchors fills in the Anchors list for the Operation. No authorization takes place.
-// XXX the clients _should_ build this themselves, but don't, yet.
-// use only the currently known links (e.g. for this zone) -- call populateLinks first
 func (o *Operation) populateAnchors() error {
 	set := make(map[PortalID]bool)
 	for _, l := range o.Links {
@@ -134,45 +133,46 @@ func (p PortalID) String() string {
 }
 
 // PortalHardness updates the comment on a portal
-func (o *Operation) PortalHardness(portalID PortalID, hardness string) (string, error) {
-	result, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, o.ID)
+func (o OperationID) PortalHardness(portalID PortalID, hardness string) error {
+	result, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, o)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
 	ra, err := result.RowsAffected()
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
 	if ra != 1 {
-		log.Infow("ineffectual hardness assign", "resource", o.ID, "portal", portalID)
+		log.Infow("ineffectual hardness assign", "resource", o, "portal", portalID)
 	}
-	return o.Touch()
+	return nil
 }
 
 // PortalComment updates the comment on a portal
-func (o *Operation) PortalComment(portalID PortalID, comment string) (string, error) {
-	result, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, o.ID)
+func (o OperationID) PortalComment(portalID PortalID, comment string) error {
+	result, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, o)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
 	ra, err := result.RowsAffected()
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
 	if ra != 1 {
-		log.Infow("ineffectual comment assign", "resource", o.ID, "portal", portalID)
+		log.Infow("ineffectual comment assign", "resource", o, "portal", portalID)
 	}
-	return o.Touch()
+	return nil
 }
 
 // PortalDetails returns information about the portal
 func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, error) {
 	var p Portal
 	p.ID = portalID
+	p.opID = o.ID
 
 	if read, _ := o.ReadAccess(gid); !read {
 		err := fmt.Errorf("unauthorized: unable to get portal details")
@@ -201,6 +201,8 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, erro
 
 // lookup and return a populated Portal from an ID
 func (o *Operation) getPortal(portalID PortalID) (Portal, error) {
+	// make sure op is populated
+
 	for _, p := range o.OpPortals {
 		if p.ID == portalID {
 			return p, nil

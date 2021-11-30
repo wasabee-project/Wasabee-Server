@@ -99,6 +99,33 @@ func (o *Operation) WriteAccess(gid GoogleID) bool {
 	return false
 }
 
+// WriteAccess is the lesser form of determining if a gid has write access to an operation, used when the op handle isn't accessible
+func (o OperationID) WriteAccess(gid GoogleID) bool {
+	if o.IsOwner(gid) {
+		return true
+	}
+
+	rows, err := db.Query("SELECT teamID FROM opteams WHERE opID = ? AND permission = ?", o, opPermRoleWrite)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return false
+	}
+
+	var tid TeamID
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tid)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		if inteam, _ := gid.AgentInTeam(tid); inteam {
+			return true
+		}
+	}
+	return false
+}
+
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID
 func (opID OperationID) IsOwner(gid GoogleID) bool {
 	var c int
@@ -163,68 +190,68 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 }
 
 // AddPerm adds a new permission to an op
-func (o *Operation) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone) (string, error) {
-	if !o.ID.IsOwner(gid) {
+func (o OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone) error {
+	if !o.IsOwner(gid) {
 		err := fmt.Errorf("permission denied: not current owner of op")
-		log.Errorw(err.Error(), "GID", gid, "resource", o.ID)
-		return "", err
+		log.Errorw(err.Error(), "GID", gid, "resource", o)
+		return err
 	}
 
 	inteam, err := gid.AgentInTeam(teamID)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
 	if !inteam {
 		err := fmt.Errorf("you must be on a team to add it as a permission")
-		log.Errorw(err.Error(), "GID", gid, "team", teamID, "resource", o.ID)
-		return "", err
+		log.Errorw(err.Error(), "GID", gid, "team", teamID, "resource", o)
+		return err
 	}
 
 	opp := OpPermRole(perm)
 	if !opp.Valid() {
 		err := fmt.Errorf("unknown permission type")
-		log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "perm", perm)
-		return "", err
+		log.Errorw(err.Error(), "GID", gid, "resource", o, "perm", perm)
+		return err
 	}
 
 	// zone only applies to read access for now
 	if opp != opPermRoleRead {
 		zone = ZoneAll
 	}
-	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?,?)", teamID, o.ID, opp, zone)
+	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?,?)", teamID, o, opp, zone)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
-	return o.Touch()
+	return nil
 }
 
 // DelPerm removes a permission from an op
-func (o *Operation) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Zone) (string, error) {
-	if !o.ID.IsOwner(gid) {
-		err := fmt.Errorf("not current owner of op")
-		log.Errorw(err.Error(), "GID", gid, "resource", o.ID)
-		return "", err
+func (o OperationID) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Zone) error {
+	if !o.IsOwner(gid) {
+		err := fmt.Errorf("not owner of op")
+		log.Errorw(err.Error(), "GID", gid, "resource", o)
+		return err
 	}
 
 	if perm != opPermRoleRead {
-		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o.ID, perm)
+		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o, perm)
 		if err != nil {
 			log.Error(err)
-			return "", err
+			return err
 		}
 	} else {
-		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? AND zone = ? LIMIT 1", teamID, o.ID, perm, zone)
+		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? AND zone = ? LIMIT 1", teamID, o, perm, zone)
 		if err != nil {
 			log.Error(err)
-			return "", err
+			return err
 		}
 	}
-	return o.Touch()
+	return nil
 }
 
-// Operations returns a slice containing all the OpPermissions associated with this team
+// Operations returns a slice containing all the OpPermissions which reference this team
 func (t TeamID) Operations() ([]OpPermission, error) {
 	var perms []OpPermission
 	rows, err := db.Query("SELECT opID, permission, zone FROM opteams WHERE teamID = ?", t)
@@ -250,4 +277,25 @@ func (t TeamID) Operations() ([]OpPermission, error) {
 		})
 	}
 	return perms, nil
+}
+
+// Teams returns a list of every team with access to this operation
+func (o OperationID) Teams() ([]TeamID, error) {
+	var teams []TeamID
+	rows, err := db.Query("SELECT teamID FROM opteams WHERE opID = ?", o)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return teams, err
+	}
+
+	for rows.Next() {
+		var t TeamID
+		err := rows.Scan(&t)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		teams = append(teams, t)
+	}
+	return teams, nil
 }

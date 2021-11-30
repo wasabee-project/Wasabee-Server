@@ -7,7 +7,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-
 // GenerateSafeName generates a slug (like GenerateName()) that doesn't exist in the database yet.
 func GenerateSafeName() (string, error) {
 	name := ""

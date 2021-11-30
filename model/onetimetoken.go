@@ -7,16 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-/*
- * The original plan for Wasabee was to be an XFAC tool, but that was quickly scrapped.
- * The LocKey was to be a unique identifier that could be given to your operators.
- * Much has changed since then, now the LocKey is used for setting up Telegram and one-time-tokens
- * The LocKey is disposable, and designed to change frequently
- *
- * The GoogleID is the primary identifier
- */
-
-// LocKey is the location share key, a transitory ID for an agent
+// OneTimeToken - used to authenticate users in IITC when GAPI doesn't work for them
 type OneTimeToken string
 
 // String is a stringer for LocKey

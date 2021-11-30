@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -14,14 +15,14 @@ type TeamID string
 
 // TeamData is the wrapper type containing all the team info
 type TeamData struct {
-	Name          string  `json:"name"`
-	ID            TeamID  `json:"id"`
+	Name          string       `json:"name"`
+	ID            TeamID       `json:"id"`
 	TeamMembers   []TeamMember `json:"agents"`
-	RocksComm     string  `json:"rc,omitempty"`
-	RocksKey      string  `json:"rk,omitempty"`
-	JoinLinkToken string  `json:"jlt,omitempty"`
-	VTeam         int64   `json:"vt,omitempty"`
-	VRole         int8    `json:"vr,omitempty"`
+	RocksComm     string       `json:"rc,omitempty"`
+	RocksKey      string       `json:"rk,omitempty"`
+	JoinLinkToken string       `json:"jlt,omitempty"`
+	VTeam         int64        `json:"vt,omitempty"`
+	VRole         int8         `json:"vr,omitempty"`
 	// telegramChannel int64
 }
 
@@ -261,8 +262,8 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		// return err
 	} */
 
-	// gid.joinChannels(teamID)
-	gid.firebaseSubscribeTeam(teamID)
+	// gid.joinChannels(teamID) // XXX
+	wfb.SubscribeToTopic(wfb.GoogleID(gid), wfb.TeamID(teamID))
 	// log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
 	return nil
 }
@@ -301,11 +302,11 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 			log.Error(err)
 			// continue
 		}
-		gid.FirebaseDeleteOp(opID)
+		wfb.AgentDeleteOperation(wfb.GoogleID(gid), wfb.OperationID(opID))
 	}
 
 	// gid.leaveChannels(teamID)
-	// gid.firebaseUnsubscribeTeam(teamID)
+	wfb.UnsubscribeFromTopic(wfb.GoogleID(gid), wfb.TeamID(teamID))
 	// log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
 	return nil
 }
