@@ -7,9 +7,9 @@ import (
 	"syscall"
 
 	"github.com/urfave/cli"
+	"github.com/wasabee-project/Wasabee-Server/background"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
-	"github.com/wasabee-project/Wasabee-Server/background"
 	"go.uber.org/zap"
 )
 
@@ -70,7 +70,7 @@ func run(c *cli.Context) error {
 	// Connect to database
 	err := model.Connect(c.String("database"))
 	if err != nil {
-		log.Errorw("Error connecting to database", "error",  err)
+		log.Errorw("Error connecting to database", "error", err)
 		return err
 	}
 

@@ -55,14 +55,14 @@ var Config struct {
 	// CommunityEndpoint is the API endpoint for viewing community membership
 	CommunityEndpoint string
 	// StatusEndpoint is the API endpoint for getting user status
-	StatusEndpoint      string
-	limiter             *rate.Limiter
+	StatusEndpoint string
+	limiter        *rate.Limiter
 }
 
 // Callbacks constains methods from model needed here
 var Callbacks struct {
-	FromDB func(GoogleID) (Agent, time.Time, error)
-	ToDB   func(Agent) error
+	FromDB              func(GoogleID) (Agent, time.Time, error)
+	ToDB                func(Agent) error
 	AddAgentToTeam      func(gid, communityID string) error
 	RemoveAgentFromTeam func(gid, communityID string) error
 }

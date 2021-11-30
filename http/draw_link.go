@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
@@ -14,31 +16,52 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to assign agents")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	link := wasabee.LinkID(vars["link"])
-	agent := wasabee.GoogleID(req.FormValue("agent"))
-	uid, err := op.AssignLink(link, agent)
+	linkID := model.LinkID(vars["link"])
+	agent := model.GoogleID(req.FormValue("agent"))
+
+	err = op.Populate(gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	// wasabee.Log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", link, "agent", agent, "message", "assigned link")
+
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	err = link.Assign(agent)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	// log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", linkID, "agent", agent, "message", "assigned link")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -47,27 +70,49 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set link descriptions")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	link := wasabee.LinkID(vars["link"])
+	linkID := model.LinkID(vars["link"])
 	desc := req.FormValue("desc")
-	uid, err := op.LinkDescription(link, desc)
+
+	err = op.Populate(gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	rr := link.Comment(desc)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -79,30 +124,51 @@ func drawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to set link color")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	link := wasabee.LinkID(vars["link"])
+	linkID := model.LinkID(vars["link"])
 	color := req.FormValue("color")
-	uid, err := op.LinkColor(link, color)
+
+	err = op.Populate(gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	err = link.SetColor(color)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -111,27 +177,49 @@ func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to swap link order")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	link := wasabee.LinkID(vars["link"])
-	uid, err := op.LinkSwap(link)
+	linkID := model.LinkID(vars["link"])
+
+	err = op.Populate(gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	err = link.Swap()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -143,29 +231,49 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to set zone")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	link := wasabee.LinkID(vars["link"])
-	zone := wasabee.ZoneFromString(req.FormValue("zone"))
+	linkID := model.LinkID(vars["link"])
+	zone := model.ZoneFromString(req.FormValue("zone"))
 
-	uid, err := link.SetZone(&op, zone)
+	err = op.Populate(gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	err = link.SetZone(zone)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -177,34 +285,33 @@ func drawLinkDeltaRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to set delta")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	link := wasabee.LinkID(vars["link"])
+	link := model.LinkID(vars["link"])
 	delta, err := strconv.ParseInt(req.FormValue("delta"), 10, 32)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	uid, err := op.LinkDelta(link, int(delta))
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -224,28 +331,28 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	// write access OR asignee
-	link := wasabee.LinkID(vars["link"])
+	link := model.LinkID(vars["link"])
 	if !op.WriteAccess(gid) && !op.ID.AssignedTo(link, gid) {
 		err = fmt.Errorf("permission to mark link as complete denied")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	uid, err := op.LinkCompleted(link, complete)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -257,28 +364,28 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
-	link := wasabee.LinkID(vars["link"])
+	link := model.LinkID(vars["link"])
 	read, _ := op.ReadAccess(gid)
 	if !read {
 		err = fmt.Errorf("permission to claim link assignment denied")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	uid, err := link.Claim(&op, gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -290,28 +397,28 @@ func drawLinkRejectRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	// asignee only
-	link := wasabee.LinkID(vars["link"])
+	link := model.LinkID(vars["link"])
 	if !op.ID.AssignedTo(link, gid) {
 		err = fmt.Errorf("permission to reject link assignment denied")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	uid, err := link.Reject(&op, gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -323,49 +430,49 @@ func drawLinkFetch(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	// o.Populate determines all or assigned-only
 	read, _ := op.ReadAccess(gid)
 	if !read && !op.AssignedOnlyAccess(gid) {
 		if op.ID.IsDeletedOp() {
 			err := fmt.Errorf("requested deleted op")
-			wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 			http.Error(res, jsonError(err), http.StatusGone)
 			return
 		}
 
 		err := fmt.Errorf("forbidden")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	// populate the whole op, slow, but ensures we only get things we have access to see
 	if err = op.Populate(gid); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	linkID := wasabee.LinkID(vars["link"])
+	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		// not really a 404, but close enough, better than a 500 or 403
 		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 	j, err := json.Marshal(link)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

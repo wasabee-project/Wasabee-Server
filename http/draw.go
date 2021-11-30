@@ -356,7 +356,13 @@ func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 
 	portalID := model.PortalID(vars["portal"])
 	comment := req.FormValue("comment")
-	uid, err := op.PortalComment(portalID, comment)
+	err = op.ID.PortalComment(portalID, comment)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid, err := op.Touch()
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -388,7 +394,13 @@ func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	portalID := model.PortalID(vars["portal"])
 	hardness := req.FormValue("hardness")
-	uid, err := op.PortalHardness(portalID, hardness)
+	err = op.ID.PortalHardness(portalID, hardness)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid, err := op.Touch()
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -418,13 +430,19 @@ func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	order := req.FormValue("order")
-	_, err = op.LinkOrder(order, gid)
+	err = op.LinkOrder(order)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.MarkerOrder(order)
+	err = op.MarkerOrder(order)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid, err := op.Touch()
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -453,7 +471,13 @@ func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	info := req.FormValue("info")
-	uid, err := op.SetInfo(info, gid)
+	err = op.SetInfo(info, gid)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid, err := op.Touch()
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -490,13 +514,19 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	capsule := req.FormValue("capsule")
 
-	uid, err := op.KeyOnHand(gid, portalID, int32(onhand), capsule)
+	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -532,13 +562,19 @@ func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	// Pass in "Zeta" and get a zone back... defaults to "All"
 	zone := model.ZoneFromString(req.FormValue("zone"))
 
-	uid, err := op.AddPerm(gid, teamID, role, zone)
+	err = op.ID.AddPerm(gid, teamID, role, zone)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -573,13 +609,19 @@ func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.DelPerm(gid, teamID, role, zone)
+	err = op.ID.DelPerm(gid, teamID, role, zone)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 

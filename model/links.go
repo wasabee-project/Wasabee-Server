@@ -188,9 +188,7 @@ func (l Link) IsAssignedTo(gid GoogleID) bool {
 }
 
 // LinkOrder changes the order of the throws for an operation
-func (o *Operation) LinkOrder(order string, gid GoogleID) error {
-	// check isowner (already done in http/pdraw.go, but there may be other callers in the future
-
+func (o *Operation) LinkOrder(order string) error {
 	stmt, err := db.Prepare("UPDATE link SET throworder = ? WHERE opID = ? AND ID = ?")
 	if err != nil {
 		log.Error(err)

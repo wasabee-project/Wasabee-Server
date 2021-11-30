@@ -4,7 +4,7 @@ import (
 	// "context"
 	"firebase.google.com/go/messaging"
 	// "fmt"
-	"encoding/json"
+	// "encoding/json"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
@@ -202,8 +202,7 @@ func SendMessage(gid GoogleID, message string) (bool, error) {
 }
 
 // SendTarget sends a portal name/guid to an agent
-// XXX instead of passing all the things in as separate args, pass in the marshaled json []byte for the msg
-func SendTarget(gid GoogleID, portalID TaskID, portalname, lat, lon string) error {
+func SendTarget(gid GoogleID, message string) error {
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -213,19 +212,8 @@ func SendTarget(gid GoogleID, portalID TaskID, portalname, lat, lon string) erro
 		return nil
 	}
 
-	msg := map[string]string{
-		"ID":   string(portalID),
-		"Name": portalname,
-		"Lat":  lat,
-		"Lon":  lon,
-	}
-	raw, err := json.Marshal(msg)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
 	data := map[string]string{
-		"msg": string(raw),
+		"msg": message,
 		"cmd": "Target",
 	}
 

@@ -567,13 +567,13 @@ func (o *Operation) Populate(gid GoogleID) error {
 }
 
 // SetInfo changes the description of an operation
-func (o *Operation) SetInfo(info string, gid GoogleID) (string, error) {
+func (o *Operation) SetInfo(info string, gid GoogleID) error {
 	_, err := db.Exec("UPDATE operation SET comment = ? WHERE ID = ?", info, o.ID)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
-	return o.Touch()
+	return nil
 }
 
 // Touch updates the modified timestamp on an operation
