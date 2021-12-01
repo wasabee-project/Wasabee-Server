@@ -43,7 +43,7 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -90,7 +90,7 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -137,7 +137,7 @@ func drawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -183,7 +183,7 @@ func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -228,7 +228,7 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -281,7 +281,7 @@ func drawLinkDeltaRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -328,7 +328,7 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -383,7 +383,7 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -421,7 +421,7 @@ func drawLinkRejectRoute(res http.ResponseWriter, req *http.Request) {
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 

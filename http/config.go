@@ -23,11 +23,11 @@ func NewRouter() *mux.Router {
 // Subrouter creates a Gorilla subroute with a prefix
 func Subrouter(prefix string) *mux.Router {
 	log.Debugw("startup", "router", prefix)
-	if Config.router == nil {
+	if c.router == nil {
 		NewRouter()
 	}
 
-	sr := Config.router.PathPrefix(prefix).Subrouter()
+	sr := c.router.PathPrefix(prefix).Subrouter()
 	return sr
 }
 
@@ -43,7 +43,7 @@ func GetWebroot() string {
 
 // SetWebAPIPath is called at https startup
 func SetWebAPIPath(a string) {
-	config.Get.HTTP.APIpath = a
+	config.Get().HTTP.APIpath = a
 }
 
 // GetWebAPIPath is called from templates

@@ -12,11 +12,17 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server/PubSub"
+	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// this can probably be simplified now
-func meShowRoute(res http.ResponseWriter, req *http.Request) {
+// get the logged in agent
+func meRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	res.Header().Set("Cache-Control", "no-store")
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
@@ -24,27 +30,27 @@ func meShowRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var ud wasabee.AgentData
-	if err = gid.GetAgentData(&ud); err != nil {
+	agent, err := gid.GetAgent()
+	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	ud.QueryToken = formValidationToken(req)
+	agent.QueryToken = formValidationToken(req)
 
-	if wantsJSON(req) {
-		data, _ := json.Marshal(ud)
-		res.Header().Add("Content-Type", jsonType)
-		res.Header().Set("Cache-Control", "no-store")
-		fmt.Fprint(res, string(data))
-		return
-	}
+	/* if !wantsJSON(req) {
+		res.Header().Delete("Content-Type")
+		// templateExecute runs the "me" template and outputs directly to the res
+		if err = templateExecute(res, req, "me", agent); err != nil {
+			log.Error(err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} */
 
-	// templateExecute runs the "me" template and outputs directly to the res
-	if err = templateExecute(res, req, "me", ud); err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
+	data, _ := json.Marshal(agent)
+
+	fmt.Fprint(res, string(data))
 }
 
 // use this to verify that form data is sent from a client that requested it
@@ -54,14 +60,14 @@ func formValidationToken(req *http.Request) string {
 		idx = len(req.RemoteAddr)
 	}
 	ip := req.RemoteAddr[0:idx]
-	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("User-Agent"), ip, config.OauthConfig.ClientSecret)
+	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("User-Agent"), ip, c.OauthConfig.ClientSecret)
 	hasher := sha256.New()
 	hasher.Write([]byte(toHash))
 	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 }
 
 // almost everything should return JSON now. The few things that do not redirect elsewhere.
-func wantsJSON(req *http.Request) bool {
+/* func wantsJSON(req *http.Request) bool {
 	// if specified, use what is requested
 	sendjson := req.FormValue("json")
 	if sendjson == "y" {
@@ -76,31 +82,12 @@ func wantsJSON(req *http.Request) bool {
 	}
 
 	return false
-}
-
-func meShowRouteJSON(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	var ud wasabee.AgentData
-	if err = gid.GetAgentData(&ud); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	data, _ := json.Marshal(ud)
-	res.Header().Set("Cache-Control", "no-store")
-	fmt.Fprint(res, string(data))
-}
+} */
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
+	res.Header().Set("Cache-Control", "no-store")
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
@@ -109,7 +96,7 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	team := model.TeamID(vars["team"])
 	state := vars["state"]
 
 	if err = gid.SetTeamState(team, state); err != nil {
@@ -118,12 +105,12 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res.Header().Set("Cache-Control", "no-store")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
@@ -132,7 +119,7 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	team := model.TeamID(vars["team"])
 	state := vars["state"]
 
 	if err = gid.SetWDShare(team, state); err != nil {
@@ -145,6 +132,7 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 
 func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
@@ -153,7 +141,7 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	team := model.TeamID(vars["team"])
 	state := vars["state"]
 
 	if err = gid.SetWDLoad(team, state); err != nil {
@@ -166,6 +154,7 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
+
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
@@ -174,7 +163,7 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	team := model.TeamID(vars["team"])
 
 	if err = team.RemoveAgent(gid); err != nil {
 		log.Error(err)
@@ -211,7 +200,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// send to the other servers
-	gid.PSLocation(lat, lon)
+	wps.Location(gid, lat, lon)
 
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -254,7 +243,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	ses, err := config.store.Get(req, config.sessionName)
+	ses, err := c.store.Get(req, c.sessionName)
 	delete(ses.Values, "nonce")
 	delete(ses.Values, "id")
 	delete(ses.Values, "loginReq")
@@ -275,7 +264,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	_ = ses.Save(req, res)
 
-	gid.Logout("user requested")
+	auth.Logout(gid, "user requested")
 	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -304,7 +293,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	err = gid.FirebaseInsertToken(token)
+	err = model.StoreFirebaseToken(wfb.GoogleID(gid), token)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -312,27 +301,6 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprint(res, jsonStatusOK)
-}
-
-func meFirebaseGenTokenRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		res.Header().Add("Content-Type", jsonType)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	token, err := gid.FirebaseCustomToken()
-	if err != nil {
-		log.Error(err)
-		res.Header().Add("Content-Type", jsonType)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	res.Header().Add("Content-Type", "application/jwt")
-	fmt.Fprint(res, token)
 }
 
 func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
@@ -358,7 +326,7 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	gid.SetIntelData(name, faction)
-	gid.PSIntelData(name, faction)
+	wps.IntelData(gid, name, faction)
 	fmt.Fprint(res, jsonStatusOK)
 }
 

@@ -154,7 +154,7 @@ func agentFBMessageRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ok, err := wfb.SendMessage(wfb.GoogleID(togid), string(toSend))
+	_, err = wfb.SendMessage(wfb.GoogleID(togid), string(toSend))
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

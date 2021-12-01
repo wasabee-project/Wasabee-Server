@@ -8,6 +8,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/rocks"
 )
 
 func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
@@ -34,7 +36,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	jRaw := json.RawMessage(jBlob)
-	err = wasabee.RocksCommunitySync(jRaw)
+	err = rocks.CommunitySync(jRaw)
 	if err != nil {
 		log.Errorw(err.Error(), "content", jRaw)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -58,9 +60,9 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	teamID := model.TeamID(vars["team"])
 
-	safe, err := gid.OwnsTeam(team)
+	safe, err := gid.OwnsTeam(teamID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -68,12 +70,12 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden: only the team owner can pull the .rocks community")
-		log.Warnw(err.Error(), "GID", gid.String(), "resource", team)
+		log.Warnw(err.Error(), "GID", gid.String(), "resource", teamID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	err = team.RocksCommunityMemberPull()
+	err = rocks.CommunityMemberPull(string(teamID))
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -93,7 +95,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	team := wasabee.TeamID(vars["team"])
+	team := model.TeamID(vars["team"])
 	rc := vars["rockscomm"]
 	rk := vars["rockskey"]
 

@@ -1,4 +1,4 @@
-package wasabeepubsub
+package wps
 
 import (
 	"context"
@@ -212,7 +212,7 @@ func listenForPubSubMessages() {
 }
 
 func listenForWasabeeCommands() {
-	cmdchan := PubSubInit()
+	cmdchan := startup()
 	for cmd := range cmdchan {
 		switch cmd.Command {
 		case "request":

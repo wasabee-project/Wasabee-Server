@@ -4,13 +4,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server/log"
-	"github.com/wasabee-project/Wasabee-Server/model"
 	"html"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -290,7 +293,10 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if message == "" {
 		message = "This is a toast notification"
 	}
-	err = team.SendAnnounce(gid, message)
+
+	wfb.SendGeneric(wfb.TeamID(team), message)
+
+	err = messaging.SendAnnounce(gid, team, message)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
