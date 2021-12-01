@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
@@ -163,23 +162,23 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 // Links are added/removed as necessary -- assignments _are_ overwritten
 // Markers are added/removed as necessary -- assignments _are_ overwritten
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
-func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, error) {
+func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	var o Operation
 	if err := json.Unmarshal(op, &o); err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
 
 	if opID != o.ID {
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
 		log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
-		return "", err
+		return err
 	}
 
 	if o.ID.IsDeletedOp() {
 		err := fmt.Errorf("attempt to update a deleted opID; duplicate and upload the copy instead")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
-		return "", err
+		return err
 	}
 
 	// ignore incoming team data -- only trust what is stored in DB
@@ -189,14 +188,14 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) (string, err
 	if !o.WriteAccess(gid) {
 		err := fmt.Errorf("write access denied to op: %s", o.ID)
 		log.Error(err)
-		return "", err
+		return err
 	}
 
 	if err := drawOpUpdateWorker(&o); err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
-	return o.Touch()
+	return nil
 }
 
 func drawOpUpdateWorker(o *Operation) error {
@@ -435,8 +434,6 @@ func (o *Operation) Delete(gid GoogleID) error {
 		// carry on
 	}
 
-	wfb.DeleteOperation(string(o.ID))
-
 	_, err = db.Exec("DELETE FROM operation WHERE ID = ?", o.ID)
 	if err != nil {
 		log.Error(err)
@@ -585,8 +582,6 @@ func (o *Operation) Touch() (string, error) {
 		log.Error(err)
 		return "", err
 	}
-
-	// wfb.MapChange(updateID) // let the caller do it, so they don't get a "marker change" and "map change" update in the same go
 	return updateID, nil
 }
 

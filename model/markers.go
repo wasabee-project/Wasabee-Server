@@ -180,6 +180,12 @@ func (m Marker) Assign(gid GoogleID) error {
 
 // GetMarker lookup and return a populated Marker from an id
 func (o *Operation) GetMarker(markerID MarkerID) (Marker, error) {
+	if len(o.Markers) == 0 { // XXX not a good test, not all ops have markers
+		err := fmt.Errorf("Attempt to use GetMarker on unpopulated *Operation")
+		log.Error(err)
+		return Marker{}, err
+	}
+
 	for _, m := range o.Markers {
 		if m.ID == markerID {
 			return m, nil
@@ -278,7 +284,7 @@ func (m Marker) Acknowledge(gid GoogleID) error {
 		return err
 	}
 	for t := range teams {
-		wfb.MarkerStatus(string(m.ID), string(m.opID), string(t), "acknowledged")
+		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "acknowledged")
 	}
 	return nil
 }
@@ -306,7 +312,7 @@ func (m Marker) Complete(gid GoogleID) error {
 		return err
 	}
 	for t := range teams {
-		wfb.MarkerStatus(string(m.ID), string(m.opID), string(t), "completed")
+		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "completed")
 	}
 	return nil
 }
@@ -334,7 +340,7 @@ func (m Marker) Incomplete(gid GoogleID) error {
 		return err
 	}
 	for t := range teams {
-		wfb.MarkerStatus(string(m.ID), string(m.opID), string(t), "incomplete")
+		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "incomplete")
 	}
 	return nil
 }
@@ -362,7 +368,7 @@ func (m Marker) Reject(gid GoogleID) error {
 		return err
 	}
 	for t := range teams {
-		wfb.MarkerStatus(string(m.ID), string(m.opID), string(t), "reject")
+		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "reject")
 	}
 	return nil
 }

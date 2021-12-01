@@ -93,15 +93,15 @@ func AssignMarker(gid GoogleID, markerID TaskID, opID OperationID, status string
 }
 
 // MarkerStatus reports a marker update to a team/topic
-func MarkerStatus(markerID, opID, teamID, status string) error {
+func MarkerStatus(markerID TaskID, opID OperationID, teamID TeamID, status string) error {
 	data := map[string]string{
-		"opID":     opID,
-		"markerID": markerID,
+		"opID":     string(opID),
+		"markerID": string(markerID),
 		"msg":      status,
 		"cmd":      "Marker Status Change",
 	}
 	msg := messaging.Message{
-		Topic: teamID,
+		Topic: string(teamID),
 		Data:  data,
 	}
 
@@ -114,15 +114,15 @@ func MarkerStatus(markerID, opID, teamID, status string) error {
 }
 
 // LinkStatus reports a link update to a team/topic
-func LinkStatus(linkID, opID, teamID, status string) error {
+func LinkStatus(linkID TaskID, opID OperationID, teamID TeamID, status string) error {
 	data := map[string]string{
-		"opID":   opID,
-		"linkID": linkID,
+		"opID":   string(opID),
+		"linkID": string(linkID),
 		"msg":    status,
 		"cmd":    "Link Status Change",
 	}
 	msg := messaging.Message{
-		Topic: teamID,
+		Topic: string(teamID),
 		Data:  data,
 	}
 
@@ -260,7 +260,7 @@ func AgentLogin(teamID TeamID, gid GoogleID) error {
 }
 
 // DeleteOperation tells everyone (on this server) to remove a specific op
-func DeleteOperation(opID string) error {
+func DeleteOperation(opID OperationID) error {
 	tokens, err := Callbacks.BroadcastList()
 	if err != nil {
 		log.Error(err)
@@ -271,9 +271,8 @@ func DeleteOperation(opID string) error {
 	}
 
 	data := map[string]string{
-		// "msg":  fb.Msg,
 		"cmd":  "Delete",
-		"opID": opID,
+		"opID": string(opID),
 	}
 
 	// do this in its own worker since it might take a while

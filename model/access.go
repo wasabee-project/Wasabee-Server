@@ -154,7 +154,7 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 		return err
 	}
 
-	if x, err := togid.IngressName(); x == "" || err != nil {
+	if !togid.Valid() {
 		err := fmt.Errorf("unknown user")
 		log.Errorw(err.Error(), "to", to)
 		return err

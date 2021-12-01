@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -25,12 +24,12 @@ type Agent struct {
 	VBlacklisted  bool         `json:"blacklisted"`
 	EnlID         string       `json:"enlid"`
 	RocksVerified bool         `json:"rocks"`
-	RAID          bool         `json:"RAID"`
-	RISC          bool         `json:"RISC"`
-	ProfileImage  string       `json:"pic"`
-	Teams         []AdTeam
-	Ops           []AdOperation
-	Telegram      struct {
+	// RAID          bool         `json:"RAID"`
+	RISC         bool   `json:"RISC"`
+	ProfileImage string `json:"pic"`
+	Teams        []AdTeam
+	Ops          []AdOperation
+	Telegram     struct {
 		ID        int64
 		Verified  bool
 		Authtoken string
@@ -84,7 +83,7 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 
 	ad := &a
 
-	err := db.QueryRow("SELECT a.name, a.Vname, a.Rocksname, a.intelname, a.level, a.OneTimeToken, a.VVerified, a.VBlacklisted, a.Vid, a.RocksVerified, a.RAID, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RAID, &ad.RISC, &ifac, &pic, &vapi)
+	err := db.QueryRow("SELECT a.name, v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, a.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &ad.VName, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return a, err
@@ -300,20 +299,42 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 		return err
 	}
 
-	// announce to teams with which this agent is sharing location information
-	for teamID := range gid.teamListEnabled() {
-		wfb.AgentLocation(wfb.TeamID(teamID))
-	}
 	return nil
 }
 
 // IngressName returns an agent's name for a given GoogleID.
 // returns err == sql.ErrNoRows if there is no such agent.
 func (gid GoogleID) IngressName() (string, error) {
-	var name string // , rocksname, vname, intelname string
-	// err := db.QueryRow("SELECT name, rocksname, vname, intelname FROM agent WHERE gid = ?", gid).Scan(&name, &rocksname, &vname, &intelname)
-	err := db.QueryRow("SELECT name FROM agent WHERE gid = ?", gid).Scan(&name)
-	return name, err
+	var name string
+	var rocksname, vname, intelname sql.NullString
+	err := db.QueryRow("SELECT agent.name, rocks.agent, v.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&name, &rocksname, &vname, &intelname)
+	if err != nil {
+		log.Error(err)
+		return string(gid), err
+	}
+
+	if intelname.Valid {
+		name = intelname.String
+	}
+	if rocksname.Valid {
+		name = rocksname.String
+	}
+	if vname.Valid {
+		name = vname.String
+	}
+
+	return name, nil
+}
+
+// Valid returns "true" if the GoogleID is known to wasabee
+func (gid GoogleID) Valid() bool {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM agent WHERE gid = ?", gid).Scan(&count)
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+	return count == 1
 }
 
 func (gid GoogleID) String() string {
@@ -338,6 +359,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// agent.name has a unique key
+	// XXX deprecate use of agent.Name
 	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(name) = LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
@@ -347,15 +369,15 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 
-	// Vname does NOT have a unique key
+	// v.agent does NOT have a unique key
 	var count int
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(Vname) = LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(Vname) = LOWER(?)", agent).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -367,14 +389,15 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		log.Error(err)
 	}
 
-	// rocks does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(rocksname) = LOWER(?)", agent).Scan(&count)
+	// rocks.agent does NOT have a unique key
+	err = db.QueryRow("SELECT COUNT(gid) FROM rocks HERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
+
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(rocks) = LOWER(?)", agent).Scan(&gid)
+		err := db.QueryRow("SELECT gid FROM rocks WHERE LOWER(agent) = LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -382,7 +405,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf("multiple rocks matches found, not using V results")
+		err := fmt.Errorf("multiple rocks matches found, not using rocks results")
 		log.Error(err)
 	}
 
@@ -401,7 +424,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf("multiple intelname matches found, not using V results")
+		err := fmt.Errorf("multiple intelname matches found, not using intelname results")
 		log.Error(err)
 	}
 
@@ -459,18 +482,15 @@ func (gid GoogleID) Delete() error {
 	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM agentextras WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
+	_, _ = db.Exec("DELETE FROM v WHERE gid = ?", gid)
+	_, _ = db.Exec("DELETE FROM rocks WHERE gid = ?", gid)
 
 	return nil
 }
 
 // Lock disables an account -- called by RISC system
 func (gid GoogleID) Lock(reason string) error {
-	if gid == "" {
-		err := fmt.Errorf("gid unset")
-		log.Error(err)
-		return err
-	}
-
+	log.Infow("RISC locking", "gid", gid, "reason", reason)
 	if _, err := db.Exec("UPDATE agent SET RISC = 1 WHERE gid = ?", gid); err != nil {
 		log.Error(err)
 		return err
@@ -480,12 +500,7 @@ func (gid GoogleID) Lock(reason string) error {
 
 // Unlock enables a disabled account -- called by RISC system
 func (gid GoogleID) Unlock(reason string) error {
-	if gid == "" {
-		err := fmt.Errorf("gid unset")
-		log.Error(err)
-		return err
-	}
-
+	log.Infow("RISC unlocking", "gid", gid, "reason", reason)
 	if _, err := db.Exec("UPDATE agent SET RISC = 0 WHERE gid = ?", gid); err != nil {
 		log.Error(err)
 		return err
@@ -559,21 +574,15 @@ func ToGid(in string) (GoogleID, error) {
 	return gid, nil
 }
 
-// Save is called by InitAgent and from the Pub/Sub system to write a new agent
+// Save is called by FirstLogin, Authorize, and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad Agent) Save() error {
-	_, err := db.Exec("INSERT INTO agent (gid, name, vname, rocksname, level, OneTimeToken, VVerified, VBlacklisted, Vid, RocksVerified, RAID)  VALUES (?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name = ?, vname = ?, rocksname = ? , level = ?, VVerified = ?, VBlacklisted = ?, Vid = ?, RocksVerified = ?, RAID = ?, RISC = ?",
-		ad.GoogleID, ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.OneTimeToken, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID,
-		ad.IngressName, ad.VName, ad.RocksName, ad.Level, ad.VVerified, ad.VBlacklisted, MakeNullString(ad.EnlID), ad.RocksVerified, ad.RAID, ad.RISC)
-	if err != nil {
+	if _, err := db.Exec("REPLACE INTO agent (gid, name, OneTimeToken, RISC, IntelFaction) VALUES (?,?,?,?,?)", ad.GoogleID, ad.IngressName, ad.OneTimeToken, ad.RISC, ad.IntelFaction); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if _, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID); err != nil {
-		log.Error(err)
-		return err
-	}
+	// we don't touch V/Rocks data here
 
 	if ad.Telegram.ID != 0 {
 		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, gid, verified) VALUES (?, ?, ?)", ad.Telegram.ID, ad.GoogleID, ad.Telegram.Verified); err != nil {
@@ -581,18 +590,8 @@ func (ad Agent) Save() error {
 			return err
 		}
 	}
+
 	return nil
-}
-
-// SetAgentName updates an agent's name -- used only for test scripts presently
-func (gid GoogleID) SetAgentName(newname string) error {
-	_, err := db.Exec("UPDATE agent SET name = ? WHERE gid = ?", newname, gid)
-
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return err
 }
 
 // Stores the untrusted data from IITC - do not depend on these values for authorization
@@ -652,5 +651,45 @@ func (gid GoogleID) SetVAPIkey(key string) error {
 		log.Error(err)
 		return err
 	}
+	return nil
+}
+
+func (gid GoogleID) FirstLogin() error {
+	log.Infow("first login", "GID", gid, "message", "first login for "+gid)
+
+	ott, err := GenerateSafeName()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	ad := Agent{
+		GoogleID:     gid,
+		IngressName:  string(gid),
+		OneTimeToken: OneTimeToken(ott),
+		RISC:         false,
+		// IntelFaction: factionUnset,
+	}
+
+	if err := ad.Save(); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if _, err = db.Exec("INSERT INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if _, err = db.Exec("INSERT INTO v (gid, verified, blacklisted, fetched) VALUES (?,0,0,'2000-01-01 00:00:00')", ad.GoogleID); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if _, err = db.Exec("INSERT INTO rocks (gid, verified, smurf, fetched) VALUES (?,0,0,'2000-01-01 00:00:00')", ad.GoogleID); err != nil {
+		log.Error(err)
+		return err
+	}
+
 	return nil
 }

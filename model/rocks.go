@@ -70,17 +70,13 @@ func RocksCommunityToTeam(communityID string) (TeamID, error) {
 func rocksAddAgentToTeam(g, communityID string) error {
 	gid := GoogleID(g)
 
-	_, err := gid.IngressName()
-	if err != nil && err == sql.ErrNoRows {
-		log.Infow("Importing previously unknown agent -- FINISH ME", "GID", gid)
-		/* _, err = gid.InitAgent() // add agent to system if they don't already exist
+	if !gid.Valid() {
+		log.Infow("Importing previously unknown agent", "GID", gid)
+		err := gid.FirstLogin()
 		if err != nil {
 			log.Info(err)
-		} */
-	}
-	if err != nil && err != sql.ErrNoRows {
-		log.Info(err)
-		return err
+			return err
+		}
 	}
 
 	teamID, err := RocksCommunityToTeam(communityID)

@@ -1,8 +1,7 @@
-package wasabee
+package templates
 
 import (
 	"bytes"
-	"cloud.google.com/go/storage"
 	"html/template"
 	"io/ioutil"
 	"path"
@@ -22,11 +21,11 @@ var funcMap = template.FuncMap{
 	// "WebAPIPath":   GetWebAPIPath,
 }
 
-// TemplateConfig should be called once from main to establish the templates.
+// Startup should be called once from main to establish the templates.
 // Individual subsystems should provide their own execution function since requirements will vary
 // XXX TODO: establish a way of refreshing/reloading that doesn't leak
 //
-func TemplateConfig(frontendPath string) (map[string]*template.Template, error) {
+func Startup(frontendPath string) (map[string]*template.Template, error) {
 	// Transform frontendPath to an absolute path
 	fp, err := filepath.Abs(frontendPath)
 	if err != nil {
@@ -66,19 +65,7 @@ func TemplateConfig(frontendPath string) (map[string]*template.Template, error) 
 	return templateSet, nil
 }
 
-// TemplateConfigAppengine is the same as TemplateConfig, but uses a Google Cloud Storage bucket instead of the local filesystem
-func TemplateConfigAppengine(bucket *storage.BucketHandle, path string) (map[string]*template.Template, error) {
-	templateSet := make(map[string]*template.Template)
-
-	log.Debugw("frontend templates--function incomplete", "path", path)
-
-	// XXX NOT DONE YET
-
-	ts = templateSet
-	return templateSet, nil
-}
-
-func ExecuteTemplate(name string, data interface{}) (string, error) {
+func Execute(name string, data interface{}) (string, error) {
 	lang := "en"
 
 	var tpBuffer bytes.Buffer

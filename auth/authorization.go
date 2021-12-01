@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"database/sql"
 	"fmt"
 	"sync"
 
@@ -27,40 +26,19 @@ func init() {
 // Returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked.
 func Authorize(gid model.GoogleID) (bool, error) {
 	// if the agent doesn't exist, prepopulate everything
-	name, err := gid.IngressName()
-	if err != nil && err == sql.ErrNoRows {
-		log.Infow("first login", "GID", gid, "message", "first login for "+gid)
-
-		ott, err := model.GenerateSafeName()
-		if err != nil {
-			log.Error(err)
-			return false, err
-		}
-
-		ad := model.Agent{
-			GoogleID:     gid,
-			IngressName:  string(gid),
-			OneTimeToken: model.OneTimeToken(ott),
-		}
-
-		if err := ad.Save(); err != nil {
-			log.Error(err)
-			return false, err
-		}
-	} else if err != nil {
-		log.Error(err)
-		return false, err
+	if !gid.Valid() {
+		gid.FirstLogin()
 	}
 
 	if gid.RISC() {
 		err := fmt.Errorf("account locked by Google RISC")
-		log.Warnw(err.Error(), "GID", gid, "name", name)
+		log.Warnw(err.Error(), "GID", gid)
 		return false, err
 	}
 
 	if gid.IntelSmurf() {
 		err := fmt.Errorf("intel account self-identified as RES")
-		log.Warnw(err.Error(), "GID", gid, "name", name)
+		log.Warnw(err.Error(), "GID", gid)
 		return false, err
 	}
 

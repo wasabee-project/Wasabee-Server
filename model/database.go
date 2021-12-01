@@ -143,7 +143,7 @@ func upgradeTables() {
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'zone' AND column_name = 'color'", "ALTER TABLE zone ADD color varchar(10) NOT NULL DEFAULT 'green'"},
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'agentextras' AND column_name = 'VAPIkey'", "ALTER TABLE agentextras ADD VAPIkey varchar(42)"},
 		{"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'team' AND column_name = 'vteam'", "ALTER TABLE team ADD vteam int(11) UNSIGNED DEFAULT 0, ADD vrole int(11) UNSIGNED DEFAULT 0"},
-		// {"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'agent' AND column_name = 'fetched'", "ALTER TABLE agent DROP Vverified, DROP Vblacklisted, DROP Vid, DROP RocksVerified, DROP Vname, DROP rocksname, ADD fetched datetime not null default current_timestamp()"},
+		// {"SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = Database() AND table_name = 'agent' AND column_name = 'fetched'", "ALTER TABLE agent DROP Vverified, DROP Vblacklisted, DROP Vid, DROP RocksVerified, DROP Vname, DROP rocksname, DROP RAID, ADD fetched datetime not null default current_timestamp()"},
 	}
 
 	tx, err := db.Begin()

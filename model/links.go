@@ -211,7 +211,7 @@ func (o *Operation) LinkOrder(order string) error {
 }
 
 // LinkColor changes the color of a link in an operation
-func (l Link) LinkColor(color string) error {
+func (l Link) SetColor(color string) error {
 	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", color, l.ID, l.opID)
 	if err != nil {
 		log.Error(err)
@@ -220,7 +220,7 @@ func (l Link) LinkColor(color string) error {
 }
 
 // Delta sets the DeltaMinutes of a link in an operation
-func (l Link) LinkDelta(delta int) error {
+func (l Link) SetDelta(delta int) error {
 	_, err := db.Exec("UPDATE link SET delta = ? WHERE ID = ? and opID = ?", delta, l.ID, l.opID)
 	if err != nil {
 		log.Error(err)
@@ -228,22 +228,22 @@ func (l Link) LinkDelta(delta int) error {
 	return err
 }
 
-// LinkSwap changes the direction of a link in an operation
-func (o *Operation) LinkSwap(link LinkID) (string, error) {
+// Swap changes the direction of a link in an operation
+func (l Link) Swap() error {
 	var tmpLink Link
 
-	err := db.QueryRow("SELECT fromPortalID, toPortalID FROM link WHERE opID = ? AND ID = ?", o.ID, link).Scan(&tmpLink.From, &tmpLink.To)
+	err := db.QueryRow("SELECT fromPortalID, toPortalID FROM link WHERE opID = ? AND ID = ?", l.opID, l.ID).Scan(&tmpLink.From, &tmpLink.To)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
 
-	_, err = db.Exec("UPDATE link SET fromPortalID = ?, toPortalID = ? WHERE ID = ? and opID = ?", tmpLink.To, tmpLink.From, link, o.ID)
+	_, err = db.Exec("UPDATE link SET fromPortalID = ?, toPortalID = ? WHERE ID = ? and opID = ?", tmpLink.To, tmpLink.From, l.ID, l.opID)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return err
 	}
-	return o.Touch()
+	return nil
 }
 
 // Zone sets a link's zone
@@ -257,7 +257,7 @@ func (l Link) SetZone(z Zone) error {
 
 // GetLink looks up and returns a populated Link from an id
 func (o *Operation) GetLink(linkID LinkID) (Link, error) {
-	if len(o.Links) == 0 {
+	if len(o.Links) == 0 { // XXX not a good test, not all ops have links
 		err := fmt.Errorf("Attempt to use GetLink on unpopulated *Operation")
 		log.Error(err)
 		return Link{}, err
