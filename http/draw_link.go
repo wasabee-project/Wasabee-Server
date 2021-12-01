@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -21,7 +22,6 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
 	op.ID = model.OperationID(vars["document"])
@@ -32,16 +32,14 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	linkID := model.LinkID(vars["link"])
-	agent := model.GoogleID(req.FormValue("agent"))
 
-	err = op.Populate(gid)
-	if err != nil {
+	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
@@ -49,18 +47,14 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = link.Assign(agent)
-	if err != nil {
+	agent := model.GoogleID(req.FormValue("agent"))
+	if err = link.Assign(agent); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+
+	uid := linkAssignTouch(gid, linkID, op)
 	// log.Infow("assigned link", "GID", gid, "resource", op.ID, "link", linkID, "agent", agent, "message", "assigned link")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
@@ -75,7 +69,6 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
 	op.ID = model.OperationID(vars["document"])
@@ -86,16 +79,14 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	linkID := model.LinkID(vars["link"])
-	desc := req.FormValue("desc")
 
-	err = op.Populate(gid)
-	if err != nil {
+	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
@@ -103,19 +94,14 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	rr := link.Comment(desc)
-	if err != nil {
+	desc := req.FormValue("desc")
+	if err = link.Comment(desc); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -140,35 +126,29 @@ func drawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	linkID := model.LinkID(vars["link"])
-	color := req.FormValue("color")
 
-	err = op.Populate(gid)
-	if err != nil {
+	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	err = link.SetColor(color)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	uid, err := op.Touch()
-	if err != nil {
+
+	color := req.FormValue("color")
+	if err = link.SetColor(color); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -182,7 +162,6 @@ func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
 	op.ID = model.OperationID(vars["document"])
@@ -194,15 +173,13 @@ func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	linkID := model.LinkID(vars["link"])
-
-	err = op.Populate(gid)
-	if err != nil {
+	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
@@ -210,19 +187,13 @@ func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = link.Swap()
-	if err != nil {
+	if err = link.Swap(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -247,16 +218,13 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	linkID := model.LinkID(vars["link"])
-	zone := model.ZoneFromString(req.FormValue("zone"))
-
-	err = op.Populate(gid)
-	if err != nil {
+	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
@@ -264,19 +232,14 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = link.SetZone(zone)
-	if err != nil {
+	zone := model.ZoneFromString(req.FormValue("zone"))
+	if err = link.SetZone(zone); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -301,7 +264,6 @@ func drawLinkDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	link := model.LinkID(vars["link"])
 	delta, err := strconv.ParseInt(req.FormValue("delta"), 10, 32)
 	if err != nil {
 		log.Error(err)
@@ -309,12 +271,27 @@ func drawLinkDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.LinkDelta(link, int(delta))
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	linkID := model.LinkID(vars["link"])
+	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	if err = link.SetDelta(int(delta)); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -341,21 +318,36 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 	var op model.Operation
 	op.ID = model.OperationID(vars["document"])
 
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	linkID := model.LinkID(vars["link"])
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
 	// write access OR asignee
-	link := model.LinkID(vars["link"])
-	if !op.WriteAccess(gid) && !op.ID.AssignedTo(link, gid) {
+	// after op.Populate since we need the full link here
+	if !op.WriteAccess(gid) && !link.IsAssignedTo(gid) {
 		err = fmt.Errorf("permission to mark link as complete denied")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	uid, err := op.LinkCompleted(link, complete)
-	if err != nil {
+	if err = link.Complete(complete); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -369,12 +361,10 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
 	op.ID = model.OperationID(vars["document"])
 
-	link := model.LinkID(vars["link"])
 	read, _ := op.ReadAccess(gid)
 	if !read {
 		err = fmt.Errorf("permission to claim link assignment denied")
@@ -383,12 +373,27 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := link.Claim(&op, gid)
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	linkID := model.LinkID(vars["link"])
+	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	if err = link.Claim(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -402,26 +407,38 @@ func drawLinkRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
 	op.ID = model.OperationID(vars["document"])
 
-	// asignee only
-	link := model.LinkID(vars["link"])
-	if !op.ID.AssignedTo(link, gid) {
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	linkID := model.LinkID(vars["link"])
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if !link.IsAssignedTo(gid) {
 		err = fmt.Errorf("permission to reject link assignment denied")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	uid, err := link.Reject(&op, gid)
-	if err != nil {
+	if err := link.Reject(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	uid := linkStatusTouch(op, linkID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -455,7 +472,6 @@ func drawLinkFetch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// populate the whole op, slow, but ensures we only get things we have access to see
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -478,4 +494,47 @@ func drawLinkFetch(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprint(res, string(j))
+}
+
+// linkAssignTouch updates the updateID and notifies ONLY the agent to whom the assigment was made
+func linkAssignTouch(gid model.GoogleID, linkID model.LinkID, op model.Operation) string {
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
+
+	wfb.AssignLink(wfb.GoogleID(gid), wfb.TaskID(linkID), wfb.OperationID(op.ID), uid)
+	return uid
+}
+
+// linkStatusTouch updates the updateID and notifies all teams of the update
+func linkStatusTouch(op model.Operation, linkID model.LinkID) string {
+	// update the timestamp and updateID
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+
+	// announce to all relevant teams
+	var teams []model.TeamID
+	for _, t := range op.Teams {
+		teams = append(teams, t.TeamID)
+	}
+	if len(teams) == 0 {
+		// not populated?
+		teams, err := op.ID.Teams()
+		if err != nil {
+			log.Error(err)
+			return uid
+		}
+	}
+
+	for _, t := range teams {
+		err := wfb.LinkStatus(wfb.TaskID(linkID), wfb.OperationID(op.ID), wfb.TeamID(t), uid)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+	return uid
 }

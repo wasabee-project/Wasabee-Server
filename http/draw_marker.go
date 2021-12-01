@@ -7,7 +7,9 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
@@ -20,10 +22,9 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to assign targets")
@@ -32,21 +33,35 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	marker := wasabee.MarkerID(vars["marker"])
-	agent := wasabee.GoogleID(req.FormValue("agent"))
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.AssignMarker(marker, agent)
+	markerID := model.MarkerID(vars["marker"])
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	log.Infow("assigned marker", "GID", gid, "resource", op.ID, "marker", marker, "agent", agent, "message", "assigned marker")
+
+	agent := model.GoogleID(req.FormValue("agent"))
+	if err = marker.Assign(agent); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid := markerAssignTouch(gid, markerID, op)
+	// log.Infow("assigned marker", "GID", gid, "resource", op.ID, "marker", marker, "agent", agent, "message", "assigned marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -60,25 +75,39 @@ func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
-	marker := wasabee.MarkerID(vars["marker"])
+	if read, _ := op.ReadAccess(gid); !read {
+		err = fmt.Errorf("read access required to claim targets")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.ClaimMarker(marker, gid)
+	markerID := model.MarkerID(vars["marker"])
+	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	log.Infow("claimed marker", "GID", gid, "resource", op.ID, "marker", marker, "message", "claimed marker")
+
+	if err = marker.Claim(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// log.Infow("claimed marker", "GID", gid, "resource", op.ID, "marker", marker, "message", "claimed marker")
+	uid := markerStatusTouch(op, markerID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -92,10 +121,9 @@ func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set marker comments")
@@ -104,14 +132,27 @@ func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	marker := wasabee.MarkerID(vars["marker"])
-	comment := req.FormValue("comment")
-	uid, err := op.MarkerComment(marker, comment)
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	markerID := model.MarkerID(vars["marker"])
+	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	comment := req.FormValue("comment")
+	if err = marker.SetComment(comment); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid := markerStatusTouch(op, markerID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -125,10 +166,9 @@ func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set marker zone")
@@ -137,14 +177,27 @@ func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	marker := wasabee.MarkerID(vars["marker"])
-	zone := wasabee.ZoneFromString(req.FormValue("zone"))
-	uid, err := marker.SetZone(&op, zone)
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	markerID := model.MarkerID(vars["marker"])
+	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	zone := model.ZoneFromString(req.FormValue("zone"))
+	if err := marker.SetZone(zone); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid := markerStatusTouch(op, markerID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -158,10 +211,9 @@ func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to set delta")
@@ -170,7 +222,6 @@ func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	marker := wasabee.MarkerID(vars["marker"])
 	delta, err := strconv.ParseInt(req.FormValue("delta"), 10, 32)
 	if err != nil {
 		log.Error(err)
@@ -178,12 +229,26 @@ func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := marker.Delta(&op, int(delta))
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	markerID := model.MarkerID(vars["marker"])
+	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	if err = marker.Delta(int(delta)); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	uid := markerStatusTouch(op, markerID)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -198,8 +263,8 @@ func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
 
 	// o.Populate determines all or assigned-only
 	read, _ := op.ReadAccess(gid)
@@ -224,7 +289,7 @@ func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	markerID := wasabee.MarkerID(vars["marker"])
+	markerID := model.MarkerID(vars["marker"])
 	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
@@ -252,9 +317,9 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-	markerID := wasabee.MarkerID(vars["marker"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
+	markerID := model.MarkerID(vars["marker"])
 	uid, err := markerID.Complete(&op, gid)
 	if err != nil {
 		log.Error(err)
@@ -276,9 +341,9 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-	markerID := wasabee.MarkerID(vars["marker"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
+	markerID := model.MarkerID(vars["marker"])
 	uid, err := markerID.Incomplete(&op, gid)
 	if err != nil {
 		log.Error(err)
@@ -300,9 +365,9 @@ func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-	markerID := wasabee.MarkerID(vars["marker"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
+	markerID := model.MarkerID(vars["marker"])
 	uid, err := markerID.Reject(&op, gid)
 	if err != nil {
 		log.Error(err)
@@ -324,9 +389,9 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-	markerID := wasabee.MarkerID(vars["marker"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
+	markerID := model.MarkerID(vars["marker"])
 	uid, err := markerID.Acknowledge(&op, gid)
 	if err != nil {
 		log.Error(err)
@@ -335,4 +400,47 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+
+// markerAssignTouch updates the updateID and notifies ONLY the agent to whom the assigment was made
+func markerAssignTouch(gid model.GoogleID, markerID model.MarkerID, op model.Operation) string {
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
+
+	wfb.AssignMarker(wfb.GoogleID(gid), wfb.TaskID(markerID), wfb.OperationID(op.ID), uid)
+	return uid
+}
+
+// linkStatusTouch updates the updateID and notifies all teams of the update
+func markerStatusTouch(op model.Operation, markerID model.MarkerID) string {
+	// update the timestamp and updateID
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+
+	// announce to all relevant teams
+	var teams []model.TeamID
+	for _, t := range op.Teams {
+		teams = append(teams, t.TeamID)
+	}
+	if len(teams) == 0 {
+		// not populated?
+		teams, err := op.ID.Teams()
+		if err != nil {
+			log.Error(err)
+			return uid
+		}
+	}
+
+	for _, t := range teams {
+		err := wfb.LinkStatus(wfb.TaskID(markerID), wfb.OperationID(op.ID), wfb.TeamID(teamID), uid)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+	return uid
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -204,6 +205,11 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// announce to teams with which this agent is sharing location information
+	for teamID := range gid.TeamListEnabled() {
+		wfb.AgentLocation(wfb.TeamID(teamID))
+	}
+
 	// send to the other servers
 	gid.PSLocation(lat, lon)
 
@@ -238,26 +244,6 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	// XXX delete the session cookie from the browser
 	http.Redirect(res, req, "/", http.StatusPermanentRedirect)
-}
-
-func meStatusLocationRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	sl := vars["sl"]
-
-	if sl == "On" {
-		_ = gid.StatusLocationEnable()
-	} else {
-		_ = gid.StatusLocationDisable()
-	}
-	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meLogoutRoute(res http.ResponseWriter, req *http.Request) {

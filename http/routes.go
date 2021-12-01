@@ -140,8 +140,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
 	// r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")
 	// r.HandleFunc("/me/operations", meOperationsRoute).Methods("GET")
-	// toggle RAID/JEAH polling
-	r.HandleFunc("/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
@@ -202,10 +200,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/d/bulk", setDefensiveKeyBulk).Methods("POST")
 	r.HandleFunc("/loc", getAgentsLocation).Methods("GET")
 
-	// server control functions
-	// trigger the server refresh of the template files
-	r.HandleFunc("/templates/refresh", templateUpdateRoute).Methods("GET")
-
 	r.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 }
 
@@ -231,18 +225,6 @@ func privacyRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-// this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
-/* func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
-	var err error
-	config.TemplateSet, err = wasabee.TemplateConfig(config.FrontendPath) // XXX KLUDGE FOR NOW -- this does not update the other protocols
-	if err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(res, "Templates reloaded")
-} */
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {

@@ -11,6 +11,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
@@ -252,7 +253,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		Sender: name,
 	}
 
-	msg, err := gid.ExecuteTemplate("target", templateData)
+	msg, err := templates.Execute("target", templateData)
 	if err != nil {
 		log.Error(err)
 		msg = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)

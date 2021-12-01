@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -174,6 +175,7 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	wfb.DeleteOperation(wfb.OperationID(op.ID)) // announces to EVERYONE to delete it
 	log.Infow("deleted operation", "resource", op.ID, "GID", gid, "message", "deleted operation")
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -233,12 +235,13 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := model.DrawUpdate(model.OperationID(op.ID), json.RawMessage(jBlob), gid)
+	err = model.DrawUpdate(op.ID, json.RawMessage(jBlob), gid)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -272,7 +275,7 @@ func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
+	// no notification
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -362,12 +365,7 @@ func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -400,12 +398,7 @@ func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -442,12 +435,7 @@ func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -477,12 +465,7 @@ func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -521,12 +504,7 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -569,12 +547,7 @@ func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -616,15 +589,38 @@ func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func jsonOKUpdateID(uid string) string {
 	return fmt.Sprintf("{\"status\":\"ok\", \"updateID\": \"%s\"}", uid)
+}
+
+func touch(op model.Operation) string {
+	// update the timestamp and updateID
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+
+	// announce to all relevant teams
+	var teams []model.TeamID
+	for _, t := range op.Teams {
+		teams = append(teams, t.TeamID)
+	}
+	if len(teams) == 0 {
+		// not populated?
+		teams, err := op.ID.Teams()
+		if err != nil {
+			log.Error(err)
+			return uid
+		}
+	}
+
+	for _, t := range teams {
+		wfb.MapChange(wfb.TeamID(t), wfb.OperationID(op.ID), uid)
+	}
+	return uid
 }
