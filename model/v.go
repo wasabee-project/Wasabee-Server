@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"fmt"
 	"strconv"
 	"time"
@@ -18,6 +19,8 @@ func init() {
 // vToDB updates the database to reflect an agent's current status at V.
 // callback
 func vToDB(a v.Agent) error {
+	log.Infow("v toDB", "data", a)
+
 	if a.Agent == "" {
 		return nil
 	}
@@ -29,17 +32,20 @@ func vToDB(a v.Agent) error {
 	}
 
 	// we trust .v to verify telegram info; if it is not already set for a agent, just import it.
-	tgid, err := strconv.ParseInt(a.TelegramID, 10, 64)
-	if err != nil {
-		log.Error(err)
-		return nil // not a deal-breaker
-	}
-	if tgid > 0 { // negative numbers are group chats, 0 is invalid
-		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", tgid, a.Telegram, a.Gid); err != nil {
+	if a.TelegramID != "" {
+		tgid, err := strconv.ParseInt(a.TelegramID, 10, 64)
+		if err != nil {
 			log.Error(err)
-			return err
+			return nil // not a deal-breaker
+		}
+		if tgid > 0 { // negative numbers are group chats, 0 is invalid
+			if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", tgid, a.Telegram, a.Gid); err != nil {
+				log.Error(err)
+				return err
+			}
 		}
 	}
+
 	return nil
 }
 
@@ -47,17 +53,24 @@ func vToDB(a v.Agent) error {
 func vFromDB(g v.GoogleID) (v.Agent, time.Time, error) {
 	gid := GoogleID(g)
 
-	var a v.Agent
+	a := v.Agent{
+		Gid: g,
+	}
 	var fetched string
 	var t time.Time
 
-	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &a.Gid, &a.Vlevel, &a.Vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &a.TelegramID, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
-	if err != nil {
+	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &a.Vlevel, &a.Vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &a.TelegramID, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
 		return a, t, err
+	}
+	if err == sql.ErrNoRows {
+		return a, t, nil
 	}
 
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
 	if err != nil {
+		log.Error(err)
 		return a, t, err
 	}
 	return a, t, nil

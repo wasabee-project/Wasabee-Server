@@ -54,26 +54,26 @@ type Result struct {
 
 // agent is set by the V API
 type Agent struct {
-	EnlID       string  `json:"enlid"`
-	Gid         string  `json:"gid"`
-	Vlevel      int64   `json:"vlevel"`
-	Vpoints     int64   `json:"vpoints"`
-	Agent       string  `json:"agent"`
-	Level       int64   `json:"level"`
-	Quarantine  bool    `json:"quarantine"`
-	Active      bool    `json:"active"`
-	Blacklisted bool    `json:"blacklisted"`
-	Verified    bool    `json:"verified"`
-	Flagged     bool    `json:"flagged"`
-	Banned      bool    `json:"banned_by_nia"`
-	Cellid      string  `json:"cellid"`
-	TelegramID  string  `json:"telegramid"`
-	Telegram    string  `json:"telegram"`
-	Email       string  `json:"email"`
-	StartLat    float64 `json:"lat"`
-	StartLon    float64 `json:"lon"`
-	Distance    int64   `json:"distance"`
-	Roles       []role  `json:"roles"`
+	EnlID       string   `json:"enlid"`
+	Gid         GoogleID `json:"gid"`
+	Vlevel      int64    `json:"vlevel"`
+	Vpoints     int64    `json:"vpoints"`
+	Agent       string   `json:"agent"`
+	Level       int64    `json:"level"`
+	Quarantine  bool     `json:"quarantine"`
+	Active      bool     `json:"active"`
+	Blacklisted bool     `json:"blacklisted"`
+	Verified    bool     `json:"verified"`
+	Flagged     bool     `json:"flagged"`
+	Banned      bool     `json:"banned_by_nia"`
+	Cellid      string   `json:"cellid"`
+	TelegramID  string   `json:"telegramid"`
+	Telegram    string   `json:"telegram"`
+	Email       string   `json:"email"`
+	StartLat    float64  `json:"lat"`
+	StartLon    float64  `json:"lon"`
+	Distance    int64    `json:"distance"`
+	Roles       []role   `json:"roles"`
 }
 
 // v team is set by the V API
@@ -164,7 +164,8 @@ func search(id GoogleID) (Result, error) {
 		log.Info(err)
 		return vres, err
 	}
-	// log.Debug(vres.Data.Agent)
+	// log.Debug(vres)
+	vres.Data.Gid = id // V isn't sending the GIDs
 	return vres, nil
 }
 
@@ -293,7 +294,7 @@ func Sync(teamID TeamID, key string) error {
 		for _, agent := range vt.Agents {
 			if !agent.Gid.Valid() {
 				log.Infow("Importing previously unknown agent", "GID", agent.Gid)
-				_, err = agent.Gid.Authenticate()
+				_, err = agent.Gid.Authorize()
 				if err != nil {
 					log.Info(err)
 					continue
@@ -393,26 +394,24 @@ var Roles = map[uint8]string{
 }
 
 func Authorize(gid GoogleID) bool {
-	var a Agent
-
-	fromdb, fetched, err := Callbacks.FromDB(gid)
+	a, fetched, err := Callbacks.FromDB(gid)
 	if err != nil {
 		log.Error(err)
 		return true
 	}
-	if fromdb.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
+	log.Infow("v from db", "data", a)
+	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
 		result, err := search(gid)
 		if err != nil {
 			log.Error(err)
 			return true
 		}
-		err = Callbacks.ToDB(a)
+		log.Infow("v from search", "data", result.Data)
+		err = Callbacks.ToDB(result.Data)
 		if err != nil {
 			log.Error(err)
 		}
 		a = result.Data
-	} else {
-		a = fromdb
 	}
 
 	if a.Agent != "" {

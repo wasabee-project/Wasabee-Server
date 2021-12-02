@@ -78,12 +78,13 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgent() (Agent, error) {
 	var a Agent
 	a.GoogleID = gid
-	var vname, vid, pic, vapi sql.NullString
+	var vname, vid, pic, vapi, rocksname sql.NullString
+	var vverified, vblacklisted, rocksverified sql.NullBool
 	var ifac IntelFaction
 
 	ad := &a
 
-	err := db.QueryRow("SELECT a.name, v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, a.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &vname, &ad.RocksName, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &ad.VVerified, &ad.VBlacklisted, &vid, &ad.RocksVerified, &ad.RISC, &ifac, &pic, &vapi)
+	err := db.QueryRow("SELECT a.name, v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, a.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &vname, &rocksname, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return a, err
@@ -103,6 +104,22 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 
 	if pic.Valid {
 		a.ProfileImage = pic.String
+	}
+
+	if vverified.Valid {
+		a.VVerified = vverified.Bool
+	}
+
+	if vblacklisted.Valid {
+		a.VBlacklisted = vblacklisted.Bool
+	}
+
+	if rocksname.Valid {
+		a.RocksName = rocksname.String
+	}
+
+	if rocksverified.Valid {
+		a.RocksVerified = rocksverified.Bool
 	}
 
 	if err = adTeams(ad); err != nil {
