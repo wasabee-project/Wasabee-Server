@@ -31,6 +31,9 @@ var Callbacks struct {
 // we do not send the agent's location via firebase since it is possible to subscribe to topics (teams) via a client
 // the clients must pull the server to get the updates
 func AgentLocation(teamID TeamID) error {
+	if !c.running {
+		return nil
+	}
 	data := map[string]string{
 		"msg": string(teamID),
 		"cmd": "Agent Location Change",
@@ -42,7 +45,7 @@ func AgentLocation(teamID TeamID) error {
 		Data:  data,
 	}
 
-	_, err := config.msg.Send(config.ctx, &msg)
+	_, err := c.msg.Send(c.ctx, &msg)
 	if err != nil {
 		log.Errorw(err.Error(), "Command", msg)
 		return err
@@ -52,6 +55,9 @@ func AgentLocation(teamID TeamID) error {
 
 // AssignLink lets an agent know they have a new assignment on a given operation
 func AssignLink(gid GoogleID, linkID TaskID, opID OperationID, status string) error {
+	if !c.running {
+		return nil
+	}
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -73,6 +79,9 @@ func AssignLink(gid GoogleID, linkID TaskID, opID OperationID, status string) er
 
 // AssignMarker lets an gent know they have a new assignment on a given operation
 func AssignMarker(gid GoogleID, markerID TaskID, opID OperationID, status string) error {
+	if !c.running {
+		return nil
+	}
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -94,6 +103,9 @@ func AssignMarker(gid GoogleID, markerID TaskID, opID OperationID, status string
 
 // MarkerStatus reports a marker update to a team/topic
 func MarkerStatus(markerID TaskID, opID OperationID, teamID TeamID, status string) error {
+	if !c.running {
+		return nil
+	}
 	data := map[string]string{
 		"opID":     string(opID),
 		"markerID": string(markerID),
@@ -105,7 +117,7 @@ func MarkerStatus(markerID TaskID, opID OperationID, teamID TeamID, status strin
 		Data:  data,
 	}
 
-	_, err := config.msg.Send(config.ctx, &msg)
+	_, err := c.msg.Send(c.ctx, &msg)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -115,6 +127,9 @@ func MarkerStatus(markerID TaskID, opID OperationID, teamID TeamID, status strin
 
 // LinkStatus reports a link update to a team/topic
 func LinkStatus(linkID TaskID, opID OperationID, teamID TeamID, status string) error {
+	if !c.running {
+		return nil
+	}
 	data := map[string]string{
 		"opID":   string(opID),
 		"linkID": string(linkID),
@@ -126,7 +141,7 @@ func LinkStatus(linkID TaskID, opID OperationID, teamID TeamID, status string) e
 		Data:  data,
 	}
 
-	_, err := config.msg.Send(config.ctx, &msg)
+	_, err := c.msg.Send(c.ctx, &msg)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -136,6 +151,9 @@ func LinkStatus(linkID TaskID, opID OperationID, teamID TeamID, status string) e
 
 // SubscribeToTopic subscribes all tokens for a given agent to a team/topic
 func SubscribeToTopic(gid GoogleID, teamID TeamID) error {
+	if !c.running {
+		return nil
+	}
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -145,7 +163,7 @@ func SubscribeToTopic(gid GoogleID, teamID TeamID) error {
 		return nil
 	}
 
-	tmr, err := config.msg.SubscribeToTopic(config.ctx, tokens, string(teamID))
+	tmr, err := c.msg.SubscribeToTopic(c.ctx, tokens, string(teamID))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -160,6 +178,9 @@ func SubscribeToTopic(gid GoogleID, teamID TeamID) error {
 
 // UnsubscribeFromTopic removes an agent's subscriptions to a given topic/team
 func UnsubscribeFromTopic(gid GoogleID, teamID TeamID) error {
+	if !c.running {
+		return nil
+	}
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -169,7 +190,7 @@ func UnsubscribeFromTopic(gid GoogleID, teamID TeamID) error {
 		return nil
 	}
 
-	tmr, err := config.msg.UnsubscribeFromTopic(config.ctx, tokens, string(teamID))
+	tmr, err := c.msg.UnsubscribeFromTopic(c.ctx, tokens, string(teamID))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -184,6 +205,9 @@ func UnsubscribeFromTopic(gid GoogleID, teamID TeamID) error {
 
 // SendMessage is registered with Wasabee for sending messages
 func SendMessage(gid GoogleID, message string) (bool, error) {
+	if !c.running {
+		return false, nil
+	}
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -203,6 +227,9 @@ func SendMessage(gid GoogleID, message string) (bool, error) {
 
 // SendTarget sends a portal name/guid to an agent
 func SendTarget(gid GoogleID, message string) error {
+	if !c.running {
+		return nil
+	}
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -222,6 +249,9 @@ func SendTarget(gid GoogleID, message string) error {
 }
 
 func MapChange(teamID TeamID, opID OperationID, updateID string) error {
+	if !c.running {
+		return nil
+	}
 	data := map[string]string{
 		"opID":     string(opID),
 		"updateID": updateID,
@@ -233,7 +263,7 @@ func MapChange(teamID TeamID, opID OperationID, updateID string) error {
 		Data:  data,
 	}
 
-	_, err := config.msg.Send(config.ctx, &msg)
+	_, err := c.msg.Send(c.ctx, &msg)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -242,6 +272,9 @@ func MapChange(teamID TeamID, opID OperationID, updateID string) error {
 }
 
 func AgentLogin(teamID TeamID, gid GoogleID) error {
+	if !c.running {
+		return nil
+	}
 	data := map[string]string{
 		"gid": string(gid),
 		"cmd": "Login",
@@ -251,7 +284,28 @@ func AgentLogin(teamID TeamID, gid GoogleID) error {
 		Data:  data,
 	}
 
-	_, err := config.msg.Send(config.ctx, &msg)
+	_, err := c.msg.Send(c.ctx, &msg)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func SendAnnounce(teamID TeamID, message string) error {
+	if !c.running {
+		return nil
+	}
+	data := map[string]string{
+		"msg": message,
+		"cmd": "Generic Message",
+	}
+	msg := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	_, err := c.msg.Send(c.ctx, &msg)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -261,6 +315,9 @@ func AgentLogin(teamID TeamID, gid GoogleID) error {
 
 // DeleteOperation tells everyone (on this server) to remove a specific op
 func DeleteOperation(opID OperationID) error {
+	if !c.running {
+		return nil
+	}
 	tokens, err := Callbacks.BroadcastList()
 	if err != nil {
 		log.Error(err)
@@ -281,6 +338,9 @@ func DeleteOperation(opID OperationID) error {
 }
 
 func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
+	if !c.running {
+		return nil
+	}
 	tokens, err := Callbacks.GidToTokens(gid)
 	if err != nil {
 		log.Error(err)
@@ -312,7 +372,7 @@ func genericMulticast(data map[string]string, tokens []string) {
 			Data:   data,
 			Tokens: subset,
 		}
-		br, err := config.msg.SendMulticast(config.ctx, &msg)
+		br, err := c.msg.SendMulticast(c.ctx, &msg)
 		if err != nil {
 			log.Error(err)
 			// carry on
@@ -325,7 +385,7 @@ func genericMulticast(data map[string]string, tokens []string) {
 		Data:   data,
 		Tokens: tokens,
 	}
-	br, err := config.msg.SendMulticast(config.ctx, &msg)
+	br, err := c.msg.SendMulticast(c.ctx, &msg)
 	if err != nil {
 		log.Error(err)
 		// carry on

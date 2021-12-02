@@ -12,11 +12,10 @@ import (
 
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
-	// "github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/auth"
-	"github.com/wasabee-project/Wasabee-Server/http"
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -63,7 +62,7 @@ type serviceCreds struct {
 }
 
 var riscchan chan event
-var config riscConfig
+var c riscConfig
 
 const riscHook = "/GoogleRISC"
 const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configuration"
@@ -89,13 +88,13 @@ func RISC(configfile string) {
 		log.Error(err)
 		return
 	}
-	config.clientemail = sc.ClientEmail
-	config.authdata = data // Yeah, the consumers need the whole thing as bytes
+	c.clientemail = sc.ClientEmail
+	c.authdata = data // Yeah, the consumers need the whole thing as bytes
 
 	// make a channel to read for events
 	riscchan = make(chan event, 1)
 
-	risc := wasabee.Subrouter(riscHook)
+	risc := config.Subrouter(riscHook)
 	risc.HandleFunc("", Webhook).Methods("POST")
 	risc.HandleFunc("", WebhookStatus).Methods("GET")
 
@@ -109,7 +108,7 @@ func RISC(configfile string) {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
 			log.Errorw("locking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			_ = gid.Lock(e.Reason)
-			gid.FirebaseRemoveAllTokens()
+			gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
 			log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
@@ -120,23 +119,23 @@ func RISC(configfile string) {
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
+			gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
+			gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
-			auth.Logout(auth, e.Reason)
+			gid.RemoveAllFirebaseTokens()
+			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			// no need to do anything
 		case "https://accounts.google.com/risc/event/sessions-revoked":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
-			auth.Logout(auth, e.Reason)
+			gid.RemoveAllFirebaseTokens()
+			auth.Logout(gid, e.Reason)
 		default:
 			log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
 		}
@@ -146,7 +145,7 @@ func RISC(configfile string) {
 // This is called from the webhook
 func validateToken(rawjwt []byte) error {
 	var token jwt.Token
-	for iter := config.keys.Iterate(context.TODO()); iter.Next(context.TODO()); {
+	for iter := c.keys.Iterate(context.TODO()); iter.Next(context.TODO()); {
 		pair := iter.Pair()
 		key := pair.Value.(jwk.RSAPublicKey)
 		var pk rsa.PublicKey
@@ -227,7 +226,7 @@ func googleRiscDiscovery() error {
 		return err
 	}
 	client := &http.Client{
-		Timeout: wasabee.GetTimeout(3 * time.Second),
+		Timeout: (3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -240,7 +239,7 @@ func googleRiscDiscovery() error {
 		log.Error(err)
 		return err
 	}
-	err = json.Unmarshal(body, &config)
+	err = json.Unmarshal(body, &c)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -250,11 +249,11 @@ func googleRiscDiscovery() error {
 
 // called hourly to keep the key cache up-to-date
 func googleLoadKeys() error {
-	keys, err := jwk.Fetch(context.Background(), config.JWKURI)
+	keys, err := jwk.Fetch(context.Background(), c.JWKURI)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	config.keys = keys
+	c.keys = keys
 	return nil
 }

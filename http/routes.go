@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -14,7 +15,7 @@ var scannerMux sync.Mutex
 
 func setupRouter() *mux.Router {
 	// Main Router
-	router := NewRouter()
+	router := config.NewRouter()
 
 	// apply to all
 	router.Use(headersMW)
@@ -46,7 +47,7 @@ func setupRouter() *mux.Router {
 	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
 
 	// /api/v1/... route
-	api := Subrouter(apipath)
+	api := config.Subrouter(apipath)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	setupAuthRoutes(api)
 	api.Use(authMW)
@@ -55,7 +56,7 @@ func setupRouter() *mux.Router {
 	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
 
 	// /me route
-	meRouter := Subrouter(me)
+	meRouter := config.Subrouter(me)
 	meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	meRouter.HandleFunc("", meRoute).Methods("GET", "POST", "HEAD")
 	meRouter.Use(authMW)
@@ -64,14 +65,14 @@ func setupRouter() *mux.Router {
 	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
 	// /rocks route -- why a subrouter? for JSON error messages -- no longer necessary
-	rocks := Subrouter("/rocks")
+	rocks := config.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
-	static := Subrouter("/static")
+	static := config.Subrouter("/static")
 	static.PathPrefix("/").Handler(http.FileServer(http.Dir(c.FrontendPath)))
 	// static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 

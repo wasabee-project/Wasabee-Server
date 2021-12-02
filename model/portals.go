@@ -12,13 +12,13 @@ type PortalID string
 
 // Portal is defined by the Wasabee IITC plugin.
 type Portal struct {
-	ID       PortalID    `json:"id"`
-	Name     string      `json:"name"`
-	Lat      string      `json:"lat"` // passing these as strings saves me parsing them
-	Lon      string      `json:"lng"`
-	Comment  string      `json:"comment"`
-	Hardness string      `json:"hardness"` // string for now, enum in the future
-	opID     OperationID `json:"_"`
+	ID       PortalID `json:"id"`
+	Name     string   `json:"name"`
+	Lat      string   `json:"lat"` // passing these as strings saves me parsing them
+	Lon      string   `json:"lng"`
+	Comment  string   `json:"comment"`
+	Hardness string   `json:"hardness"` // string for now, enum in the future
+	opID     OperationID
 }
 
 // insertPortal adds a portal to the database

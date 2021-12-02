@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
-	"github.com/wasabee-project/Wasabee-Server/http"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -34,7 +34,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !config.running {
+	if !c.running {
 		err = fmt.Errorf("RISC not configured, yet somehow a message was received")
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -86,7 +86,7 @@ func riscRegisterWebhook() {
 	defer DisableWebhook()
 
 	// if a secevent comes in between establishing the hook and loading the keys?
-	config.running = true
+	c.running = true
 
 	if err := ping(); err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
@@ -119,7 +119,7 @@ func updateWebhook() error {
 	}
 
 	apiurl := apiBase + "stream:update"
-	webroot, _ := wasabee.GetWebroot()
+	webroot := config.GetWebroot()
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
@@ -176,7 +176,7 @@ func DisableWebhook() {
 	}
 
 	apiurl := apiBase + "stream:update"
-	webroot, _ := wasabee.GetWebroot()
+	webroot := config.GetWebroot()
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
@@ -207,7 +207,7 @@ func DisableWebhook() {
 		raw, _ = ioutil.ReadAll(response.Body)
 		log.Errorw("not OK status", "subsystem", "RISC", "content", string(raw))
 	}
-	config.running = false
+	c.running = false
 }
 
 func checkWebhook() error {
@@ -288,7 +288,7 @@ func AddSubject(gid model.GoogleID) error {
 	jmsg := map[string]interface{}{
 		"subject": map[string]string{
 			"subject_type": "iss-sub",
-			"iss":          config.Issuer,
+			"iss":          c.Issuer,
 			"sub":          gid.String(),
 		},
 		"verified": true,
@@ -299,10 +299,10 @@ func AddSubject(gid model.GoogleID) error {
 		return err
 	}
 
-	log.Debugw("AddSubject", "subsystem", "RISC", "data", config.AddEndpoint, "raw", string(raw))
+	log.Debugw("AddSubject", "subsystem", "RISC", "data", c.AddEndpoint, "raw", string(raw))
 
 	client := http.Client{}
-	req, err := http.NewRequest("POST", config.AddEndpoint, bytes.NewBuffer(raw))
+	req, err := http.NewRequest("POST", c.AddEndpoint, bytes.NewBuffer(raw))
 	if err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
@@ -324,7 +324,7 @@ func AddSubject(gid model.GoogleID) error {
 }
 
 func getToken() (*oauth2.Token, error) {
-	creds, err := google.JWTAccessTokenSourceFromJSON(config.authdata, jwtService)
+	creds, err := google.JWTAccessTokenSourceFromJSON(c.authdata, jwtService)
 	if err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return nil, err

@@ -1,9 +1,5 @@
 package wasabeetelegram
 
-import (
-	"github.com/wasabee-project/Wasabee-Server/log"
-)
-
 var tgbotname string
 var tgbotid int
 var tgrunning bool

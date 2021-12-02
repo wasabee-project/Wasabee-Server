@@ -18,7 +18,7 @@ import (
 
 var cancel context.CancelFunc
 
-// Configuration is the data passed into StartPubSub
+// Configuration is the data passed into Start
 type Configuration struct {
 	Cert          string
 	Project       string
@@ -33,8 +33,8 @@ type Configuration struct {
 
 var c Configuration
 
-// StartPubSub is the main startup function for the PubSub subsystem
-func StartPubSub(incoming Configuration) error {
+// Start is the main startup function for the PubSub subsystem
+func Start(incoming Configuration) error {
 	c = incoming
 	log.Infow("startup", "subsystem", "PubSub", "credentials", c.Cert, "GC project", c.Project, "message", "starting PubSub")
 	c.hostname, _ = os.Hostname()

@@ -2,20 +2,22 @@ package wasabeetelegram
 
 import (
 	"fmt"
-	// "encoding/json"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/wasabee-project/Wasabee-Server/model"
 	"strconv"
 	"strings"
+
+	"github.com/go-telegram-bot-api/telegram-bot-api"
+
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 func teamKeyboard(gid model.GoogleID) tgbotapi.InlineKeyboardMarkup {
-	var ud model.AgentData
 	var rows [][]tgbotapi.InlineKeyboardButton
 
-	if err := gid.GetAgentData(&ud); err == nil {
+	agent, err := gid.GetAgent()
+	if err == nil {
 		var i int
-		for _, v := range ud.Teams {
+		for _, v := range agent.Teams {
 			i++
 			var row []tgbotapi.InlineKeyboardButton
 			var on, off tgbotapi.InlineKeyboardButton
@@ -64,11 +66,11 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 			return msg, err
 		}
 		msg.Text = "Location Processed"
-		gid.PSLocation(lat, lon)
+		// gid.PSLocation(lat, lon)
 	}
 
 	if update.CallbackQuery.Message.Chat.Type != "private" {
-		log.Errorf("Not in private chat: %s", update.CallbackQuery.Message.Chat.Type)
+		log.Error("Not in private chat: " + update.CallbackQuery.Message.Chat.Type)
 		return msg, nil
 	}
 

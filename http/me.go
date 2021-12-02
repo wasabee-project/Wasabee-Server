@@ -195,7 +195,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// announce to teams with which this agent is sharing location information
-	for teamID := range gid.TeamListEnabled() {
+	for _, teamID := range gid.TeamListEnabled() {
 		wfb.AgentLocation(wfb.TeamID(teamID))
 	}
 

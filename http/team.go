@@ -294,9 +294,9 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	wfb.SendGeneric(wfb.TeamID(team), message)
+	wfb.SendAnnounce(wfb.TeamID(team), message)
 
-	err = messaging.SendAnnounce(gid, team, message)
+	_, err = messaging.SendAnnounce(team, message)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -593,7 +593,7 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// no valid teams
-	if list == nil || len(list) == 0 {
+	if len(list) == 0 {
 		fmt.Fprint(res, "[]")
 		return
 	}

@@ -9,24 +9,24 @@ import (
 )
 
 func processDirectMessage(inMsg *tgbotapi.Update) error {
-	tgid := wasabee.TelegramID(inMsg.Message.From.ID)
+	tgid := model.TelegramID(inMsg.Message.From.ID)
 	gid, verified, err := tgid.GidV()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 	msg.Text = defaultReply
 	msg.ParseMode = "HTML"
 
 	if gid == "" {
-		wasabee.Log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
+		log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
 		fgid, err := runRocks(tgid)
 		if fgid != "" && err == nil {
 			tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
@@ -34,24 +34,24 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		} else {
 			err = newUserInit(&msg, inMsg)
 			if err != nil {
-				wasabee.Log.Error(err)
+				log.Error(err)
 			}
 		}
 		if _, err = bot.Send(msg); err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			return err
 		}
 		return nil
 	}
 
 	if !verified {
-		wasabee.Log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
+		log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
 		err = newUserVerify(&msg, inMsg)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 		}
 		if _, err = bot.Send(msg); err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			return err
 		}
 		return nil
@@ -59,19 +59,19 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 
 	// verified user, process message
 	if err := processMessage(&msg, inMsg, gid); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 	return nil
 }
 
 // This is where command processing takes place
-func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid wasabee.GoogleID) error {
+func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid model.GoogleID) error {
 	// kludge to undo a mistake I made by ignoring this data for the past year
 	if inMsg.Message.From.UserName != "" {
-		tgid := wasabee.TelegramID(inMsg.Message.From.ID)
+		tgid := model.TelegramID(inMsg.Message.From.ID)
 		if err := tgid.UpdateName(inMsg.Message.From.UserName); err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 		}
 	}
 	if inMsg.Message.IsCommand() {
@@ -79,19 +79,19 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 		case "start":
 			tmp, _ := templateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-			msg.ReplyMarkup = config.baseKbd
+			msg.ReplyMarkup = c.baseKbd
 		case "help":
 			tmp, _ := templateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-			msg.ReplyMarkup = config.baseKbd
+			msg.ReplyMarkup = c.baseKbd
 		default:
 			tmp, _ := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-			msg.ReplyMarkup = config.baseKbd
+			msg.ReplyMarkup = c.baseKbd
 		}
 
 		if _, err := bot.DeleteMessage(tgbotapi.NewDeleteMessage(inMsg.Message.Chat.ID, inMsg.Message.MessageID)); err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			return err
 		}
 	} else if inMsg.Message.Text != "" {
@@ -100,20 +100,20 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid was
 			msg.ReplyMarkup = teamKeyboard(gid)
 			msg.Text = "Your Teams"
 		default:
-			msg.ReplyMarkup = config.baseKbd
+			msg.ReplyMarkup = c.baseKbd
 		}
 	}
 
 	if inMsg.Message != nil && inMsg.Message.Location != nil {
-		wasabee.Log.Debugw("processing location", "subsystem", "Telegram", "GID", gid)
+		log.Debugw("processing location", "subsystem", "Telegram", "GID", gid)
 		lat := strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64)
 		_ = gid.AgentLocation(lat, lon)
-		gid.PSLocation(lat, lon)
+		// gid.PSLocation(lat, lon)
 	}
 
 	if _, err := bot.Send(msg); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 

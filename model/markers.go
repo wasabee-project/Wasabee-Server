@@ -17,18 +17,18 @@ type MarkerType string
 
 // Marker is defined by the Wasabee IITC plugin.
 type Marker struct {
-	ID           MarkerID    `json:"ID"`
-	PortalID     PortalID    `json:"portalId"`
-	Type         MarkerType  `json:"type"`
-	Comment      string      `json:"comment"`
-	AssignedTo   GoogleID    `json:"assignedTo"`
-	AssignedTeam TeamID      `json:"assignedTeam"`
-	CompletedID  GoogleID    `json:"completedID"`
-	State        string      `json:"state"`
-	Order        int         `json:"order"`
-	Zone         Zone        `json:"zone"`
-	DeltaMinutes int         `json:"deltaminutes"`
-	opID         OperationID `json:"_"`
+	ID           MarkerID   `json:"ID"`
+	PortalID     PortalID   `json:"portalId"`
+	Type         MarkerType `json:"type"`
+	Comment      string     `json:"comment"`
+	AssignedTo   GoogleID   `json:"assignedTo"`
+	AssignedTeam TeamID     `json:"assignedTeam"`
+	CompletedID  GoogleID   `json:"completedID"`
+	State        string     `json:"state"`
+	Order        int        `json:"order"`
+	Zone         Zone       `json:"zone"`
+	DeltaMinutes int        `json:"deltaminutes"`
+	opID         OperationID
 	Task
 }
 
@@ -283,7 +283,7 @@ func (m Marker) Acknowledge(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
-	for t := range teams {
+	for _, t := range teams {
 		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "acknowledged")
 	}
 	return nil
@@ -311,7 +311,7 @@ func (m Marker) Complete(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
-	for t := range teams {
+	for _, t := range teams {
 		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "completed")
 	}
 	return nil
@@ -339,7 +339,7 @@ func (m Marker) Incomplete(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
-	for t := range teams {
+	for _, t := range teams {
 		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "incomplete")
 	}
 	return nil
@@ -367,7 +367,7 @@ func (m Marker) Reject(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
-	for t := range teams {
+	for _, t := range teams {
 		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "reject")
 	}
 	return nil

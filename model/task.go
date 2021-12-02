@@ -12,7 +12,7 @@ type TaskID string
 // Task is the imported things for markers and links
 type Task struct {
 	ID   TaskID      `json:"ID"`
-	opID OperationID `json:"_"`
+	opID OperationID
 }
 
 // TaskI is the basic task type interface

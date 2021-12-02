@@ -12,7 +12,7 @@ import (
 // TelegramID is a user ID from telegram
 type TelegramID int
 
-func (tgid TelegramID) gidV() (GoogleID, bool, error) {
+func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 	var gid GoogleID
 	var verified bool
 
@@ -29,7 +29,7 @@ func (tgid TelegramID) gidV() (GoogleID, bool, error) {
 
 // Gid returns a verified GoogleID for a Telegram ID
 func (tgid TelegramID) Gid() (GoogleID, error) {
-	gid, v, err := tgid.gidV()
+	gid, v, err := tgid.GidV()
 	if err != nil {
 		return "", err
 	}

@@ -87,7 +87,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) > 1 {
 			agent := strings.TrimSpace(tokens[1])
-			filterGid, err = model.SearchAgentName(agent)
+			filterGid, err := model.SearchAgentName(agent)
 			if err != nil {
 				log.Error(err)
 				filterGid = "0"
@@ -267,7 +267,7 @@ func liveLocationUpdate(inMsg *tgbotapi.Update) error {
 	lat := strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(inMsg.EditedMessage.Location.Longitude, 'f', -1, 64)
 	_ = gid.AgentLocation(lat, lon)
-	gid.PSLocation(lat, lon)
+	// gid.PSLocation(lat, lon)
 	return nil
 }
 

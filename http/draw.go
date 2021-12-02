@@ -612,7 +612,7 @@ func touch(op model.Operation) string {
 	}
 	if len(teams) == 0 {
 		// not populated?
-		teams, err := op.ID.Teams()
+		teams, err = op.ID.Teams()
 		if err != nil {
 			log.Error(err)
 			return uid

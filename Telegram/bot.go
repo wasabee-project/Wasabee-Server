@@ -7,10 +7,13 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
+	"github.com/wasabee-project/Wasabee-Server/auth"
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
-	"github.com/wasabee-project/Wasabee-Server/http"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/rocks"
 )
 
 // TGConfiguration is the main configuration data for the Telegram interface
@@ -25,7 +28,7 @@ type TGConfiguration struct {
 }
 
 var bot *tgbotapi.BotAPI
-var config TGConfiguration
+var c TGConfiguration
 
 // WasabeeBot is called from main() to start the bot.
 func WasabeeBot(init TGConfiguration) {
@@ -33,30 +36,30 @@ func WasabeeBot(init TGConfiguration) {
 		log.Infow("startup", "subsystem", "Telegram", "message", "Telegram API key not set; not starting")
 		return
 	}
-	config.APIKey = init.APIKey
+	c.APIKey = init.APIKey
 
 	if init.TemplateSet == nil {
 		log.Warnw("startup", "subsystem", "Telegram", "message", "the UI templates are not loaded; not starting Telegram bot")
 		return
 	}
-	config.TemplateSet = init.TemplateSet
+	c.TemplateSet = init.TemplateSet
 
-	keyboards(&config)
+	keyboards(&c)
 
-	config.HookPath = init.HookPath
-	if config.HookPath == "" {
-		config.HookPath = "/tg"
+	c.HookPath = init.HookPath
+	if c.HookPath == "" {
+		c.HookPath = "/tg"
 	}
 
-	config.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
-	webhook := http.Subrouter(config.HookPath)
+	c.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
+	webhook := config.Subrouter(c.HookPath)
 	webhook.HandleFunc("/{hook}", TGWebHook).Methods("POST")
 
-	wasabee.RegisterMessageBus("Telegram", SendMessage)
-	wasabee.RegisterGroupCalls("Telegram", AddToChat, RemoveFromChat)
+	messaging.RegisterMessageBus("Telegram", SendMessage)
+	messaging.RegisterGroupCalls("Telegram", AddToChat, RemoveFromChat)
 
 	var err error
-	bot, err = tgbotapi.NewBotAPI(config.APIKey)
+	bot, err = tgbotapi.NewBotAPI(c.APIKey)
 	if err != nil {
 		log.Error(err)
 		return
@@ -64,14 +67,14 @@ func WasabeeBot(init TGConfiguration) {
 
 	// bot.Debug = true
 	log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
-	wasabee.TGSetBot(bot.Self.UserName, bot.Self.ID)
+	config.TGSetBot(bot.Self.UserName, bot.Self.ID)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	webroot, _ := wasabee.GetWebroot()
-	config.hook = wasabee.GenerateName()
-	t := fmt.Sprintf("%s%s/%s", webroot, config.HookPath, config.hook)
+	webroot := config.GetWebroot()
+	c.hook = generatename.GenerateName()
+	t := fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
 	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 	if err != nil {
 		log.Error(err)
@@ -79,7 +82,7 @@ func WasabeeBot(init TGConfiguration) {
 	}
 
 	i := 1
-	for update := range config.upChan {
+	for update := range c.upChan {
 		// log.Debugf("running update: %s", update)
 		if err = runUpdate(update); err != nil {
 			log.Error(err)
@@ -87,8 +90,8 @@ func WasabeeBot(init TGConfiguration) {
 		}
 		if (i % 100) == 0 { // every 100 requests, change the endpoint; I'm _not_ paranoid.
 			i = 1
-			config.hook = generatename.GenerateName()
-			t = fmt.Sprintf("%s%s/%s", webroot, config.HookPath, config.hook)
+			c.hook = generatename.GenerateName()
+			t = fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
 			_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
 			if err != nil {
 				log.Error(err)
@@ -147,17 +150,17 @@ func runUpdate(update tgbotapi.Update) error {
 }
 
 func newUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	var ott wasabee.OneTimeToken
+	var ott model.OneTimeToken
 	if inMsg.Message.IsCommand() {
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) == 2 {
-			ott = wasabee.OneTimeToken(strings.TrimSpace(tokens[1]))
+			ott = model.OneTimeToken(strings.TrimSpace(tokens[1]))
 		}
 	} else {
-		ott = wasabee.OneTimeToken(strings.TrimSpace(inMsg.Message.Text))
+		ott = model.OneTimeToken(strings.TrimSpace(inMsg.Message.Text))
 	}
 
-	tid := wasabee.TelegramID(inMsg.Message.From.ID)
+	tid := model.TelegramID(inMsg.Message.From.ID)
 	err := tid.InitAgent(inMsg.Message.From.UserName, ott)
 	if err != nil {
 		log.Error(err)
@@ -181,7 +184,7 @@ func newUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 		authtoken = inMsg.Message.Text
 	}
 	authtoken = strings.TrimSpace(authtoken)
-	tid := wasabee.TelegramID(inMsg.Message.From.ID)
+	tid := model.TelegramID(inMsg.Message.From.ID)
 	err := tid.VerifyAgent(authtoken)
 	if err != nil {
 		log.Error(err)
@@ -241,11 +244,8 @@ func SendMessage(gid model.GoogleID, message string) (bool, error) {
 }
 
 // checks rocks based on tgid, Inits agent if found
-// returns gid, tgfound, error
 func runRocks(tgid model.TelegramID) (model.GoogleID, error) {
-	var agent rocks.RocksAgent
-
-	err := rocks.RocksSearch(tgid, &agent)
+	agent, err := rocks.Search(fmt.Sprint(tgid))
 	if err != nil {
 		log.Error(err)
 		return "", err
@@ -253,21 +253,14 @@ func runRocks(tgid model.TelegramID) (model.GoogleID, error) {
 	if agent.Gid == "" {
 		return "", nil
 	}
+	gid := model.GoogleID(agent.Gid)
 
 	// add to main tables if necessary
-	_, err = (agent.Gid).InitAgent()
+	_, err = auth.Authorize(gid)
 	if err != nil {
 		log.Error(err)
-		return agent.Gid, err
+		return gid, err
 	}
 
-	// this adds the agent to the Telegram tables
-	// but InitAgent should have already called this ...
-	err = rocks.RocksUpdate(agent.Gid, &agent)
-	if err != nil {
-		log.Error(err)
-		return agent.Gid, err
-	}
-
-	return agent.Gid, nil
+	return gid, nil
 }

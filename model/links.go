@@ -14,20 +14,20 @@ type LinkID string
 
 // Link is defined by the Wasabee IITC plugin.
 type Link struct {
-	ID           LinkID      `json:"ID"`
-	From         PortalID    `json:"fromPortalId"`
-	To           PortalID    `json:"toPortalId"`
-	Desc         string      `json:"description"`
-	AssignedTo   GoogleID    `json:"assignedTo"`
-	ThrowOrder   int32       `json:"throwOrderPos"`
-	Completed    bool        `json:"completed"` // to be deprecated
-	State        string      `json:"_"`         // to be implemented
-	Color        string      `json:"color"`
-	Zone         Zone        `json:"zone"`
-	DeltaMinutes int         `json:"deltaminutes"`
-	MuCaptured   int         `json:"mu"`
-	Changed      bool        `json:"changed,omitempty"`
-	opID         OperationID `json:"_"`
+	ID           LinkID   `json:"ID"`
+	From         PortalID `json:"fromPortalId"`
+	To           PortalID `json:"toPortalId"`
+	Desc         string   `json:"description"`
+	AssignedTo   GoogleID `json:"assignedTo"`
+	ThrowOrder   int32    `json:"throwOrderPos"`
+	Completed    bool     `json:"completed"` // to be deprecated
+	State        string   `json:"_"`         // to be implemented
+	Color        string   `json:"color"`
+	Zone         Zone     `json:"zone"`
+	DeltaMinutes int      `json:"deltaminutes"`
+	MuCaptured   int      `json:"mu"`
+	Changed      bool     `json:"changed,omitempty"`
+	opID         OperationID
 	Task
 }
 

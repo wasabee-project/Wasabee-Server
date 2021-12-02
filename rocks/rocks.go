@@ -83,8 +83,8 @@ func Active() bool {
 	return !(Config.APIKey == "")
 }
 
-// search checks a agent at enl.rocks and returns an Agent
-func search(id GoogleID) (Agent, error) {
+// Search checks a agent at enl.rocks and returns an Agent
+func Search(id string) (Agent, error) {
 	var agent Agent
 	if Config.APIKey == "" {
 		return agent, nil
@@ -310,7 +310,7 @@ func Authorize(gid GoogleID) bool {
 		return true
 	}
 	if fromdb.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
-		result, err := search(gid)
+		result, err := Search(string(gid))
 		if err != nil {
 			log.Error(err)
 			return true

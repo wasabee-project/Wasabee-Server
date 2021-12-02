@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,15 +15,23 @@ import (
 // wrappers for type safety
 type TeamID string
 type GoogleID string
+type VTeamID int64
+
+type VT struct {
+	Name   string
+	TeamID VTeamID
+	Role   uint8
+}
 
 var Callbacks struct {
 	Team   func(teamID TeamID) (ID int64, roleNum uint8, err error)
 	FromDB func(gid GoogleID) (a Agent, fetched time.Time, err error)
 	ToDB   func(a Agent) error
+	Agents func(VTeamID, string) ([]Agent, error)
 }
 
 // Config contains configuration for calling v.enl.one APIs
-type config struct {
+type Config struct {
 	APIKey         string
 	APIEndpoint    string
 	StatusEndpoint string
@@ -30,7 +39,7 @@ type config struct {
 	configured     bool
 }
 
-var vc = config{
+var vc = Config{
 	APIEndpoint:    "https://v.enl.one/api/v1",
 	StatusEndpoint: "https://status.enl.one/api/location",
 	TeamEndpoint:   "https://v.enl.one/api/v2/teams",
@@ -68,7 +77,7 @@ type Agent struct {
 }
 
 // v team is set by the V API
-type team struct {
+/* type team struct {
 	Status string      `json:"status"`
 	Agents []teamagent `json:"data"`
 }
@@ -77,7 +86,7 @@ type team struct {
 type teamagent struct {
 	EnlID string `json:"enlid"`
 	Gid   string `json:"gid"`
-}
+} */
 
 // Version 2.0 of the team query
 type TeamResult struct {
@@ -96,10 +105,10 @@ type AgentVTeams struct {
 }
 
 type AgentVTeam struct {
-	TeamID int64  `json:"teamid"`
-	Name   string `json:"team"`
-	Roles  []role `json:"roles"`
-	Admin  bool   `json:"admin"`
+	TeamID VTeamID `json:"teamid"`
+	Name   string  `json:"team"`
+	Roles  []role  `json:"roles"`
+	Admin  bool    `json:"admin"`
 }
 
 // Startup is called from main() to initialize the config
@@ -244,10 +253,10 @@ func GetTeam(vteamID int64, key string) (TeamResult, error) {
 	return vt, nil
 }
 
-/*
-// VSync pulls a team (and role) from V to sync with a Wasabee team
-func Sync(teamID string, key string) error {
+// Sync pulls a team (and role) from V to sync with a Wasabee team
+func Sync(teamID TeamID, key string) error {
 	vteamID, role, err := Callbacks.Team(teamID)
+	log.Debug("V Sync", "team", vteamID, "role", role)
 	if err != nil {
 		return err
 	}
@@ -266,89 +275,85 @@ func Sync(teamID string, key string) error {
 		log.Error(err)
 		return err
 	}
+	log.Debug("V Sync", "team", vt)
 
-	// do not remove the owner from the team
-	owner, err := teamID.Owner()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	// a map to track added agents
-	atv := make(map[string]bool)
-
-	for _, agent := range vt.Agents {
-		_, err = agent.Gid.IngressName()
-		if err == sql.ErrNoRows {
-			log.Infow("Importing previously unknown agent", "GID", agent.Gid)
-			_, err = agent.Gid.InitAgent()
-			if err != nil {
-				log.Info(err)
-				continue
-			}
-			// XXX we could setup telegram here, if available
-		}
-		if err != nil && err != sql.ErrNoRows {
-			log.Info(err)
-			continue
+	log.Error("Sync not refactored yet...")
+	return nil
+	/*
+		// do not remove the owner from the team
+		owner, err := teamID.Owner()
+		if err != nil {
+			log.Error(err)
+			return err
 		}
 
-		if role != 0 { // role 0 means "any"
-			for _, r := range agent.Roles {
-				if r.ID == role {
-					atv[agent.Gid] = true
-					break
+		// a map to track added agents
+		atv := make(map[string]bool)
+
+		for _, agent := range vt.Agents {
+			if !agent.Gid.Valid() {
+				log.Infow("Importing previously unknown agent", "GID", agent.Gid)
+				_, err = agent.Gid.Authenticate()
+				if err != nil {
+					log.Info(err)
+					continue
 				}
 			}
-		} else {
-			atv[agent.Gid] = true
-		}
 
-		// don't re-add them if already in the team
-		in, err := agent.Gid.AgentInTeam(teamID)
-		if err != nil {
-			log.Info(err)
-			continue
-		}
-		if in {
-			log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
-			continue
-		}
-		if _, ok := atv[agent.Gid]; ok {
-			log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
-			if err := teamID.AddAgent(agent.Gid); err != nil {
+			if role != 0 { // role 0 means "any"
+				for _, r := range agent.Roles {
+					if r.ID == role {
+						atv[agent.Gid] = true
+						break
+					}
+				}
+			} else {
+				atv[agent.Gid] = true
+			}
+
+			// don't re-add them if already in the team
+			in, err := agent.Gid.AgentInTeam(teamID)
+			if err != nil {
 				log.Info(err)
 				continue
 			}
-			// XXX set startlat, startlon, etc...
-		}
-	}
-
-	// remove those not present at V
-	var t TeamData
-	err = teamID.FetchTeam(&t)
-	if err != nil {
-		log.Info(err)
-		return err
-	}
-	for _, a := range t.Agent {
-		if a.Gid == owner {
-			continue
-		}
-		_, ok := atv[a.Gid]
-		if !ok {
-			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
-			log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
-			err = teamID.RemoveAgent(a.Gid)
-			if err != nil {
-				log.Error(err)
+			if in {
+				log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
+				continue
+			}
+			if _, ok := atv[agent.Gid]; ok {
+				log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
+				if err := teamID.AddAgent(agent.Gid); err != nil {
+					log.Info(err)
+					continue
+				}
+				// XXX set startlat, startlon, etc...
 			}
 		}
-	}
 
-	return nil
+		// remove those not present at V
+		var t TeamData
+		err = teamID.FetchTeam(&t)
+		if err != nil {
+			log.Info(err)
+			return err
+		}
+		for _, a := range t.Agent {
+			if a.Gid == owner {
+				continue
+			}
+			_, ok := atv[a.Gid]
+			if !ok {
+				err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
+				log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
+				err = teamID.RemoveAgent(a.Gid)
+				if err != nil {
+					log.Error(err)
+				}
+			}
+		}
+	*/
 }
-*/
 
 var Roles = map[uint8]string{
 	0:   "All",
@@ -426,4 +431,165 @@ func Authorize(gid GoogleID) bool {
 	}
 
 	return true
+}
+
+func processTeams(data AgentVTeams, teams []VT) ([]teamToMake, error) {
+	var m []teamToMake
+	for _, t := range data.Teams {
+		if !t.Admin {
+			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			continue
+		}
+
+		// don't make duplicates
+		already := false
+		for _, adt := range teams {
+			if adt.TeamID == t.TeamID && adt.Role == 0 {
+				// log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
+				already = true
+				break
+			}
+		}
+		if already {
+			continue
+		}
+		m = append(m, teamToMake{
+			ID:   t.TeamID,
+			Role: 0,
+			Name: fmt.Sprintf("%s (all)", t.Name),
+		})
+	}
+
+	return m, nil
+}
+
+func processRoleSingleTeam(t AgentVTeam, teams []VT, key string) ([]teamToMake, error) {
+	var m []teamToMake
+
+	if !t.Admin {
+		// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+		return m, nil
+	}
+	roles := make(map[uint8]bool)
+
+	vt, err := Callbacks.Agents(t.TeamID, key)
+	if err != nil {
+		return m, err
+	}
+
+	// for every role of every agent -- this logic order is better, update the processRoleTeams to use it...
+	for _, a := range vt {
+		for _, r := range a.Roles {
+			ok := roles[r.ID]
+			if !ok { // first time we've seen this team/role
+				roles[r.ID] = true
+
+				already := false
+				for _, adt := range teams {
+					if adt.TeamID == t.TeamID && adt.Role == r.ID {
+						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						already = true
+						break
+					}
+				}
+				if already {
+					continue
+				}
+
+				m = append(m, teamToMake{
+					ID:   t.TeamID,
+					Role: r.ID,
+					Name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
+				})
+			}
+		}
+	}
+
+	return m, nil
+}
+
+type teamToMake struct {
+	ID   VTeamID
+	Role uint8
+	Name string
+}
+
+func processRoleTeams(data AgentVTeams, teams []VT, key string) ([]teamToMake, error) {
+	var m []teamToMake
+
+	raw := make(map[VTeamID]map[uint8]bool)
+
+	// for every team of which I am an admin
+	for _, t := range data.Teams {
+		if !t.Admin {
+			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			continue
+		}
+		roles := make(map[uint8]bool)
+
+		// load all agents
+		vt, err := Callbacks.Agents(t.TeamID, key)
+		if err != nil {
+			return m, err
+		}
+
+		// for every role of every agent
+		for _, a := range vt {
+			for _, r := range a.Roles {
+				// don't make duplicates
+				already := false
+				for _, adt := range teams {
+					if adt.TeamID == t.TeamID && adt.Role == r.ID {
+						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+						already = true
+						break
+					}
+				}
+				if already {
+					continue
+				}
+
+				ok := roles[r.ID]
+				if !ok { // first time we've seen this team/role
+					m = append(m, teamToMake{
+						ID:   t.TeamID,
+						Role: r.ID,
+						Name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
+					})
+					roles[r.ID] = true
+				}
+			}
+		}
+		raw[t.TeamID] = roles
+	}
+
+	return m, nil
+}
+
+func ProcessBulkImport(data AgentVTeams, teams []VT, key string, mode string) ([]teamToMake, error) {
+	var teamstomake []teamToMake
+	var err error
+
+	switch mode {
+	case "role":
+		teamstomake, err = processRoleTeams(data, teams, key)
+	case "team":
+		teamstomake, err = processTeams(data, teams)
+	default:
+		id, err := strconv.ParseInt(mode, 10, 64)
+		if err != nil {
+			log.Error(err)
+			return teamstomake, err
+		}
+		for _, t := range data.Teams {
+			if int64(t.TeamID) == id {
+				teamstomake, err = processRoleSingleTeam(t, teams, key)
+				if err != nil {
+					return teamstomake, err
+				}
+				break
+			}
+		}
+	}
+	return teamstomake, err
 }

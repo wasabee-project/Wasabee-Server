@@ -85,6 +85,15 @@ func RemoveFirebaseToken(token string) error {
 	return err
 }
 
+// RemoveAllFirebaseTokens removes all tokens for a given agent
+func (gid GoogleID) RemoveAllFirebaseTokens() error {
+	_, err := db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
+	if err != nil {
+		log.Error(err)
+	}
+	return err
+}
+
 // FirebaseBroadcastList returns all known firebase tokens for messaging all agents
 // Firebase Multicast messages are limited to 500 tokens each, the caller must
 // break the list up if necessary.

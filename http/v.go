@@ -63,7 +63,7 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 			keys[gid] = key
 		}
 
-		err = v.Sync(teamID, key)
+		err = v.Sync(v.TeamID(teamID), key)
 		if err != nil {
 			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -112,7 +112,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := v.Sync(team, vkey); err != nil {
+	if err := v.Sync(v.TeamID(team), vkey); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -188,55 +188,51 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	mode := vars["mode"]
 
-	agent, err := gid.GetAgentData()
+	agent, err := gid.GetAgent()
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	data, err := v.Teams(gid, key)
+	var vteams []v.VT
+	for _, t := range agent.Teams {
+		vteams = append(vteams, v.VT{
+			Name:   t.Name,
+			TeamID: v.VTeamID(t.VTeam),
+			Role:   t.VTeamRole,
+		})
+	}
+
+	data, err := v.Teams(v.GoogleID(gid), key)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	var teamstomake []vTeamToMake
-	switch mode {
-	case "role":
-		teamstomake, err = vProcessRoleTeams(data, agent.Teams, key)
-	case "team":
-		teamstomake, err = vProcessTeams(data, agent.Teams)
-	default:
-		id, err := strconv.ParseInt(mode, 10, 64)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		for _, t := range data.Teams {
-			if t.TeamID == id {
-				teamstomake, err = vProcessRoleSingleTeam(t, agent.Teams, key)
-				break
-			}
-		}
+	teamstomake, err := v.ProcessBulkImport(data, vteams, key, mode)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
 	}
 
 	for _, t := range teamstomake {
-		log.Debugw("Creating Wasabee team for V team", "v team", t.id, "role", t.role)
-		teamID, err := gid.NewTeam(t.name)
+		log.Debugw("Creating Wasabee team for V team", "v team", t.ID, "role", t.Role)
+		teamID, err := gid.NewTeam(t.Name)
 		if err != nil {
 			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
-		err = teamID.VConfigure(t.id, t.role)
+		err = teamID.VConfigure(int64(t.ID), uint8(t.Role))
 		if err != nil {
 			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
-		err = v.Sync(teamID, key)
+		err = v.Sync(v.TeamID(teamID), key)
 		if err != nil {
 			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -245,137 +241,4 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprint(res, jsonStatusOK)
-}
-
-type vTeamToMake struct {
-	id   int64
-	role uint8
-	name string
-}
-
-func vProcessRoleTeams(data v.AgentVTeams, teams []model.AdTeam, key string) ([]vTeamToMake, error) {
-	var m []vTeamToMake
-
-	raw := make(map[int64]map[uint8]bool)
-
-	// for every team of which I am an admin
-	for _, t := range v.Teams {
-		if !t.Admin {
-			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
-			continue
-		}
-		roles := make(map[uint8]bool)
-
-		// load all agents
-		vt, err := model.VGetTeam(t.TeamID, key)
-		if err != nil {
-			return m, err
-		}
-
-		// for every role of every agent
-		for _, a := range vt.Agents {
-			for _, r := range a.Roles {
-				// don't make duplicates
-				already := false
-				for _, adt := range teams {
-					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
-						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
-						already = true
-						break
-					}
-				}
-				if already {
-					continue
-				}
-
-				_, ok := roles[r.ID]
-				if !ok { // first time we've seen this team/role
-					m = append(m, vTeamToMake{
-						id:   t.TeamID,
-						role: r.ID,
-						name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
-					})
-					roles[r.ID] = true
-				}
-			}
-		}
-		raw[t.TeamID] = roles
-	}
-
-	return m, nil
-}
-
-func vProcessRoleSingleTeam(t v.AgentVTeam, teams []model.AdTeam, key string) ([]vTeamToMake, error) {
-	var m []vTeamToMake
-
-	if !t.Admin {
-		// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
-		return m, nil
-	}
-	roles := make(map[uint8]bool)
-
-	vt, err := model.VGetTeam(t.TeamID, key)
-	if err != nil {
-		return m, err
-	}
-
-	// for every role of every agent -- this logic order is better, update the vProcessRoleTeams to use it...
-	for _, a := range vt.Agents {
-		for _, r := range a.Roles {
-			_, ok := roles[r.ID]
-			if !ok { // first time we've seen this team/role
-				roles[r.ID] = true
-
-				already := false
-				for _, adt := range teams {
-					if adt.VTeam == t.TeamID && adt.VTeamRole == r.ID {
-						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
-						already = true
-						break
-					}
-				}
-				if already {
-					continue
-				}
-
-				m = append(m, vTeamToMake{
-					id:   t.TeamID,
-					role: r.ID,
-					name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
-				})
-			}
-		}
-	}
-
-	return m, nil
-}
-
-func vProcessTeams(vt v.AgentVTeams, teams []model.AdTeam) ([]vTeamToMake, error) {
-	var m []vTeamToMake
-	for _, t := range v.Teams {
-		if !t.Admin {
-			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
-			continue
-		}
-
-		// don't make duplicates
-		already := false
-		for _, adt := range teams {
-			if adt.VTeam == t.TeamID && adt.VTeamRole == 0 {
-				// log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
-				already = true
-				break
-			}
-		}
-		if already {
-			continue
-		}
-		m = append(m, vTeamToMake{
-			id:   t.TeamID,
-			role: 0,
-			name: fmt.Sprintf("%s (all)", t.Name),
-		})
-	}
-
-	return m, nil
 }

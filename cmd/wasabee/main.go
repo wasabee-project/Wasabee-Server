@@ -16,9 +16,14 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/PubSub"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/http"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/rocks"
+	"github.com/wasabee-project/Wasabee-Server/templates"
+	"github.com/wasabee-project/Wasabee-Server/v"
 
 	"golang.org/x/oauth2"
 
@@ -81,9 +86,6 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "venlonestatusurl", EnvVar: "VENLONE_STATUS_URL", Value: "",
 		Usage: "V.enl.one Status URL. Defaults to status.enl.one well-known URL"},
-	cli.BoolFlag{
-		Name: "venlonepoller", EnvVar: "VENLONE_POLLER",
-		Usage: "Poll status.enl.one for RAID/JEAH location data"},
 	cli.StringFlag{
 		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
 		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
@@ -108,12 +110,12 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "wasabee-server"
-	app.Version = "0.7.0"
+	app.Version = "0.99.0"
 	app.Usage = "Wasabee Server"
 	app.Authors = []cli.Author{
 		{
 			Name:  "Scot C. Bontrager",
-			Email: "scot@indievisible.org",
+			Email: "scot@wasabee.rocks",
 		},
 	}
 	app.Copyright = "© Scot C. Bontrager"
@@ -140,7 +142,7 @@ func run(c *cli.Context) error {
 		return nil
 	}
 
-	logconf := wasabee.LogConfiguration{
+	logconf := log.LogConfiguration{
 		Console:            true,
 		ConsoleLevel:       zap.InfoLevel,
 		FilePath:           c.String("log"),
@@ -151,9 +153,7 @@ func run(c *cli.Context) error {
 	if c.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	wasabee.SetupLogging(logconf)
-
-	wasabee.SetupDebug(c.Bool("longtimeouts"))
+	log.SetupLogging(logconf)
 
 	/*
 		if creds != "" {
@@ -165,53 +165,47 @@ func run(c *cli.Context) error {
 					ProjectID:      "phdevbin",
 				}
 				if err := profiler.Start(cfg, opts); err != nil {
-					wasabee.Log.Errorw("startup", "message", "unable to start profiler", "error", err)
+					log.Errorw("startup", "message", "unable to start profiler", "error", err)
 				} else {
-					wasabee.Log.Infow("startup", "message", "starting gcloud profiling")
+					log.Infow("startup", "message", "starting gcloud profiling")
 				}
 			}
 		} */
 
 	// Load words
-	err := wasabee.LoadWordsFile(c.String("wordlist"))
+	err := generatename.LoadWordsFile(c.String("wordlist"))
 	if err != nil {
-		wasabee.Log.Fatalw("startup", "message", "Error loading word list", "wordlist", c.String("wordlist"), "error", err.Error())
+		log.Fatalw("startup", "message", "Error loading word list", "wordlist", c.String("wordlist"), "error", err.Error())
 		// panic(err)
 	}
 
 	// load the UI templates
-	ts, err := wasabee.TemplateConfig(c.String("frontend-path"))
+	ts, err := templates.Startup(c.String("frontend-path"))
 	if err != nil {
-		wasabee.Log.Fatalw("startup", "message", "unable to load frontend templates; shutting down", "path", c.String("frontend-path"), "error", err.Error())
+		log.Fatalw("startup", "message", "unable to load frontend templates; shutting down", "path", c.String("frontend-path"), "error", err.Error())
 		// panic(err)
 	}
 
 	// Connect to database
-	err = wasabee.Connect(c.String("database"))
+	err = model.Connect(c.String("database"))
 	if err != nil {
-		wasabee.Log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
+		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
 		// panic(err)
 	}
 
 	// setup V
 	if c.String("venlonekey") != "" {
-		wasabee.SetVEnlOne(wasabee.Vconfig{
-			APIKey:         c.String("venlonekey"),
-			APIEndpoint:    c.String("venloneapiurl"),
-			StatusEndpoint: c.String("venlonestatusurl"),
-		})
-		if c.Bool("venlonepoller") {
-			go wasabee.StatusServerPoller()
-		}
+		v.Startup(c.String("venlonekey"))
 	}
+	// 	APIEndpoint:    c.String("venloneapiurl"),
+	// 	StatusEndpoint: c.String("venlonestatusurl"),
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		wasabee.SetEnlRocks(wasabee.Rocksconfig{
-			APIKey:            c.String("enlrockskey"),
-			CommunityEndpoint: c.String("enlrockscommurl"),
-			StatusEndpoint:    c.String("enlrocksstatusurl"),
-		})
+		rocks.Config.APIKey = c.String("enlrockskey")
+	}
+	if c.String("enlrockscommurl") != "" {
+		rocks.Config.CommunityEndpoint = c.String("enlrockscommurl")
 	}
 
 	// Serve HTTPS
@@ -241,7 +235,7 @@ func run(c *cli.Context) error {
 	// this one should not use GOOGLE_APPLICATION_CREDENTIALS because it requires odd privs
 	riscPath := path.Join(c.String("certs"), "risc.json")
 	if _, err := os.Stat(riscPath); err != nil {
-		wasabee.Log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", riscPath)
+		log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", riscPath)
 	} else {
 		go risc.RISC(riscPath)
 	}
@@ -249,8 +243,8 @@ func run(c *cli.Context) error {
 	// requires Firebase SDK and PubSub publisher & subscriber access
 	// XXX should have CLI/env args for these
 	if creds != "" {
-		go wasabeefirebase.ServeFirebase(creds)
-		go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
+		go wfb.Serve(creds)
+		go wps.Start(wps.Configuration{
 			Cert:    creds,
 			Project: project,
 		})
@@ -272,22 +266,22 @@ func run(c *cli.Context) error {
 	// loop until signal sent
 	sig := <-sigch
 
-	wasabee.Log.Infow("shutdown", "requested by signal", sig)
+	log.Infow("shutdown", "requested by signal", sig)
 	if creds == "" {
-		wasabee.FirebaseClose()
-		wasabee.PubSubClose()
+		wfb.Close()
+		wps.Shutdown()
 	}
 	if _, err := os.Stat(riscPath); err == nil {
 		risc.DisableWebhook()
 	}
-	if r, _ := wasabee.TGRunning(); r {
+	if config.TGRunning() {
 		wasabeetelegram.Shutdown()
 	}
 
-	_ = wasabee.Log.Sync()
+	// _ = log.Sync()
 
 	// close database connection
-	wasabee.Disconnect()
+	model.Disconnect()
 
 	if c.String("https") != "none" {
 		_ = wasabeehttps.Shutdown()

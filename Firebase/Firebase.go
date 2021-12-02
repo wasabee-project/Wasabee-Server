@@ -12,7 +12,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-var config struct {
+var c struct {
 	running bool
 	c       chan bool
 	app     *firebase.App
@@ -25,9 +25,9 @@ var config struct {
 func Serve(keypath string) error {
 	log.Infow("startup", "subsystem", "Firebase", "version", firebase.Version, "message", "Firebase starting")
 
-	config.ctx = context.Background()
+	c.ctx = context.Background()
 	opt := option.WithCredentialsFile(keypath)
-	app, err := firebase.NewApp(config.ctx, nil, opt)
+	app, err := firebase.NewApp(c.ctx, nil, opt)
 	if err != nil {
 		err := fmt.Errorf("error initializing firebase messaging: %v", err)
 		log.Error(err)
@@ -35,25 +35,25 @@ func Serve(keypath string) error {
 	}
 
 	// make sure we can send messages
-	msg, err := app.Messaging(config.ctx)
+	msg, err := app.Messaging(c.ctx)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	client, err := app.Auth(config.ctx)
+	client, err := app.Auth(c.ctx)
 	if err != nil {
 		err := fmt.Errorf("error initializing firebase auth: %v", err)
 		log.Error(err)
 	}
 
-	config.c = make(chan bool, 1)
-	config.running = true
-	config.app = app
-	config.auth = client
-	config.msg = msg
+	c.c = make(chan bool, 1)
+	c.running = true
+	c.app = app
+	c.auth = client
+	c.msg = msg
 
-	for b := range config.c {
+	for b := range c.c {
 		log.Debugw("Command on Firebase control channel", "value", b)
 	}
 	return nil
@@ -61,9 +61,9 @@ func Serve(keypath string) error {
 
 // Close shuts down the channel when done
 func Close() {
-	if config.running {
+	if c.running {
 		log.Infow("shutdown", "message", "shutting down firebase")
-		config.running = false
-		close(config.c)
+		c.running = false
+		close(c.c)
 	}
 }

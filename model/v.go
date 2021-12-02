@@ -75,7 +75,7 @@ func vTeam(teamID v.TeamID) (int64, uint8, error) {
 	return team, role, nil
 }
 
-func getTeamsByVID(v int64) ([]TeamID, error) {
+func GetTeamsByVID(v int64) ([]TeamID, error) {
 	var teams []TeamID
 
 	row, err := db.Query("SELECT teamID FROM team WHERE vteam = ?", v)
@@ -114,4 +114,14 @@ func (teamID TeamID) VConfigure(vteam int64, role uint8) error {
 		return err
 	}
 	return nil
+}
+
+func (gid GoogleID) VAPIkey() (string, error) {
+	var key string
+	err := db.QueryRow("SELECT VAPIkey FROM agentextras WHERE gid = ?", gid).Scan(&key)
+	if err != nil {
+		log.Error(err)
+		return "", err
+	}
+	return key, nil
 }
