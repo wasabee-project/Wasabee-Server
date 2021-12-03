@@ -19,8 +19,6 @@ func init() {
 // vToDB updates the database to reflect an agent's current status at V.
 // callback
 func vToDB(a v.Agent) error {
-	log.Infow("v toDB", "data", a)
-
 	if a.Agent == "" {
 		return nil
 	}

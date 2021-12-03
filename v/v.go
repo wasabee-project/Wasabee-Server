@@ -397,21 +397,23 @@ func Authorize(gid GoogleID) bool {
 	a, fetched, err := Callbacks.FromDB(gid)
 	if err != nil {
 		log.Error(err)
+		// do not block on db error
 		return true
 	}
-	log.Infow("v from db", "data", a)
+
 	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
-		result, err := search(gid)
+		net, err := search(gid)
 		if err != nil {
 			log.Error(err)
-			return true
+			// do not block on network error unless already listed as blacklisted in DB
+			return !a.Blacklisted
 		}
-		log.Infow("v from search", "data", result.Data)
-		err = Callbacks.ToDB(result.Data)
+		log.Debug("v cache refreshed", "gid", gid, "data", net.Data)
+		err = Callbacks.ToDB(net.Data)
 		if err != nil {
 			log.Error(err)
 		}
-		a = result.Data
+		a = net.Data // use the network result now that it is saved
 	}
 
 	if a.Agent != "" {

@@ -302,31 +302,32 @@ func RemoveFromRemoteRocksCommunity(gid, communityID string) error {
 }
 
 func Authorize(gid GoogleID) bool {
-	var a Agent
-
-	fromdb, fetched, err := Callbacks.FromDB(gid)
+	a, fetched, err := Callbacks.FromDB(gid)
 	if err != nil {
 		log.Error(err)
+		// do not block on db error
 		return true
 	}
-	if fromdb.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
-		result, err := Search(string(gid))
+
+	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
+		net, err := Search(string(gid))
 		if err != nil {
 			log.Error(err)
-			return true
+			return !a.Smurf // do not block on network error unless already listed as a smurf in the cache
 		}
-		err = Callbacks.ToDB(result)
+		log.Debug("rocks update cache", "gid", gid, "data", net)
+		err = Callbacks.ToDB(net)
 		if err != nil {
 			log.Error(err)
 		}
-		a = result
-	} else {
-		a = fromdb
+		a = net
 	}
 
 	if a.Agent != "" && a.Smurf {
 		log.Warnw("access denied", "GID", gid, "reason", "listed as smurf at enl.rocks")
 		return false
 	}
+
+	// not in rocks is not sufficient to block
 	return true
 }
