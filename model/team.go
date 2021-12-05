@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
 // TeamID is the primary means for interfacing with teams
@@ -33,7 +34,7 @@ type TeamMember struct {
 	VName         string   `json:"vname"`
 	RocksName     string   `json:"rocksname"`
 	IntelName     string   `json:"intelname"`
-	Level         int64    `json:"level"`
+	Level         uint8    `json:"level"`
 	EnlID         string   `json:"enlid"`
 	PictureURL    string   `json:"pic"`
 	Verified      bool     `json:"Vverified"`
@@ -71,14 +72,15 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 }
 
 // FetchTeam populates an entire TeamData struct
-func (teamID TeamID) FetchTeam(teamList *TeamData) error {
+func (teamID TeamID) FetchTeam() (*TeamData, error) {
+	var teamList TeamData
 	var rows *sql.Rows
 
 	rows, err := db.Query("SELECT agentteams.gid, agent.name, v.Agent, agent.IntelName, rocks.Agent, agentteams.squad, agentteams.state, Y(locations.loc), X(locations.loc), locations.upTime, v.Verified, v.Blacklisted, v.EnlID, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction "+
 		" FROM agentteams JOIN team ON agentteams.teamID = team.teamID JOIN agent ON agentteams.gid = agent.gid JOIN locations ON agentteams.gid = locations.gid LEFT JOIN v ON agentteams.gid = v.gid LEFT JOIN rocks ON agentteams.gid = rocks.gid WHERE agentteams.teamID = ? ORDER BY agent.name", teamID)
 	if err != nil {
 		log.Error(err)
-		return err
+		return &teamList, err
 	}
 
 	defer rows.Close()
@@ -92,7 +94,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &vname, &intelname, &rocksname, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &sharewd, &loadwd, &faction)
 		if err != nil {
 			log.Error(err)
-			return err
+			return &teamList, err
 		}
 
 		if vname.Valid {
@@ -158,7 +160,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 	var rockscomm, rockskey, joinlinktoken sql.NullString
 	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken, vteam, vrole FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken, &teamList.VTeam, &teamList.VRole); err != nil {
 		log.Error(err)
-		return err
+		return &teamList, err
 	}
 	teamList.ID = teamID
 	if rockscomm.Valid {
@@ -171,7 +173,7 @@ func (teamID TeamID) FetchTeam(teamList *TeamData) error {
 		teamList.JoinLinkToken = joinlinktoken.String
 	}
 
-	return nil
+	return &teamList, nil
 }
 
 func (teamID TeamID) Owner() (GoogleID, error) {
@@ -241,7 +243,7 @@ func (teamID TeamID) Rename(name string) error {
 // Delete removes the team identified by teamID
 // does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Delete() error {
-	// do them one-at-a-time to take care of .rocks sync
+	// do them one-at-a-time to take care of rocks/v/firebase/telegram sync
 	rows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", teamID)
 	if err != nil {
 		log.Error(err)
@@ -290,14 +292,8 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		return err
 	}
 
-	/* if err = gid.AddToRemoteRocksCommunity(teamID); err != nil {
-		log.Error(err)
-		// return err
-	} */
-
-	// gid.joinChannels(teamID) // XXX
-	wfb.SubscribeToTopic(wfb.GoogleID(gid), wfb.TeamID(teamID))
-	// log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
+	messaging.AddToRemote(w.GoogleID(gid), w.TeamID(teamID))
+	log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
 	return nil
 }
 
@@ -315,10 +311,9 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		return err
 	}
 
-	/* if err = gid.RemoveFromRemoteRocksCommunity(teamID); err != nil {
+	if err = messaging.RemoveFromRemote(w.GoogleID(gid), w.TeamID(teamID)); err != nil {
 		log.Error(err)
-		// return err
-	} */
+	}
 
 	// instruct the agent to delete all associated ops
 	// this may get ops for which the agent has double-access, but they can just re-fetch them
@@ -335,12 +330,10 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 			log.Error(err)
 			// continue
 		}
-		wfb.AgentDeleteOperation(wfb.GoogleID(gid), wfb.OperationID(opID))
+		messaging.AgentDeleteOperation(w.GoogleID(gid), w.OperationID(opID))
 	}
 
-	// gid.leaveChannels(teamID)
-	wfb.UnsubscribeFromTopic(wfb.GoogleID(gid), wfb.TeamID(teamID))
-	// log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
+	log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
 	return nil
 }
 
@@ -421,7 +414,7 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	var tm TeamMember
 
 	var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-	var enlID, vname, rocksname, intelname sql.NullString
+	var level, enlID, vname, rocksname, intelname sql.NullString
 	var ifac IntelFaction
 
 	gid, err := id.Gid()
@@ -429,9 +422,9 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 		log.Error(err)
 		return nil, err
 	}
-	// XXX nulls
-	if err = db.QueryRow("SELECT agent.gid, agent.name, v.agent, rocks.agent, agent.intelname, agent.intelfaction, agent.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
-		&tm.Gid, &tm.Name, &vname, &rocksname, &tm.IntelName, &ifac, &tm.Level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf); err != nil {
+
+	if err = db.QueryRow("SELECT agent.gid, agent.name, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
+		&tm.Gid, &tm.Name, &vname, &rocksname, &tm.IntelName, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf); err != nil {
 		log.Error(err)
 		return nil, err
 	}
@@ -454,6 +447,14 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 
 	if vverified.Valid {
 		tm.Verified = vverified.Bool
+	}
+
+	if level.Valid {
+		l, err := strconv.ParseInt(level.String, 10, 8)
+		if err != nil {
+			log.Error(err)
+		}
+		tm.Level = uint8(l)
 	}
 
 	if vblacklisted.Valid {

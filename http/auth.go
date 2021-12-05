@@ -100,7 +100,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, t := range m.Gid.TeamListEnabled() {
-		wfb.AgentLogin(wfb.TeamID(t), wfb.GoogleID(m.Gid))
+		wfb.AgentLogin(t, m.Gid)
 	}
 
 	name, err := m.Gid.IngressName()
@@ -346,7 +346,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		"client", req.Header.Get("User-Agent"),
 	)
 	for _, t := range m.Gid.TeamListEnabled() {
-		wfb.AgentLogin(wfb.TeamID(t), wfb.GoogleID(m.Gid))
+		wfb.AgentLogin(t, m.Gid)
 	}
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
@@ -455,7 +455,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		"client", req.Header.Get("User-Agent"))
 
 	for _, t := range gid.TeamListEnabled() {
-		wfb.AgentLogin(wfb.TeamID(t), wfb.GoogleID(gid))
+		wfb.AgentLogin(t, gid)
 	}
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2

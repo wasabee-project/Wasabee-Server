@@ -5,30 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// wrappers for type safety
-type TeamID string
-type GoogleID string
 type VTeamID int64
-
-type VT struct {
-	Name   string
-	TeamID VTeamID
-	Role   uint8
-}
-
-var Callbacks struct {
-	Team   func(teamID TeamID) (ID int64, roleNum uint8, err error)
-	FromDB func(gid GoogleID) (a Agent, fetched time.Time, err error)
-	ToDB   func(a Agent) error
-	Agents func(VTeamID, string) ([]Agent, error)
-}
 
 // Config contains configuration for calling v.enl.one APIs
 type Config struct {
@@ -45,70 +28,33 @@ var vc = Config{
 	TeamEndpoint:   "https://v.enl.one/api/v2/teams",
 }
 
-// Result is set by the V API
-type Result struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
-	Data    Agent  `json:"data"`
+// Result is set by the V trust API
+type trustResult struct {
+	Status  string       `json:"status"`
+	Message string       `json:"message,omitempty"`
+	Data    model.VAgent `json:"data"`
 }
-
-// agent is set by the V API
-type Agent struct {
-	EnlID       string   `json:"enlid"`
-	Gid         GoogleID `json:"gid"`
-	Vlevel      int64    `json:"vlevel"`
-	Vpoints     int64    `json:"vpoints"`
-	Agent       string   `json:"agent"`
-	Level       int64    `json:"level"`
-	Quarantine  bool     `json:"quarantine"`
-	Active      bool     `json:"active"`
-	Blacklisted bool     `json:"blacklisted"`
-	Verified    bool     `json:"verified"`
-	Flagged     bool     `json:"flagged"`
-	Banned      bool     `json:"banned_by_nia"`
-	Cellid      string   `json:"cellid"`
-	TelegramID  string   `json:"telegramid"`
-	Telegram    string   `json:"telegram"`
-	Email       string   `json:"email"`
-	StartLat    float64  `json:"lat"`
-	StartLon    float64  `json:"lon"`
-	Distance    int64    `json:"distance"`
-	Roles       []role   `json:"roles"`
-}
-
-// v team is set by the V API
-/* type team struct {
-	Status string      `json:"status"`
-	Agents []teamagent `json:"data"`
-}
-
-// keep it simple
-type teamagent struct {
-	EnlID string `json:"enlid"`
-	Gid   string `json:"gid"`
-} */
 
 // Version 2.0 of the team query
-type TeamResult struct {
-	Status string  `json:"status"`
-	Agents []Agent `json:"data"`
+type teamResult struct {
+	Status string         `json:"status"`
+	Agents []model.VAgent `json:"data"`
 }
 
-type role struct {
-	ID   uint8  `json:"id"`
-	Name string `json:"name"`
+// myTeams is what V returns when an agent's teams are requested
+type myTeams struct {
+	Status string   `json:"status"`
+	Teams  []myTeam `json:"data"`
 }
 
-type AgentVTeams struct {
-	Status string       `json:"status"`
-	Teams  []AgentVTeam `json:"data"`
-}
-
-type AgentVTeam struct {
+type myTeam struct {
 	TeamID VTeamID `json:"teamid"`
 	Name   string  `json:"team"`
-	Roles  []role  `json:"roles"`
-	Admin  bool    `json:"admin"`
+	Roles  []struct {
+		ID   uint8  `json:"id"`
+		Name string `json:"name"`
+	} `json:"roles"`
+	Admin bool `json:"admin"`
 }
 
 // Startup is called from main() to initialize the config
@@ -118,14 +64,14 @@ func Startup(key string) {
 	vc.configured = true
 }
 
-// search checks a agent at V and populates a Result
-func search(id GoogleID) (Result, error) {
-	var vres Result
+// trustCheck checks a agent at V and populates a trustResult
+func trustCheck(id model.GoogleID) (*trustResult, error) {
+	var tr trustResult
 	if !vc.configured {
-		return vres, nil
+		return &tr, nil
 	}
 	if id == "" {
-		return vres, fmt.Errorf("empty search value")
+		return &tr, fmt.Errorf("empty trustCheck value")
 	}
 
 	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.APIEndpoint, id, vc.APIKey)
@@ -133,50 +79,54 @@ func search(id GoogleID) (Result, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Error(err)
-		return vres, err
+		return &tr, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		newerr := strings.ReplaceAll(err.Error(), vc.APIKey, "...")
+		log.Debug(err)
 		err = fmt.Errorf("unable to request user info from V")
-		log.Errorw(err.Error(), "GID", id, "message", newerr)
-		return vres, err
+		return &tr, err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return vres, err
+		return &tr, err
 	}
 
 	// log.Debug(string(body))
-	err = json.Unmarshal(body, &vres)
+	err = json.Unmarshal(body, &tr)
 	if err != nil {
 		log.Error(err)
-		return vres, err
+		return &tr, err
 	}
-	if vres.Status != "ok" && vres.Message != "Agent not found" {
-		err = fmt.Errorf(vres.Message)
+	if tr.Status != "ok" && tr.Message != "Agent not found" {
+		err = fmt.Errorf(tr.Message)
 		log.Info(err)
-		return vres, err
+		return &tr, err
 	}
-	// log.Debug(vres)
-	vres.Data.Gid = id // V isn't sending the GIDs
-	return vres, nil
+	// log.Debug(tr)
+	tr.Data.Gid = id // V isn't sending the GIDs
+	return &tr, nil
 }
 
-// Teams pulls a list of teams the agent is on at V
-func Teams(gid GoogleID, key string) (AgentVTeams, error) {
-	var v AgentVTeams
+// GetMyTeams pulls a list of teams the agent is on at V
+func GetMyTeams(gid model.GoogleID) (*myTeams, error) {
+	var v myTeams
 
+	key, err := gid.VAPIkey()
+	if err != nil {
+		log.Error(err)
+		return &v, err
+	}
 	if key == "" {
 		err := fmt.Errorf("cannot get V teams if no V API key set")
 		log.Error(err)
-		return v, err
+		return &v, err
 	}
 
 	apiurl := fmt.Sprintf("%s?apikey=%s", vc.TeamEndpoint, key)
@@ -184,7 +134,7 @@ func Teams(gid GoogleID, key string) (AgentVTeams, error) {
 	if err != nil {
 		err := fmt.Errorf("error establishing agent's team pull request")
 		log.Error(err)
-		return v, err
+		return &v, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -193,33 +143,33 @@ func Teams(gid GoogleID, key string) (AgentVTeams, error) {
 	if err != nil {
 		err := fmt.Errorf("error executing team pull request")
 		log.Error(err)
-		return v, err
+		return &v, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return v, err
+		return &v, err
 	}
 
 	err = json.Unmarshal(body, &v)
 	if err != nil {
 		log.Error(err)
-		return v, err
+		return &v, err
 	}
-	return v, nil
+	return &v, nil
 }
 
-func GetTeam(vteamID int64, key string) (TeamResult, error) {
-	var vt TeamResult
+func (vteamID VTeamID) GetTeamFromV(key string) (*teamResult, error) {
+	var vt teamResult
 	if vteamID == 0 {
-		return vt, nil
+		return &vt, nil
 	}
 
 	if key == "" {
 		err := fmt.Errorf("cannot get V team if no V API key set")
 		log.Error(err)
-		return vt, err
+		return &vt, err
 	}
 
 	apiurl := fmt.Sprintf("%s/%d?apikey=%s", vc.TeamEndpoint, vteamID, key)
@@ -228,7 +178,7 @@ func GetTeam(vteamID int64, key string) (TeamResult, error) {
 		// log.Error(err) // do not leak API key to logs
 		err := fmt.Errorf("error establishing team pull request")
 		log.Error(err)
-		return vt, err
+		return &vt, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -237,26 +187,28 @@ func GetTeam(vteamID int64, key string) (TeamResult, error) {
 	if err != nil {
 		err := fmt.Errorf("error executing team pull request")
 		log.Error(err)
-		return vt, err
+		return &vt, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return vt, err
+		return &vt, err
 	}
 
 	err = json.Unmarshal(body, &vt)
 	if err != nil {
 		log.Error(err)
-		return vt, err
+		return &vt, err
 	}
-	return vt, nil
+	return &vt, nil
 }
 
 // Sync pulls a team (and role) from V to sync with a Wasabee team
-func Sync(teamID TeamID, key string) error {
-	vteamID, role, err := Callbacks.Team(teamID)
+func Sync(teamID model.TeamID, key string) error {
+	x, role, err := teamID.VTeam()
+	vteamID := VTeamID(x)
+
 	log.Debug("V Sync", "team", vteamID, "role", role)
 	if err != nil {
 		return err
@@ -271,89 +223,85 @@ func Sync(teamID TeamID, key string) error {
 		return err
 	}
 
-	vt, err := GetTeam(vteamID, key)
+	vt, err := vteamID.GetTeamFromV(key)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 	log.Debug("V Sync", "team", vt)
 
-	log.Error("Sync not refactored yet...")
-	return nil
-	/*
-		// do not remove the owner from the team
-		owner, err := teamID.Owner()
-		if err != nil {
-			log.Error(err)
-			return err
+	// do not remove the owner from the team
+	owner, err := teamID.Owner()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	// a map to track added agents
+	atv := make(map[model.GoogleID]bool)
+
+	for _, agent := range vt.Agents {
+		if !agent.Gid.Valid() {
+			log.Infow("Importing previously unknown agent", "GID", agent.Gid)
+			err := agent.Gid.FirstLogin()
+			if err != nil {
+				log.Error(err)
+				return err
+			}
 		}
 
-		// a map to track added agents
-		atv := make(map[string]bool)
-
-		for _, agent := range vt.Agents {
-			if !agent.Gid.Valid() {
-				log.Infow("Importing previously unknown agent", "GID", agent.Gid)
-				_, err = agent.Gid.Authorize()
-				if err != nil {
-					log.Info(err)
-					continue
-				}
-			}
-
+		/*
 			if role != 0 { // role 0 means "any"
 				for _, r := range agent.Roles {
-					if r.ID == role {
+					if r == role {
 						atv[agent.Gid] = true
 						break
 					}
 				}
 			} else {
 				atv[agent.Gid] = true
-			}
+			} */
 
-			// don't re-add them if already in the team
-			in, err := agent.Gid.AgentInTeam(teamID)
-			if err != nil {
+		// don't re-add them if already in the team
+		in, err := agent.Gid.AgentInTeam(teamID)
+		if err != nil {
+			log.Info(err)
+			continue
+		}
+		if in {
+			log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
+			continue
+		}
+		if _, ok := atv[agent.Gid]; ok {
+			log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
+			if err := teamID.AddAgent(agent.Gid); err != nil {
 				log.Info(err)
 				continue
 			}
-			if in {
-				log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
-				continue
-			}
-			if _, ok := atv[agent.Gid]; ok {
-				log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
-				if err := teamID.AddAgent(agent.Gid); err != nil {
-					log.Info(err)
-					continue
-				}
-				// XXX set startlat, startlon, etc...
-			}
+			// XXX set startlat, startlon, etc...
 		}
+	}
 
-		// remove those not present at V
-		var t TeamData
-		err = teamID.FetchTeam(&t)
-		if err != nil {
-			log.Info(err)
-			return err
+	// remove those not present at V
+	t, err := teamID.FetchTeam()
+	if err != nil {
+		log.Info(err)
+		return err
+	}
+	for _, a := range t.TeamMembers {
+		if a.Gid == owner {
+			continue
 		}
-		for _, a := range t.Agent {
-			if a.Gid == owner {
-				continue
-			}
-			_, ok := atv[a.Gid]
-			if !ok {
-				err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
-				log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
-				err = teamID.RemoveAgent(a.Gid)
-				if err != nil {
-					log.Error(err)
-				}
+		if !atv[a.Gid] {
+			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
+			log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
+			err = teamID.RemoveAgent(a.Gid)
+			if err != nil {
+				log.Error(err)
 			}
 		}
-	*/
+	}
+	return nil
 }
 
 var Roles = map[uint8]string{
@@ -393,23 +341,24 @@ var Roles = map[uint8]string{
 	119: "Team-19",
 }
 
-func Authorize(gid GoogleID) bool {
-	a, fetched, err := Callbacks.FromDB(gid)
+func Authorize(gid model.GoogleID) bool {
+	a, fetched, err := model.VFromDB(gid)
 	if err != nil {
 		log.Error(err)
 		// do not block on db error
 		return true
 	}
+	log.Debug("v from cache", "gid", gid, "data", a, "fetched", fetched)
 
 	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
-		net, err := search(gid)
+		net, err := trustCheck(gid)
 		if err != nil {
 			log.Error(err)
 			// do not block on network error unless already listed as blacklisted in DB
 			return !a.Blacklisted
 		}
 		log.Debug("v cache refreshed", "gid", gid, "data", net.Data)
-		err = Callbacks.ToDB(net.Data)
+		err = model.VToDB(net.Data)
 		if err != nil {
 			log.Error(err)
 		}
@@ -434,7 +383,7 @@ func Authorize(gid GoogleID) bool {
 	return true
 }
 
-func processTeams(data AgentVTeams, teams []VT) ([]teamToMake, error) {
+func processTeams(data myTeams) ([]teamToMake, error) {
 	var m []teamToMake
 	for _, t := range data.Teams {
 		if !t.Admin {
@@ -442,11 +391,11 @@ func processTeams(data AgentVTeams, teams []VT) ([]teamToMake, error) {
 			continue
 		}
 
-		// don't make duplicates
+		/* don't make duplicates
 		already := false
 		for _, adt := range teams {
 			if adt.TeamID == t.TeamID && adt.Role == 0 {
-				// log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
+				log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
 				already = true
 				break
 			}
@@ -459,138 +408,160 @@ func processTeams(data AgentVTeams, teams []VT) ([]teamToMake, error) {
 			Role: 0,
 			Name: fmt.Sprintf("%s (all)", t.Name),
 		})
+		*/
 	}
 
 	return m, nil
 }
 
-func processRoleSingleTeam(t AgentVTeam, teams []VT, key string) ([]teamToMake, error) {
-	var m []teamToMake
-
-	if !t.Admin {
-		// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
-		return m, nil
-	}
-	roles := make(map[uint8]bool)
-
-	vt, err := Callbacks.Agents(t.TeamID, key)
-	if err != nil {
-		return m, err
-	}
-
-	// for every role of every agent -- this logic order is better, update the processRoleTeams to use it...
-	for _, a := range vt {
-		for _, r := range a.Roles {
-			ok := roles[r.ID]
-			if !ok { // first time we've seen this team/role
-				roles[r.ID] = true
-
-				already := false
-				for _, adt := range teams {
-					if adt.TeamID == t.TeamID && adt.Role == r.ID {
-						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
-						already = true
-						break
-					}
-				}
-				if already {
-					continue
-				}
-
-				m = append(m, teamToMake{
-					ID:   t.TeamID,
-					Role: r.ID,
-					Name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
-				})
-			}
-		}
-	}
-
-	return m, nil
-}
-
+// internal type
 type teamToMake struct {
 	ID   VTeamID
 	Role uint8
 	Name string
 }
 
-func processRoleTeams(data AgentVTeams, teams []VT, key string) ([]teamToMake, error) {
+func processRoleSingleTeam(t myTeam, teams []vt, key string) ([]teamToMake, error) {
 	var m []teamToMake
 
-	raw := make(map[VTeamID]map[uint8]bool)
-
-	// for every team of which I am an admin
-	for _, t := range data.Teams {
+	/*
 		if !t.Admin {
-			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
-			continue
+			log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
+			return m, nil
 		}
 		roles := make(map[uint8]bool)
 
-		// load all agents
-		vt, err := Callbacks.Agents(t.TeamID, key)
+		vteamID, role, err := t.TeamID.VTeam()
 		if err != nil {
+			log.Error(err)
 			return m, err
 		}
 
-		// for every role of every agent
+		vt, err := vteamID.GetTeamFromV(key)
+		if err != nil {
+			log.Error(err)
+			return m, err
+		}
+
+		// for every role of every agent -- this logic order is better, update the processRoleTeams to use it...
 		for _, a := range vt {
 			for _, r := range a.Roles {
-				// don't make duplicates
-				already := false
-				for _, adt := range teams {
-					if adt.TeamID == t.TeamID && adt.Role == r.ID {
-						// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
-						already = true
-						break
-					}
-				}
-				if already {
-					continue
-				}
+				if !roles[r.ID] { // first time we've seen this team/role
+					roles[r.ID] = true
 
-				ok := roles[r.ID]
-				if !ok { // first time we've seen this team/role
+					already := false
+					for _, adt := range teams {
+						if adt.TeamID == t.TeamID && adt.Role == r.ID {
+							// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
+							already = true
+							break
+						}
+					}
+					if already {
+						continue
+					}
+
 					m = append(m, teamToMake{
 						ID:   t.TeamID,
 						Role: r.ID,
 						Name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
 					})
-					roles[r.ID] = true
 				}
 			}
 		}
-		raw[t.TeamID] = roles
-	}
+	*/
+	return m, nil
+}
+
+func processRoleTeams(data *myTeams) ([]teamToMake, error) {
+	var m []teamToMake
+
+	// raw := make(map[VTeamID]map[uint8]bool)
+
+	log.Error("rewrite processRoleTeams")
 
 	return m, nil
 }
 
-func ProcessBulkImport(data AgentVTeams, teams []VT, key string, mode string) ([]teamToMake, error) {
+type vt struct {
+	Name   string
+	TeamID VTeamID
+	Role   uint8
+}
+
+func BulkImport(gid model.GoogleID, mode string) error {
 	var teamstomake []teamToMake
-	var err error
+
+	key, err := gid.VAPIkey()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	agent, err := gid.GetAgent()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	var vteams []vt
+
+	for _, t := range agent.Teams {
+		vteams = append(vteams, vt{
+			Name:   t.Name,
+			TeamID: VTeamID(t.VTeam),
+			Role:   t.VTeamRole,
+		})
+	}
+
+	teamsfromv, err := GetMyTeams(gid)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 
 	switch mode {
 	case "role":
-		teamstomake, err = processRoleTeams(data, teams, key)
+		teamstomake, err = processRoleTeams(teamsfromv)
 	case "team":
-		teamstomake, err = processTeams(data, teams)
+		teamstomake, err = processTeams(*teamsfromv)
 	default:
-		id, err := strconv.ParseInt(mode, 10, 64)
+		/*
+			id, err := strconv.ParseInt(mode, 10, 64)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+			for _, t := range teamsfromv.Teams {
+				if int64(t.TeamID) == id {
+					teamstomake, err = processRoleSingleTeam(t, teams, key)
+					if err != nil {
+						return teamstomake, err
+					}
+					break
+				}
+			}
+		*/
+	}
+
+	for _, t := range teamstomake {
+		log.Debugw("Creating Wasabee team for V team", "v team", t.ID, "role", t.Role)
+		teamID, err := gid.NewTeam(t.Name)
 		if err != nil {
 			log.Error(err)
-			return teamstomake, err
+			return err
 		}
-		for _, t := range data.Teams {
-			if int64(t.TeamID) == id {
-				teamstomake, err = processRoleSingleTeam(t, teams, key)
-				if err != nil {
-					return teamstomake, err
-				}
-				break
-			}
+		err = teamID.VConfigure(int64(t.ID), uint8(t.Role))
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		err = Sync(teamID, key)
+		if err != nil {
+			log.Error(err)
+			return err
 		}
 	}
-	return teamstomake, err
+
+	return nil
 }

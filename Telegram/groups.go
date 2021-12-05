@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -293,22 +295,24 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 	return nil
 }
 
-func AddToChat(gid model.GoogleID, t string) (bool, error) {
-	// log.Debugw("AddToChat called", "GID", gid, "resource", t)
+func AddToChat(g w.GoogleID, t w.TeamID) error {
+	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
+	log.Debugw("AddToChat called", "GID", gid, "resource", teamID)
+
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
 		log.Error(err)
-		return false, err
+		return err
 	}
 	if chatID == 0 {
-		// log.Debug("no chat linked to team")
-		return false, nil
+		log.Debug("no chat linked to team")
+		return nil
 	}
 	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
 	if err != nil {
 		log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
-		return false, err
+		return err
 	}
 
 	name, _ := gid.IngressName()
@@ -316,33 +320,36 @@ func AddToChat(gid model.GoogleID, t string) (bool, error) {
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
 		log.Error(err)
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
-func RemoveFromChat(gid model.GoogleID, t string) (bool, error) {
-	log.Debugw("RemoveFromChat called", "GID", gid, "chatID", t)
+func RemoveFromChat(g w.GoogleID, t w.TeamID) error {
+	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
+
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
 		log.Error(err)
-		return false, err
+		return err
 	}
 	if chatID == 0 {
-		return false, nil
+		return nil
 	}
+	log.Debugw("RemoveFromChat called", "GID", gid, "teamID", teamID, "chatID", chatID)
+
 	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
 	if err != nil {
 		log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
-		return false, err
+		return err
 	}
 	name, _ := gid.IngressName()
 	text := fmt.Sprintf("%s left the linked team (%s)", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
 		log.Error(err)
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }

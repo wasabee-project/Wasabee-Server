@@ -8,18 +8,17 @@ import (
 	"path/filepath"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
-	// "github.com/wasabee-project/Wasabee-Server/http"
-	"github.com/wasabee-project/Wasabee-Server/Telegram"
+	// "github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/config"
 )
 
 // XXX this is a kludge
 var ts map[string]*template.Template
 var funcMap = template.FuncMap{
-	"TGGetBotName": wasabeetelegram.TGGetBotName,
-	"TGGetBotID":   wasabeetelegram.TGGetBotID,
-	"Webroot":      config.GetWebroot,
-	"WebAPIPath":   config.GetWebAPIPath,
+	// "TGGetBotName": wasabeetelegram.TGGetBotName,
+	// "TGGetBotID":   wasabeetelegram.TGGetBotID,
+	"Webroot":    config.GetWebroot,
+	"WebAPIPath": config.GetWebAPIPath,
 }
 
 // Startup should be called once from main to establish the templates.

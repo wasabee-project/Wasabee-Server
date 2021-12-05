@@ -9,11 +9,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server/log"
 	"golang.org/x/time/rate"
-)
 
-type GoogleID string
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
+)
 
 // CommunityNotice is sent from a community when an agent is added or removed
 // consumed by RocksCommunitySync function below
@@ -25,21 +25,21 @@ type CommunityNotice struct {
 
 // CommunityResponse is returned from a query request
 type CommunityResponse struct {
-	Community  string   `json:"community"`
-	Title      string   `json:"title"`
-	Members    []string `json:"members"`    // googleID
-	Moderators []string `json:"moderators"` // googleID
-	User       Agent    `json:"user"`       // (Members,Moderators || User) present, not both
+	Community  string           `json:"community"`
+	Title      string           `json:"title"`
+	Members    []model.GoogleID `json:"members"`    // googleID
+	Moderators []string         `json:"moderators"` // googleID
+	User       Agent            `json:"user"`       // (Members,Moderators || User) present, not both
 }
 
 // Agent is the data sent by enl.rocks -- the version sent in the CommunityResponse is different, but close enough for our purposes
 type Agent struct {
-	Gid      string `json:"gid"`
-	TGId     int64  `json:"tgid"`
-	Agent    string `json:"agentid"`
-	Verified bool   `json:"verified"`
-	Smurf    bool   `json:"smurf"`
-	Fullname string `json:"name"`
+	Gid      model.GoogleID `json:"gid"`
+	TGId     int64          `json:"tgid"`
+	Agent    string         `json:"agentid"`
+	Verified bool           `json:"verified"`
+	Smurf    bool           `json:"smurf"`
+	// Fullname string `json:"name"`
 }
 
 // sent by rocks on community pushes
@@ -59,14 +59,6 @@ var Config struct {
 	limiter        *rate.Limiter
 }
 
-// Callbacks constains methods from model needed here
-var Callbacks struct {
-	FromDB              func(GoogleID) (Agent, time.Time, error)
-	ToDB                func(Agent) error
-	AddAgentToTeam      func(gid, communityID string) error
-	RemoveAgentFromTeam func(gid, communityID string) error
-}
-
 func init() {
 	Config.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
 	Config.StatusEndpoint = "https://enlightened.rocks/api/user/status"
@@ -84,8 +76,8 @@ func Active() bool {
 }
 
 // Search checks a agent at enl.rocks and returns an Agent
-func Search(id string) (Agent, error) {
-	var agent Agent
+func Search(id string) (model.RocksAgent, error) {
+	var agent model.RocksAgent
 	if Config.APIKey == "" {
 		return agent, nil
 	}
@@ -140,14 +132,20 @@ func CommunitySync(msg json.RawMessage) error {
 		return err
 	}
 
+	teamID, err := model.RocksCommunityToTeam(rc.Community)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	if rc.Action == "onJoin" {
-		err := Callbacks.AddAgentToTeam(rc.User.Gid, rc.Community)
+		err := teamID.AddAgent(rc.User.Gid)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
 	} else {
-		err := Callbacks.RemoveAgentFromTeam(rc.User.Gid, rc.Community)
+		err := teamID.RemoveAgent(rc.User.Gid)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -200,8 +198,14 @@ func CommunityMemberPull(communityID string) error {
 		return err
 	}
 
+	teamID, err := model.RocksCommunityToTeam(communityID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	for _, gid := range rr.Members {
-		if err := Callbacks.AddAgentToTeam(gid, communityID); err != nil {
+		if err := teamID.AddAgent(gid); err != nil {
 			log.Info(err)
 			continue
 		}
@@ -301,8 +305,8 @@ func RemoveFromRemoteRocksCommunity(gid, communityID string) error {
 	return nil
 }
 
-func Authorize(gid GoogleID) bool {
-	a, fetched, err := Callbacks.FromDB(gid)
+func Authorize(gid model.GoogleID) bool {
+	a, fetched, err := model.RocksFromDB(gid)
 	if err != nil {
 		log.Error(err)
 		// do not block on db error
@@ -316,7 +320,7 @@ func Authorize(gid GoogleID) bool {
 			return !a.Smurf // do not block on network error unless already listed as a smurf in the cache
 		}
 		log.Debug("rocks update cache", "gid", gid, "data", net)
-		err = Callbacks.ToDB(net)
+		err = model.RocksToDB(net)
 		if err != nil {
 			log.Error(err)
 		}

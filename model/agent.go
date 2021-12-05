@@ -18,7 +18,7 @@ type Agent struct {
 	VName         string       `json:"vname"`
 	RocksName     string       `json:"rocksname"`
 	IntelName     string       `json:"intelname"`
-	Level         int64        `json:"level"`
+	Level         uint8        `json:"level"`
 	OneTimeToken  OneTimeToken `json:"lockey"` // historical name, is this used by any clients?
 	VVerified     bool         `json:"Vverified"`
 	VBlacklisted  bool         `json:"blacklisted"`
@@ -78,13 +78,13 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgent() (Agent, error) {
 	var a Agent
 	a.GoogleID = gid
-	var vname, vid, pic, vapi, rocksname sql.NullString
+	var level, vname, vid, pic, vapi, rocksname sql.NullString
 	var vverified, vblacklisted, rocksverified sql.NullBool
 	var ifac IntelFaction
 
 	ad := &a
 
-	err := db.QueryRow("SELECT a.name, v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, a.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &vname, &rocksname, &ad.IntelName, &ad.Level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
+	err := db.QueryRow("SELECT a.name, v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &vname, &rocksname, &ad.IntelName, &level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return a, err
@@ -120,6 +120,14 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 
 	if rocksverified.Valid {
 		a.RocksVerified = rocksverified.Bool
+	}
+
+	if level.Valid {
+		l, err := strconv.ParseInt(level.String, 10, 8)
+		if err != nil {
+			log.Error(err)
+		}
+		a.Level = uint8(l)
 	}
 
 	if err = adTeams(ad); err != nil {
@@ -411,7 +419,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 	}
 
 	// rocks.agent does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM rocks HERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM rocks WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
 
 	if err != nil {
 		log.Error(err)
@@ -598,7 +606,7 @@ func ToGid(in string) (GoogleID, error) {
 // Save is called by FirstLogin, Authorize, and from the Pub/Sub system to write a new agent
 // also updates an existing agent from Pub/Sub
 func (ad Agent) Save() error {
-	if _, err := db.Exec("REPLACE INTO agent (gid, name, OneTimeToken, RISC, IntelFaction) VALUES (?,?,?,?,?)", ad.GoogleID, ad.IngressName, ad.OneTimeToken, ad.RISC, ad.IntelFaction); err != nil {
+	if _, err := db.Exec("REPLACE INTO agent (gid, name, OneTimeToken, RISC, IntelFaction) VALUES (?,?,?,?,?)", ad.GoogleID, ad.IngressName, ad.OneTimeToken, ad.RISC, FactionFromString(ad.IntelFaction)); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -689,7 +697,7 @@ func (gid GoogleID) FirstLogin() error {
 		IngressName:  string(gid),
 		OneTimeToken: OneTimeToken(ott),
 		RISC:         false,
-		// IntelFaction: factionUnset,
+		IntelFaction: "unset",
 	}
 
 	if err := ad.Save(); err != nil {

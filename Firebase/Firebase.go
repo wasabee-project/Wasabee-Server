@@ -10,6 +10,7 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
+	wm "github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
 var c struct {
@@ -52,6 +53,17 @@ func Serve(keypath string) error {
 	c.app = app
 	c.auth = client
 	c.msg = msg
+
+	wm.RegisterMessageBus("firebase", wm.Bus{
+		SendMessage:      SendMessage,
+		SendTarget:       SendTarget,
+		SendAnnounce:     SendAnnounce,
+		AddToRemote:      AddToRemote,
+		RemoveFromRemote: RemoveFromRemote,
+		// SendAssignment: SendAssignment,
+		AgentDeleteOperation: AgentDeleteOperation,
+		DeleteOperation:      DeleteOperation,
+	})
 
 	for b := range c.c {
 		log.Debugw("Command on Firebase control channel", "value", b)

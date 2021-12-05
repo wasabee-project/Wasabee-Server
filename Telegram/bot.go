@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
@@ -55,8 +56,13 @@ func WasabeeBot(init TGConfiguration) {
 	webhook := config.Subrouter(c.HookPath)
 	webhook.HandleFunc("/{hook}", TGWebHook).Methods("POST")
 
-	messaging.RegisterMessageBus("Telegram", SendMessage)
-	messaging.RegisterGroupCalls("Telegram", AddToChat, RemoveFromChat)
+	b := messaging.Bus{
+		SendMessage:      SendMessage,
+		AddToRemote:      AddToChat,
+		RemoveFromRemote: RemoveFromChat,
+	}
+
+	messaging.RegisterMessageBus("Telegram", b)
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(c.APIKey)
@@ -214,7 +220,8 @@ func keyboards(c *TGConfiguration) {
 }
 
 // SendMessage is registered with Wasabee-Server as a message bus to allow other modules to send messages via Telegram
-func SendMessage(gid model.GoogleID, message string) (bool, error) {
+func SendMessage(g w.GoogleID, message string) (bool, error) {
+	gid := model.GoogleID(g)
 	tgid, err := gid.TelegramID()
 	if err != nil {
 		log.Error(err)

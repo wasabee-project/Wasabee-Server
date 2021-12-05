@@ -3,21 +3,13 @@ package model
 import (
 	"database/sql"
 
-	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
-// init sets up the callbacks used to get around the need for circular dependencies.
-// this model depends on wfb but wfb needs a few things to get/store/delete tokens,
-func init() {
-	wfb.Callbacks.GidToTokens = GetFirebaseTokens
-	wfb.Callbacks.StoreToken = StoreFirebaseToken
-	wfb.Callbacks.DeleteToken = RemoveFirebaseToken
-	wfb.Callbacks.BroadcastList = FirebaseBroadcastList
-}
-
 // FirebaseTokens gets an agents FirebaseToken from the database
-func GetFirebaseTokens(gid wfb.GoogleID) ([]string, error) {
+func (gid GoogleID) GetFirebaseTokens() ([]string, error) {
 	var token string
 	var toks []string
 
@@ -46,7 +38,7 @@ func GetFirebaseTokens(gid wfb.GoogleID) ([]string, error) {
 // StoreFirebaseToken adds a token in the database for an agent.
 // gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers).
 // Pruning of dead tokens takes place in the senders upon error.
-func StoreFirebaseToken(gid wfb.GoogleID, token string) error {
+func (gid GoogleID) StoreFirebaseToken(token string) error {
 	g := GoogleID(gid)
 
 	var count int
@@ -67,10 +59,10 @@ func StoreFirebaseToken(gid wfb.GoogleID, token string) error {
 		return err
 	}
 
-	// Subscribe to all team topics
+	// Subscribe this token to all team topics
 	tl := g.teamList()
 	for _, teamID := range tl {
-		wfb.SubscribeToTopic(wfb.GoogleID(gid), wfb.TeamID(teamID))
+		messaging.AddToRemote(w.GoogleID(gid), w.TeamID(teamID))
 	}
 
 	return nil

@@ -10,7 +10,8 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server/Firebase"
+
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -18,7 +19,6 @@ import (
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
-	var teamList model.TeamData
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -49,7 +49,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	err = team.FetchTeam(&teamList)
+	teamList, err := team.FetchTeam()
 	if err == sql.ErrNoRows {
 		err = fmt.Errorf("team not found while fetching member list")
 		log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
@@ -294,9 +294,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	wfb.SendAnnounce(wfb.TeamID(team), message)
-
-	_, err = messaging.SendAnnounce(team, message)
+	err = messaging.SendAnnounce(w.TeamID(team), message)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -555,7 +553,6 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 
 	var list []model.TeamData
 	for _, team := range requestedteams.TeamIDs {
-		var t model.TeamData
 		isowner, err := gid.OwnsTeam(team)
 		if err != nil {
 			log.Error(err)
@@ -572,7 +569,7 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 			log.Debugw(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
 			continue
 		}
-		err = team.FetchTeam(&t)
+		t, err := team.FetchTeam()
 		if err == sql.ErrNoRows {
 			err = fmt.Errorf("team not found while fetching member list - in bulk pull")
 			log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
@@ -589,7 +586,7 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 			t.JoinLinkToken = ""
 		}
 
-		list = append(list, t)
+		list = append(list, *t)
 	}
 
 	// no valid teams

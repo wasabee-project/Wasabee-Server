@@ -503,7 +503,7 @@ func linkAssignTouch(gid model.GoogleID, linkID model.LinkID, op model.Operation
 		log.Error(err)
 	}
 
-	wfb.AssignLink(wfb.GoogleID(gid), wfb.TaskID(linkID), wfb.OperationID(op.ID), uid)
+	wfb.AssignLink(gid, model.TaskID(linkID), op.ID, uid)
 	return uid
 }
 
@@ -531,7 +531,7 @@ func linkStatusTouch(op model.Operation, linkID model.LinkID) string {
 	}
 
 	for _, t := range teams {
-		err := wfb.LinkStatus(wfb.TaskID(linkID), wfb.OperationID(op.ID), wfb.TeamID(t), uid)
+		err := wfb.LinkStatus(model.TaskID(linkID), op.ID, t, uid)
 		if err != nil {
 			log.Error(err)
 		}

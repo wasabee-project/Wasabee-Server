@@ -46,10 +46,10 @@ func Authorize(gid model.GoogleID) (bool, error) {
 	// *.Authorize checks cache in db, if too old, checks service and saves updates
 	channel := make(chan bool, 2)
 	go func() {
-		channel <- v.Authorize(v.GoogleID(gid))
+		channel <- v.Authorize(gid)
 	}()
 	go func() {
-		channel <- rocks.Authorize(rocks.GoogleID(gid))
+		channel <- rocks.Authorize(gid)
 	}()
 	defer close(channel)
 

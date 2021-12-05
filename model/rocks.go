@@ -5,18 +5,17 @@ import (
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
-	"github.com/wasabee-project/Wasabee-Server/rocks"
 )
 
-// setup the callbacks -- work around circular dependency problems
-func init() {
-	rocks.Callbacks.ToDB = rocksToDB
-	rocks.Callbacks.FromDB = rocksFromDB
-	rocks.Callbacks.AddAgentToTeam = rocksAddAgentToTeam
-	rocks.Callbacks.RemoveAgentFromTeam = rocksRemoveAgentFromTeam
+type RocksAgent struct {
+	Gid      string `json:"gid"`
+	TGId     int64  `json:"tgid"`
+	Agent    string `json:"agentid"`
+	Verified bool   `json:"verified"`
+	Smurf    bool   `json:"smurf"`
 }
 
-func rocksToDB(a rocks.Agent) error {
+func RocksToDB(a RocksAgent) error {
 	if a.Agent == "" {
 		return nil
 	}
@@ -36,9 +35,32 @@ func rocksToDB(a rocks.Agent) error {
 	return nil
 }
 
-func rocksFromDB(g rocks.GoogleID) (rocks.Agent, time.Time, error) {
-	var a rocks.Agent
+func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
+	var a RocksAgent
+	var fetched string
 	var t time.Time
+
+	err := db.QueryRow("SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).Scan(&a.Gid, &a.TGId, &a.Agent, &a.Verified, &a.Smurf, &fetched)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return a, t, err
+	}
+
+	if err == sql.ErrNoRows {
+		return a, t, nil
+	}
+
+	if fetched == "" {
+		return a, t, nil
+	}
+
+	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
+	if err != nil {
+		log.Error(err)
+		return a, t, err
+	}
+	log.Debug("rocks from cache", "fetched", t, "data", a)
+
 	return a, t, nil
 }
 
@@ -59,15 +81,15 @@ func (teamID TeamID) RocksCommunity() (string, error) {
 // RocksCommunityToTeam returns a TeamID from a Rocks Community
 func RocksCommunityToTeam(communityID string) (TeamID, error) {
 	var teamID TeamID
-	err := db.QueryRow("SELECT teamID FROM team WHERE rockskey = ?", communityID).Scan(&teamID)
+	err := db.QueryRow("SELECT teamID FROM team WHERE rockscomm = ?", communityID).Scan(&teamID)
 	if err != nil {
-		log.Error(err)
+		log.Errorw("rocks community team lookup", "error", err.Error(), "community", communityID)
 		return "", err
 	}
 	return teamID, nil
 }
 
-func rocksAddAgentToTeam(g, communityID string) error {
+func RocksAddAgentToTeam(g, communityID string) error {
 	gid := GoogleID(g)
 
 	if !gid.Valid() {
@@ -92,7 +114,7 @@ func rocksAddAgentToTeam(g, communityID string) error {
 	return nil
 }
 
-func rocksRemoveAgentFromTeam(g, communityID string) error {
+func RocksRemoveAgentFromTeam(g, communityID string) error {
 	gid := GoogleID(g)
 
 	teamID, err := RocksCommunityToTeam(communityID)

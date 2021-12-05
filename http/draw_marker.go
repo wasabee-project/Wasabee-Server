@@ -107,7 +107,7 @@ func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// log.Infow("claimed marker", "GID", gid, "resource", op.ID, "marker", marker, "message", "claimed marker")
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "claimed")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -152,7 +152,7 @@ func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "comment")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -197,7 +197,7 @@ func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "zone")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -248,7 +248,7 @@ func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "delta")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -345,7 +345,7 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "completed")
 	// log.Infow("completed marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "completed marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
@@ -389,7 +389,7 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "incomplete")
 	log.Infow("incompleted marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "incompleted marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
@@ -433,7 +433,7 @@ func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "reject")
 	log.Infow("reject marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "rejected marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
@@ -479,7 +479,7 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID)
+	uid := markerStatusTouch(op, markerID, "acknowledge")
 	log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
@@ -491,12 +491,12 @@ func markerAssignTouch(gid model.GoogleID, markerID model.MarkerID, op model.Ope
 		log.Error(err)
 	}
 
-	wfb.AssignMarker(wfb.GoogleID(gid), wfb.TaskID(markerID), wfb.OperationID(op.ID), uid)
+	wfb.AssignMarker(gid, model.TaskID(markerID), op.ID, uid)
 	return uid
 }
 
 // linkStatusTouch updates the updateID and notifies all teams of the update
-func markerStatusTouch(op model.Operation, markerID model.MarkerID) string {
+func markerStatusTouch(op model.Operation, markerID model.MarkerID, status string) string {
 	// update the timestamp and updateID
 	uid, err := op.Touch()
 	if err != nil {
@@ -519,7 +519,7 @@ func markerStatusTouch(op model.Operation, markerID model.MarkerID) string {
 	}
 
 	for _, t := range teams {
-		err := wfb.LinkStatus(wfb.TaskID(markerID), wfb.OperationID(op.ID), wfb.TeamID(t), uid)
+		err := wfb.MarkerStatus(model.TaskID(markerID), op.ID, t, status)
 		if err != nil {
 			log.Error(err)
 		}

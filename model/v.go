@@ -2,57 +2,76 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
-	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
-func init() {
-	v.Callbacks.Team = vTeam
-	v.Callbacks.FromDB = vFromDB
-	v.Callbacks.ToDB = vToDB
+// agent is set by the V API
+type VAgent struct {
+	EnlID       string   `json:"enlid"`
+	Gid         GoogleID `json:"gid"`
+	Vlevel      int64    `json:"vlevel"`
+	Vpoints     int64    `json:"vpoints"`
+	Agent       string   `json:"agent"`
+	Level       int64    `json:"level"`
+	Quarantine  bool     `json:"quarantine"`
+	Active      bool     `json:"active"`
+	Blacklisted bool     `json:"blacklisted"`
+	Verified    bool     `json:"verified"`
+	Flagged     bool     `json:"flagged"`
+	Banned      bool     `json:"banned_by_nia"`
+	Cellid      string   `json:"cellid"`
+	TelegramID  string   `json:"telegramid"` // is this really an int?
+	Telegram    string   `json:"telegram"`
+	Email       string   `json:"email"`
+	StartLat    float64  `json:"lat"`
+	StartLon    float64  `json:"lon"`
+	Distance    int64    `json:"distance"`
+	Roles       []int64  `json:"roles"`
 }
 
 // vToDB updates the database to reflect an agent's current status at V.
 // callback
-func vToDB(a v.Agent) error {
+func VToDB(a VAgent) error {
 	if a.Agent == "" {
 		return nil
 	}
-	_, err := db.Exec("REPLACE INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())",
-		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.Cellid, a.TelegramID, a.StartLat, a.StartLon, a.Distance)
+
+	var tgid int64
+	if a.TelegramID != "" {
+		i, err := strconv.ParseInt(a.TelegramID, 10, 64)
+		if err != nil {
+			log.Error(err)
+		}
+		tgid = i
+	}
+
+	// telegram, startla, startlon, distance, fetched are not set on the "trust" API call.
+	_, err := db.Exec("REPLACE INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, telegramID, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())",
+		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.Cellid, a.Telegram, tgid, a.StartLat, a.StartLon, a.Distance)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	// we trust .v to verify telegram info; if it is not already set for a agent, just import it.
-	if a.TelegramID != "" {
-		tgid, err := strconv.ParseInt(a.TelegramID, 10, 64)
-		if err != nil {
+	// these are never sent on a "trust" API call
+	// XXX I'm looking into what comes across on a search
+	if tgid > 0 { // negative numbers are group chats, 0 is invalid
+		// we trust .v to verify telegram info; if it is not already set for an agent, just import it.
+		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", tgid, a.Telegram, a.Gid); err != nil {
 			log.Error(err)
-			return nil // not a deal-breaker
-		}
-		if tgid > 0 { // negative numbers are group chats, 0 is invalid
-			if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", tgid, a.Telegram, a.Gid); err != nil {
-				log.Error(err)
-				return err
-			}
+			return err
 		}
 	}
 
 	return nil
 }
 
-// callback
-func vFromDB(g v.GoogleID) (v.Agent, time.Time, error) {
-	gid := GoogleID(g)
-
-	a := v.Agent{
-		Gid: g,
+func VFromDB(gid GoogleID) (VAgent, time.Time, error) {
+	a := VAgent{
+		Gid: gid,
 	}
 	var fetched string
 	var t time.Time
@@ -66,16 +85,20 @@ func vFromDB(g v.GoogleID) (v.Agent, time.Time, error) {
 		return a, t, nil
 	}
 
+	if fetched == "" {
+		return a, t, nil
+	}
+
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
 	if err != nil {
 		log.Error(err)
 		return a, t, err
 	}
+	log.Debugw("VFromDB", "gid", gid, "fetched", fetched, "data", a)
 	return a, t, nil
 }
 
-// callback
-func vTeam(teamID v.TeamID) (int64, uint8, error) {
+func (teamID TeamID) VTeam() (int64, uint8, error) {
 	var team int64
 	var role uint8
 	err := db.QueryRow("SELECT vteam, vrole FROM team WHERE teamID = ?", teamID).Scan(&team, &role)
@@ -110,12 +133,12 @@ func GetTeamsByVID(v int64) ([]TeamID, error) {
 
 // VConfigure sets V connection for a Wasabee team -- caller should verify ownership
 func (teamID TeamID) VConfigure(vteam int64, role uint8) error {
-	_, ok := v.Roles[role]
+	/* r := v.Roles[role]
 	if !ok {
 		err := fmt.Errorf("invalid role")
 		log.Error(err)
 		return err
-	}
+	} */
 
 	log.Infow("linking team to V", "teamID", teamID, "vteam", vteam, "role", role)
 

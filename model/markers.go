@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
 // MarkerID wrapper to ensure type safety
@@ -82,7 +83,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	}
 
 	if assignmentChanged {
-		wfb.AssignMarker(wfb.GoogleID(m.AssignedTo), wfb.TaskID(m.ID), wfb.OperationID(m.opID), m.State)
+		messaging.SendAssignment(w.GoogleID(m.AssignedTo), w.TaskID(m.ID), w.OperationID(m.opID), m.State)
 	}
 
 	return nil
@@ -172,9 +173,6 @@ func (m Marker) Assign(gid GoogleID) error {
 		return err
 	}
 
-	if gid.String() != "" {
-		wfb.AssignMarker(wfb.GoogleID(gid), wfb.TaskID(m.ID), wfb.OperationID(m.opID), "assigned")
-	}
 	return err
 }
 
@@ -277,15 +275,6 @@ func (m Marker) Acknowledge(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
-
-	teams, err := m.opID.Teams()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	for _, t := range teams {
-		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "acknowledged")
-	}
 	return nil
 }
 
@@ -305,14 +294,6 @@ func (m Marker) Complete(gid GoogleID) error {
 	if _, err := db.Exec("UPDATE marker SET state = ?, completedby = ? WHERE ID = ? AND opID = ?", "completed", gid, m.ID, m.opID); err != nil {
 		log.Error(err)
 		return err
-	}
-	teams, err := m.opID.Teams()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	for _, t := range teams {
-		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "completed")
 	}
 	return nil
 }
@@ -334,14 +315,6 @@ func (m Marker) Incomplete(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
-	teams, err := m.opID.Teams()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	for _, t := range teams {
-		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "incomplete")
-	}
 	return nil
 }
 
@@ -361,14 +334,6 @@ func (m Marker) Reject(gid GoogleID) error {
 	if _, err = db.Exec("UPDATE marker SET state = 'pending', gid = NULL WHERE ID = ? AND opID = ?", m.ID, m.opID); err != nil {
 		log.Error(err)
 		return err
-	}
-	teams, err := m.opID.Teams()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	for _, t := range teams {
-		wfb.MarkerStatus(wfb.TaskID(m.ID), wfb.OperationID(m.opID), wfb.TeamID(t), "reject")
 	}
 	return nil
 }

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
 // LinkID wrapper to ensure type safety
@@ -79,7 +80,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 	}
 
 	if l.Changed && l.AssignedTo != "" {
-		wfb.AssignLink(wfb.GoogleID(l.AssignedTo), wfb.TaskID(l.ID), wfb.OperationID(opID), "assigned")
+		messaging.SendAssignment(w.GoogleID(l.AssignedTo), w.TaskID(l.ID), w.OperationID(opID), "assigned")
 	}
 
 	return nil
@@ -140,10 +141,6 @@ func (l Link) Assign(gid GoogleID) error {
 	if err != nil {
 		log.Error(err)
 		return err
-	}
-
-	if gid != "" {
-		wfb.AssignLink(wfb.GoogleID(l.AssignedTo), wfb.TaskID(l.ID), wfb.OperationID(l.opID), "assigned")
 	}
 	return err
 }

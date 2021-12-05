@@ -196,7 +196,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 
 	// announce to teams with which this agent is sharing location information
 	for _, teamID := range gid.TeamListEnabled() {
-		wfb.AgentLocation(wfb.TeamID(teamID))
+		wfb.AgentLocation(teamID)
 	}
 
 	// send to the other servers
@@ -293,7 +293,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	err = model.StoreFirebaseToken(wfb.GoogleID(gid), token)
+	err = gid.StoreFirebaseToken(token)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

@@ -49,8 +49,8 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		key, ok := keys[gid]
-		if !ok {
+		key := keys[gid]
+		if key != "" {
 			key, err = gid.VAPIkey()
 			if err != nil {
 				log.Error(err)
@@ -63,7 +63,7 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 			keys[gid] = key
 		}
 
-		err = v.Sync(v.TeamID(teamID), key)
+		err = v.Sync(teamID, key)
 		if err != nil {
 			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -112,7 +112,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := v.Sync(v.TeamID(team), vkey); err != nil {
+	if err := v.Sync(team, vkey); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -178,66 +178,15 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	key, err := gid.VAPIkey()
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
 
 	vars := mux.Vars(req)
 	mode := vars["mode"]
 
-	agent, err := gid.GetAgent()
+	err = v.BulkImport(gid, mode)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
-	}
-
-	var vteams []v.VT
-	for _, t := range agent.Teams {
-		vteams = append(vteams, v.VT{
-			Name:   t.Name,
-			TeamID: v.VTeamID(t.VTeam),
-			Role:   t.VTeamRole,
-		})
-	}
-
-	data, err := v.Teams(v.GoogleID(gid), key)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	teamstomake, err := v.ProcessBulkImport(data, vteams, key, mode)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	for _, t := range teamstomake {
-		log.Debugw("Creating Wasabee team for V team", "v team", t.ID, "role", t.Role)
-		teamID, err := gid.NewTeam(t.Name)
-		if err != nil {
-			log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-		err = teamID.VConfigure(int64(t.ID), uint8(t.Role))
-		if err != nil {
-			log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-		err = v.Sync(v.TeamID(teamID), key)
-		if err != nil {
-			log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
 	}
 
 	fmt.Fprint(res, jsonStatusOK)

@@ -1,36 +1,22 @@
 package wfb
 
 import (
-	// "context"
+	"encoding/json"
+
 	"firebase.google.com/go/messaging"
-	// "fmt"
-	// "encoding/json"
 
+	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	wm "github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
-
-// wrapper types to enforce safety -- make sure we are passing the correct args in
-type TeamID string
-type GoogleID string
-type TaskID string
-type OperationID string
-
-// Callbacks are the functions used to get/set/delete Firebase tokens in the data model
-// do it this way since Go doesn't allow circular dependencies.
-// model/firebase.go has an Init() to fill these in at startup
-var Callbacks struct {
-	GidToTokens   func(GoogleID) ([]string, error)
-	StoreToken    func(GoogleID, string) error
-	DeleteToken   func(string) error
-	BroadcastList func() ([]string, error)
-}
 
 // 	"Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Login", "Delete", "Target"
 
 // AgentLocation alerts a team to refresh agent location data
 // we do not send the agent's location via firebase since it is possible to subscribe to topics (teams) via a client
 // the clients must pull the server to get the updates
-func AgentLocation(teamID TeamID) error {
+func AgentLocation(teamID model.TeamID) error {
 	if !c.running {
 		return nil
 	}
@@ -54,11 +40,11 @@ func AgentLocation(teamID TeamID) error {
 }
 
 // AssignLink lets an agent know they have a new assignment on a given operation
-func AssignLink(gid GoogleID, linkID TaskID, opID OperationID, status string) error {
+func AssignLink(gid model.GoogleID, linkID model.TaskID, opID model.OperationID, status string) error {
 	if !c.running {
 		return nil
 	}
-	tokens, err := Callbacks.GidToTokens(gid)
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
 		return err
@@ -78,11 +64,11 @@ func AssignLink(gid GoogleID, linkID TaskID, opID OperationID, status string) er
 }
 
 // AssignMarker lets an gent know they have a new assignment on a given operation
-func AssignMarker(gid GoogleID, markerID TaskID, opID OperationID, status string) error {
+func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.OperationID, status string) error {
 	if !c.running {
 		return nil
 	}
-	tokens, err := Callbacks.GidToTokens(gid)
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
 		return err
@@ -102,7 +88,7 @@ func AssignMarker(gid GoogleID, markerID TaskID, opID OperationID, status string
 }
 
 // MarkerStatus reports a marker update to a team/topic
-func MarkerStatus(markerID TaskID, opID OperationID, teamID TeamID, status string) error {
+func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.TeamID, status string) error {
 	if !c.running {
 		return nil
 	}
@@ -126,7 +112,7 @@ func MarkerStatus(markerID TaskID, opID OperationID, teamID TeamID, status strin
 }
 
 // LinkStatus reports a link update to a team/topic
-func LinkStatus(linkID TaskID, opID OperationID, teamID TeamID, status string) error {
+func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID, status string) error {
 	if !c.running {
 		return nil
 	}
@@ -149,12 +135,14 @@ func LinkStatus(linkID TaskID, opID OperationID, teamID TeamID, status string) e
 	return nil
 }
 
-// SubscribeToTopic subscribes all tokens for a given agent to a team/topic
-func SubscribeToTopic(gid GoogleID, teamID TeamID) error {
+// AddToRemote subscribes all tokens for a given agent to a team/topic
+func AddToRemote(g w.GoogleID, teamID w.TeamID) error {
+	gid := model.GoogleID(g)
+
 	if !c.running {
 		return nil
 	}
-	tokens, err := Callbacks.GidToTokens(gid)
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
 		return err
@@ -170,18 +158,20 @@ func SubscribeToTopic(gid GoogleID, teamID TeamID) error {
 	}
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
-			Callbacks.DeleteToken(tokens[f.Index])
+			model.RemoveFirebaseToken(tokens[f.Index])
 		}
 	}
 	return nil
 }
 
-// UnsubscribeFromTopic removes an agent's subscriptions to a given topic/team
-func UnsubscribeFromTopic(gid GoogleID, teamID TeamID) error {
+// RemoveFromRemote removes an agent's subscriptions to a given topic/team
+func RemoveFromRemote(g w.GoogleID, teamID w.TeamID) error {
+	gid := model.GoogleID(g)
+
 	if !c.running {
 		return nil
 	}
-	tokens, err := Callbacks.GidToTokens(gid)
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
 		return err
@@ -197,18 +187,20 @@ func UnsubscribeFromTopic(gid GoogleID, teamID TeamID) error {
 	}
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
-			Callbacks.DeleteToken(tokens[f.Index])
+			model.RemoveFirebaseToken(tokens[f.Index])
 		}
 	}
 	return nil
 }
 
 // SendMessage is registered with Wasabee for sending messages
-func SendMessage(gid GoogleID, message string) (bool, error) {
+func SendMessage(g w.GoogleID, message string) (bool, error) {
+	gid := model.GoogleID(g)
+
 	if !c.running {
 		return false, nil
 	}
-	tokens, err := Callbacks.GidToTokens(gid)
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
 		return false, err
@@ -226,11 +218,13 @@ func SendMessage(gid GoogleID, message string) (bool, error) {
 }
 
 // SendTarget sends a portal name/guid to an agent
-func SendTarget(gid GoogleID, message string) error {
+func SendTarget(g w.GoogleID, t wm.Target) error {
+	gid := model.GoogleID(g)
+
 	if !c.running {
 		return nil
 	}
-	tokens, err := Callbacks.GidToTokens(gid)
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
 		return err
@@ -239,8 +233,14 @@ func SendTarget(gid GoogleID, message string) error {
 		return nil
 	}
 
+	message, err := json.Marshal(t)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	data := map[string]string{
-		"msg": message,
+		"msg": string(message),
 		"cmd": "Target",
 	}
 
@@ -248,7 +248,7 @@ func SendTarget(gid GoogleID, message string) error {
 	return nil
 }
 
-func MapChange(teamID TeamID, opID OperationID, updateID string) error {
+func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) error {
 	if !c.running {
 		return nil
 	}
@@ -271,7 +271,7 @@ func MapChange(teamID TeamID, opID OperationID, updateID string) error {
 	return nil
 }
 
-func AgentLogin(teamID TeamID, gid GoogleID) error {
+func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 	if !c.running {
 		return nil
 	}
@@ -292,7 +292,7 @@ func AgentLogin(teamID TeamID, gid GoogleID) error {
 	return nil
 }
 
-func SendAnnounce(teamID TeamID, message string) error {
+func SendAnnounce(teamID w.TeamID, message string) error {
 	if !c.running {
 		return nil
 	}
@@ -314,11 +314,11 @@ func SendAnnounce(teamID TeamID, message string) error {
 }
 
 // DeleteOperation tells everyone (on this server) to remove a specific op
-func DeleteOperation(opID OperationID) error {
+func DeleteOperation(opID w.OperationID) error {
 	if !c.running {
 		return nil
 	}
-	tokens, err := Callbacks.BroadcastList()
+	tokens, err := model.FirebaseBroadcastList()
 	if err != nil {
 		log.Error(err)
 		return err
@@ -337,11 +337,13 @@ func DeleteOperation(opID OperationID) error {
 	return nil
 }
 
-func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
+func AgentDeleteOperation(g w.GoogleID, opID w.OperationID) error {
+	gid := model.GoogleID(g)
+
 	if !c.running {
 		return nil
 	}
-	tokens, err := Callbacks.GidToTokens(gid)
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
 		return err
@@ -398,7 +400,7 @@ func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 	for pos, resp := range br.Responses {
 		if !resp.Success {
 			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
-				Callbacks.DeleteToken(tokens[pos])
+				model.RemoveFirebaseToken(tokens[pos])
 			}
 		}
 	}
