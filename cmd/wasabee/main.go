@@ -176,37 +176,37 @@ func run(c *cli.Context) error {
 	err := generatename.LoadWordsFile(c.String("wordlist"))
 	if err != nil {
 		log.Fatalw("startup", "message", "Error loading word list", "wordlist", c.String("wordlist"), "error", err.Error())
-		// panic(err)
 	}
 
 	// load the UI templates
 	ts, err := templates.Startup(c.String("frontend-path"))
 	if err != nil {
 		log.Fatalw("startup", "message", "unable to load frontend templates; shutting down", "path", c.String("frontend-path"), "error", err.Error())
-		// panic(err)
 	}
 
 	// Connect to database
 	err = model.Connect(c.String("database"))
 	if err != nil {
 		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
-		// panic(err)
 	}
 
 	// setup V
 	if c.String("venlonekey") != "" {
 		v.Startup(c.String("venlonekey"))
 	}
-	// 	APIEndpoint:    c.String("venloneapiurl"),
-	// 	StatusEndpoint: c.String("venlonestatusurl"),
+	/*
+			APIEndpoint:    c.String("venloneapiurl"),
+		 	StatusEndpoint: c.String("venlonestatusurl"),
+	*/
 
 	// setup Rocks
 	if c.String("enlrockskey") != "" {
-		rocks.Config.APIKey = c.String("enlrockskey")
+		// rocks.Config.APIKey = c.String("enlrockskey")
+		rocks.Start(c.String("enlrockskey"))
 	}
-	if c.String("enlrockscommurl") != "" {
+	/* if c.String("enlrockscommurl") != "" {
 		rocks.Config.CommunityEndpoint = c.String("enlrockscommurl")
-	}
+	} */
 
 	// Serve HTTPS
 	if c.String("https") != "none" {

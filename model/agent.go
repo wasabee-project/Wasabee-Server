@@ -710,12 +710,12 @@ func (gid GoogleID) FirstLogin() error {
 		return err
 	}
 
-	if _, err = db.Exec("INSERT INTO v (gid, verified, blacklisted, fetched) VALUES (?,0,0,'2000-01-01 00:00:00')", ad.GoogleID); err != nil {
+	if _, err = db.Exec("INSERT INTO v (enlid, gid, verified, blacklisted, fetched) VALUES (?,?,0,0,'2000-01-01 00:00:00')", ad.GoogleID, ad.GoogleID); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if _, err = db.Exec("INSERT INTO rocks (gid, verified, smurf, fetched) VALUES (?,0,0,'2000-01-01 00:00:00')", ad.GoogleID); err != nil {
+	if _, err = db.Exec("INSERT INTO rocks (gid, tgid, verified, smurf, fetched) VALUES (?,0,0,0,'2000-01-01 00:00:00')", ad.GoogleID); err != nil {
 		log.Error(err)
 		return err
 	}

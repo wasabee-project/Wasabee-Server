@@ -75,18 +75,24 @@ func VFromDB(gid GoogleID) (VAgent, time.Time, error) {
 	}
 	var fetched string
 	var t time.Time
+	var vlevel sql.NullInt64
 
-	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &a.Vlevel, &a.Vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &a.TelegramID, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
+	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &a.Vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &a.TelegramID, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return a, t, err
 	}
+
 	if err == sql.ErrNoRows {
 		return a, t, nil
 	}
 
 	if fetched == "" {
 		return a, t, nil
+	}
+
+	if vlevel.Valid {
+		a.Vlevel = vlevel.Int64
 	}
 
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)

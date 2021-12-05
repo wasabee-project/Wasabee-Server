@@ -15,6 +15,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
+	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
 // TGConfiguration is the main configuration data for the Telegram interface
@@ -58,6 +59,7 @@ func WasabeeBot(init TGConfiguration) {
 
 	b := messaging.Bus{
 		SendMessage:      SendMessage,
+		SendTarget:       SendTarget,
 		AddToRemote:      AddToChat,
 		RemoveFromRemote: RemoveFromChat,
 	}
@@ -248,6 +250,59 @@ func SendMessage(g w.GoogleID, message string) (bool, error) {
 
 	log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
 	return true, nil
+}
+
+func SendTarget(g w.GoogleID, target messaging.Target) error {
+	gid := model.GoogleID(g)
+	tgid, err := gid.TelegramID()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	tgid64 := int64(tgid)
+	if tgid64 == 0 {
+		log.Debugw("TelegramID not found", "subsystem", "Telegram", "GID", gid)
+		return nil
+	}
+	msg := tgbotapi.NewMessage(tgid64, "")
+	// msg.Text = message
+	msg.ParseMode = "HTML"
+
+	log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
+	// Lng vs Lon ...
+	templateData := struct {
+		Name   string
+		ID     string
+		Lat    string
+		Lon    string
+		Type   string
+		Sender string
+	}{
+		Name:   target.Name,
+		ID:     target.ID,
+		Lat:    target.Lat,
+		Lon:    target.Lng,
+		Type:   target.Type,
+		Sender: target.Name,
+	}
+
+	msg.Text, err = templates.Execute("target", templateData)
+	if err != nil {
+		log.Error(err)
+		msg.Text = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
+	}
+
+	_, err = bot.Send(msg)
+	if err != nil && err.Error() != "Bad Request: chat not found" {
+		log.Error(err)
+		return err
+	}
+	if err != nil && err.Error() == "Bad Request: chat not found" {
+		log.Debugw(err.Error(), "gid", gid, "tgid", tgid)
+		return err
+	}
+
+	return nil
 }
 
 // checks rocks based on tgid, Inits agent if found

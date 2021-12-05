@@ -543,6 +543,9 @@ func BulkImport(gid model.GoogleID, mode string) error {
 			}
 		*/
 	}
+	if err != nil {
+		log.Error(err)
+	}
 
 	for _, t := range teamstomake {
 		log.Debugw("Creating Wasabee team for V team", "v team", t.ID, "role", t.Role)

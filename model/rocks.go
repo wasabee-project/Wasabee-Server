@@ -39,8 +39,9 @@ func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
 	var a RocksAgent
 	var fetched string
 	var t time.Time
+	var tgid sql.NullInt64
 
-	err := db.QueryRow("SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).Scan(&a.Gid, &a.TGId, &a.Agent, &a.Verified, &a.Smurf, &fetched)
+	err := db.QueryRow("SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).Scan(&a.Gid, &tgid, &a.Agent, &a.Verified, &a.Smurf, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return a, t, err
@@ -48,6 +49,10 @@ func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
 
 	if err == sql.ErrNoRows {
 		return a, t, nil
+	}
+
+	if tgid.Valid {
+		a.TGId = tgid.Int64
 	}
 
 	if fetched == "" {

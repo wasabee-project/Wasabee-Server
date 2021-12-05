@@ -35,6 +35,8 @@ func init() {
 }
 
 func SendTarget(toGID w.GoogleID, target Target) error {
+	log.Debugw("send target", "gid", toGID, "target", target)
+
 	if target.Name == "" {
 		err := fmt.Errorf("portal not set")
 		log.Warnw(err.Error(), "GID", toGID)
@@ -46,30 +48,6 @@ func SendTarget(toGID w.GoogleID, target Target) error {
 		log.Warnw(err.Error(), "GID", toGID)
 		return err
 	}
-
-	/* XXX templating belongs in the individual protocol
-	// Lng vs Lon ...
-	templateData := struct {
-		Name   string
-		ID     string
-		Lat    string
-		Lon    string
-		Type   string
-		Sender string
-	}{
-		Name:   target.Name,
-		ID:     target.ID,
-		Lat:    target.Lat,
-		Lon:    target.Lng,
-		Type:   target.Type,
-		Sender: target.Name,
-	}
-
-	msg, err := templates.Execute("target", templateData)
-	if err != nil {
-		log.Error(err)
-		msg = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
-	} */
 
 	for name, bus := range busses {
 		if bus.SendTarget != nil {
