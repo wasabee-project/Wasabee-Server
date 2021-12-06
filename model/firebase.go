@@ -3,7 +3,6 @@ package model
 import (
 	"database/sql"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
@@ -62,7 +61,7 @@ func (gid GoogleID) StoreFirebaseToken(token string) error {
 	// Subscribe this token to all team topics
 	tl := g.teamList()
 	for _, teamID := range tl {
-		messaging.AddToRemote(w.GoogleID(gid), w.TeamID(teamID))
+		messaging.AddToRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
 	}
 
 	return nil

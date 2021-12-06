@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
@@ -76,8 +75,8 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 	var teamList TeamData
 	var rows *sql.Rows
 
-	rows, err := db.Query("SELECT agentteams.gid, agent.name, v.Agent, agent.IntelName, rocks.Agent, agentteams.squad, agentteams.state, Y(locations.loc), X(locations.loc), locations.upTime, v.Verified, v.Blacklisted, v.EnlID, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction "+
-		" FROM agentteams JOIN team ON agentteams.teamID = team.teamID JOIN agent ON agentteams.gid = agent.gid JOIN locations ON agentteams.gid = locations.gid LEFT JOIN v ON agentteams.gid = v.gid LEFT JOIN rocks ON agentteams.gid = rocks.gid WHERE agentteams.teamID = ? ORDER BY agent.name", teamID)
+	rows, err := db.Query("SELECT agentteams.gid, v.Agent, agent.IntelName, rocks.Agent, agentteams.squad, agentteams.state, Y(locations.loc), X(locations.loc), locations.upTime, v.Verified, v.Blacklisted, v.EnlID, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction "+
+		" FROM agentteams JOIN team ON agentteams.teamID = team.teamID JOIN agent ON agentteams.gid = agent.gid JOIN locations ON agentteams.gid = locations.gid LEFT JOIN v ON agentteams.gid = v.gid LEFT JOIN rocks ON agentteams.gid = rocks.gid WHERE agentteams.teamID = ?", teamID)
 	if err != nil {
 		log.Error(err)
 		return &teamList, err
@@ -91,26 +90,29 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
 		var enlID, vname, rocksname, intelname sql.NullString
 
-		err := rows.Scan(&tmpU.Gid, &tmpU.Name, &vname, &intelname, &rocksname, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &sharewd, &loadwd, &faction)
+		err := rows.Scan(&tmpU.Gid, &vname, &intelname, &rocksname, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &sharewd, &loadwd, &faction)
 		if err != nil {
 			log.Error(err)
 			return &teamList, err
 		}
 
-		if vname.Valid {
-			tmpU.VName = vname.String
-		}
-
-		if enlID.Valid {
-			tmpU.EnlID = enlID.String
+		if intelname.Valid {
+			tmpU.IntelName = intelname.String
+			tmpU.Name = intelname.String
 		}
 
 		if rocksname.Valid {
 			tmpU.RocksName = rocksname.String
+			tmpU.Name = rocksname.String
 		}
 
-		if intelname.Valid {
-			tmpU.IntelName = intelname.String
+		if vname.Valid {
+			tmpU.VName = vname.String
+			tmpU.Name = vname.String
+		}
+
+		if enlID.Valid {
+			tmpU.EnlID = enlID.String
 		}
 
 		if vverified.Valid {
@@ -139,6 +141,7 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 			tmpU.Lon = 0
 		}
 
+		// XXX do not do a distinct lookup here, just rewrite the query to include a JOIN
 		tmpU.PictureURL = tmpU.Gid.GetPicture()
 		if sharewd == "On" {
 			tmpU.ShareWD = true
@@ -292,7 +295,7 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 		return err
 	}
 
-	messaging.AddToRemote(w.GoogleID(gid), w.TeamID(teamID))
+	messaging.AddToRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
 	log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
 	return nil
 }
@@ -311,7 +314,7 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		return err
 	}
 
-	if err = messaging.RemoveFromRemote(w.GoogleID(gid), w.TeamID(teamID)); err != nil {
+	if err = messaging.RemoveFromRemote(messaging.GoogleID(gid), messaging.TeamID(teamID)); err != nil {
 		log.Error(err)
 	}
 
@@ -330,7 +333,7 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 			log.Error(err)
 			// continue
 		}
-		messaging.AgentDeleteOperation(w.GoogleID(gid), w.OperationID(opID))
+		messaging.AgentDeleteOperation(messaging.GoogleID(gid), messaging.OperationID(opID))
 	}
 
 	log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
@@ -423,26 +426,29 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 		return nil, err
 	}
 
-	if err = db.QueryRow("SELECT agent.gid, agent.name, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
-		&tm.Gid, &tm.Name, &vname, &rocksname, &tm.IntelName, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf); err != nil {
+	if err = db.QueryRow("SELECT agent.gid, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
+		&tm.Gid, &vname, &rocksname, &tm.IntelName, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf); err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	if vname.Valid {
-		tm.VName = vname.String
-	}
-
-	if enlID.Valid {
-		tm.EnlID = enlID.String
+	if intelname.Valid {
+		tm.IntelName = intelname.String
+		tm.Name = intelname.String
 	}
 
 	if rocksname.Valid {
 		tm.RocksName = rocksname.String
+		tm.Name = rocksname.String
 	}
 
-	if intelname.Valid {
-		tm.IntelName = intelname.String
+	if vname.Valid {
+		tm.VName = vname.String
+		tm.Name = vname.String
+	}
+
+	if enlID.Valid {
+		tm.EnlID = enlID.String
 	}
 
 	if vverified.Valid {
@@ -470,8 +476,11 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	}
 
 	tm.IntelFaction = ifac.String()
+
+	//  XXX just JOIN the agentextras table, don't do another query
 	tm.PictureURL = gid.GetPicture()
 
+	// XXX make this a distinct function?
 	var count int
 	if err = db.QueryRow("SELECT COUNT(*) FROM agentteams=x, agentteams=y WHERE x.gid = ? AND x.state = 'On' AND y.gid = ?", id, caller).Scan(&count); err != nil {
 		log.Error(err)

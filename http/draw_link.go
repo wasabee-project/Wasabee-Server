@@ -538,3 +538,115 @@ func linkStatusTouch(op model.Operation, linkID model.LinkID) string {
 	}
 	return uid
 }
+
+func drawLinkDependAddRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to set dependency")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	linkID := model.LinkID(vars["link"])
+	if linkID == "" {
+		err = fmt.Errorf("empty link ID on depend add")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	task := vars["task"]
+	if task == "" {
+		err = fmt.Errorf("empty task ID on depend add")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotFound)
+		return
+	}
+
+	err = link.AddDepend(task)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid := linkStatusTouch(op, linkID)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+
+func drawLinkDependDelRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op model.Operation
+	op.ID = model.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to delete dependency")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	linkID := model.LinkID(vars["link"])
+	if linkID == "" {
+		err = fmt.Errorf("empty link ID on depend delete")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	task := vars["task"]
+	if task == "" {
+		err = fmt.Errorf("empty task ID on depend delete")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	link, err := op.GetLink(linkID)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotFound)
+		return
+	}
+
+	err = link.DelDepend(task)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	uid := linkStatusTouch(op, linkID)
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}

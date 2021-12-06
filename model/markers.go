@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
@@ -83,7 +82,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	}
 
 	if assignmentChanged {
-		messaging.SendAssignment(w.GoogleID(m.AssignedTo), w.TaskID(m.ID), w.OperationID(m.opID), m.State)
+		messaging.SendAssignment(messaging.GoogleID(m.AssignedTo), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 
 	return nil

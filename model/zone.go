@@ -76,10 +76,9 @@ type zonepoint struct {
 }
 
 func defaultZones() []ZoneListElement {
-	zones := []ZoneListElement{
+	return []ZoneListElement{
 		{zonePrimary, "Primary", nil, "purple"},
 	}
-	return zones
 }
 
 func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {

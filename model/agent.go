@@ -14,22 +14,21 @@ type GoogleID string
 // Agent is the complete agent struct, used for the /me page.
 type Agent struct {
 	GoogleID      GoogleID     `json:"GoogleID"`
-	IngressName   string       `json:"name"`
+	Name          string       `json:"name"`
 	VName         string       `json:"vname"`
 	RocksName     string       `json:"rocksname"`
 	IntelName     string       `json:"intelname"`
-	Level         uint8        `json:"level"`
+	Level         uint8        `json:"level"`  // from v
 	OneTimeToken  OneTimeToken `json:"lockey"` // historical name, is this used by any clients?
 	VVerified     bool         `json:"Vverified"`
 	VBlacklisted  bool         `json:"blacklisted"`
-	EnlID         string       `json:"enlid"`
+	EnlID         string       `json:"enlid"` // clients use this to draw URLs to V profiles
 	RocksVerified bool         `json:"rocks"`
-	// RAID          bool         `json:"RAID"`
-	RISC         bool   `json:"RISC"`
-	ProfileImage string `json:"pic"`
-	Teams        []AdTeam
-	Ops          []AdOperation
-	Telegram     struct {
+	RISC          bool         `json:"RISC"`
+	ProfileImage  string       `json:"pic"`
+	Teams         []AdTeam
+	Ops           []AdOperation
+	Telegram      struct {
 		ID        int64
 		Verified  bool
 		Authtoken string
@@ -84,7 +83,7 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 
 	ad := &a
 
-	err := db.QueryRow("SELECT a.name, v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&ad.IngressName, &vname, &rocksname, &ad.IntelName, &level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
+	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &ad.IntelName, &level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return a, err
@@ -94,8 +93,21 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 		return a, err
 	}
 
+	// use intel name if nothing else is valid
+	if a.IntelName != "" {
+		a.Name = a.IntelName // last choice
+	} else {
+		a.Name = fmt.Sprint("UnverifiedAgent_", gid)
+	}
+
+	if rocksname.Valid {
+		a.RocksName = rocksname.String
+		a.Name = rocksname.String // second choice
+	}
+
 	if vname.Valid {
 		a.VName = vname.String
+		a.Name = vname.String // best choice
 	}
 
 	if vid.Valid {
@@ -112,10 +124,6 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 
 	if vblacklisted.Valid {
 		a.VBlacklisted = vblacklisted.Bool
-	}
-
-	if rocksname.Valid {
-		a.RocksName = rocksname.String
 	}
 
 	if rocksverified.Valid {
@@ -336,11 +344,13 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 func (gid GoogleID) IngressName() (string, error) {
 	var name string
 	var rocksname, vname, intelname sql.NullString
-	err := db.QueryRow("SELECT agent.name, rocks.agent, v.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&name, &rocksname, &vname, &intelname)
+	err := db.QueryRow("SELECT rocks.agent, v.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &vname, &intelname)
 	if err != nil {
 		log.Error(err)
 		return string(gid), err
 	}
+
+	name = fmt.Sprint("UnverifiedAgent_", gid)
 
 	if intelname.Valid {
 		name = intelname.String
@@ -603,26 +613,6 @@ func ToGid(in string) (GoogleID, error) {
 	return gid, nil
 }
 
-// Save is called by FirstLogin, Authorize, and from the Pub/Sub system to write a new agent
-// also updates an existing agent from Pub/Sub
-func (ad Agent) Save() error {
-	if _, err := db.Exec("REPLACE INTO agent (gid, name, OneTimeToken, RISC, IntelFaction) VALUES (?,?,?,?,?)", ad.GoogleID, ad.IngressName, ad.OneTimeToken, ad.RISC, FactionFromString(ad.IntelFaction)); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	// we don't touch V/Rocks data here
-
-	if ad.Telegram.ID != 0 {
-		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, gid, verified) VALUES (?, ?, ?)", ad.Telegram.ID, ad.GoogleID, ad.Telegram.Verified); err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
 // Stores the untrusted data from IITC - do not depend on these values for authorization
 // but if someone says they are a smurf, who are we to ignore their self-identity?
 func (gid GoogleID) SetIntelData(name, faction string) error {
@@ -694,7 +684,7 @@ func (gid GoogleID) FirstLogin() error {
 
 	ad := Agent{
 		GoogleID:     gid,
-		IngressName:  string(gid),
+		Name:         string(gid),
 		OneTimeToken: OneTimeToken(ott),
 		RISC:         false,
 		IntelFaction: "unset",
@@ -710,14 +700,22 @@ func (gid GoogleID) FirstLogin() error {
 		return err
 	}
 
-	if _, err = db.Exec("INSERT INTO v (enlid, gid, verified, blacklisted, fetched) VALUES (?,?,0,0,'2000-01-01 00:00:00')", ad.GoogleID, ad.GoogleID); err != nil {
+	return nil
+}
+
+// Save is called by FirstLogin, Authorize, and from the Pub/Sub system to write a new agent
+// also updates an existing agent from Pub/Sub
+func (ad Agent) Save() error {
+	if _, err := db.Exec("REPLACE INTO agent (gid, OneTimeToken, RISC, IntelFaction) VALUES (?,?,?,?)", ad.GoogleID, ad.OneTimeToken, ad.RISC, FactionFromString(ad.IntelFaction)); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if _, err = db.Exec("INSERT INTO rocks (gid, tgid, verified, smurf, fetched) VALUES (?,0,0,0,'2000-01-01 00:00:00')", ad.GoogleID); err != nil {
-		log.Error(err)
-		return err
+	if ad.Telegram.ID != 0 {
+		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, gid, verified) VALUES (?, ?, ?)", ad.Telegram.ID, ad.GoogleID, ad.Telegram.Verified); err != nil {
+			log.Error(err)
+			return err
+		}
 	}
 
 	return nil

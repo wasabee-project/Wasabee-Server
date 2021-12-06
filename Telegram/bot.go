@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
@@ -33,22 +32,22 @@ var bot *tgbotapi.BotAPI
 var c TGConfiguration
 
 // WasabeeBot is called from main() to start the bot.
-func WasabeeBot(init TGConfiguration) {
-	if init.APIKey == "" {
+func WasabeeBot(in TGConfiguration) {
+	if in.APIKey == "" {
 		log.Infow("startup", "subsystem", "Telegram", "message", "Telegram API key not set; not starting")
 		return
 	}
-	c.APIKey = init.APIKey
+	c.APIKey = in.APIKey
 
-	if init.TemplateSet == nil {
+	if in.TemplateSet == nil {
 		log.Warnw("startup", "subsystem", "Telegram", "message", "the UI templates are not loaded; not starting Telegram bot")
 		return
 	}
-	c.TemplateSet = init.TemplateSet
+	c.TemplateSet = in.TemplateSet
 
 	keyboards(&c)
 
-	c.HookPath = init.HookPath
+	c.HookPath = in.HookPath
 	if c.HookPath == "" {
 		c.HookPath = "/tg"
 	}
@@ -83,8 +82,7 @@ func WasabeeBot(init TGConfiguration) {
 	webroot := config.GetWebroot()
 	c.hook = generatename.GenerateName()
 	t := fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
-	_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
-	if err != nil {
+	if _, err = bot.SetWebhook(tgbotapi.NewWebhook(t)); err != nil {
 		log.Error(err)
 		return
 	}
@@ -210,19 +208,12 @@ func keyboards(c *TGConfiguration) {
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
 			tgbotapi.NewKeyboardButton("Teams"),
-			tgbotapi.NewKeyboardButton("Teammates Nearby"),
 		),
-		/* -- disable until can be brought up to current
-		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton("My Assignments"),
-			tgbotapi.NewKeyboardButton("Nearby Tasks"),
-		),
-		*/
 	)
 }
 
 // SendMessage is registered with Wasabee-Server as a message bus to allow other modules to send messages via Telegram
-func SendMessage(g w.GoogleID, message string) (bool, error) {
+func SendMessage(g messaging.GoogleID, message string) (bool, error) {
 	gid := model.GoogleID(g)
 	tgid, err := gid.TelegramID()
 	if err != nil {
@@ -252,7 +243,7 @@ func SendMessage(g w.GoogleID, message string) (bool, error) {
 	return true, nil
 }
 
-func SendTarget(g w.GoogleID, target messaging.Target) error {
+func SendTarget(g messaging.GoogleID, target messaging.Target) error {
 	gid := model.GoogleID(g)
 	tgid, err := gid.TelegramID()
 	if err != nil {
@@ -265,10 +256,8 @@ func SendTarget(g w.GoogleID, target messaging.Target) error {
 		return nil
 	}
 	msg := tgbotapi.NewMessage(tgid64, "")
-	// msg.Text = message
 	msg.ParseMode = "HTML"
 
-	log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
 	// Lng vs Lon ...
 	templateData := struct {
 		Name   string
@@ -302,6 +291,7 @@ func SendTarget(g w.GoogleID, target messaging.Target) error {
 		return err
 	}
 
+	log.Debugw("sent target", "subsystem", "Telegram", "GID", gid, "target", target)
 	return nil
 }
 

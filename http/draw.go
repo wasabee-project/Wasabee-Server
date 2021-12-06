@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server"
+
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
@@ -177,7 +177,7 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	messaging.DeleteOperation(w.OperationID(op.ID)) // announces to EVERYONE to delete it
+	messaging.DeleteOperation(messaging.OperationID(op.ID)) // announces to EVERYONE to delete it
 	log.Infow("deleted operation", "resource", op.ID, "GID", gid, "message", "deleted operation")
 	fmt.Fprint(res, jsonStatusOK)
 }

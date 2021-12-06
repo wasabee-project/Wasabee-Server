@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gorilla/mux"
+
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -66,5 +67,5 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	c.upChan <- update
 
 	res.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(res, "{Status: 'OK'}")
+	fmt.Fprint(res, `{"status":"ok"}`)
 }

@@ -21,8 +21,9 @@ func RocksToDB(a RocksAgent) error {
 	}
 	_, err := db.Exec("REPLACE INTO rocks (gid, tgid, agent, verified, smurf, fetched) VALUES (?,?,?,?,?,UTC_TIMESTAMP())", a.Gid, a.TGId, a.Agent, a.Verified, a.Smurf)
 	if err != nil {
+		// there is a race somewhere that tries to insert this here before the agent is in the agent table, just log it for now
 		log.Error(err)
-		return err
+		return nil
 	}
 
 	// we trust .rocks to verify telegram info; if it is not already set for a agent, just import it.
@@ -40,8 +41,9 @@ func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
 	var fetched string
 	var t time.Time
 	var tgid sql.NullInt64
+	var agent sql.NullString
 
-	err := db.QueryRow("SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).Scan(&a.Gid, &tgid, &a.Agent, &a.Verified, &a.Smurf, &fetched)
+	err := db.QueryRow("SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).Scan(&a.Gid, &tgid, &agent, &a.Verified, &a.Smurf, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return a, t, err
@@ -51,6 +53,9 @@ func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
 		return a, t, nil
 	}
 
+	if agent.Valid {
+		a.Agent = agent.String
+	}
 	if tgid.Valid {
 		a.TGId = tgid.Int64
 	}

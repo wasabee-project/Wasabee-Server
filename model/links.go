@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
@@ -80,7 +79,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 	}
 
 	if l.Changed && l.AssignedTo != "" {
-		messaging.SendAssignment(w.GoogleID(l.AssignedTo), w.TaskID(l.ID), w.OperationID(opID), "assigned")
+		messaging.SendAssignment(messaging.GoogleID(l.AssignedTo), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
 	}
 
 	return nil

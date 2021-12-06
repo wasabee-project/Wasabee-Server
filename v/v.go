@@ -348,7 +348,8 @@ func Authorize(gid model.GoogleID) bool {
 		// do not block on db error
 		return true
 	}
-	log.Debug("v from cache", "gid", gid, "data", a, "fetched", fetched)
+
+	log.Debugw("v from cache", "gid", gid, "data", a, "fetched", fetched)
 
 	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
 		net, err := trustCheck(gid)
@@ -357,7 +358,7 @@ func Authorize(gid model.GoogleID) bool {
 			// do not block on network error unless already listed as blacklisted in DB
 			return !a.Blacklisted
 		}
-		log.Debug("v cache refreshed", "gid", gid, "data", net.Data)
+		log.Debugw("v cache refreshed", "gid", gid, "data", net.Data)
 		err = model.VToDB(net.Data)
 		if err != nil {
 			log.Error(err)

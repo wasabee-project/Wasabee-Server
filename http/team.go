@@ -11,7 +11,6 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -294,7 +293,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	err = messaging.SendAnnounce(w.TeamID(team), message)
+	err = messaging.SendAnnounce(messaging.TeamID(team), message)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

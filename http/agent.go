@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -68,14 +67,13 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	ok := messaging.CanSendTo(w.GoogleID(gid), w.GoogleID(togid))
-	if !ok {
+	if !messaging.CanSendTo(messaging.GoogleID(gid), messaging.GoogleID(togid)) {
 		err := fmt.Errorf("forbidden: only team owners can send to agents on the team")
 		log.Warnw(err.Error(), "GID", gid, "resource", togid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	ok, err = messaging.SendMessage(w.GoogleID(togid), message)
+	ok, err := messaging.SendMessage(messaging.GoogleID(togid), message)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -153,7 +151,7 @@ func agentFBMessageRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err = messaging.SendMessage(w.GoogleID(togid), string(toSend))
+	_, err = messaging.SendMessage(messaging.GoogleID(togid), string(toSend))
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -216,7 +214,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = messaging.SendTarget(w.GoogleID(togid), target)
+	err = messaging.SendTarget(messaging.GoogleID(togid), target)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

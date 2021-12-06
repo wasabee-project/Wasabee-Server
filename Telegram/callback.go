@@ -66,7 +66,7 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 			return msg, err
 		}
 		msg.Text = "Location Processed"
-		// gid.PSLocation(lat, lon)
+		//XXX gid.PSLocation(lat, lon)
 	}
 
 	if update.CallbackQuery.Message.Chat.Type != "private" {
@@ -135,8 +135,7 @@ func callbackTeam(action, team string, gid model.GoogleID, lang string, msg *tgb
 			State: "Off",
 			Team:  name,
 		})
-		err = gid.SetTeamState(t, "Off")
-		if err != nil {
+		if err = gid.SetTeamState(t, "Off"); err != nil {
 			log.Error(err)
 		}
 	default:

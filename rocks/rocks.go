@@ -313,13 +313,14 @@ func Authorize(gid model.GoogleID) bool {
 		return true
 	}
 
+	log.Debugw("rocks from cache", "gid", gid, "data", a)
 	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
 		net, err := Search(string(gid))
 		if err != nil {
 			log.Error(err)
 			return !a.Smurf // do not block on network error unless already listed as a smurf in the cache
 		}
-		log.Debug("rocks update cache", "gid", gid, "data", net)
+		log.Debugw("rocks cache refreshed", "gid", gid, "data", net)
 		err = model.RocksToDB(net)
 		if err != nil {
 			log.Error(err)

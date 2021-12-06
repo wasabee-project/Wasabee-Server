@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
@@ -295,7 +295,7 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 	return nil
 }
 
-func AddToChat(g w.GoogleID, t w.TeamID) error {
+func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
 	log.Debugw("AddToChat called", "GID", gid, "resource", teamID)
@@ -325,7 +325,7 @@ func AddToChat(g w.GoogleID, t w.TeamID) error {
 	return nil
 }
 
-func RemoveFromChat(g w.GoogleID, t w.TeamID) error {
+func RemoveFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
 

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -32,8 +33,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 			tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 		} else {
-			err = newUserInit(&msg, inMsg)
-			if err != nil {
+			if err = newUserInit(&msg, inMsg); err != nil {
 				log.Error(err)
 			}
 		}
@@ -46,8 +46,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 
 	if !verified {
 		log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
-		err = newUserVerify(&msg, inMsg)
-		if err != nil {
+		if err = newUserVerify(&msg, inMsg); err != nil {
 			log.Error(err)
 		}
 		if _, err = bot.Send(msg); err != nil {
@@ -57,7 +56,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		return nil
 	}
 
-	// verified user, process message
+	// user is verified, process message
 	if err := processMessage(&msg, inMsg, gid); err != nil {
 		log.Error(err)
 		return err
@@ -67,7 +66,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 
 // This is where command processing takes place
 func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid model.GoogleID) error {
-	// kludge to undo a mistake I made by ignoring this data for the past year
+	// we don't get the name from the agent when verified via rocks, go ahead and update
 	if inMsg.Message.From.UserName != "" {
 		tgid := model.TelegramID(inMsg.Message.From.ID)
 		if err := tgid.UpdateName(inMsg.Message.From.UserName); err != nil {
@@ -109,7 +108,7 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid mod
 		lat := strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64)
 		_ = gid.AgentLocation(lat, lon)
-		// gid.PSLocation(lat, lon)
+		//XXX  gid.PSLocation(lat, lon)
 	}
 
 	if _, err := bot.Send(msg); err != nil {

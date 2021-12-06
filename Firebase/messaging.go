@@ -5,7 +5,6 @@ import (
 
 	"firebase.google.com/go/messaging"
 
-	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	wm "github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -136,7 +135,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 }
 
 // AddToRemote subscribes all tokens for a given agent to a team/topic
-func AddToRemote(g w.GoogleID, teamID w.TeamID) error {
+func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	gid := model.GoogleID(g)
 
 	if !c.running {
@@ -165,7 +164,7 @@ func AddToRemote(g w.GoogleID, teamID w.TeamID) error {
 }
 
 // RemoveFromRemote removes an agent's subscriptions to a given topic/team
-func RemoveFromRemote(g w.GoogleID, teamID w.TeamID) error {
+func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	gid := model.GoogleID(g)
 
 	if !c.running {
@@ -194,7 +193,7 @@ func RemoveFromRemote(g w.GoogleID, teamID w.TeamID) error {
 }
 
 // SendMessage is registered with Wasabee for sending messages
-func SendMessage(g w.GoogleID, message string) (bool, error) {
+func SendMessage(g wm.GoogleID, message string) (bool, error) {
 	gid := model.GoogleID(g)
 
 	if !c.running {
@@ -218,7 +217,7 @@ func SendMessage(g w.GoogleID, message string) (bool, error) {
 }
 
 // SendTarget sends a portal name/guid to an agent
-func SendTarget(g w.GoogleID, t wm.Target) error {
+func SendTarget(g wm.GoogleID, t wm.Target) error {
 	gid := model.GoogleID(g)
 
 	if !c.running {
@@ -292,7 +291,7 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 	return nil
 }
 
-func SendAnnounce(teamID w.TeamID, message string) error {
+func SendAnnounce(teamID wm.TeamID, message string) error {
 	if !c.running {
 		return nil
 	}
@@ -314,7 +313,7 @@ func SendAnnounce(teamID w.TeamID, message string) error {
 }
 
 // DeleteOperation tells everyone (on this server) to remove a specific op
-func DeleteOperation(opID w.OperationID) error {
+func DeleteOperation(opID wm.OperationID) error {
 	if !c.running {
 		return nil
 	}
@@ -337,7 +336,7 @@ func DeleteOperation(opID w.OperationID) error {
 	return nil
 }
 
-func AgentDeleteOperation(g w.GoogleID, opID w.OperationID) error {
+func AgentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
 	gid := model.GoogleID(g)
 
 	if !c.running {
