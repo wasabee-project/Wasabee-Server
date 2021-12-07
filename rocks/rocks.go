@@ -76,10 +76,10 @@ func Active() bool {
 }
 
 // Search checks a agent at enl.rocks and returns an Agent
-func Search(id string) (model.RocksAgent, error) {
+func Search(id string) (*model.RocksAgent, error) {
 	var agent model.RocksAgent
 	if Config.APIKey == "" {
-		return agent, nil
+		return &agent, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
@@ -95,7 +95,7 @@ func Search(id string) (model.RocksAgent, error) {
 		// do not leak API key to logs
 		err := fmt.Errorf("error establishing .rocks request")
 		log.Errorw(err.Error(), "search", id)
-		return agent, err
+		return &agent, err
 	}
 	client := &http.Client{
 		Timeout: (3 * time.Second),
@@ -105,21 +105,21 @@ func Search(id string) (model.RocksAgent, error) {
 		// do not leak API key to logs
 		err := fmt.Errorf("error executing .rocks request")
 		log.Errorw(err.Error(), "search", id)
-		return agent, err
+		return &agent, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return agent, err
+		return &agent, err
 	}
 
 	err = json.Unmarshal(body, &agent)
 	if err != nil {
 		log.Error(err)
-		return agent, err
+		return &agent, err
 	}
-	return agent, nil
+	return &agent, nil
 }
 
 // CommunitySync is called from the https server when it receives a push notification
@@ -321,6 +321,10 @@ func Authorize(gid model.GoogleID) bool {
 			return !a.Smurf // do not block on network error unless already listed as a smurf in the cache
 		}
 		log.Debugw("rocks cache refreshed", "gid", gid, "data", net)
+		if net.Gid == "" {
+			log.Info("Rocks returned a result without a GID, adding it", "gid", gid, "result", net)
+			a.Gid = gid
+		}
 		err = model.RocksToDB(net)
 		if err != nil {
 			log.Error(err)

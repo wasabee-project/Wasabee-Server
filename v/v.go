@@ -359,11 +359,11 @@ func Authorize(gid model.GoogleID) bool {
 			return !a.Blacklisted
 		}
 		log.Debugw("v cache refreshed", "gid", gid, "data", net.Data)
-		err = model.VToDB(net.Data)
+		err = model.VToDB(&net.Data)
 		if err != nil {
 			log.Error(err)
 		}
-		a = net.Data // use the network result now that it is saved
+		a = &net.Data // use the network result now that it is saved
 	}
 
 	if a.Agent != "" {

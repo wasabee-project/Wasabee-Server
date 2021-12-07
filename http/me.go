@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
-	"github.com/wasabee-project/Wasabee-Server/PubSub"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -188,7 +187,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	lon := vars["lon"]
 
 	// do the work
-	if err = gid.AgentLocation(lat, lon); err != nil {
+	if err = gid.SetLocation(lat, lon); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -198,9 +197,6 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	for _, teamID := range gid.TeamListEnabled() {
 		wfb.AgentLocation(teamID)
 	}
-
-	// send to the other servers
-	wps.Location(gid, lat, lon)
 
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -326,7 +322,6 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	gid.SetIntelData(name, faction)
-	wps.IntelData(gid, name, faction)
 	fmt.Fprint(res, jsonStatusOK)
 }
 

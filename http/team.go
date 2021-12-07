@@ -302,7 +302,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
-func setAgentTeamSquadRoute(res http.ResponseWriter, req *http.Request) {
+func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -324,38 +324,7 @@ func setAgentTeamSquadRoute(res http.ResponseWriter, req *http.Request) {
 
 	inGid := model.GoogleID(vars["gid"])
 	squad := req.FormValue("squad")
-	err = teamID.SetSquad(inGid, squad)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprint(res, jsonStatusOK)
-}
-
-func setAgentTeamDisplaynameRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	teamID := model.TeamID(vars["team"])
-
-	if owns, _ := gid.OwnsTeam(teamID); !owns {
-		err = fmt.Errorf("forbidden: only the team owner can set display names")
-		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	inGid := model.GoogleID(vars["gid"])
-	displayname := req.FormValue("displayname")
-	err = teamID.SetDisplayname(inGid, displayname)
+	err = teamID.SetComment(inGid, squad)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

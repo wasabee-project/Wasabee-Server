@@ -48,7 +48,8 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	agent := model.GoogleID(req.FormValue("agent"))
-	if err = link.Assign(agent); err != nil {
+	g := []model.GoogleID{agent}
+	if err = link.Assign(g); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -95,7 +96,7 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	desc := req.FormValue("desc")
-	if err = link.Comment(desc); err != nil {
+	if err = link.SetComment(desc); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -341,7 +342,7 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 		return
 	}
 
-	if err = link.Complete(complete); err != nil {
+	if err = link.Complete(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

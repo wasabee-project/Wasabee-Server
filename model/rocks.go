@@ -8,17 +8,23 @@ import (
 )
 
 type RocksAgent struct {
-	Gid      string `json:"gid"`
-	TGId     int64  `json:"tgid"`
-	Agent    string `json:"agentid"`
-	Verified bool   `json:"verified"`
-	Smurf    bool   `json:"smurf"`
+	Gid      GoogleID `json:"gid"`
+	TGId     int64    `json:"tgid"`
+	Agent    string   `json:"agentid"`
+	Verified bool     `json:"verified"`
+	Smurf    bool     `json:"smurf"`
 }
 
-func RocksToDB(a RocksAgent) error {
+func RocksToDB(a *RocksAgent) error {
 	if a.Agent == "" {
 		return nil
 	}
+
+	if a.Gid == "" {
+		log.Info("empty GID in agent", "agent", a)
+		return nil
+	}
+
 	_, err := db.Exec("REPLACE INTO rocks (gid, tgid, agent, verified, smurf, fetched) VALUES (?,?,?,?,?,UTC_TIMESTAMP())", a.Gid, a.TGId, a.Agent, a.Verified, a.Smurf)
 	if err != nil {
 		// there is a race somewhere that tries to insert this here before the agent is in the agent table, just log it for now
@@ -36,7 +42,7 @@ func RocksToDB(a RocksAgent) error {
 	return nil
 }
 
-func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
+func RocksFromDB(gid GoogleID) (*RocksAgent, time.Time, error) {
 	var a RocksAgent
 	var fetched string
 	var t time.Time
@@ -46,11 +52,11 @@ func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
 	err := db.QueryRow("SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).Scan(&a.Gid, &tgid, &agent, &a.Verified, &a.Smurf, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
-		return a, t, err
+		return &a, t, err
 	}
 
 	if err == sql.ErrNoRows {
-		return a, t, nil
+		return &a, t, nil
 	}
 
 	if agent.Valid {
@@ -61,17 +67,17 @@ func RocksFromDB(gid GoogleID) (RocksAgent, time.Time, error) {
 	}
 
 	if fetched == "" {
-		return a, t, nil
+		return &a, t, nil
 	}
 
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
 	if err != nil {
 		log.Error(err)
-		return a, t, err
+		return &a, t, err
 	}
 	log.Debug("rocks from cache", "fetched", t, "data", a)
 
-	return a, t, nil
+	return &a, t, nil
 }
 
 // RocksCommunity returns a rocks key for a TeamID

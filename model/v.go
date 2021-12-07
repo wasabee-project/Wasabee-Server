@@ -34,7 +34,7 @@ type VAgent struct {
 
 // vToDB updates the database to reflect an agent's current status at V.
 // callback
-func VToDB(a VAgent) error {
+func VToDB(a *VAgent) error {
 	if a.Agent == "" {
 		return nil
 	}
@@ -69,7 +69,7 @@ func VToDB(a VAgent) error {
 	return nil
 }
 
-func VFromDB(gid GoogleID) (VAgent, time.Time, error) {
+func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	a := VAgent{
 		Gid: gid,
 	}
@@ -80,15 +80,15 @@ func VFromDB(gid GoogleID) (VAgent, time.Time, error) {
 	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &a.TelegramID, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
-		return a, t, err
+		return &a, t, err
 	}
 
 	if err == sql.ErrNoRows {
-		return a, t, nil
+		return &a, t, nil
 	}
 
 	if fetched == "" {
-		return a, t, nil
+		return &a, t, nil
 	}
 
 	if vlevel.Valid {
@@ -101,10 +101,10 @@ func VFromDB(gid GoogleID) (VAgent, time.Time, error) {
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
 	if err != nil {
 		log.Error(err)
-		return a, t, err
+		// return &a, t, err
 	}
 	log.Debugw("VFromDB", "gid", gid, "fetched", fetched, "data", a)
-	return a, t, nil
+	return &a, t, nil
 }
 
 func (teamID TeamID) VTeam() (int64, uint8, error) {

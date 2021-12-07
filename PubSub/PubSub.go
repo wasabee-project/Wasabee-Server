@@ -151,7 +151,7 @@ func listenForPubSubMessages() {
 				msg.Ack()
 				break
 			}
-			if err := gid.AgentLocation(tokens[0], tokens[1]); err != nil {
+			if err := gid.SetLocation(tokens[0], tokens[1]); err != nil {
 				log.Error(err)
 				msg.Nack()
 				break

@@ -107,8 +107,7 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid mod
 		log.Debugw("processing location", "subsystem", "Telegram", "GID", gid)
 		lat := strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64)
-		_ = gid.AgentLocation(lat, lon)
-		//XXX  gid.PSLocation(lat, lon)
+		_ = gid.SetLocation(lat, lon)
 	}
 
 	if _, err := bot.Send(msg); err != nil {

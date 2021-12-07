@@ -74,7 +74,7 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 }
 
 // GetAgent populates an Agent struct based on the gid
-func (gid GoogleID) GetAgent() (Agent, error) {
+func (gid GoogleID) GetAgent() (*Agent, error) {
 	var a Agent
 	a.GoogleID = gid
 	var level, vname, vid, pic, vapi, rocksname sql.NullString
@@ -83,14 +83,14 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 
 	ad := &a
 
-	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, e.picurl, e.VAPIkey FROM agent=a LEFT JOIN agentextras=e ON a.gid = e.gid LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &ad.IntelName, &level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
+	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &ad.IntelName, &level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
-		return a, err
+		return ad, err
 	}
 	if err != nil {
 		log.Error(err)
-		return a, err
+		return ad, err
 	}
 
 	// use intel name if nothing else is valid
@@ -139,15 +139,15 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 	}
 
 	if err = adTeams(ad); err != nil {
-		return a, err
+		return ad, err
 	}
 
 	if err = adTelegram(ad); err != nil {
-		return a, err
+		return ad, err
 	}
 
 	if err = adOps(ad); err != nil {
-		return a, err
+		return ad, err
 	}
 
 	a.IntelFaction = ifac.String()
@@ -161,11 +161,11 @@ func (gid GoogleID) GetAgent() (Agent, error) {
 		a.VAPIkey = vapi.String[0:len] + "..." // never show the full thing
 	}
 
-	return a, nil
+	return ad, nil
 }
 
 func adTeams(ad *Agent) error {
-	rows, err := db.Query("SELECT t.teamID, t.name, x.state, x.shareWD, x.loadWD, t.rockscomm, t.rockskey, t.owner, t.joinLinkToken, t.vteam, t.vrole FROM team=t, agentteams=x WHERE x.gid = ? AND x.teamID = t.teamID ORDER BY t.name", ad.GoogleID)
+	rows, err := db.Query("SELECT x.teamID, team.name, x.state, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken, team.vteam, team.vrole FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ? ORDER BY team.name", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -242,7 +242,7 @@ func adOps(ad *Agent) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT o.ID, o.Name, o.Color, p.teamID FROM operation=o, agentteams=x, opteams=p WHERE p.opID = o.ID AND x.gid = ? AND x.teamID = p.teamID ORDER BY o.Name", ad.GoogleID)
+	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, opteams.teamID FROM agentteams JOIN opteams ON agentteams.teamID = opteams.teamID JOIN operation  ON opteams.opID = operation.ID WHERE agentteams.gid = ? ORDER BY operation.Name", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -264,54 +264,8 @@ func adOps(ad *Agent) error {
 	return nil
 }
 
-// adAssignments lists operations in which one has assignments
-/* func (gid GoogleID) adAssignments(ad *Agent) error {
-	assignMap := make(map[OperationID]string)
-
-	var opID OperationID
-	var opName string
-
-	row, err := db.Query("SELECT DISTINCT o.Name, o.ID FROM marker=m, operation=o WHERE m.gid = ? AND m.opID = o.ID ORDER BY o.Name", gid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	defer row.Close()
-	for row.Next() {
-		err := row.Scan(&opName, &opID)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-		assignMap[opID] = opName
-	}
-
-	row2, err := db.Query("SELECT DISTINCT o.Name, o.ID FROM link=l, operation=o WHERE l.gid = ? AND l.opID = o.ID ORDER BY o.Name", gid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	defer row2.Close()
-	for row2.Next() {
-		err := row2.Scan(&opName, &opID)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-		assignMap[opID] = opName
-	}
-
-	for k, v := range assignMap {
-		ad.Assignments = append(ad.Assignments, Assignment{
-			OpID:          k,
-			OperationName: v,
-		})
-	}
-	return nil
-} */
-
 // AgentLocation updates the database to reflect a agent's current location
-func (gid GoogleID) AgentLocation(lat, lon string) error {
+func (gid GoogleID) SetLocation(lat, lon string) error {
 	if lat == "" || lon == "" {
 		return nil
 	}
@@ -330,6 +284,8 @@ func (gid GoogleID) AgentLocation(lat, lon string) error {
 		log.Error(err)
 		flon = float64(0)
 	}
+
+	// REPLACE INTO?
 	point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", point, gid); err != nil {
 		log.Error(err)
@@ -519,7 +475,6 @@ func (gid GoogleID) Delete() error {
 	// the foreign key constraints should take care of these, but just in case...
 	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
-	_, _ = db.Exec("DELETE FROM agentextras WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM v WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM rocks WHERE gid = ?", gid)
@@ -562,7 +517,7 @@ func (gid GoogleID) RISC() bool {
 
 // UpdatePicture sets/updates the agent's google picture URL
 func (gid GoogleID) UpdatePicture(picurl string) error {
-	if _, err := db.Exec("INSERT INTO agentextras (gid, picurl) VALUES (?,?) ON DUPLICATE KEY UPDATE picurl = ?", gid, picurl, picurl); err != nil {
+	if _, err := db.Exec("UPDATE agent SET picurl = ? WHERE gid = ?", picurl, gid); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -575,7 +530,7 @@ func (gid GoogleID) GetPicture() string {
 	unset := "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
 	var url sql.NullString
 
-	err := db.QueryRow("SELECT picurl FROM agentextras WHERE gid = ?", gid).Scan(&url)
+	err := db.QueryRow("SELECT picurl FROM agent WHERE gid = ?", gid).Scan(&url)
 	if err == sql.ErrNoRows || !url.Valid || url.String == "" {
 		return unset
 	}
@@ -653,7 +608,7 @@ func (gid GoogleID) IntelSmurf() bool {
 func (gid GoogleID) GetVAPIkey() (string, error) {
 	var v sql.NullString
 
-	err := db.QueryRow("SELECT VAPIkey FROM agentextras WHERE GID = ?", gid).Scan(&v)
+	err := db.QueryRow("SELECT VAPIkey FROM v WHERE GID = ?", gid).Scan(&v)
 	if err != nil {
 		log.Error(err)
 		return "", nil
@@ -666,7 +621,7 @@ func (gid GoogleID) GetVAPIkey() (string, error) {
 
 // SetVAPIkey stores
 func (gid GoogleID) SetVAPIkey(key string) error {
-	if _, err := db.Exec("INSERT INTO agentextras (gid, VAPIkey) VALUES (?,?) ON DUPLICATE KEY UPDATE VAPIkey = ? ", gid, key, key); err != nil {
+	if _, err := db.Exec("UPDATE agent SET VAPIkey = ? WHERE gid  = ? ", key, gid); err != nil {
 		log.Error(err)
 		return err
 	}

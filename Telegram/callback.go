@@ -60,7 +60,7 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	if update.CallbackQuery.Message.Location != nil && update.CallbackQuery.Message.Location.Latitude != 0 {
 		lat := strconv.FormatFloat(update.CallbackQuery.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(update.CallbackQuery.Message.Location.Longitude, 'f', -1, 64)
-		err = gid.AgentLocation(lat, lon)
+		err = gid.SetLocation(lat, lon)
 		if err != nil {
 			log.Error(err)
 			return msg, err

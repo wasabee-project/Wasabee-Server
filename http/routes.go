@@ -94,7 +94,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/stock", drawStockRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/order", drawOrderRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/info", drawInfoRoute).Methods("POST")
-	// r.HandleFunc("/draw/{document}/perms", drawPermsRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/perms", drawPermsAddRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/perms", drawPermsDeleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}/delperm", drawPermsDeleteRoute).Methods("GET") // .Queries("team", "{team}", "role", "{role}")
@@ -132,11 +131,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST")
 
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
-	// -- do not use, just here for safety
 	r.HandleFunc("/me", meRoute).Methods("GET", "POST", "HEAD")
 	r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
-	// r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")
-	// r.HandleFunc("/me/operations", meOperationsRoute).Methods("GET")
 	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
 	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
@@ -168,8 +164,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET")
-	// GUI to do basic edit (owner)
-	// r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")
 	// (re)import the team from rocks
 	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")
 	// configure team link to enl.rocks community
@@ -177,14 +171,11 @@ func setupAuthRoutes(r *mux.Router) {
 	// V routes
 	r.HandleFunc("/team/{team}/v", vPullTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/v", vConfigureTeamRoute).Methods("POST")
-	// broadcast a message to the team
-	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")
-	// r.HandleFunc("/team/{team}/fbAnnounce", fbAnnounceTeamRoute).Methods("POST")
-	// r.HandleFunc("/team/{team}/fbTarget", fbTargetTeamRoute).Methods("POST") // Firebase side done: teamID.FirebaseTarget()
+	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST") // broadcast a message to the team
 	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT")
 	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")
-	r.HandleFunc("/team/{team}/{gid}/squad", setAgentTeamSquadRoute).Methods("POST")
-	r.HandleFunc("/team/{team}/{gid}/displayname", setAgentTeamDisplaynameRoute).Methods("POST")
+	r.HandleFunc("/team/{team}/{gid}/squad", setAgentTeamCommentRoute).Methods("POST") // remove this
+	r.HandleFunc("/team/{team}/{gid}/comment", setAgentTeamCommentRoute).Methods("POST")
 	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")
 

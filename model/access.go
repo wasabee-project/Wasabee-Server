@@ -3,6 +3,7 @@ package model
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 

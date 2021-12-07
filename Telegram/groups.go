@@ -268,7 +268,7 @@ func liveLocationUpdate(inMsg *tgbotapi.Update) error {
 
 	lat := strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(inMsg.EditedMessage.Location.Longitude, 'f', -1, 64)
-	_ = gid.AgentLocation(lat, lon)
+	_ = gid.SetLocation(lat, lon)
 	// gid.PSLocation(lat, lon)
 	return nil
 }

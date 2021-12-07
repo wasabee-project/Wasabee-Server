@@ -54,7 +54,8 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	agent := model.GoogleID(req.FormValue("agent"))
-	if err = marker.Assign(agent); err != nil {
+	g := []model.GoogleID{agent}
+	if err = marker.Assign(g); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -243,7 +244,7 @@ func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = marker.Delta(int(delta)); err != nil {
+	if err = marker.SetDelta(int(delta)); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -565,6 +566,12 @@ func drawMarkerDependAddRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
 	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
@@ -617,6 +624,12 @@ func drawMarkerDependDelRoute(res http.ResponseWriter, req *http.Request) {
 		err = fmt.Errorf("empty task on depend delete")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	if err = op.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 

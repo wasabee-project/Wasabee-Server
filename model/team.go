@@ -96,6 +96,8 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 			return &teamList, err
 		}
 
+		tmpU.Name = fmt.Sprint("UnverifiedAgent_" + tmpU.Gid)
+
 		if intelname.Valid {
 			tmpU.IntelName = intelname.String
 			tmpU.Name = intelname.String
@@ -432,6 +434,8 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 		return nil, err
 	}
 
+	tm.Name = fmt.Sprint("UnverifiedAgent_" + tm.Gid)
+
 	if intelname.Valid {
 		tm.IntelName = intelname.String
 		tm.Name = intelname.String
@@ -557,22 +561,12 @@ func (gid GoogleID) TeamListEnabled() []TeamID {
 	return x
 }
 
-// SetSquad sets an agent's squad on a given team
-func (teamID TeamID) SetSquad(gid GoogleID, squad string) error {
-	if squad == "" {
-		squad = "agents"
+// SetComment sets an agent's squad on a given team
+func (teamID TeamID) SetComment(gid GoogleID, comment string) error {
+	if comment == "" {
+		comment = "agents"
 	}
-	_, err := db.Exec("UPDATE agentteams SET squad = ? WHERE teamID = ? and gid = ?", squad, teamID, gid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
-}
-
-// SetDisplayname sets an agent's display name on a given team
-func (teamID TeamID) SetDisplayname(gid GoogleID, displayname string) error {
-	_, err := db.Exec("UPDATE agentteams SET displayname = ? WHERE teamID = ? and gid = ?", MakeNullString(displayname), teamID, gid)
+	_, err := db.Exec("UPDATE agentteams SET squad = ? WHERE teamID = ? and gid = ?", comment, teamID, gid)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -629,7 +623,7 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 	if err != nil {
 		return err
 	}
-	err = teamID.SetSquad(gid, "joined via link")
+	err = teamID.SetComment(gid, "joined via link")
 	if err != nil {
 		return err
 	}

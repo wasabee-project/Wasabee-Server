@@ -206,10 +206,20 @@ func Shutdown() error {
 
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		permitted := []string{"https://intel.ingress.com", "https://wasabee-project.github.io", "https://cdn2.wasabee.rocks"}
+
+		ref := permitted[0]
+		origin := req.Header.Get("Origin")
+		for p, v := range permitted {
+			if origin == v {
+				ref = permitted[p]
+			}
+		}
+
 		res.Header().Add("Server", "Wasabee-Server")
-		res.Header().Add("Content-Security-Policy", "frame-ancestors https://intel.ingress.com")
-		res.Header().Add("X-Frame-Options", "allow-from https://intel.ingress.com") // deprecated
-		res.Header().Add("Access-Control-Allow-Origin", "https://intel.ingress.com")
+		res.Header().Add("Content-Security-Policy", fmt.Sprintf("frame-ancestors %s", ref))
+		res.Header().Add("X-Frame-Options", fmt.Sprintf("allow-from %s", ref)) // deprecated
+		res.Header().Add("Access-Control-Allow-Origin", ref)
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
 		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match")
