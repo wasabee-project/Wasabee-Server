@@ -27,6 +27,8 @@ type Link struct {
 	Task
 }
 
+// TODO use the logic from insertZone to unify insertLink and updateLink
+
 // insertLink adds a link to the database
 func (opID OperationID) insertLink(l Link) error {
 	if l.To == l.From {
@@ -38,12 +40,45 @@ func (opID OperationID) insertLink(l Link) error {
 		l.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone, l.DeltaMinutes)
+	// use the old if it is set
+	if l.Desc != "" {
+		l.Comment = l.Desc
+	}
+	if l.ThrowOrder != 0 {
+		l.Order = uint16(l.ThrowOrder)
+	}
+	if l.AssignedTo != "" {
+		l.Assignments = append(l.Assignments, l.AssignedTo)
+	}
+
+	if l.State == "" {
+		l.State = "pending"
+	}
+
+	if l.Completed {
+		l.State = "completed"
+	}
+
+	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		l.ID, opID, MakeNullString(l.Comment), l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+
+	_, err = db.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)",
+		l.ID, opID, l.From, l.To, l.Color, l.MuCaptured)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	err = l.Assign(l.Assignments)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	return nil
 }
 
@@ -66,53 +101,81 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		l.Zone = zonePrimary
 	}
 
-	_, err := tx.Exec("INSERT INTO link (ID, fromPortalID, toPortalID, opID, description, gid, throworder, completed, color, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fromPortalID = ?, toPortalID = ?, description = ?, color=?, zone = ?, gid = ?, completed = ?, throworder = ?, delta = ?",
-		l.ID, l.From, l.To, opID, MakeNullString(l.Desc), MakeNullString(l.AssignedTo), l.ThrowOrder, l.Completed, l.Color, l.Zone, l.DeltaMinutes,
-		l.From, l.To, MakeNullString(l.Desc), l.Color, l.Zone, MakeNullString(l.AssignedTo), l.Completed, l.ThrowOrder, l.DeltaMinutes)
+	// use the old if it is set
+	if l.Desc != "" {
+		l.Comment = l.Desc
+	}
+	if l.ThrowOrder != 0 {
+		l.Order = uint16(l.ThrowOrder)
+	}
+	if l.AssignedTo != "" {
+		l.Assignments = append(l.Assignments, l.AssignedTo)
+	}
+	if l.State == "" {
+		l.State = "pending"
+	}
+	if l.Completed {
+		l.State = "completed"
+	}
+
+	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		l.ID, opID, MakeNullString(l.Comment), l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if l.Changed && l.AssignedTo != "" {
+	_, err = tx.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)", l.ID, opID, l.From, l.To, l.Color, l.MuCaptured)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if l.Changed && len(l.Assignments) > 0 {
 		messaging.SendAssignment(messaging.GoogleID(l.AssignedTo), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
+		err := l.AssignTX(l.Assignments, tx)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 	}
 
 	return nil
 }
 
-// PopulateLinks fills in the Links list for the Operation. No authorization takes place.
+// PopulateLinks fills in the Links list for the Operation.
 func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 	var tmpLink Link
 	tmpLink.opID = o.ID
-	var description, gid sql.NullString
 
-	var err error
-	var rows *sql.Rows
-	rows, err = db.Query("SELECT ID, fromPortalID, toPortalID, description, gid, throworder, completed, color, zone, delta FROM link WHERE opID = ? ORDER BY throworder", o.ID)
+	var description sql.NullString
+
+	rows, err := db.Query("SELECT link.ID, link.fromPortalID, link.toPortalID, task.comment, task.taskorder, task.state, link.color, task.zone, task.delta FROM link JOIN task ON link.ID = task.ID WHERE task.opID = ? ORDER BY task.taskorder", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &gid, &tmpLink.ThrowOrder, &tmpLink.Completed, &tmpLink.Color, &tmpLink.Zone, &tmpLink.DeltaMinutes)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &tmpLink.Order, &tmpLink.State, &tmpLink.Color, &tmpLink.Zone, &tmpLink.DeltaMinutes)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
 		if description.Valid {
 			tmpLink.Desc = description.String
+			tmpLink.Comment = description.String
 		} else {
 			tmpLink.Desc = ""
 		}
-		if gid.Valid {
-			tmpLink.AssignedTo = GoogleID(gid.String)
-		} else {
-			tmpLink.AssignedTo = ""
+		tmpLink.Assignments, err = tmpLink.GetAssignments()
+		if err != nil {
+			log.Error(err)
+			continue
 		}
+
 		// this isn't in a zone with which we are concerned AND not assigned to me, skip
-		if !tmpLink.Zone.inZones(zones) && tmpLink.AssignedTo != inGid {
+		if !tmpLink.Zone.inZones(zones) && !tmpLink.IsAssignedTo(inGid) {
 			continue
 		}
 		o.Links = append(o.Links, tmpLink)

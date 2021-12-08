@@ -242,7 +242,7 @@ func adOps(ad *Agent) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, opteams.teamID FROM agentteams JOIN opteams ON agentteams.teamID = opteams.teamID JOIN operation  ON opteams.opID = operation.ID WHERE agentteams.gid = ? ORDER BY operation.Name", ad.GoogleID)
+	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, permissions.teamID FROM agentteams JOIN permissions ON agentteams.teamID = permissions.teamID JOIN operation ON permissions.opID = operation.ID WHERE agentteams.gid = ? ORDER BY operation.Name", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -301,6 +301,12 @@ func (gid GoogleID) IngressName() (string, error) {
 	var name string
 	var rocksname, vname, intelname sql.NullString
 	err := db.QueryRow("SELECT rocks.agent, v.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &vname, &intelname)
+
+	if err != nil && err == sql.ErrNoRows {
+		log.Error("getting ingressname for unknown gid")
+		return "", nil
+	}
+
 	if err != nil {
 		log.Error(err)
 		return string(gid), err
@@ -340,6 +346,7 @@ func (gid GoogleID) String() string {
 // returns "" on no match
 func SearchAgentName(agent string) (GoogleID, error) {
 	var gid GoogleID
+	var count int
 
 	// if it starts with an @ search tg
 	if agent[0] == '@' {
@@ -353,20 +360,8 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		}
 	}
 
-	// agent.name has a unique key
-	// XXX deprecate use of agent.Name
-	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(name) = LOWER(?)", agent).Scan(&gid)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return "", err
-	}
-	if gid != "" { // found a match
-		return gid, nil
-	}
-
 	// v.agent does NOT have a unique key
-	var count int
-	err = db.QueryRow("SELECT COUNT(gid) FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
+	err := db.QueryRow("SELECT COUNT(gid) FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err

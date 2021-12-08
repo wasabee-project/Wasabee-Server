@@ -35,8 +35,7 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 			return err
 		}
 	} else {
-		_, err = db.Exec("INSERT INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE onhand = ?, capsule = ?",
-			o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule), k.Onhand, MakeNullString(k.Capsule))
+		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule))
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
 			err := fmt.Errorf("unable to record keys, ensure the op on the server is up-to-date")

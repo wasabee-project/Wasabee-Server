@@ -116,6 +116,7 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 
 // GetMyTeams pulls a list of teams the agent is on at V
 func GetMyTeams(gid model.GoogleID) (*myTeams, error) {
+	log.Debug("v get my team", "gid", gid)
 	var v myTeams
 
 	key, err := gid.VAPIkey()
@@ -161,6 +162,8 @@ func GetMyTeams(gid model.GoogleID) (*myTeams, error) {
 }
 
 func (vteamID VTeamID) GetTeamFromV(key string) (*teamResult, error) {
+	log.Debug("get team from v")
+
 	var vt teamResult
 	if vteamID == 0 {
 		return &vt, nil
@@ -206,6 +209,8 @@ func (vteamID VTeamID) GetTeamFromV(key string) (*teamResult, error) {
 
 // Sync pulls a team (and role) from V to sync with a Wasabee team
 func Sync(teamID model.TeamID, key string) error {
+	log.Debug("v sync")
+
 	x, role, err := teamID.VTeam()
 	vteamID := VTeamID(x)
 
@@ -385,6 +390,8 @@ func Authorize(gid model.GoogleID) bool {
 }
 
 func processTeams(data myTeams) ([]teamToMake, error) {
+	log.Debug("v processTeams")
+
 	var m []teamToMake
 	for _, t := range data.Teams {
 		if !t.Admin {
@@ -423,6 +430,7 @@ type teamToMake struct {
 }
 
 func processRoleSingleTeam(t myTeam, teams []vt, key string) ([]teamToMake, error) {
+	log.Debug("v processRoleSingleTeam")
 	var m []teamToMake
 
 	/*
@@ -475,6 +483,7 @@ func processRoleSingleTeam(t myTeam, teams []vt, key string) ([]teamToMake, erro
 }
 
 func processRoleTeams(data *myTeams) ([]teamToMake, error) {
+	log.Debug("v processRoleTeams")
 	var m []teamToMake
 
 	// raw := make(map[VTeamID]map[uint8]bool)
@@ -491,6 +500,7 @@ type vt struct {
 }
 
 func BulkImport(gid model.GoogleID, mode string) error {
+	log.Debug("v BuklImport")
 	var teamstomake []teamToMake
 
 	key, err := gid.VAPIkey()

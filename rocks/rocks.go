@@ -18,9 +18,11 @@ import (
 // CommunityNotice is sent from a community when an agent is added or removed
 // consumed by RocksCommunitySync function below
 type CommunityNotice struct {
-	Community string `json:"community"`
-	Action    string `json:"action"`
-	User      Agent  `json:"user"`
+	Community string           `json:"community"`
+	Action    string           `json:"action"`
+	User      Agent            `json:"user"`
+	TGId      model.TelegramID `json:"tg_id"`
+	TGName    string           `json:"tg_user"`
 }
 
 // CommunityResponse is returned from a query request
@@ -124,6 +126,8 @@ func Search(id string) (*model.RocksAgent, error) {
 
 // CommunitySync is called from the https server when it receives a push notification
 func CommunitySync(msg json.RawMessage) error {
+	log.Debug("rocks community request", "data", string(msg))
+
 	// check the source? is the community key enough for this? I don't think so
 	var rc CommunityNotice
 	err := json.Unmarshal(msg, &rc)
@@ -136,6 +140,15 @@ func CommunitySync(msg json.RawMessage) error {
 	if err != nil {
 		log.Error(err)
 		return err
+	}
+
+	// already known?
+	if !rc.User.Gid.Valid() {
+		if err := rc.User.Gid.FirstLogin(); err != nil {
+			log.Error(err)
+			return err
+		}
+		_ = Authorize(rc.User.Gid)
 	}
 
 	if rc.Action == "onJoin" {
@@ -152,11 +165,16 @@ func CommunitySync(msg json.RawMessage) error {
 		}
 	}
 
+	if rc.TGId > 0 && rc.TGName != "" {
+		rc.TGId.UpdateName(rc.TGName)
+	}
+
 	return nil
 }
 
 // CommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
 func CommunityMemberPull(communityID string) error {
+	log.Debug("rocks community member pull", "community", communityID)
 	if communityID == "" {
 		return nil
 	}
@@ -214,6 +232,7 @@ func CommunityMemberPull(communityID string) error {
 }
 
 func AddToRemoteRocksCommunity(gid, communityID string) error {
+	log.Debug("add to remote rocks", "gid", gid, "community", "communityID")
 	if communityID == "" || gid == "" {
 		return nil
 	}
@@ -256,6 +275,7 @@ func AddToRemoteRocksCommunity(gid, communityID string) error {
 
 // RemoveFromRemoteRocksCommunity removes an agent from a Rocks Community IF that community has API enabled.
 func RemoveFromRemoteRocksCommunity(gid, communityID string) error {
+	log.Debug("remove from remote rocks", "gid", gid, "community", "communityID")
 	if communityID == "" || gid == "" {
 		return nil
 	}

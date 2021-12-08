@@ -24,6 +24,8 @@ type Marker struct {
 	Task
 }
 
+// TODO use the logic from insertZone to unify insertMarker and updateMarker
+
 // insertMarkers adds a marker to the database
 func (opID OperationID) insertMarker(m Marker) error {
 	if m.State == "" {
@@ -34,12 +36,30 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.Zone = zonePrimary
 	}
 
-	_, err := db.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone, m.DeltaMinutes)
+	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		m.ID, opID, MakeNullString(m.Comment), m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+
+	_, err = db.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	// until clients get updated
+	if m.AssignedTo != "" {
+		m.Assignments = append(m.Assignments, m.AssignedTo)
+	}
+
+	err = m.Assign(m.Assignments)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	return nil
 }
 
@@ -65,15 +85,30 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		}
 	}
 
-	_, err := tx.Exec("INSERT INTO marker (ID, opID, PortalID, type, gid, comment, state, oporder, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type = ?, PortalID = ?, gid = ?, comment = ?, state = ?, zone = ?, oporder = ?, delta = ?",
-		m.ID, opID, m.PortalID, m.Type, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Order, m.Zone, m.DeltaMinutes,
-		m.Type, m.PortalID, MakeNullString(m.AssignedTo), MakeNullString(m.Comment), m.State, m.Zone, m.Order, m.DeltaMinutes)
+	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		m.ID, opID, MakeNullString(m.Comment), m.Order, m.State, m.Zone, m.DeltaMinutes)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	_, err = tx.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
 	if assignmentChanged {
+		// until clients get updated
+		if m.AssignedTo != "" {
+			m.Assignments = append(m.Assignments, m.AssignedTo)
+		}
+
+		err = m.AssignTX(m.Assignments, tx)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 		messaging.SendAssignment(messaging.GoogleID(m.AssignedTo), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 
@@ -81,7 +116,14 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 }
 
 func (opID OperationID) deleteMarker(mid MarkerID, tx *sql.Tx) error {
+	// deleting the task would cascade and take this out... but this is safe
 	_, err := tx.Exec("DELETE FROM marker WHERE opID = ? and ID = ?", opID, mid)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM link WHERE opID = ? and ID = ?", opID, mid)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -94,18 +136,18 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 	var tmpMarker Marker
 	tmpMarker.opID = o.ID
 
-	var assignedGid, comment sql.NullString
+	var comment sql.NullString
 
 	var err error
 	var rows *sql.Rows
-	rows, err = db.Query("SELECT ID, PortalID, type, gid, comment, state, oporder, zone, delta FROM marker WHERE opID = ? ORDER BY oporder, type", o.ID)
+	rows, err = db.Query("SELECT marker.ID, marker.PortalID, marker.type, task.comment, task.state, task.taskorder, task.zone, task.delta FROM marker JOIN task ON marker.ID = task.ID WHERE marker.opID = ? ORDER BY taskorder, type", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &assignedGid, &comment, &tmpMarker.State, &tmpMarker.Order, &tmpMarker.Zone, &tmpMarker.DeltaMinutes)
+		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &comment, &tmpMarker.State, &tmpMarker.Order, &tmpMarker.Zone, &tmpMarker.DeltaMinutes)
 		if err != nil {
 			log.Error(err)
 			continue
@@ -113,8 +155,10 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 		if tmpMarker.State == "" { // enums in sql default to "" if invalid, WTF?
 			tmpMarker.State = "pending"
 		}
-		if assignedGid.Valid {
-			tmpMarker.AssignedTo = GoogleID(assignedGid.String)
+
+		tmpMarker.Assignments, err = tmpMarker.GetAssignments()
+		if len(tmpMarker.Assignments) > 0 {
+			tmpMarker.AssignedTo = tmpMarker.Assignments[0]
 		} else {
 			tmpMarker.AssignedTo = ""
 		}
@@ -126,7 +170,7 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 		}
 
 		// if the marker is not in the zones with which we are concerned AND not assigned to me, skip
-		if !tmpMarker.Zone.inZones(zones) && tmpMarker.AssignedTo != gid {
+		if !tmpMarker.Zone.inZones(zones) && !tmpMarker.IsAssignedTo(gid) {
 			continue
 		}
 		o.Markers = append(o.Markers, tmpMarker)
@@ -164,7 +208,7 @@ func (o *Operation) GetMarker(markerID MarkerID) (*Marker, error) {
 
 // MarkerOrder changes the order of the tasks for an operation
 func (o *Operation) MarkerOrder(order string) error {
-	stmt, err := db.Prepare("UPDATE marker SET oporder = ? WHERE opID = ? AND ID = ?")
+	stmt, err := db.Prepare("UPDATE marker SET taskorder = ? WHERE opID = ? AND ID = ?")
 	if err != nil {
 		log.Error(err)
 		return err

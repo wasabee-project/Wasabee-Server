@@ -1,6 +1,8 @@
 package model
 
 import (
+	"database/sql"
+
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -123,7 +125,7 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 
 // Assign assigns a task to an agent
 func (t *Task) Assign(gs []GoogleID) error {
-	_, err := db.Exec("DELETE FROM assignments WHERE WHERE taskID = ? AND opID = ?", t.ID, t.opID)
+	_, err := db.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -131,6 +133,24 @@ func (t *Task) Assign(gs []GoogleID) error {
 
 	for _, gid := range gs {
 		_, err := db.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.ID, gid)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+	return nil
+}
+
+// AssignTX assigns a task to an agent using a given transaction
+func (t *Task) AssignTX(gs []GoogleID, tx *sql.Tx) error {
+	_, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	for _, gid := range gs {
+		_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.ID, gid)
 		if err != nil {
 			log.Error(err)
 			return err

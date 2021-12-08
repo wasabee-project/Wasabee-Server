@@ -270,7 +270,7 @@ func (teamID TeamID) Delete() error {
 		}
 	}
 
-	_, err = db.Exec("DELETE FROM opteams WHERE teamID = ?", teamID)
+	_, err = db.Exec("DELETE FROM permissions WHERE teamID = ?", teamID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -322,7 +322,7 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 
 	// instruct the agent to delete all associated ops
 	// this may get ops for which the agent has double-access, but they can just re-fetch them
-	rows, err := db.Query("SELECT opID FROM opteams WHERE teamID = ?", teamID)
+	rows, err := db.Query("SELECT opID FROM permissions WHERE teamID = ?", teamID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return err

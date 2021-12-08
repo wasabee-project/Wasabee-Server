@@ -12,7 +12,7 @@ func (o *Operation) PopulateTeams() error {
 	// start empty, trust only what is in the database
 	o.Teams = nil
 
-	rows, err := db.Query("SELECT teamID, permission, zone FROM opteams WHERE opID = ?", o.ID)
+	rows, err := db.Query("SELECT teamID, permission, zone FROM permissions WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return err
@@ -106,7 +106,7 @@ func (o OperationID) WriteAccess(gid GoogleID) bool {
 		return true
 	}
 
-	rows, err := db.Query("SELECT teamID FROM opteams WHERE opID = ? AND permission = ?", o, opPermRoleWrite)
+	rows, err := db.Query("SELECT teamID FROM permissions WHERE opID = ? AND permission = ?", o, opPermRoleWrite)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return false
@@ -220,7 +220,7 @@ func (o OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone
 	if opp != opPermRoleRead {
 		zone = ZoneAll
 	}
-	_, err = db.Exec("INSERT INTO opteams VALUES (?,?,?,?)", teamID, o, opp, zone)
+	_, err = db.Exec("INSERT INTO permissions VALUES (?,?,?,?)", teamID, o, opp, zone)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -237,13 +237,13 @@ func (o OperationID) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone 
 	}
 
 	if perm != opPermRoleRead {
-		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o, perm)
+		_, err := db.Exec("DELETE FROM permissions WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, o, perm)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
 	} else {
-		_, err := db.Exec("DELETE FROM opteams WHERE teamID = ? AND opID = ? AND permission = ? AND zone = ? LIMIT 1", teamID, o, perm, zone)
+		_, err := db.Exec("DELETE FROM permissions WHERE teamID = ? AND opID = ? AND permission = ? AND zone = ? LIMIT 1", teamID, o, perm, zone)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -255,7 +255,7 @@ func (o OperationID) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone 
 // Operations returns a slice containing all the OpPermissions which reference this team
 func (t TeamID) Operations() ([]OpPermission, error) {
 	var perms []OpPermission
-	rows, err := db.Query("SELECT opID, permission, zone FROM opteams WHERE teamID = ?", t)
+	rows, err := db.Query("SELECT opID, permission, zone FROM permissions WHERE teamID = ?", t)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return perms, err
@@ -283,7 +283,7 @@ func (t TeamID) Operations() ([]OpPermission, error) {
 // Teams returns a list of every team with access to this operation
 func (o OperationID) Teams() ([]TeamID, error) {
 	var teams []TeamID
-	rows, err := db.Query("SELECT teamID FROM opteams WHERE opID = ?", o)
+	rows, err := db.Query("SELECT teamID FROM permissions WHERE opID = ?", o)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return teams, err

@@ -231,6 +231,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 			if err != nil {
 				continue
 			}
+			tgid.UpdateName(new.UserName)
 			if err = teamID.AddAgent(gid); err != nil {
 				log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid)
 			}
@@ -239,7 +240,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 
 	if inMsg.Message.LeftChatMember != nil {
 		left := inMsg.Message.LeftChatMember
-		log.Debugw("left chat member", "tgid", left.ID, "tg", left.UserName)
+		log.Debugw("chat member left", "tgid", left.ID, "tg", left.UserName)
 		tgid := model.TelegramID(left.ID)
 		gid, err := tgid.Gid()
 		if err != nil {
@@ -316,7 +317,12 @@ func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	}
 
 	name, _ := gid.IngressName()
-	text := fmt.Sprintf("%s joined the linked team (%s)", name, teamID)
+	tmp, _ := gid.TelegramName()
+	if tmp != "" {
+		name = fmt.Sprint("@", tmp)
+	}
+
+	text := fmt.Sprintf("%s joined the linked team (%s): Please add them to this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
 		log.Error(err)
@@ -345,11 +351,19 @@ func RemoveFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		return err
 	}
 	name, _ := gid.IngressName()
-	text := fmt.Sprintf("%s left the linked team (%s)", name, teamID)
+	tmp, _ := gid.TelegramName()
+	if tmp != "" {
+		name = fmt.Sprint("@", tmp)
+	}
+
+	text := fmt.Sprintf("%s left the linked team (%s). Please remove them from this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
 		log.Error(err)
 		return err
 	}
+
+	// XXX ban agent from chat, unban 5 seconds later
+
 	return nil
 }

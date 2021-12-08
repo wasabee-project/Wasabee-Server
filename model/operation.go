@@ -83,7 +83,7 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 	// convert from RFC1123 to SQL format
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
-		log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
+		// log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
 		reftime = time.Now()
 	}
 
@@ -199,6 +199,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 }
 
 func drawOpUpdateWorker(o *Operation) error {
+	log.Debug("op update locking")
 	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
 		log.Error(err)
 		return err
@@ -207,6 +208,7 @@ func drawOpUpdateWorker(o *Operation) error {
 		if _, err := db.Exec("SELECT RELEASE_LOCK(?)", o.ID); err != nil {
 			log.Error(err)
 		}
+		log.Debug("op update unlocking")
 	}()
 
 	tx, err := db.Begin()
@@ -470,9 +472,7 @@ func (opID OperationID) IsDeletedOp() bool {
 // checks to see that either the gid created the operation or the gid is on the team assigned to the operation
 func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
-	r := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, referencetime FROM operation WHERE ID = ?", o.ID)
-	err := r.Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.ReferenceTime)
-
+	err := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, referencetime FROM operation WHERE ID = ?", o.ID).Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.ReferenceTime)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")
 		log.Errorw(err.Error(), "resource", o.ID, "GID", gid)
@@ -483,9 +483,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		return err
 	}
 
-	t := time.Now().UTC()
-	o.Fetched = fmt.Sprint(t.Format(time.RFC1123))
-
+	o.Fetched = fmt.Sprint(time.Now().UTC().Format(time.RFC1123))
 	// convert from SQL to RFC1123 for start time
 	st, err := time.ParseInLocation("2006-01-02 15:04:05", o.ReferenceTime, time.UTC)
 	if err != nil {
