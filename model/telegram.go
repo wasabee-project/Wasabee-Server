@@ -94,8 +94,18 @@ func (tgid TelegramID) InitAgent(name string, ott OneTimeToken) error {
 }
 
 // UpdateName is used to set an agent's telegram display name
-func (tgid TelegramID) UpdateName(name string) error {
+func (tgid TelegramID) SetName(name string) error {
 	_, err := db.Exec("UPDATE telegram SET telegramName = ? WHERE telegramID = ?", name, tgid)
+	if err != nil {
+		log.Info(err)
+		return err
+	}
+	return nil
+}
+
+// SetTelegramID adds a verified agent's telegram ID
+func (gid GoogleID) SetTelegramID(tgid TelegramID) error {
+	_, err := db.Exec("INSERT INTO telegram (telegramID, gid, verified) VALUES (?, ?, 1)", tgid, gid)
 	if err != nil {
 		log.Info(err)
 		return err

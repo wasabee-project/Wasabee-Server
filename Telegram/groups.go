@@ -231,7 +231,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 			if err != nil {
 				continue
 			}
-			tgid.UpdateName(new.UserName)
+			tgid.SetName(new.UserName)
 			if err = teamID.AddAgent(gid); err != nil {
 				log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid)
 			}
@@ -344,6 +344,16 @@ func RemoveFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		return nil
 	}
 	log.Debugw("RemoveFromChat called", "GID", gid, "teamID", teamID, "chatID", chatID)
+
+	tgid, err := gid.TelegramID()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if tgid == 0 {
+		log.Debug("agent does not have telegram", "gid", gid)
+		return nil
+	}
 
 	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
 	if err != nil {

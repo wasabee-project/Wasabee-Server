@@ -28,7 +28,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 
 	if gid == "" {
 		log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
-		fgid, err := runRocks(tgid)
+		fgid, err := firstlogin(tgid)
 		if fgid != "" && err == nil {
 			tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
@@ -69,7 +69,7 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid mod
 	// we don't get the name from the agent when verified via rocks, go ahead and update
 	if inMsg.Message.From.UserName != "" {
 		tgid := model.TelegramID(inMsg.Message.From.ID)
-		if err := tgid.UpdateName(inMsg.Message.From.UserName); err != nil {
+		if err := tgid.SetName(inMsg.Message.From.UserName); err != nil {
 			log.Error(err)
 		}
 	}

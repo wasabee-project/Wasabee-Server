@@ -166,7 +166,7 @@ func CommunitySync(msg json.RawMessage) error {
 	}
 
 	if rc.TGId > 0 && rc.TGName != "" {
-		rc.TGId.UpdateName(rc.TGName)
+		rc.TGId.SetName(rc.TGName)
 	}
 
 	return nil

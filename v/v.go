@@ -579,3 +579,48 @@ func BulkImport(gid model.GoogleID, mode string) error {
 
 	return nil
 }
+
+func TelegramSearch(tgid string) (*teamResult, error) {
+	var tr teamResult
+	if !vc.configured {
+		return &tr, nil
+	}
+
+	url := fmt.Sprintf("%s/search?apikey=%s&telegramid=%s", vc.APIEndpoint, vc.APIKey, tgid)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Error(err)
+		return &tr, err
+	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Debug(err)
+		err = fmt.Errorf("unable to search at V")
+		return &tr, err
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Error(err)
+		return &tr, err
+	}
+
+	log.Debug(string(body))
+	err = json.Unmarshal(body, &tr)
+	if err != nil {
+		log.Error(err)
+		return &tr, err
+	}
+	if tr.Status != "ok" {
+		err = fmt.Errorf(tr.Status)
+		log.Info(err)
+		return &tr, err
+	}
+	log.Debug(tr)
+	return &tr, nil
+}

@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -15,6 +14,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/templates"
+	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
 // TGConfiguration is the main configuration data for the Telegram interface
@@ -295,24 +295,52 @@ func SendTarget(g messaging.GoogleID, target messaging.Target) error {
 	return nil
 }
 
-// checks rocks based on tgid, Inits agent if found
-func runRocks(tgid model.TelegramID) (model.GoogleID, error) {
+// checks rocks/v based on tgid, Inits agent if found
+func firstlogin(tgid model.TelegramID) (model.GoogleID, error) {
 	agent, err := rocks.Search(fmt.Sprint(tgid))
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
-	if agent.Gid == "" {
-		return "", nil
+	if agent.Gid != "" {
+		gid := model.GoogleID(agent.Gid)
+		if !gid.Valid() {
+			if err := gid.FirstLogin(); err != nil {
+				log.Error(err)
+				return "", err
+			}
+		}
+		if err := gid.SetTelegramID(tgid); err != nil {
+			log.Error(err)
+			return gid, err
+		}
+		return gid, nil
 	}
-	gid := model.GoogleID(agent.Gid)
 
-	// add to main tables if necessary
-	_, err = auth.Authorize(gid)
+	result, err := v.TelegramSearch(fmt.Sprint(tgid))
 	if err != nil {
 		log.Error(err)
-		return gid, err
+		return "", err
+	}
+	if len(result.Agents) != 1 {
+		log.Error("too many results")
+		return "", nil
+	}
+	a := result.Agents[0]
+	if a.Gid != "" {
+		gid := model.GoogleID(a.Gid)
+		if !gid.Valid() {
+			if err := gid.FirstLogin(); err != nil {
+				log.Error(err)
+				return "", err
+			}
+		}
+		if err := gid.SetTelegramID(tgid); err != nil {
+			log.Error(err)
+			return gid, err
+		}
+		return gid, nil
 	}
 
-	return gid, nil
+	return "", nil
 }
