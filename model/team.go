@@ -23,7 +23,6 @@ type TeamData struct {
 	JoinLinkToken string       `json:"jlt,omitempty"`
 	VTeam         int64        `json:"vt,omitempty"`
 	VRole         int8         `json:"vr,omitempty"`
-	// telegramChannel int64
 }
 
 // TeamMember is the light version of AgentData, containing visible information exported to teams
@@ -222,7 +221,7 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 		name = team
 	}
 
-	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm, telegram, vteam, vrole) VALUES (?,?,?,NULL,NULL,NULL,0,0)", team, gid, name)
+	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm, vteam, vrole) VALUES (?,?,?,NULL,NULL,0,0)", team, gid, name)
 	if err != nil {
 		log.Error(err)
 		return "", err
@@ -632,31 +631,20 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 }
 
 // LinkToTelegramChat associates a telegram chat ID with the team, performs authorization
-func (teamID TeamID) LinkToTelegramChat(chat int64, gid GoogleID) error {
-	owns, err := gid.OwnsTeam(teamID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if !owns {
-		err = fmt.Errorf("only team owner can set telegram link")
-		log.Error(err)
-		return err
-	}
-
-	_, err = db.Exec("UPDATE team SET telegram = ? WHERE teamID = ?", chat, teamID)
+func (teamID TeamID) LinkToTelegramChat(chat TelegramID, opID OperationID) error {
+	_, err := db.Exec("REPLACE INTO telegramteam (teamID, telegram, opID) VALUES (?,?,?)", teamID, chat, MakeNullString(opID))
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	log.Infow("linked team to telegram", "GID", gid, "resource", teamID, "chatID", chat)
+	log.Infow("linked team to telegram", "resource", teamID, "chatID", chat, "opID", opID)
 	return nil
 }
 
 // UnlinkFromTelegramChat disassociates a telegram chat ID from the team -- not authenticated since bot removal from chat is enough
 func (teamID TeamID) UnlinkFromTelegramChat(chat int64) error {
-	_, err := db.Exec("UPDATE team SET telegram = NULL WHERE teamID = ? AND telegram = ?", teamID, chat)
+	_, err := db.Exec("DELETE FROM telegramteam WHERE teamID = ? AND telegram = ?", teamID, chat)
 	if err != nil {
 		log.Error(err)
 		return err

@@ -28,7 +28,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 
 	if gid == "" {
 		log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
-		fgid, err := firstlogin(tgid)
+		fgid, err := firstlogin(tgid, inMsg.Message.From.UserName)
 		if fgid != "" && err == nil {
 			tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp

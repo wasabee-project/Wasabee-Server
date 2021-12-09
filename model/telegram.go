@@ -72,11 +72,10 @@ func (gid GoogleID) TelegramName() (string, error) {
 // InitAgent establishes a new telegram user in the database and begins the verification process
 func (tgid TelegramID) InitAgent(name string, ott OneTimeToken) error {
 	authtoken := generatename.GenerateName()
-
 	gid, err := ott.Gid()
 	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf("location share key is not recognized")
-		log.Warnw(err.Error(), "resource", ott, "tgid", tgid, "name", name)
+		err = fmt.Errorf("token not recognized")
+		log.Debugw(err.Error(), "resource", ott, "tgid", tgid, "name", name)
 		return err
 	}
 	if err != nil {
@@ -104,8 +103,8 @@ func (tgid TelegramID) SetName(name string) error {
 }
 
 // SetTelegramID adds a verified agent's telegram ID
-func (gid GoogleID) SetTelegramID(tgid TelegramID) error {
-	_, err := db.Exec("INSERT INTO telegram (telegramID, gid, verified) VALUES (?, ?, 1)", tgid, gid)
+func (gid GoogleID) SetTelegramID(tgid TelegramID, name string) error {
+	_, err := db.Exec("INSERT INTO telegram (gid, telegramID, telegramName, verified) VALUES (?, ?, ?, 1)", gid, tgid, name)
 	if err != nil {
 		log.Info(err)
 		return err

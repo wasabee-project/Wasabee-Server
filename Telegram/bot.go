@@ -166,6 +166,8 @@ func newUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 		ott = model.OneTimeToken(strings.TrimSpace(inMsg.Message.Text))
 	}
 
+	log.Debugw("newUserInit", "text", inMsg.Message.Text)
+
 	tid := model.TelegramID(inMsg.Message.From.ID)
 	err := tid.InitAgent(inMsg.Message.From.UserName, ott)
 	if err != nil {
@@ -296,7 +298,7 @@ func SendTarget(g messaging.GoogleID, target messaging.Target) error {
 }
 
 // checks rocks/v based on tgid, Inits agent if found
-func firstlogin(tgid model.TelegramID) (model.GoogleID, error) {
+func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 	agent, err := rocks.Search(fmt.Sprint(tgid))
 	if err != nil {
 		log.Error(err)
@@ -310,37 +312,40 @@ func firstlogin(tgid model.TelegramID) (model.GoogleID, error) {
 				return "", err
 			}
 		}
-		if err := gid.SetTelegramID(tgid); err != nil {
+		if err := gid.SetTelegramID(tgid, name); err != nil {
 			log.Error(err)
 			return gid, err
 		}
+		// rocks success
 		return gid, nil
 	}
 
-	result, err := v.TelegramSearch(fmt.Sprint(tgid))
+	result, err := v.TelegramSearch(tgid)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
-	if len(result.Agents) != 1 {
-		log.Error("too many results")
-		return "", nil
+	if result.Gid != "" {
+		log.Debugw("v is fucking useless")
+		result.Gid, _ = model.GetGIDFromEnlID(result.EnlID)
 	}
-	a := result.Agents[0]
-	if a.Gid != "" {
-		gid := model.GoogleID(a.Gid)
+
+	if result.Gid != "" {
+		gid := model.GoogleID(result.Gid)
 		if !gid.Valid() {
 			if err := gid.FirstLogin(); err != nil {
 				log.Error(err)
 				return "", err
 			}
 		}
-		if err := gid.SetTelegramID(tgid); err != nil {
+		if err := gid.SetTelegramID(tgid, name); err != nil {
 			log.Error(err)
 			return gid, err
 		}
+		// v success
 		return gid, nil
 	}
 
+	// not found in either service
 	return "", nil
 }

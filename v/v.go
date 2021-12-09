@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -39,6 +40,11 @@ type trustResult struct {
 type teamResult struct {
 	Status string         `json:"status"`
 	Agents []model.VAgent `json:"data"`
+}
+
+type bulkResult struct {
+	Status string                            `json:"status"`
+	Agents map[model.TelegramID]model.VAgent `json:"data"`
 }
 
 // myTeams is what V returns when an agent's teams are requested
@@ -580,18 +586,19 @@ func BulkImport(gid model.GoogleID, mode string) error {
 	return nil
 }
 
-func TelegramSearch(tgid string) (*teamResult, error) {
-	var tr teamResult
+func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
+	var br bulkResult
 	if !vc.configured {
-		return &tr, nil
+		return &model.VAgent{}, nil
 	}
 
-	url := fmt.Sprintf("%s/search?apikey=%s&telegramid=%s", vc.APIEndpoint, vc.APIKey, tgid)
+	url := fmt.Sprintf("%s/bulk/agent/info/telegramid?apikey=%s", vc.APIEndpoint, vc.APIKey)
+	postdata := fmt.Sprintf("[%d]", tgid)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("POST", url, strings.NewReader(postdata))
 	if err != nil {
 		log.Error(err)
-		return &tr, err
+		return &model.VAgent{}, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -600,27 +607,27 @@ func TelegramSearch(tgid string) (*teamResult, error) {
 	if err != nil {
 		log.Debug(err)
 		err = fmt.Errorf("unable to search at V")
-		return &tr, err
+		return &model.VAgent{}, err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return &tr, err
+		return &model.VAgent{}, err
 	}
 
 	log.Debug(string(body))
-	err = json.Unmarshal(body, &tr)
+	err = json.Unmarshal(body, &br)
 	if err != nil {
 		log.Error(err)
-		return &tr, err
+		return &model.VAgent{}, err
 	}
-	if tr.Status != "ok" {
-		err = fmt.Errorf(tr.Status)
+	if br.Status != "ok" {
+		err = fmt.Errorf(br.Status)
 		log.Info(err)
-		return &tr, err
+		return &model.VAgent{}, err
 	}
-	log.Debug(tr)
-	return &tr, nil
+	a := br.Agents[tgid]
+	return &a, nil
 }

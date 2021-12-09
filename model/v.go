@@ -161,10 +161,21 @@ func (teamID TeamID) VConfigure(vteam int64, role uint8) error {
 
 func (gid GoogleID) VAPIkey() (string, error) {
 	var key string
-	err := db.QueryRow("SELECT VAPIkey FROM agentextras WHERE gid = ?", gid).Scan(&key)
+	err := db.QueryRow("SELECT VAPIkey FROM v WHERE gid = ?", gid).Scan(&key)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	return key, nil
+}
+
+func GetGIDFromEnlID(enlid string) (GoogleID, error) {
+	var gid GoogleID
+
+	err := db.QueryRow("SELECT gid FROM v WHERE enlid = ?", enlid).Scan(&gid)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return gid, err
+	}
+	return gid, nil
 }

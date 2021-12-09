@@ -40,10 +40,26 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 	switch inMsg.Message.Command() {
 	case "link":
 		tokens := strings.Split(inMsg.Message.Text, " ")
-		if len(tokens) == 2 {
+		if len(tokens) > 1 {
 			team := model.TeamID(strings.TrimSpace(tokens[1]))
-			log.Debugw("linking team and chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", team)
-			if err := team.LinkToTelegramChat(inMsg.Message.Chat.ID, gid); err != nil {
+			var opID model.OperationID
+			if len(tokens) == 3 {
+				opID = model.OperationID(strings.TrimSpace(tokens[2]))
+			}
+			log.Debugw("linking team and chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", team, "opID", opID)
+
+			owns, err := gid.OwnsTeam(team)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+			if !owns {
+				err = fmt.Errorf("only team owner can set telegram link")
+				log.Error(err)
+				return err
+			}
+
+			if err := team.LinkToTelegramChat(model.TelegramID(inMsg.Message.Chat.ID), opID); err != nil {
 				log.Error(err)
 				msg.Text = err.Error()
 				if _, err := bot.Send(msg); err != nil {
