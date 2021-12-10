@@ -75,7 +75,7 @@ func RocksFromDB(gid GoogleID) (*RocksAgent, time.Time, error) {
 		log.Error(err)
 		return &a, t, err
 	}
-	log.Debug("rocks from cache", "fetched", t, "data", a)
+	log.Debugw("rocks from cache", "fetched", t, "data", a)
 
 	return &a, t, nil
 }

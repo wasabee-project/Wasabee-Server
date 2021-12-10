@@ -24,32 +24,6 @@ type Task struct {
 	opID         OperationID
 }
 
-// enum for state values
-const (
-	taskStateUnassigned taskState = iota
-	taskStateAssigned
-	taskStateAcknowledged
-	taskStateCompleted
-)
-
-func (t taskState) String() string {
-	return [...]string{"Unassigned", "Assigned", "Acknowledged", "Completed"}[t]
-}
-
-func toTaskState(s string) taskState {
-	switch s {
-	case "pending":
-		return taskStateUnassigned
-	case "assigned":
-		return taskStateAssigned
-	case "acknowledged":
-		return taskStateAcknowledged
-	case "completed":
-		return taskStateCompleted
-	}
-	return taskStateUnassigned
-}
-
 // add/remove depends
 func (t *Task) AddDepend(task string) error {
 	// sanity checks
@@ -123,26 +97,22 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 	return tmp, nil
 }
 
-// Assign assigns a task to an agent
-func (t *Task) Assign(gs []GoogleID) error {
-	_, err := db.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID)
-	if err != nil {
-		log.Error(err)
-		return err
+// Assign assigns a task to an agent using a given transaction, if the transaction is nil, one is created for this block
+func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
+	needtx := false
+	if tx == nil {
+		needtx = true
+		tx, _ = db.Begin()
+
+		defer func() {
+			err := tx.Rollback()
+			if err != nil && err != sql.ErrTxDone {
+				log.Error(err)
+			}
+		}()
 	}
 
-	for _, gid := range gs {
-		_, err := db.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.ID, gid)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-	return nil
-}
-
-// AssignTX assigns a task to an agent using a given transaction
-func (t *Task) AssignTX(gs []GoogleID, tx *sql.Tx) error {
+	// we could be smarter and load the existing, then only add new, but this is fast and easy
 	_, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID)
 	if err != nil {
 		log.Error(err)
@@ -156,6 +126,14 @@ func (t *Task) AssignTX(gs []GoogleID, tx *sql.Tx) error {
 			return err
 		}
 	}
+
+	if needtx {
+		if err := tx.Commit(); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
 	return nil
 }
 

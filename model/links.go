@@ -73,7 +73,7 @@ func (opID OperationID) insertLink(l Link) error {
 		return err
 	}
 
-	err = l.Assign(l.Assignments)
+	err = l.Assign(l.Assignments, nil)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -133,7 +133,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 
 	if l.Changed && len(l.Assignments) > 0 {
 		messaging.SendAssignment(messaging.GoogleID(l.AssignedTo), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
-		err := l.AssignTX(l.Assignments, tx)
+		err := l.Assign(l.Assignments, tx)
 		if err != nil {
 			log.Error(err)
 			return err

@@ -358,7 +358,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 }
 
 func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool, tx *sql.Tx) error {
-	curLinks := make(map[LinkID]LinkID)
+	curLinks := make(map[LinkID]bool)
 	linkRows, err := tx.Query("SELECT ID FROM link WHERE OpID = ?", o.ID)
 	if err != nil {
 		log.Error(err)
@@ -372,7 +372,7 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 			log.Error(err)
 			continue
 		}
-		curLinks[lid] = lid
+		curLinks[lid] = true
 	}
 	for _, l := range o.Links {
 		_, ok := portalMap[l.From]
@@ -397,8 +397,7 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 		delete(curLinks, l.ID)
 	}
 	for k := range curLinks {
-		err = o.ID.deleteLink(k, tx)
-		if err != nil {
+		if err = o.ID.deleteLink(k, tx); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -411,13 +410,39 @@ func drawOpUpdateZones(o *Operation, tx *sql.Tx) error {
 	if len(o.Zones) == 0 {
 		o.Zones = defaultZones()
 	}
+
+	curZones := make(map[Zone]bool)
+	zoneRows, err := tx.Query("SELECT ID from zone WHERE OpID = ?", o.ID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	defer zoneRows.Close()
+	var zoneID Zone
+	for zoneRows.Next() {
+		err := zoneRows.Scan(&zoneID)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		curZones[zoneID] = true
+	}
+
 	// update and insert are the saem
 	for _, z := range o.Zones {
 		if err := o.insertZone(z, tx); err != nil {
 			log.Error(err)
 			continue
 		}
+		delete(curZones, z.Zone)
 	}
+	for k := range curZones {
+		if err = o.ID.deleteZone(k, tx); err != nil {
+			log.Error(err)
+			continue
+		}
+	}
+
 	return nil
 }
 

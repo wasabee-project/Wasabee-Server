@@ -10,7 +10,7 @@ import (
 )
 
 // TelegramID is a user ID from telegram
-type TelegramID int
+type TelegramID int32 // users are positive, chats are negative we only use users, this can be uint32
 
 func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 	var gid GoogleID

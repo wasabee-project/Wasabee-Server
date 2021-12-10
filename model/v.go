@@ -2,7 +2,6 @@ package model
 
 import (
 	"database/sql"
-	"strconv"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -29,7 +28,7 @@ type VAgent struct {
 	StartLat    float64  `json:"lat"`
 	StartLon    float64  `json:"lon"`
 	Distance    int64    `json:"distance"`
-	Roles       []int64  `json:"roles"`
+	Roles       []uint8  `json:"roles"`
 }
 
 // vToDB updates the database to reflect an agent's current status at V.
@@ -39,31 +38,13 @@ func VToDB(a *VAgent) error {
 		return nil
 	}
 
-	var tgid int64
-	if a.TelegramID != "" {
-		i, err := strconv.ParseInt(a.TelegramID, 10, 64)
-		if err != nil {
-			log.Error(err)
-		}
-		tgid = i
-	}
-
-	// telegram, startla, startlon, distance, fetched are not set on the "trust" API call.
-	_, err := db.Exec("REPLACE INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, telegramID, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())",
-		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.Cellid, a.Telegram, tgid, a.StartLat, a.StartLon, a.Distance)
+	// telegram, startlat, startlon, distance, fetched are not set on the "trust" API call.
+	// do not overwrite telegram if we happen to get it from another source
+	_, err := db.Exec("REPLACE INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())",
+		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.Cellid, a.StartLat, a.StartLon, a.Distance)
 	if err != nil {
 		log.Error(err)
 		return err
-	}
-
-	// these are never sent on a "trust" API call
-	// XXX I'm looking into what comes across on a search
-	if tgid > 0 { // negative numbers are group chats, 0 is invalid
-		// we trust .v to verify telegram info; if it is not already set for an agent, just import it.
-		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, telegramName, gid, verified) VALUES (?, ?, ?, 1)", tgid, a.Telegram, a.Gid); err != nil {
-			log.Error(err)
-			return err
-		}
 	}
 
 	return nil

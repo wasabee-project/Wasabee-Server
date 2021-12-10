@@ -82,7 +82,9 @@ func defaultZones() []ZoneListElement {
 }
 
 func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
+	needtx := false
 	if tx == nil {
+		needtx = true
 		tx, _ = db.Begin()
 
 		defer func() {
@@ -110,6 +112,13 @@ func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
 		// log.Debug("inserting point", "pos", p.Position, "zone", z.Zone, "op", o.ID)
 		_, err := tx.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, POINT(?, ?))", z.Zone, o.ID, p.Position, p.Lat, p.Lon)
 		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	if needtx {
+		if err := tx.Commit(); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -157,5 +166,18 @@ func (o *Operation) populateZones() error {
 		o.Zones = defaultZones()
 	}
 
+	return nil
+}
+
+func (o OperationID) deleteZone(z Zone, tx *sql.Tx) error {
+	if _, err := tx.Exec("DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o, z); err != nil {
+		log.Error(err)
+		// return err
+	}
+
+	if _, err := tx.Exec("DELETE FROM zone WHERE opID = ? AND ID = ?", o, z); err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }

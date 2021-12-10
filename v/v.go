@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -261,17 +262,16 @@ func Sync(teamID model.TeamID, key string) error {
 			}
 		}
 
-		/*
-			if role != 0 { // role 0 means "any"
-				for _, r := range agent.Roles {
-					if r == role {
-						atv[agent.Gid] = true
-						break
-					}
+		if role != 0 { // role 0 means "any"
+			for _, r := range agent.Roles {
+				if r == role {
+					atv[agent.Gid] = true
+					break
 				}
-			} else {
-				atv[agent.Gid] = true
-			} */
+			}
+		} else {
+			atv[agent.Gid] = true
+		}
 
 		// don't re-add them if already in the team
 		in, err := agent.Gid.AgentInTeam(teamID)
@@ -543,22 +543,20 @@ func BulkImport(gid model.GoogleID, mode string) error {
 	case "team":
 		teamstomake, err = processTeams(*teamsfromv)
 	default:
-		/*
-			id, err := strconv.ParseInt(mode, 10, 64)
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-			for _, t := range teamsfromv.Teams {
-				if int64(t.TeamID) == id {
-					teamstomake, err = processRoleSingleTeam(t, teams, key)
-					if err != nil {
-						return teamstomake, err
-					}
-					break
+		id, err := strconv.ParseInt(mode, 10, 64)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		for _, t := range teamsfromv.Teams {
+			if t.TeamID == VTeamID(id) {
+				teamstomake, err = processRoleSingleTeam(t, vteams, key)
+				if err != nil {
+					return err
 				}
+				break
 			}
-		*/
+		}
 	}
 	if err != nil {
 		log.Error(err)

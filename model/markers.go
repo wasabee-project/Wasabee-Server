@@ -54,7 +54,7 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.Assignments = append(m.Assignments, m.AssignedTo)
 	}
 
-	err = m.Assign(m.Assignments)
+	err = m.Assign(m.Assignments, nil)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -104,7 +104,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 			m.Assignments = append(m.Assignments, m.AssignedTo)
 		}
 
-		err = m.AssignTX(m.Assignments, tx)
+		err = m.Assign(m.Assignments, tx)
 		if err != nil {
 			log.Error(err)
 			return err

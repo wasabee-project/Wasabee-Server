@@ -40,18 +40,17 @@ type TeamMember struct {
 	RocksVerified bool     `json:"rocks"`
 	RocksSmurf    bool     `json:"smurf"`
 	IntelFaction  string   `json:"intelfaction"`
-	Squad         string   `json:"squad"`
-	State         bool     `json:"state"`
+	Comment       string   `json:"squad"`
+	ShareLocation bool     `json:"state"`
 	Lat           float64  `json:"lat"`
 	Lon           float64  `json:"lng"`
 	Date          string   `json:"date"`
-	Distance      float64  `json:"distance,omitempty"`
 	ShareWD       bool     `json:"shareWD"`
 	LoadWD        bool     `json:"loadWD"`
-	StartLat      float64  `json:"startlat"`
-	StartLon      float64  `json:"startlng"`
-	StartRadius   uint16   `json:"startradius"`
-	ShareStart    bool     `json:"sharestart"`
+	/* StartLat      float64  `json:"startlat,omitempty"` // unused
+	StartLon      float64  `json:"startlng,omitempty"` // unused
+	StartRadius   uint16   `json:"startradius,omitempty"` // unused
+	ShareStart    bool     `json:"sharestart,omitempty"` // unused */
 }
 
 // AgentInTeam checks to see if a agent is in a team and enabled.
@@ -89,7 +88,7 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
 		var enlID, vname, rocksname, intelname sql.NullString
 
-		err := rows.Scan(&tmpU.Gid, &vname, &intelname, &rocksname, &tmpU.Squad, &state, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &sharewd, &loadwd, &faction)
+		err := rows.Scan(&tmpU.Gid, &vname, &intelname, &rocksname, &tmpU.Comment, &state, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &sharewd, &loadwd, &faction)
 		if err != nil {
 			log.Error(err)
 			return &teamList, err
@@ -133,11 +132,11 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		}
 
 		if state == "On" {
-			tmpU.State = true
+			tmpU.ShareLocation = true
 			tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
 			tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
 		} else {
-			tmpU.State = false
+			tmpU.ShareLocation = false
 			tmpU.Lat = 0
 			tmpU.Lon = 0
 		}
