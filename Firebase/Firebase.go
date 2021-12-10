@@ -167,7 +167,7 @@ func rateLimitMapChange(teamID wasabee.TeamID) bool {
 	waituntil := rl.t.Add(3 * time.Second)
 	if now.Before(waituntil) {
 		rl.count++
-		wasabee.Log.Debugw("skipping map change firebase send to team", "subsystem", "Firebase", "resource", teamID, "skip count", rl.count)
+		// wasabee.Log.Debugw("skipping map change firebase send to team", "subsystem", "Firebase", "resource", teamID, "skip count", rl.count)
 		// add to a queue to send in 3 seconds
 		return false
 	}

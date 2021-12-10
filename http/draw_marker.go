@@ -336,3 +336,99 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	wasabee.Log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
+
+func drawMarkerDependAddRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to set dependency")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	marker := wasabee.MarkerID(vars["marker"])
+	if marker == "" {
+		err = fmt.Errorf("empty marker ID on depend add")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	task := vars["task"]
+	if task == "" {
+		err = fmt.Errorf("empty task ID on depend add")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	uid, err := marker.AddDepend(&op, task)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+
+func drawMarkerDependDelRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", jsonType)
+
+	gid, err := getAgentID(req)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// only the ID needs to be set for this
+	vars := mux.Vars(req)
+	var op wasabee.Operation
+	op.ID = wasabee.OperationID(vars["document"])
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("forbidden: write access required to set dependency")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	marker := wasabee.MarkerID(vars["marker"])
+	if marker == "" {
+		err = fmt.Errorf("empty marker ID on depend delete")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	task := vars["task"]
+	if task == "" {
+		err = fmt.Errorf("empty task on depend delete")
+		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+
+	uid, err := marker.DelDepend(&op, task)
+	if err != nil {
+		wasabee.Log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, jsonOKUpdateID(uid))
+}
+

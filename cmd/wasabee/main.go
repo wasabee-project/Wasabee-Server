@@ -13,7 +13,7 @@ import (
 	"github.com/urfave/cli"
 	"github.com/wasabee-project/Wasabee-Server"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
-	"github.com/wasabee-project/Wasabee-Server/PubSub"
+	// "github.com/wasabee-project/Wasabee-Server/PubSub"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/http"
@@ -248,10 +248,10 @@ func run(c *cli.Context) error {
 	// XXX should have CLI/env args for these
 	if creds != "" {
 		go wasabeefirebase.ServeFirebase(creds)
-		go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
+		/* go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
 			Cert:    creds,
 			Project: project,
-		})
+		}) */
 	}
 
 	// Serve Telegram
@@ -273,7 +273,7 @@ func run(c *cli.Context) error {
 	wasabee.Log.Infow("shutdown", "requested by signal", sig)
 	if creds == "" {
 		wasabee.FirebaseClose()
-		wasabee.PubSubClose()
+		// wasabee.PubSubClose()
 	}
 	if _, err := os.Stat(riscPath); err == nil {
 		risc.DisableWebhook()
