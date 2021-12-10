@@ -199,7 +199,7 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 }
 
 func drawOpUpdateWorker(o *Operation) error {
-	log.Debug("op update locking")
+	// log.Debug("op update locking")
 	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
 		log.Error(err)
 		return err
@@ -208,7 +208,7 @@ func drawOpUpdateWorker(o *Operation) error {
 		if _, err := db.Exec("SELECT RELEASE_LOCK(?)", o.ID); err != nil {
 			log.Error(err)
 		}
-		log.Debug("op update unlocking")
+		// log.Debug("op update unlocking")
 	}()
 
 	tx, err := db.Begin()

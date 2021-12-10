@@ -14,7 +14,7 @@ type taskState uint8
 
 // Task is the imported things for markers and links
 type Task struct {
-	TaskID       TaskID     `json:"task"`
+	ID           TaskID     `json:"task"`
 	Assignments  []GoogleID `json:"assignments"`
 	DependsOn    []TaskID   `json:"dependsOn"`
 	Zone         Zone       `json:"zone"`
@@ -29,7 +29,7 @@ type Task struct {
 func (t *Task) AddDepend(task string) error {
 	// sanity checks
 
-	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.TaskID, task)
+	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, task)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -40,7 +40,7 @@ func (t *Task) AddDepend(task string) error {
 func (t *Task) DelDepend(task string) error {
 	// sanity checks
 
-	_, err := db.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ? AND dependsOn = ?", t.opID, t.TaskID, task)
+	_, err := db.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ? AND dependsOn = ?", t.opID, t.ID, task)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -51,7 +51,7 @@ func (t *Task) DelDepend(task string) error {
 func (t *Task) Depends() ([]TaskID, error) {
 	tmp := make([]TaskID, 0)
 
-	rows, err := db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ? ORDER BY dependsOn", t.opID, t.TaskID)
+	rows, err := db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ? ORDER BY dependsOn", t.opID, t.ID)
 	if err != nil {
 		log.Error(err)
 		return tmp, err
@@ -65,7 +65,7 @@ func (t *Task) Depends() ([]TaskID, error) {
 			log.Error(err)
 			continue
 		}
-		log.Infow("task depends found", "taskID", t.TaskID, "dependsOn", tt)
+		log.Infow("task depends found", "taskID", t.ID, "dependsOn", tt)
 
 		tmp = append(tmp, tt)
 	}
@@ -76,13 +76,13 @@ func (t *Task) Depends() ([]TaskID, error) {
 func (t *Task) GetAssignments() ([]GoogleID, error) {
 	tmp := make([]GoogleID, 0)
 
-	if t.TaskID == "" {
+	if t.ID == "" {
 		err := fmt.Errorf("unset taskID")
 		log.Error(err)
 		return tmp, err
 	}
 
-	rows, err := db.Query("SELECT gid FROM assignments WHERE opID = ? AND taskID = ? ORDER BY gid", t.opID, t.TaskID)
+	rows, err := db.Query("SELECT gid FROM assignments WHERE opID = ? AND taskID = ? ORDER BY gid", t.opID, t.ID)
 	if err != nil {
 		log.Error(err)
 		return tmp, err
@@ -96,7 +96,7 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 			log.Error(err)
 			continue
 		}
-		log.Debugw("task assignment found", "taskID", t.TaskID, "assigned to", g)
+		// log.Debugw("task assignment found", "taskID", t.ID, "assigned to", g)
 
 		tmp = append(tmp, g)
 	}
@@ -120,14 +120,17 @@ func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
 	}
 
 	// we could be smarter and load the existing, then only add new, but this is fast and easy
-	_, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.TaskID, t.opID)
+	_, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
 	for _, gid := range gs {
-		_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.TaskID, gid)
+		if gid == "" {
+			continue
+		}
+		_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.ID, gid)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -148,7 +151,7 @@ func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
 func (t *Task) IsAssignedTo(gid GoogleID) bool {
 	var x int
 
-	err := db.QueryRow("SELECT COUNT(*) FROM assignments WHERE opID = ? AND taskID = ? AND gid = ?", t.opID, t.TaskID, gid).Scan(&x)
+	err := db.QueryRow("SELECT COUNT(*) FROM assignments WHERE opID = ? AND taskID = ? AND gid = ?", t.opID, t.ID, gid).Scan(&x)
 	if err != nil {
 		log.Error(err)
 		return false
@@ -178,7 +181,7 @@ func (t *Task) Reject(gid GoogleID) error {
 
 // Delta sets the DeltaMinutes of a link in an operation
 func (t *Task) SetDelta(delta int) error {
-	_, err := db.Exec("UPDATE link SET delta = ? WHERE ID = ? and opID = ?", delta, t.TaskID, t.opID)
+	_, err := db.Exec("UPDATE link SET delta = ? WHERE ID = ? and opID = ?", delta, t.ID, t.opID)
 	if err != nil {
 		log.Error(err)
 	}
@@ -187,7 +190,7 @@ func (t *Task) SetDelta(delta int) error {
 
 // Comment sets the comment on a task
 func (t *Task) SetComment(desc string) error {
-	_, err := db.Exec("UPDATE task SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(desc), t.TaskID, t.opID)
+	_, err := db.Exec("UPDATE task SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(desc), t.ID, t.opID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -197,7 +200,7 @@ func (t *Task) SetComment(desc string) error {
 
 // Zone updates the marker's zone
 func (t *Task) SetZone(z Zone) error {
-	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, t.TaskID, t.opID); err != nil {
+	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}

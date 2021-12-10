@@ -152,14 +152,14 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 			log.Error(err)
 			continue
 		}
-		// inherit
-		tmpMarker.TaskID = TaskID(tmpMarker.ID)
+		// fill in shadowed ID
+		tmpMarker.Task.ID = TaskID(tmpMarker.ID)
 
 		if tmpMarker.State == "" { // enums in sql default to "" if invalid, WTF?
 			tmpMarker.State = "pending"
 		}
 
-		log.Debugw("marker ID", "id", tmpMarker.ID)
+		// log.Debugw("marker ID", "id", tmpMarker.ID)
 
 		tmpMarker.Assignments, err = tmpMarker.GetAssignments()
 		if err != nil {
@@ -167,10 +167,9 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 			return err
 		}
 		if len(tmpMarker.Assignments) > 0 {
-			log.Debugw("assignments", "marker", tmpMarker.ID, "assignments", tmpMarker.Assignments)
+			// log.Debugw("assignments", "marker", tmpMarker.ID, "assignments", tmpMarker.Assignments)
 			tmpMarker.AssignedTo = tmpMarker.Assignments[0]
 		} else {
-			log.Debugw("no assignments", "marker", tmpMarker.ID, "assignments", tmpMarker.Assignments)
 			tmpMarker.AssignedTo = ""
 		}
 

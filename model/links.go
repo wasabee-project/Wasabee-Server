@@ -162,7 +162,7 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			log.Error(err)
 			continue
 		}
-		tmpLink.TaskID = TaskID(tmpLink.ID)
+		tmpLink.Task.ID = TaskID(tmpLink.ID)
 
 		if description.Valid {
 			tmpLink.Desc = description.String
@@ -177,7 +177,7 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			continue
 		}
 		if len(tmpLink.Assignments) > 0 {
-			log.Debug("link assignment", "taskID", tmpLink.TaskID, "assignments", tmpLink.Assignments)
+			// log.Debugw("link assignment", "taskID", tmpLink.TaskID, "assignments", tmpLink.Assignments)
 			tmpLink.AssignedTo = tmpLink.Assignments[0]
 		} else {
 			tmpLink.AssignedTo = ""
