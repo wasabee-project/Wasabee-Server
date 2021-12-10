@@ -57,8 +57,9 @@ func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	var fetched string
 	var t time.Time
 	var vlevel, vpoints sql.NullInt64
+	var telegram sql.NullString
 
-	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &a.TelegramID, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
+	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &telegram, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return &a, t, err
@@ -77,6 +78,9 @@ func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	}
 	if vpoints.Valid {
 		a.Vpoints = vpoints.Int64
+	}
+	if telegram.Valid {
+		a.Telegram = telegram.String
 	}
 
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)

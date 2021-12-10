@@ -162,16 +162,25 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			log.Error(err)
 			continue
 		}
+		tmpLink.TaskID = TaskID(tmpLink.ID)
+
 		if description.Valid {
 			tmpLink.Desc = description.String
 			tmpLink.Comment = description.String
 		} else {
 			tmpLink.Desc = ""
 		}
+
 		tmpLink.Assignments, err = tmpLink.GetAssignments()
 		if err != nil {
 			log.Error(err)
 			continue
+		}
+		if len(tmpLink.Assignments) > 0 {
+			log.Debug("link assignment", "taskID", tmpLink.TaskID, "assignments", tmpLink.Assignments)
+			tmpLink.AssignedTo = tmpLink.Assignments[0]
+		} else {
+			tmpLink.AssignedTo = ""
 		}
 
 		// this isn't in a zone with which we are concerned AND not assigned to me, skip

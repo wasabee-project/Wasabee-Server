@@ -75,7 +75,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	assignmentChanged := false
 	if m.AssignedTo != "" {
 		var count uint8
-		err := tx.QueryRow("SELECT COUNT(*) FROM marker WHERE ID = ? AND opID = ? AND gid = ?", m.ID, opID, m.AssignedTo).Scan(&count)
+		err := tx.QueryRow("SELECT COUNT(*) FROM task WHERE ID = ? AND opID = ? AND gid = ?", m.ID, opID, m.AssignedTo).Scan(&count)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -152,14 +152,25 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 			log.Error(err)
 			continue
 		}
+		// inherit
+		tmpMarker.TaskID = TaskID(tmpMarker.ID)
+
 		if tmpMarker.State == "" { // enums in sql default to "" if invalid, WTF?
 			tmpMarker.State = "pending"
 		}
 
+		log.Debugw("marker ID", "id", tmpMarker.ID)
+
 		tmpMarker.Assignments, err = tmpMarker.GetAssignments()
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 		if len(tmpMarker.Assignments) > 0 {
+			log.Debugw("assignments", "marker", tmpMarker.ID, "assignments", tmpMarker.Assignments)
 			tmpMarker.AssignedTo = tmpMarker.Assignments[0]
 		} else {
+			log.Debugw("no assignments", "marker", tmpMarker.ID, "assignments", tmpMarker.Assignments)
 			tmpMarker.AssignedTo = ""
 		}
 

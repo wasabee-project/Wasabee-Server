@@ -94,9 +94,9 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 		return err
 	}
 
-	portalMap := make(map[PortalID]Portal)
+	portalMap := make(map[PortalID]bool)
 	for _, p := range o.OpPortals {
-		portalMap[p.ID] = p
+		portalMap[p.ID] = true
 		if err = o.ID.insertPortal(p); err != nil {
 			log.Error(err)
 			continue
@@ -275,7 +275,7 @@ func drawOpUpdateWorker(o *Operation) error {
 
 func drawOpUpdatePortals(o *Operation, tx *sql.Tx) (map[PortalID]Portal, error) {
 	// get the current portal list and stash in map
-	curPortals := make(map[PortalID]PortalID)
+	curPortals := make(map[PortalID]bool)
 	portalRows, err := tx.Query("SELECT ID FROM portal WHERE OpID = ?", o.ID)
 	if err != nil {
 		log.Error(err)
@@ -289,7 +289,7 @@ func drawOpUpdatePortals(o *Operation, tx *sql.Tx) (map[PortalID]Portal, error) 
 			log.Error(err)
 			continue
 		}
-		curPortals[pid] = pid
+		curPortals[pid] = true
 	}
 	// update/add portals that were sent in the update
 	portalMap := make(map[PortalID]Portal)
@@ -312,7 +312,7 @@ func drawOpUpdatePortals(o *Operation, tx *sql.Tx) (map[PortalID]Portal, error) 
 }
 
 func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap map[GoogleID]bool, tx *sql.Tx) error {
-	curMarkers := make(map[MarkerID]MarkerID)
+	curMarkers := make(map[MarkerID]bool)
 	markerRows, err := tx.Query("SELECT ID FROM marker WHERE OpID = ?", o.ID)
 	if err != nil {
 		log.Error(err)
@@ -326,7 +326,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 			log.Error(err)
 			continue
 		}
-		curMarkers[mid] = mid
+		curMarkers[mid] = true
 	}
 	// add/update markers sent in this update
 	for _, m := range o.Markers {
