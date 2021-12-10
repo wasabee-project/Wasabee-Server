@@ -45,6 +45,16 @@ func (opID OperationID) insertLink(l Link) error {
 		Log.Error(err)
 		return err
 	}
+
+	for _, d := range l.DependsOn {
+		// Log.Infow("link depend set POST", "link", l.ID, "depends on", d)
+		_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)",
+			opID, l.ID, d)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -79,6 +89,15 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		opID.firebaseAssignLink(l.AssignedTo, l.ID, "assigned", "")
 	}
 
+	for _, d := range l.DependsOn {
+		// Log.Infow("link depend set PUT", "link", l.ID, "depends on", d)
+		_, err := tx.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)",
+			opID, l.ID, d)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -115,6 +134,9 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 		if !tmpLink.Zone.inZones(zones) && tmpLink.AssignedTo != inGid {
 			continue
 		}
+
+		tmpLink.DependsOn, _ = tmpLink.ID.Depends(o)
+
 		o.Links = append(o.Links, tmpLink)
 	}
 	return nil
@@ -393,4 +415,52 @@ func (l LinkID) Claim(o *Operation, gid GoogleID) (string, error) {
 	}
 
 	return l.Assign(o, gid)
+}
+
+func (l LinkID) AddDepend(o *Operation, task string) (string, error) {
+	// sanity checks
+
+	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", o.ID, l, task)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return o.Touch()
+}
+
+func (l LinkID) DelDepend(o *Operation, task string) (string, error) {
+	// sanity checks
+
+	_, err := db.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ? AND dependsOn = ?", o.ID, l, task)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return o.Touch()
+}
+
+func (l LinkID) Depends(o *Operation) ([]TaskID, error) {
+	tmp := make([]TaskID, 0)
+
+	var err error
+	var rows *sql.Rows
+
+	rows, err = db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ? ORDER BY dependsOn", o.ID, l)
+	if err != nil {
+		Log.Error(err)
+		return tmp, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t TaskID
+		err := rows.Scan(&t)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		// Log.Infow("link depends found", "taskID", l, "dependsOn", t)
+		tmp = append(tmp, t)
+	}
+	return tmp, nil
 }

@@ -82,7 +82,9 @@ func defaultZones() []ZoneListElement {
 }
 
 func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
+	needtx := false
 	if tx == nil {
+		needtx = true
 		tx, _ = db.Begin()
 
 		defer func() {
@@ -109,6 +111,14 @@ func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
 	for _, p := range z.Points {
 		// Log.Debug("inserting point", "pos", p.Position, "zone", z.Zone, "op", o.ID)
 		_, err := tx.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, POINT(?, ?))", z.Zone, o.ID, p.Position, p.Lat, p.Lon)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+	}
+
+	if needtx {
+		err := tx.Commit()
 		if err != nil {
 			Log.Error(err)
 			return err

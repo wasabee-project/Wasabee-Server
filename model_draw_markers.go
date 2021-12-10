@@ -69,7 +69,7 @@ func (opID OperationID) insertMarker(m Marker) error {
 	}
 
 	for _, d := range m.DependsOn {
-		Log.Debugw("marker depends set", "marker", m.ID, "depends on", d)
+		Log.Infow("marker depends set", "marker", m.ID, "depends on", d)
 		_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)",
 			opID, m.ID, d)
 		if err != nil {
@@ -115,14 +115,14 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		opID.firebaseAssignMarker(m.AssignedTo, m.ID, m.State, "")
 	}
 
-	_, err = db.Exec("DELETE FROM markerattributes WHERE opID = ? AND markerID = ?", opID, m.ID)
+	_, err = tx.Exec("DELETE FROM markerattributes WHERE opID = ? AND markerID = ?", opID, m.ID)
 	if err != nil {
 		Log.Error(err)
 		return err
 	}
 	for _, ma := range m.Attributes {
 		Log.Debugw("marker attributes set", "attribute", ma)
-		_, err := db.Exec("INSERT INTO markerattributes (ID, opID, markerID, assignedTo, name, value) VALUES (?, ?, ?, ?, ?, ?)",
+		_, err := tx.Exec("INSERT INTO markerattributes (ID, opID, markerID, assignedTo, name, value) VALUES (?, ?, ?, ?, ?, ?)",
 			ma.ID, opID, m.ID, ma.AssignedTo, ma.Key, ma.Value)
 		if err != nil {
 			Log.Error(err)
@@ -130,14 +130,9 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		}
 	}
 
-	_, err = db.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ?", opID, m.ID)
-	if err != nil {
-		Log.Error(err)
-		return err
-	}
 	for _, d := range m.DependsOn {
-		Log.Debugw("marker depends set", "marker", m.ID, "depends on", d)
-		_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)",
+		Log.Infow("marker depends set", "marker", m.ID, "depends on", d)
+		_, err := tx.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)",
 			opID, m.ID, d)
 		if err != nil {
 			Log.Error(err)
@@ -209,6 +204,8 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 		if tmpMarker.DependsOn, err = tmpMarker.ID.populateDepends(o.ID); err != nil {
 			Log.Error(err)
 		}
+
+		tmpMarker.DependsOn, _ = tmpMarker.ID.Depends(o)
 
 		o.Markers = append(o.Markers, tmpMarker)
 	}
@@ -529,4 +526,52 @@ func NewMarkerType(old MarkerType) string {
 		return "virus"
 	}
 	return old.String()
+}
+
+func (m MarkerID) AddDepend(o *Operation, task string) (string, error) {
+	// sanity checks
+
+	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", o.ID, m, task)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return o.Touch()
+}
+
+func (m MarkerID) DelDepend(o *Operation, task string) (string, error) {
+	// sanity checks
+
+	_, err := db.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ? AND dependsOn = ?", o.ID, m, task)
+	if err != nil {
+		Log.Error(err)
+		return "", err
+	}
+	return o.Touch()
+}
+
+func (m MarkerID) Depends(o *Operation) ([]TaskID, error) {
+	tmp := make([]TaskID, 0)
+
+	var err error
+	var rows *sql.Rows
+
+	rows, err = db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ? ORDER BY dependsOn", o.ID, m)
+	if err != nil {
+		Log.Error(err)
+		return tmp, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t TaskID
+		err := rows.Scan(&t)
+		if err != nil {
+			Log.Error(err)
+			continue
+		}
+		// Log.Infow("marker depends found", "taskID", m, "dependsOn", t)
+		tmp = append(tmp, t)
+	}
+	return tmp, nil
 }

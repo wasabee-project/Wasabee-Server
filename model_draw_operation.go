@@ -219,6 +219,11 @@ func drawOpUpdateWorker(o *Operation) error {
 		}
 	}()
 
+	_, err = tx.Exec("DELETE FROM depends WHERE opID = ?", o.ID)
+	if err != nil {
+		Log.Error(err)
+	}
+
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
 		// Log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
@@ -264,7 +269,6 @@ func drawOpUpdateWorker(o *Operation) error {
 		return err
 	}
 
-	// XXX TBD remove unused opkey portals?
 	return nil
 }
 
