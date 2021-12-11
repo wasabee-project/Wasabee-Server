@@ -37,18 +37,7 @@ func meRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	agent.QueryToken = formValidationToken(req)
 
-	/* if !wantsJSON(req) {
-		res.Header().Delete("Content-Type")
-		// templateExecute runs the "me" template and outputs directly to the res
-		if err = templateExecute(res, req, "me", agent); err != nil {
-			log.Error(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} */
-
 	data, _ := json.Marshal(agent)
-
 	fmt.Fprint(res, string(data))
 }
 
@@ -228,7 +217,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// XXX delete the session cookie from the browser
-	http.Redirect(res, req, "/", http.StatusPermanentRedirect)
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
