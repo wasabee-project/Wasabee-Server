@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/lestrrat-go/jwx/jwt"
+
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -36,6 +38,7 @@ type Agent struct {
 	IntelFaction string `json:"intelfaction"`
 	QueryToken   string `json:"querytoken"`
 	VAPIkey      string `json:"vapi"`
+	JWT          jwt.Token `json:"jwt,omitempty"`
 }
 
 // AdTeam is a sub-struct of Agent
