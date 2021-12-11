@@ -11,8 +11,11 @@ import (
 	"net/http"
 	// "net/http/httputil"
 	"time"
+	"os"
 
 	"github.com/gorilla/sessions"
+
+	"github.com/lestrrat-go/jwx/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
@@ -114,7 +117,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
 	location := fmt.Sprintf("%s?r=%s", me, h)
-	log.Infow("WebUI login", "GID", m.Gid, "name", name, "message", name+" WebUI login")
+	log.Infow("direct login", "GID", m.Gid, "name", name, "message", name+" WebUI login")
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		if rr[:len(me)] == me || rr[:len(login)] == login {
@@ -254,6 +257,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	contents, err := getOauthUserInfo(t.AccessToken)
 	if err != nil {
+		log.Info(err)
 		err = fmt.Errorf("aptok failed getting agent info from Google")
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -332,6 +336,9 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	agent.QueryToken = formValidationToken(req)
+	hostname, _ := os.Hostname()
+	agent.JWT, err = jwt.NewBuilder().IssuedAt(time.Now()).Subject(string(m.Gid)).Issuer(hostname).Audience([]string{"wasabee"}).Build()
+
 	data, err := json.Marshal(agent)
 	if err != nil {
 		log.Error(err)
@@ -355,8 +362,9 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, string(data))
 }
 
-// the user must first log in to the web interface -- satisfying the google pull for InitAgent to get this token
-// which they use to log in via Wasabee-IITC
+// the user must first log in to the web interface to get this token
+// which they use to log in via Wasabee-IITC or Wasabee-Mobile
+// in the future can this bee the JWT value?
 func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
