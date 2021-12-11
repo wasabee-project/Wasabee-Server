@@ -17,14 +17,13 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v0.6.2 // indirect
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/go-telegram-bot-api/telegram-bot-api v1.0.1-0.20200729154208-fb8759e91dfc
-	github.com/goccy/go-json v0.8.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/jonstaryuk/gcloudzap v0.1.1
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lestrrat-go/jwx v1.2.12
+	github.com/lestrrat-go/jwx v1.2.13 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/unrolled/logger v0.0.0-20201216141554-31a3694fe979
 	github.com/urfave/cli v1.22.5
