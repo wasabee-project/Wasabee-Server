@@ -456,7 +456,8 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(res, req, me, http.StatusFound)
+	// http.Redirect(res, req, me, http.StatusFound)
+	fmt.Fprint(res, jsonStatusOK) // draw pretty screen
 }
 
 func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
