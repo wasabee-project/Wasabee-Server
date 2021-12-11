@@ -21,7 +21,7 @@ type VAgent struct {
 	Verified    bool     `json:"verified"`
 	Flagged     bool     `json:"flagged"`
 	Banned      bool     `json:"banned_by_nia"`
-	Cellid      string   `json:"cellid"`
+	CellID      string   `json:"cellid"`
 	TelegramID  string   `json:"telegramid"` // is this really an int?
 	Telegram    string   `json:"telegram"`
 	Email       string   `json:"email"`
@@ -41,7 +41,7 @@ func VToDB(a *VAgent) error {
 	// telegram, startlat, startlon, distance, fetched are not set on the "trust" API call.
 	// do not overwrite telegram if we happen to get it from another source
 	_, err := db.Exec("REPLACE INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())",
-		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.Cellid, a.StartLat, a.StartLon, a.Distance)
+		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.CellID, a.StartLat, a.StartLon, a.Distance)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -57,9 +57,9 @@ func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	var fetched string
 	var t time.Time
 	var vlevel, vpoints sql.NullInt64
-	var telegram sql.NullString
+	var telegram, cellid sql.NullString
 
-	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &a.Cellid, &telegram, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
+	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &cellid, &telegram, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return &a, t, err
@@ -81,6 +81,9 @@ func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	}
 	if telegram.Valid {
 		a.Telegram = telegram.String
+	}
+	if cellid.Valid {
+		a.CellID = cellid.String
 	}
 
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
