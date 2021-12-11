@@ -281,6 +281,7 @@ func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
+/*
 func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["document"]
@@ -334,8 +335,8 @@ func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 			break
 		}
 	}
-	http.Redirect(res, req, url, http.StatusFound)
-}
+	http.Redirect(res, req, url, http.StatusFound) // commented out
+} */
 
 func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
