@@ -94,16 +94,17 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 		return ad, err
 	}
 
-	// use intel name if nothing else is valid
+	a.Name = fmt.Sprint("UnverifiedAgent_", gid)
+
 	if a.IntelName != "" {
 		a.Name = a.IntelName // last choice
-	} else {
-		a.Name = fmt.Sprint("UnverifiedAgent_", gid)
 	}
 
 	if rocksname.Valid {
 		a.RocksName = rocksname.String
-		a.Name = rocksname.String // second choice
+		if rocksname.String != "-hidden-" {
+			a.Name = rocksname.String // second choice
+		}
 	}
 
 	if vname.Valid {
@@ -299,8 +300,8 @@ func (gid GoogleID) SetLocation(lat, lon string) error {
 // IngressName returns an agent's name for a given GoogleID.
 // returns err == sql.ErrNoRows if there is no such agent.
 func (gid GoogleID) IngressName() (string, error) {
-	var name string
-	var rocksname, vname, intelname sql.NullString
+	var name, intelname string
+	var rocksname, vname sql.NullString
 	err := db.QueryRow("SELECT rocks.agent, v.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &vname, &intelname)
 
 	if err != nil && err == sql.ErrNoRows {
@@ -315,10 +316,10 @@ func (gid GoogleID) IngressName() (string, error) {
 
 	name = fmt.Sprint("UnverifiedAgent_", gid)
 
-	if intelname.Valid {
-		name = intelname.String
+	if intelname != "" {
+		name = intelname
 	}
-	if rocksname.Valid {
+	if rocksname.Valid && rocksname.String != "-hidden-" {
 		name = rocksname.String
 	}
 	if vname.Valid {

@@ -86,9 +86,9 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		var state, lat, lon, sharewd, loadwd string
 		var faction IntelFaction
 		var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-		var enlID, vname, rocksname, intelname sql.NullString
+		var enlID, vname, rocksname sql.NullString
 
-		err := rows.Scan(&tmpU.Gid, &vname, &intelname, &rocksname, &tmpU.Comment, &state, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &sharewd, &loadwd, &faction)
+		err := rows.Scan(&tmpU.Gid, &vname, &tmpU.IntelName, &rocksname, &tmpU.Comment, &state, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &sharewd, &loadwd, &faction)
 		if err != nil {
 			log.Error(err)
 			return &teamList, err
@@ -96,14 +96,15 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 
 		tmpU.Name = fmt.Sprint("UnverifiedAgent_" + tmpU.Gid)
 
-		if intelname.Valid {
-			tmpU.IntelName = intelname.String
-			tmpU.Name = intelname.String
+		if tmpU.IntelName != "" {
+			tmpU.Name = tmpU.IntelName
 		}
 
 		if rocksname.Valid {
 			tmpU.RocksName = rocksname.String
-			tmpU.Name = rocksname.String
+			if rocksname.String != "-hidden-" {
+				tmpU.Name = rocksname.String
+			}
 		}
 
 		if vname.Valid {
@@ -417,7 +418,7 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	var tm TeamMember
 
 	var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-	var level, enlID, vname, rocksname, intelname sql.NullString
+	var level, enlID, vname, rocksname sql.NullString
 	var ifac IntelFaction
 
 	gid, err := id.Gid()
@@ -434,14 +435,15 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 
 	tm.Name = fmt.Sprint("UnverifiedAgent_" + tm.Gid)
 
-	if intelname.Valid {
-		tm.IntelName = intelname.String
-		tm.Name = intelname.String
+	if tm.IntelName != "" {
+		tm.Name = tm.IntelName
 	}
 
 	if rocksname.Valid {
 		tm.RocksName = rocksname.String
-		tm.Name = rocksname.String
+		if rocksname.String != "-hidden-" {
+			tm.Name = rocksname.String
+		}
 	}
 
 	if vname.Valid {
