@@ -1,9 +1,12 @@
 package config
 
 import (
+	// "context"
+	// "encoding/json"
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -20,6 +23,8 @@ type WasabeeConf struct {
 		APIpath string
 		Router  *mux.Router
 	}
+	JWSigningKeys jwk.Set
+	JWParsingKeys jwk.Set
 }
 
 var once sync.Once
@@ -76,4 +81,41 @@ func TGSetBot(name string, id int) {
 
 func TGRunning() bool {
 	return c.Telegram.ID != 0
+}
+
+func SetupJWK(signers, parsers string) error {
+	log.Debugw("Loading JWK signing keys", "path", signers)
+
+	k, err := jwk.ReadFile(signers)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	c.JWSigningKeys = k
+	log.Debugw("loaded signer keys", "count", k.Len())
+
+	/*
+		for iter := k.Iterate(context.TODO()); iter.Next(context.TODO()); {
+			x := iter.Pair()
+			log.Debugw("jwk signer", "key", x)
+		}
+	*/
+
+	log.Debugw("Loading JWK parsing keys", "path", parsers)
+	k, err = jwk.ReadFile(parsers)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	c.JWParsingKeys = k
+	log.Debugw("loaded parsing keys", "count", k.Len())
+
+	/*
+		for iter := k.Iterate(context.TODO()); iter.Next(context.TODO()); {
+			x := iter.Pair()
+			log.Debugw("jwk parser", "key", x)
+		}
+	*/
+
+	return nil
 }

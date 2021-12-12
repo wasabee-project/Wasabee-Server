@@ -14,6 +14,8 @@ import (
 
 	"golang.org/x/oauth2"
 	//"golang.org/x/oauth2/google"
+	"github.com/lestrrat-go/jwx/jws"
+	"github.com/lestrrat-go/jwx/jwt"
 
 	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/auth"
@@ -259,6 +261,36 @@ func logRequestMW(next http.Handler) http.Handler {
 
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		req.Header.Del("X-Wasabee-GID") // don't allow spoofing
+
+		if h := req.Header.Get("Authorization"); h != "" {
+			x := strings.TrimSpace(strings.TrimPrefix(h, "Bearer"))
+			tst, err := jws.ParseString(x)
+			log.Debugw("jws", "payload", string(tst.Payload()))
+
+			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true))
+			// jwt.WithKeySet(config.Get().JWParsingKeys))
+			if err != nil {
+				// log.Debugw("auth header", "value", req.Header.Get("Authorization"))
+				log.Info(err)
+				http.Error(res, err.Error(), http.StatusUnauthorized)
+				return
+			}
+			// log.Infow("JWT", "value", token)
+
+			if err := jwt.Validate(token, jwt.WithAudience("wasabee")); err != nil {
+				log.Info(err)
+				http.Error(res, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			// pass the GoogleID around so subsequent functions can easily access it
+			req.Header.Set("X-Wasabee-GID", token.Subject())
+			next.ServeHTTP(res, req)
+			return
+		}
+
+		// no JWT, use legacy cookie
 		ses, err := c.store.Get(req, c.sessionName)
 		if err != nil {
 			log.Error(err)
@@ -290,7 +322,7 @@ func authMW(next http.Handler) http.Handler {
 
 		gid := model.GoogleID(id.(string))
 		if auth.CheckLogout(gid) {
-			log.Debugw("honoring previously requested logout", "GID", gid.String())
+			log.Debugw("honoring previously requested logout", "gid", gid)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			ses.Options = &sessions.Options{
@@ -305,7 +337,7 @@ func authMW(next http.Handler) http.Handler {
 
 		in, ok := ses.Values["nonce"]
 		if !ok || in == nil {
-			log.Errorw("gid set, but no nonce", "GID", gid.String())
+			log.Errorw("gid set, but no nonce", "GID", gid)
 			redirectOrError(res, req)
 			return
 		}
@@ -314,7 +346,7 @@ func authMW(next http.Handler) http.Handler {
 		if in.(string) != nonce {
 			res.Header().Set("Connection", "close")
 			if in.(string) != pNonce {
-				// log.Debugw("session timed out", "GID", gid.String())
+				// log.Debugw("session timed out", "gid", gid)
 				ses.Values["nonce"] = "unset"
 			} else {
 				ses.Values["nonce"] = nonce
@@ -326,6 +358,8 @@ func authMW(next http.Handler) http.Handler {
 			redirectOrError(res, req)
 			return
 		}
+
+		req.Header.Set("X-Wasabee-GID", gid.String())
 		next.ServeHTTP(res, req)
 	})
 }

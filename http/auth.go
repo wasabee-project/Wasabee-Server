@@ -10,35 +10,35 @@ import (
 	"io/ioutil"
 	"net/http"
 	// "net/http/httputil"
-	"time"
 	"os"
+	"time"
 
 	"github.com/gorilla/sessions"
 
+	"github.com/lestrrat-go/jwx/jwa"
+	// "github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 // final step of the oauth cycle
 func callbackRoute(res http.ResponseWriter, req *http.Request) {
-	type googleData struct {
-		Gid   model.GoogleID `json:"id"`
-		Name  string         `json:"name"`
-		Email string         `json:"email"`
-		Pic   string         `json:"picture"`
-	}
-
 	content, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
-	var m googleData
+	var m struct {
+		Gid model.GoogleID `json:"id"`
+		Pic string         `json:"picture"`
+	}
 	if err = json.Unmarshal(content, &m); err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -192,37 +192,27 @@ func getOauthUserInfo(accessToken string) ([]byte, error) {
 	return body, nil
 }
 
-// read the gid from the session cookie and return it
-// this is the primary way to ensure a agent is authenticated
 func getAgentID(req *http.Request) (model.GoogleID, error) {
-	ses, err := c.store.Get(req, c.sessionName)
-	if err != nil {
-		return "", err
+	// X-Wasabee-GID header set in authMW
+	if x := req.Header.Get("X-Wasabee-GID"); x != "" {
+		return model.GoogleID(x), nil
 	}
 
-	if ses.Values["id"] == nil {
-		err := errors.New("getAgentID called for unauthenticated agent")
-		log.Error(err)
-		return "", err
-	}
-
-	var agentID = model.GoogleID(ses.Values["id"].(string))
-	return agentID, nil
+	err := errors.New("getAgentID called for unauthenticated agent")
+	log.Error(err)
+	return "", err
 }
 
 // apTokenRoute receives a Google Oauth2 token from the Android/iOS app and sets the authentication cookie
 func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
-	// fetched from google
-	type googleData struct {
-		Gid   model.GoogleID `json:"id"`
-		Name  string         `json:"name"`
-		Email string         `json:"email"`
-		Pic   string         `json:"picture"`
-	}
-	var m googleData
 
-	// passed in from Android/iOS app
+	var m struct {
+		Gid model.GoogleID `json:"id"`
+		Pic string         `json:"picture"`
+	}
+
+	// passed in from the clients
 	type token struct {
 		AccessToken string `json:"accessToken"`
 		BadAT       string `json:"access_token"` // some APIs use this name, have it here for logging
@@ -248,8 +238,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
-	jRaw := json.RawMessage(jBlob)
-	if err = json.Unmarshal(jRaw, &t); err != nil {
+	if err = json.Unmarshal(json.RawMessage(jBlob), &t); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -336,8 +325,14 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	agent.QueryToken = formValidationToken(req)
-	hostname, _ := os.Hostname()
-	agent.JWT, err = jwt.NewBuilder().IssuedAt(time.Now()).Subject(string(m.Gid)).Issuer(hostname).Audience([]string{"wasabee"}).Build()
+
+	agent.JWT, err = genjwt(m.Gid)
+
+	if err != nil {
+		log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	data, err := json.Marshal(agent)
 	if err != nil {
@@ -347,11 +342,13 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Infow("iitc/app login",
-		"GID", m.Gid,
-		"name", name,
+		"gid", m.Gid,
+		"agent", name,
 		"message", name+" login",
 		"client", req.Header.Get("User-Agent"),
 	)
+
+	// notify other teams of agent login
 	for _, t := range m.Gid.TeamListEnabled() {
 		wfb.AgentLogin(t, m.Gid)
 	}
@@ -360,6 +357,49 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Cache-Control", "no-store")
 
 	fmt.Fprint(res, string(data))
+}
+
+func genjwt(gid model.GoogleID) (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+
+	// XXX use last, rather than first?
+	key, ok := config.Get().JWSigningKeys.Get(0)
+	if !ok {
+		return "", fmt.Errorf("encryption jwk not set")
+	}
+
+	keyid, ok := key.Get("kid")
+	if ok {
+		log.Debug("using kid: ", keyid.(string), " to sign this token")
+	}
+
+	jwts, err := jwt.NewBuilder().
+		IssuedAt(time.Now()).
+		Subject(string(gid)).
+		Issuer(hostname).
+		JwtID(generatename.GenerateID(16)).
+		Audience([]string{"wasabee"}).
+		Expiration(time.Now().Add(time.Hour * 24 * 7)).
+		Build()
+
+	if err != nil {
+		return "", err
+	}
+
+	// hdrs := jws.NewHeaders()
+	// hdrs.Set("jku", "https://cdn2.wasabee.rocks/.well-known/jku.json")
+
+	signed, err := jwt.Sign(jwts, jwa.RS256, key) // , jwt.WithHeaders(hdrs))
+	if err != nil {
+		return "", err
+	}
+
+	// log.Infow("jwt", "signed", string(signed[:]))
+
+	return string(signed[:]), nil
 }
 
 // the user must first log in to the web interface to get this token
