@@ -56,10 +56,11 @@ func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	}
 	var fetched string
 	var t time.Time
-	var vlevel, vpoints sql.NullInt64
+	var vlevel, vpoints, distance sql.NullInt64
 	var telegram, cellid sql.NullString
+	var startlat, startlon sql.NullFloat64
 
-	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &cellid, &telegram, &a.StartLat, &a.StartLon, &a.Distance, &fetched)
+	err := db.QueryRow("SELECT enlid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, telegram, startlat, startlon, distance, fetched FROM v WHERE gid = ?", gid).Scan(&a.EnlID, &vlevel, &vpoints, &a.Agent, &a.Level, &a.Quarantine, &a.Active, &a.Blacklisted, &a.Verified, &a.Flagged, &a.Banned, &cellid, &telegram, &startlat, &startlon, &distance, &fetched)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return &a, t, err
@@ -85,13 +86,22 @@ func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	if cellid.Valid {
 		a.CellID = cellid.String
 	}
+	if startlat.Valid {
+		a.StartLat = startlat.Float64
+	}
+	if startlon.Valid {
+		a.StartLon = startlon.Float64
+	}
+	if distance.Valid {
+		a.Distance = distance.Int64
+	}
 
 	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
 	if err != nil {
 		log.Error(err)
 		// return &a, t, err
 	}
-	log.Debugw("VFromDB", "gid", gid, "fetched", fetched, "data", a)
+	// log.Debugw("VFromDB", "gid", gid, "fetched", fetched, "data", a)
 	return &a, t, nil
 }
 

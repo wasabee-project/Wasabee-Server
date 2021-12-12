@@ -333,7 +333,7 @@ func Authorize(gid model.GoogleID) bool {
 		return true
 	}
 
-	log.Debugw("rocks from cache", "gid", gid, "data", a)
+	// log.Debugw("rocks from cache", "gid", gid, "data", a)
 	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
 		net, err := Search(string(gid))
 		if err != nil {

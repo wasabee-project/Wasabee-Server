@@ -360,7 +360,7 @@ func Authorize(gid model.GoogleID) bool {
 		return true
 	}
 
-	log.Debugw("v from cache", "gid", gid, "data", a, "fetched", fetched)
+	// log.Debugw("v from cache", "gid", gid, "data", a, "fetched", fetched)
 
 	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
 		net, err := trustCheck(gid)

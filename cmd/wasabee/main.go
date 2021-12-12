@@ -95,6 +95,9 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "enlrocksstatusurl", EnvVar: "ENLROCKS_STATUS_URL", Value: "",
 		Usage: "enl.rocks Status API URL. Defaults to the enl.rocks well-known URL"},
+	cli.StringFlag{
+		Name: "jwkpath", EnvVar: "JWK_PATH", Value: "certs/jwk.json",
+		Usage: "file containing the json-encoded JWK used to encrypt the JWT"},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output"},
@@ -207,6 +210,11 @@ func run(c *cli.Context) error {
 	/* if c.String("enlrockscommurl") != "" {
 		rocks.Config.CommunityEndpoint = c.String("enlrockscommurl")
 	} */
+
+	if c.String("jwkpath") != "" {
+		// eventually the parsing keys will be centerally stored
+		config.SetupJWK(c.String("jwkpath"), c.String("jwkpath"))
+	}
 
 	// Serve HTTPS
 	if c.String("https") != "none" {
