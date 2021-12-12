@@ -94,22 +94,14 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 			return &teamList, err
 		}
 
-		tmpU.Name = fmt.Sprint("UnverifiedAgent_" + tmpU.Gid)
+		tmpU.Name = tmpU.Gid.bestname(tmpU.IntelName, vname, rocksname)
 
-		if tmpU.IntelName != "" {
-			tmpU.Name = tmpU.IntelName
+		if vname.Valid {
+			tmpU.VName = vname.String
 		}
 
 		if rocksname.Valid {
 			tmpU.RocksName = rocksname.String
-			if rocksname.String != "-hidden-" {
-				tmpU.Name = rocksname.String
-			}
-		}
-
-		if vname.Valid {
-			tmpU.VName = vname.String
-			tmpU.Name = vname.String
 		}
 
 		if enlID.Valid {
@@ -433,22 +425,14 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 		return nil, err
 	}
 
-	tm.Name = fmt.Sprint("UnverifiedAgent_" + tm.Gid)
+	tm.Name = tm.Gid.bestname(tm.IntelName, vname, rocksname)
 
-	if tm.IntelName != "" {
-		tm.Name = tm.IntelName
+	if vname.Valid {
+		tm.VName = vname.String
 	}
 
 	if rocksname.Valid {
 		tm.RocksName = rocksname.String
-		if rocksname.String != "-hidden-" {
-			tm.Name = rocksname.String
-		}
-	}
-
-	if vname.Valid {
-		tm.VName = vname.String
-		tm.Name = vname.String
 	}
 
 	if enlID.Valid {
