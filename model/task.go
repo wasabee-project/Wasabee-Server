@@ -160,22 +160,57 @@ func (t *Task) IsAssignedTo(gid GoogleID) bool {
 }
 
 func (t *Task) Claim(gid GoogleID) error {
+	_, err := db.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	_, err = db.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES (?,?,?)", t.opID, t.ID, gid)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
 func (t *Task) Complete(gid GoogleID) error {
+	_, err := db.Exec("UPDATE task SET state = 'completed' WHERE ID = ? AND opID = ?", t.ID, t.opID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
 func (t *Task) Incomplete(gid GoogleID) error {
+	_, err := db.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
 func (t *Task) Acknowledge(gid GoogleID) error {
+	_, err := db.Exec("UPDATE task SET state = 'acknowledged' WHERE ID = ? AND opID = ?", t.ID, t.opID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
 func (t *Task) Reject(gid GoogleID) error {
+	_, err := db.Exec("UPDATE task SET state = 'pending' WHERE ID = ? AND opID = ?", t.ID, t.opID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	_, err = db.Exec("DELETE FROM assignments WHERE opID = ? AND taskID = ? AND gid = ?", t.opID, t.ID, gid)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
