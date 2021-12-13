@@ -641,17 +641,17 @@ func (teamID TeamID) UnlinkFromTelegramChat(chat int64) error {
 
 // TelegramChat returns the associated telegram chat ID for this team, if any
 func (teamID TeamID) TelegramChat() (int64, error) {
-	var chatID sql.NullInt64
+	var chatID int64
 
-	err := db.QueryRow("SELECT telegram FROM team WHERE teamID = ?", teamID).Scan(&chatID)
+	err := db.QueryRow("SELECT telegram FROM telegramteam WHERE teamID = ?", teamID).Scan(&chatID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
-		return int64(0), err
+		return chatID, err
 	}
-	if err == sql.ErrNoRows || !chatID.Valid {
-		return int64(0), nil
+	if err == sql.ErrNoRows {
+		return chatID, nil
 	}
-	return chatID.Int64, nil
+	return chatID, nil
 }
 
 // ChatToTeam takes a chatID and returns a linked teamID

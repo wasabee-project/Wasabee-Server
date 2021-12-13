@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/oauth2"
 	//"golang.org/x/oauth2/google"
-	"github.com/lestrrat-go/jwx/jws"
+	// "github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 
 	"github.com/gorilla/sessions"
@@ -224,7 +224,7 @@ func headersMW(next http.Handler) http.Handler {
 		res.Header().Add("Access-Control-Allow-Origin", ref)
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
-		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match")
+		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match, Authorization")
 		next.ServeHTTP(res, req)
 	})
 }
@@ -264,22 +264,31 @@ func authMW(next http.Handler) http.Handler {
 		req.Header.Del("X-Wasabee-GID") // don't allow spoofing
 
 		if h := req.Header.Get("Authorization"); h != "" {
-			x := strings.TrimSpace(strings.TrimPrefix(h, "Bearer"))
-			tst, err := jws.ParseString(x)
-			log.Debugw("jws", "payload", string(tst.Payload()))
 
-			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true))
-			// jwt.WithKeySet(config.Get().JWParsingKeys))
+			/* x := strings.TrimSpace(strings.TrimPrefix(h, "Bearer"))
+			tst, err := jws.ParseString(x)
+			// log.Debugw("jws", "payload", string(tst.Payload()), "signatures", tst.Signatures())
+			for _, v := range tst.Signatures() {
+				log.Debugw("jws signatures", "protected", v.ProtectedHeaders())
+			}
+
+			// log.Debugw("parsing JWT with keys", "count", config.Get().JWParsingKeys.Len(), "keys", config.Get().JWParsingKeys)
+			for iter := config.Get().JWParsingKeys.Iterate(context.TODO()); iter.Next(context.TODO()); {
+				k := iter.Pair()
+				log.Debug("parsing key", "k", k)
+			} */
+
+			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.Get().JWParsingKeys))
 			if err != nil {
-				// log.Debugw("auth header", "value", req.Header.Get("Authorization"))
 				log.Info(err)
 				http.Error(res, err.Error(), http.StatusUnauthorized)
 				return
 			}
-			// log.Infow("JWT", "value", token)
 
+			// expiration is implicit
 			if err := jwt.Validate(token, jwt.WithAudience("wasabee")); err != nil {
-				log.Info(err)
+				sub, _ := token.Get("sub")
+				log.Infow("JWT validate failed", "error", err, "sub", sub)
 				http.Error(res, err.Error(), http.StatusUnauthorized)
 				return
 			}

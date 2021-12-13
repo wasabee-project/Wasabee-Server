@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/sessions"
 
 	"github.com/lestrrat-go/jwx/jwa"
-	// "github.com/lestrrat-go/jwx/jws"
+	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
@@ -102,6 +102,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	j, _ := mintjwt(m.Gid)
+	log.Debugw("minted jwt for testing", "jwt", j)
+
 	for _, t := range m.Gid.TeamListEnabled() {
 		wfb.AgentLogin(t, m.Gid)
 	}
@@ -117,7 +120,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
 	location := fmt.Sprintf("%s?r=%s", me, h)
-	log.Infow("direct login", "GID", m.Gid, "name", name, "message", name+" WebUI login")
+	log.Infow("legacy login", "GID", m.Gid, "name", name, "message", name+" legacy login")
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
 		if rr[:len(me)] == me || rr[:len(login)] == login {
@@ -326,7 +329,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	agent.QueryToken = formValidationToken(req)
 
-	agent.JWT, err = genjwt(m.Gid)
+	agent.JWT, err = mintjwt(m.Gid)
 
 	if err != nil {
 		log.Error(err)
@@ -359,7 +362,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, string(data))
 }
 
-func genjwt(gid model.GoogleID) (string, error) {
+func mintjwt(gid model.GoogleID) (string, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return "", err
@@ -371,10 +374,8 @@ func genjwt(gid model.GoogleID) (string, error) {
 		return "", fmt.Errorf("encryption jwk not set")
 	}
 
-	keyid, ok := key.Get("kid")
-	if ok {
-		log.Debug("using kid: ", keyid.(string), " to sign this token")
-	}
+	// keyid, ok := key.Get("kid")
+	// if ok { log.Debug("using kid: ", keyid.(string), " to sign this token") }
 
 	jwts, err := jwt.NewBuilder().
 		IssuedAt(time.Now()).
@@ -384,21 +385,20 @@ func genjwt(gid model.GoogleID) (string, error) {
 		Audience([]string{"wasabee"}).
 		Expiration(time.Now().Add(time.Hour * 24 * 7)).
 		Build()
-
 	if err != nil {
 		return "", err
 	}
 
-	// hdrs := jws.NewHeaders()
-	// hdrs.Set("jku", "https://cdn2.wasabee.rocks/.well-known/jku.json")
+	// let consumers know where to get the keys if they want to verify
+	hdrs := jws.NewHeaders()
+	hdrs.Set("jku", "https://cdn2.wasabee.rocks/.well-known/jwks.json")
 
-	signed, err := jwt.Sign(jwts, jwa.RS256, key) // , jwt.WithHeaders(hdrs))
+	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {
 		return "", err
 	}
 
 	// log.Infow("jwt", "signed", string(signed[:]))
-
 	return string(signed[:]), nil
 }
 

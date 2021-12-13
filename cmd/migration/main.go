@@ -1,10 +1,10 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"strings"
-	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -59,10 +59,10 @@ func run(c *cli.Context) error {
 	}
 
 	logconf := log.LogConfiguration{
-		Console:            true,
-		ConsoleLevel:       zap.InfoLevel,
-		FilePath:           c.String("log"),
-		FileLevel:          zap.InfoLevel,
+		Console:      true,
+		ConsoleLevel: zap.InfoLevel,
+		FilePath:     c.String("log"),
+		FileLevel:    zap.InfoLevel,
 	}
 	if c.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel

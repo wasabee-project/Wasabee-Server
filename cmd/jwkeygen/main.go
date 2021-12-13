@@ -3,8 +3,8 @@ package main
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"fmt"
 	"encoding/json"
+	"fmt"
 
 	"github.com/lestrrat-go/jwx/jwk"
 

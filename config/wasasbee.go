@@ -1,7 +1,7 @@
 package config
 
 import (
-	// "context"
+	"context"
 	// "encoding/json"
 	"sync"
 
@@ -84,38 +84,33 @@ func TGRunning() bool {
 }
 
 func SetupJWK(signers, parsers string) error {
+	var err error
 	log.Debugw("Loading JWK signing keys", "path", signers)
 
-	k, err := jwk.ReadFile(signers)
+	c.JWSigningKeys, err = jwk.ReadFile(signers)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	c.JWSigningKeys = k
-	log.Debugw("loaded signer keys", "count", k.Len())
+	log.Debugw("loaded signer keys", "count", c.JWSigningKeys.Len())
 
-	/*
-		for iter := k.Iterate(context.TODO()); iter.Next(context.TODO()); {
-			x := iter.Pair()
-			log.Debugw("jwk signer", "key", x)
-		}
-	*/
+	for iter := c.JWSigningKeys.Iterate(context.TODO()); iter.Next(context.TODO()); {
+		x := iter.Pair()
+		log.Debugw("jwk signer", "key", x)
+	}
 
 	log.Debugw("Loading JWK parsing keys", "path", parsers)
-	k, err = jwk.ReadFile(parsers)
+	c.JWParsingKeys, err = jwk.ReadFile(parsers)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	c.JWParsingKeys = k
-	log.Debugw("loaded parsing keys", "count", k.Len())
+	log.Debugw("loaded parsing keys", "count", c.JWParsingKeys.Len())
 
-	/*
-		for iter := k.Iterate(context.TODO()); iter.Next(context.TODO()); {
-			x := iter.Pair()
-			log.Debugw("jwk parser", "key", x)
-		}
-	*/
+	for iter := c.JWParsingKeys.Iterate(context.TODO()); iter.Next(context.TODO()); {
+		x := iter.Pair()
+		log.Debugw("jwk parser", "key", x)
+	}
 
 	return nil
 }

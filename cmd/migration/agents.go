@@ -26,7 +26,7 @@ func doAgents() {
 			log.Panic(err)
 		}
 
-		_, err = new.Exec("REPLACE INTO locations (gid, loc) VALUES (?, POINT(0,0))", gid, )
+		_, err = new.Exec("REPLACE INTO locations (gid, loc) VALUES (?, POINT(0,0))", gid)
 		if err != nil {
 			log.Panic(err)
 		}

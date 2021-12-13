@@ -7,12 +7,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+
+	"github.com/lestrrat-go/jwx/jwa"
+	// "github.com/lestrrat-go/jwx/jwk"
+	"github.com/lestrrat-go/jwx/jws"
+	"github.com/lestrrat-go/jwx/jwt"
+
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -333,4 +342,70 @@ func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprint(res, jsonStatusOK)
+}
+
+func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	log.Infow("refrehing JWT", "GID", gid)
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	key, ok := config.Get().JWSigningKeys.Get(0)
+	if !ok {
+		err := fmt.Errorf("encryption jwk not set")
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.Get().JWParsingKeys))
+	if err != nil {
+		log.Info(err)
+		http.Error(res, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	jwtid := token.JwtID()
+
+	jwts, err := jwt.NewBuilder().
+		IssuedAt(time.Now()).
+		Subject(string(gid)).
+		Issuer(hostname).
+		JwtID(jwtid).
+		Audience([]string{"wasabee"}).
+		Expiration(time.Now().Add(time.Hour * 24 * 7)).
+		Build()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// let consumers know where to get the keys if they want to verify
+	hdrs := jws.NewHeaders()
+	hdrs.Set("jku", "https://cdn2.wasabee.rocks/.well-known/jwks.json")
+
+	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// log.Infow("jwt", "signed", string(signed[:]))
+
+	s := fmt.Sprintf("{\"status\":\"ok\", \"jwk\":\"%s\"}", string(signed[:]))
+	log.Infow("jwt", "signed", s)
+	fmt.Fprint(res, s)
 }
