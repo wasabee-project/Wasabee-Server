@@ -75,7 +75,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	assignmentChanged := false
 	if m.AssignedTo != "" {
 		var count uint8
-		err := tx.QueryRow("SELECT COUNT(*) FROM task WHERE ID = ? AND opID = ? AND gid = ?", m.ID, opID, m.AssignedTo).Scan(&count)
+		err := tx.QueryRow("SELECT COUNT(*) FROM assignments WHERE ID = ? AND opID = ? AND gid = ?", m.ID, opID, m.AssignedTo).Scan(&count)
 		if err != nil {
 			log.Error(err)
 			return err

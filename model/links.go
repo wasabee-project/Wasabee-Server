@@ -19,7 +19,7 @@ type Link struct {
 	To         PortalID `json:"toPortalId"`
 	Desc       string   `json:"description"`   // deprecated, use Comment from Task
 	AssignedTo GoogleID `json:"assignedTo"`    // deprecated, use Assignments from Task
-	ThrowOrder int32    `json:"throwOrderPos"` // deprecated, use Order from Task
+	ThrowOrder int16    `json:"throwOrderPos"` // deprecated, use Order from Task
 	Completed  bool     `json:"completed"`     // deprecated, use State from Task
 	Color      string   `json:"color"`
 	MuCaptured int      `json:"mu"`
@@ -45,7 +45,7 @@ func (opID OperationID) insertLink(l Link) error {
 		l.Comment = l.Desc
 	}
 	if l.ThrowOrder != 0 {
-		l.Order = uint16(l.ThrowOrder)
+		l.Order = int16(l.ThrowOrder)
 	}
 	if l.AssignedTo != "" {
 		l.Assignments = append(l.Assignments, l.AssignedTo)
@@ -106,7 +106,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		l.Comment = l.Desc
 	}
 	if l.ThrowOrder != 0 {
-		l.Order = uint16(l.ThrowOrder)
+		l.Order = int16(l.ThrowOrder)
 	}
 	if l.AssignedTo != "" {
 		l.Assignments = append(l.Assignments, l.AssignedTo)

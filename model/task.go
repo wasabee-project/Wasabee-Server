@@ -10,8 +10,6 @@ import (
 // TaskID
 type TaskID string
 
-type taskState uint8
-
 // Task is the imported things for markers and links
 type Task struct {
 	ID           TaskID     `json:"task"`
@@ -21,7 +19,7 @@ type Task struct {
 	DeltaMinutes int32      `json:"deltaminutes"`
 	State        string     `json:"state"`
 	Comment      string     `json:"comment"`
-	Order        uint16     `json:"order"`
+	Order        int16      `json:"order"`
 	opID         OperationID
 }
 
@@ -137,6 +135,16 @@ func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
 		}
 	}
 
+	state := "assigned"
+	if len(gs) == 0 {
+		state = "pending"
+	}
+	_, err = tx.Exec("UPDATE task SET state = ? WHERE ID = ? AND opID = ?", state, t.ID, t.opID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	if needtx {
 		if err := tx.Commit(); err != nil {
 			log.Error(err)
@@ -233,11 +241,37 @@ func (t *Task) SetComment(desc string) error {
 	return nil
 }
 
-// Zone updates the marker's zone
+// SetZone updates the task's zone
 func (t *Task) SetZone(z Zone) error {
-	if _, err := db.Exec("UPDATE marker SET zone = ? WHERE ID = ? AND opID = ?", z, t.ID, t.opID); err != nil {
+	if _, err := db.Exec("UPDATE task SET zone = ? WHERE ID = ? AND opID = ?", z, t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
+}
+
+// SetOrder updates the task'sorder
+func (t *Task) SetOrder(order int16) error {
+	if _, err := db.Exec("UPDATE task SET order = ? WHERE ID = ? AND opID = ?", order, t.ID, t.opID); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// GetTask lookup and return a populated Task from an id
+func (o *Operation) GetTask(taskID TaskID) (*Task, error) {
+	for _, m := range o.Markers {
+		if m.Task.ID == taskID {
+			return &m.Task, nil
+		}
+	}
+
+	for _, l := range o.Links {
+		if l.Task.ID == taskID {
+			return &l.Task, nil
+		}
+	}
+
+	return &Task{}, fmt.Errorf("task not found")
 }
