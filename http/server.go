@@ -264,20 +264,6 @@ func authMW(next http.Handler) http.Handler {
 		req.Header.Del("X-Wasabee-GID") // don't allow spoofing
 
 		if h := req.Header.Get("Authorization"); h != "" {
-
-			/* x := strings.TrimSpace(strings.TrimPrefix(h, "Bearer"))
-			tst, err := jws.ParseString(x)
-			// log.Debugw("jws", "payload", string(tst.Payload()), "signatures", tst.Signatures())
-			for _, v := range tst.Signatures() {
-				log.Debugw("jws signatures", "protected", v.ProtectedHeaders())
-			}
-
-			// log.Debugw("parsing JWT with keys", "count", config.Get().JWParsingKeys.Len(), "keys", config.Get().JWParsingKeys)
-			for iter := config.Get().JWParsingKeys.Iterate(context.TODO()); iter.Next(context.TODO()); {
-				k := iter.Pair()
-				log.Debug("parsing key", "k", k)
-			} */
-
 			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.Get().JWParsingKeys))
 			if err != nil {
 				log.Info(err)
@@ -285,7 +271,9 @@ func authMW(next http.Handler) http.Handler {
 				return
 			}
 
-			// expiration is implicit
+			// expiration validation is implicit
+			// XXX make sure JwtID is not on the "revoked" list -- in a way that doesn't hit the database too hard
+			// XXX make sure the GID is valid -- in a way that doesn't hit the database too hard
 			if err := jwt.Validate(token, jwt.WithAudience("wasabee")); err != nil {
 				sub, _ := token.Get("sub")
 				log.Infow("JWT validate failed", "error", err, "sub", sub)
@@ -293,8 +281,18 @@ func authMW(next http.Handler) http.Handler {
 				return
 			}
 
+			gid := model.GoogleID(token.Subject()) // to db intensive?
+			if !gid.Valid() {
+				err := gid.FirstLogin() // token minted on another server, never logged in to this server
+				if err != nil {
+					log.Info(err)
+					http.Error(res, err.Error(), http.StatusUnauthorized)
+					return
+				}
+			}
+
 			// pass the GoogleID around so subsequent functions can easily access it
-			req.Header.Set("X-Wasabee-GID", token.Subject())
+			req.Header.Set("X-Wasabee-GID", string(gid))
 			next.ServeHTTP(res, req)
 			return
 		}

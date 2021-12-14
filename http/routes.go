@@ -110,16 +110,13 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependAddRoute).Methods("PUT")
 	r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependDelRoute).Methods("DELETE")
+	//
 	r.HandleFunc("/draw/{document}/marker/{marker}", drawMarkerFetch).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")
-	// agent acknowledge the assignment
 	r.HandleFunc("/draw/{document}/marker/{marker}/acknowledge", drawMarkerAcknowledgeRoute).Methods("GET")
-	// agent mark as complete
 	r.HandleFunc("/draw/{document}/marker/{marker}/complete", drawMarkerCompleteRoute).Methods("GET")
-	// agent undo complete mark
 	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", drawMarkerIncompleteRoute).Methods("GET")
-	// operator verify completing
 	r.HandleFunc("/draw/{document}/marker/{marker}/reject", drawMarkerRejectRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")
@@ -129,6 +126,18 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST")
+
+	// tasks -- TODO unify between markers, links and generic tasks -- note changes from POST to PUT
+	r.HandleFunc("/draw/{document}/task/{taskID}/order", drawTaskOrderRoute).Methods("PUT")
+	r.HandleFunc("/draw/{document}/task/{taskID}/assign", drawTaskAssignRoute).Methods("PUT") // takes []GoogleID
+	r.HandleFunc("/draw/{document}/task/{taskID}/comment", drawTaskCommentRoute).Methods("PUT")
+	r.HandleFunc("/draw/{document}/task/{taskID}/complete", drawTaskXRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/task/{taskID}/incomplete", drawTaskXRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/task/{taskID}/reject", drawTaskXRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/task/{taskID}/claim", drawTaskXRoute).Methods("GET")
+	r.HandleFunc("/draw/{document}/task/{taskID}/zone", drawTaskXRoute).Methods("PUT")
+	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskXRoute).Methods("PUT")
+	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskXRoute).Methods("DELETE")
 
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
 	r.HandleFunc("/me", meRoute).Methods("GET", "POST", "HEAD")

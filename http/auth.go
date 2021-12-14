@@ -102,8 +102,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	j, _ := mintjwt(m.Gid)
-	log.Debugw("minted jwt for testing", "jwt", j)
+	// j, _ := mintjwt(m.Gid)
+	// log.Debugw("minted jwt for testing", "jwt", j)
 
 	for _, t := range m.Gid.TeamListEnabled() {
 		wfb.AgentLogin(t, m.Gid)
@@ -170,9 +170,7 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, erro
 
 // used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info
 func getOauthUserInfo(accessToken string) ([]byte, error) {
-	url := c.OauthUserInfoURL
-
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", c.OauthUserInfoURL, nil)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -391,7 +389,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 
 	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
-	hdrs.Set("jku", "https://cdn2.wasabee.rocks/.well-known/jwks.json")
+	hdrs.Set(jws.JWKSetURLKey, "https://cdn2.wasabee.rocks/.well-known/jwks.json")
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {

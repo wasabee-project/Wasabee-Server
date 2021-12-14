@@ -352,9 +352,14 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	log.Infow("refrehing JWT", "GID", gid)
+	log.Debugw("refrehing JWT", "GID", gid)
 
-	hostname, err := os.Hostname()
+	ok, err := auth.Authorize(gid)
+	if !ok {
+		err := fmt.Errorf("account disabled")
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -377,6 +382,13 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	jwtid := token.JwtID()
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 
 	jwts, err := jwt.NewBuilder().
 		IssuedAt(time.Now()).
@@ -403,9 +415,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// log.Infow("jwt", "signed", string(signed[:]))
-
 	s := fmt.Sprintf("{\"status\":\"ok\", \"jwk\":\"%s\"}", string(signed[:]))
-	log.Infow("jwt", "signed", s)
+	// log.Infow("jwt", "refreshed", s)
 	fmt.Fprint(res, s)
 }
