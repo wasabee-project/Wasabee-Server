@@ -7,7 +7,7 @@ import (
 )
 
 func doAgents() {
-	rows, err := old.Query("select agent.gid, level, VVerified, Vblacklisted, Vid, RocksVerified, RISC, OneTimeToken, intelname, intelfaction, Vname, rocksname, telegramID, telegramName, verified, picurl, VAPIkey FROM agent LEFT JOIN agentextras ON agent.gid = agentextras.gid LEFT JOIN telegram ON agent.gid = telegram.gid")
+	rows, err := old.Query("select agent.gid, level, VVerified, Vblacklisted, Vid, RocksVerified, RISC, OneTimeToken, intelname, intelfaction, Vname, rocksname, telegramID, telegramName, verified, picurl, VAPIkey FROM agent LEFT JOIN agentextras ON agent.gid = agentextras.gid LEFT JOIN telegram ON agent.gid = telegram.gid ORDER BY agent.gid")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -55,4 +55,24 @@ func doAgents() {
 			}
 		}
 	}
+	rows.Close()
+	countResults("agent", "agent")
+
+	rows, err = old.Query("SELECT gid, token FROM firebase ORDER BY gid")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	for rows.Next() {
+		var gid, token string
+
+		rows.Scan(&gid, &token)
+
+		_, err := new.Exec("REPLACE INTO firebase (gid, token) VALUES (?, ?)", gid, token)
+		if err != nil {
+			log.Debug("problem", "gid", gid, "token", token)
+			log.Panic(err)
+		}
+	}
+	countResults("firebase", "firebase")
 }
