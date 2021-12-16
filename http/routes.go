@@ -121,23 +121,24 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependAddRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependDelRoute).Methods("DELETE")
+	// r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependAddRoute).Methods("PUT")
+	// r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependDelRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST")
 
-	// tasks -- TODO unify between markers, links and generic tasks -- note changes from POST to PUT
-	r.HandleFunc("/draw/{document}/task/{taskID}/order", drawTaskOrderRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/task/{taskID}/assign", drawTaskAssignRoute).Methods("PUT") // takes []GoogleID
-	r.HandleFunc("/draw/{document}/task/{taskID}/comment", drawTaskCommentRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/task/{taskID}/complete", drawTaskXRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/task/{taskID}/incomplete", drawTaskXRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/task/{taskID}/reject", drawTaskXRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/task/{taskID}/claim", drawTaskXRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/task/{taskID}/zone", drawTaskXRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskXRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskXRoute).Methods("DELETE")
+	// tasks -- TODO unify between markers, links and generic tasks -- note changes from POST/GET to PUT
+	r.HandleFunc("/draw/{document}/task/{taskID}/order", drawTaskOrderRoute).Methods("PUT")                     // order int16
+	r.HandleFunc("/draw/{document}/task/{taskID}/assign", drawTaskAssignRoute).Methods("PUT")                   // assign []GoogleID
+	r.HandleFunc("/draw/{document}/task/{taskID}/assign", drawTaskAssignRoute).Methods("DELETE")                // none
+	r.HandleFunc("/draw/{document}/task/{taskID}/comment", drawTaskCommentRoute).Methods("PUT")                 // none
+	r.HandleFunc("/draw/{document}/task/{taskID}/complete", drawTaskCompleteRoute).Methods("PUT")               // none
+	r.HandleFunc("/draw/{document}/task/{taskID}/incomplete", drawTaskIncompleteRoute).Methods("PUT")           // none
+	r.HandleFunc("/draw/{document}/task/{taskID}/reject", drawTaskRejectRoute).Methods("PUT")                   // none
+	r.HandleFunc("/draw/{document}/task/{taskID}/claim", drawTaskClaimRoute).Methods("PUT")                     // none
+	r.HandleFunc("/draw/{document}/task/{taskID}/zone", drawTaskZoneRoute).Methods("PUT")                       // zone uint8
+	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskDependAddRoute).Methods("PUT")    // none
+	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskDependDelRoute).Methods("DELETE") // none
 
 	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
 	r.HandleFunc("/me", meRoute).Methods("GET", "POST", "HEAD")

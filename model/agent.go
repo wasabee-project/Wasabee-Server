@@ -46,7 +46,7 @@ type AdTeam struct {
 	RocksComm     string
 	RocksKey      string
 	JoinLinkToken string
-	State         string
+	ShareLoc      string `json:"State"`
 	ShareWD       string
 	LoadWD        string
 	Owner         GoogleID
@@ -82,16 +82,14 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 	var vverified, vblacklisted, rocksverified sql.NullBool
 	var ifac IntelFaction
 
-	ad := &a
-
-	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &ad.IntelName, &level, &ad.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &ad.RISC, &ifac, &pic, &vapi)
+	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &a.IntelName, &level, &a.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &a.RISC, &ifac, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
-		return ad, err
+		return &a, err
 	}
 	if err != nil {
 		log.Error(err)
-		return ad, err
+		return &a, err
 	}
 
 	a.Name = gid.bestname(a.IntelName, vname, rocksname)
@@ -132,16 +130,16 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 		a.Level = uint8(l)
 	}
 
-	if err = adTeams(ad); err != nil {
-		return ad, err
+	if err = adTeams(&a); err != nil {
+		return &a, err
 	}
 
-	if err = adTelegram(ad); err != nil {
-		return ad, err
+	if err = adTelegram(&a); err != nil {
+		return &a, err
 	}
 
-	if err = adOps(ad); err != nil {
-		return ad, err
+	if err = adOps(&a); err != nil {
+		return &a, err
 	}
 
 	a.IntelFaction = ifac.String()
@@ -155,42 +153,60 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 		a.VAPIkey = vapi.String[0:len] + "..." // never show the full thing
 	}
 
-	return ad, nil
+	return &a, nil
 }
 
 func adTeams(ad *Agent) error {
-	rows, err := db.Query("SELECT x.teamID, team.name, x.state, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken, team.vteam, team.vrole FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ? ORDER BY team.name", ad.GoogleID)
+	rows, err := db.Query("SELECT x.teamID, team.name, x.shareLoc, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken, team.vteam, team.vrole FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ? ORDER BY team.name", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	var rc, rk, jlt sql.NullString
-	var adteam AdTeam
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&adteam.ID, &adteam.Name, &adteam.State, &adteam.ShareWD, &adteam.LoadWD, &rc, &rk, &adteam.Owner, &jlt, &adteam.VTeam, &adteam.VTeamRole)
+		var team AdTeam
+		var shareLoc, shareWD, loadWD bool
+		var rc, rk, jlt sql.NullString
+
+		err := rows.Scan(&team.ID, &team.Name, &shareLoc, &shareWD, &loadWD, &rc, &rk, &team.Owner, &jlt, &team.VTeam, &team.VTeamRole)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
+
 		if rc.Valid {
-			adteam.RocksComm = rc.String
-		} else {
-			adteam.RocksComm = ""
+			team.RocksComm = rc.String
 		}
-		if rk.Valid && adteam.Owner == ad.GoogleID {
+
+		if rk.Valid && team.Owner == ad.GoogleID {
 			// only share RocksKey with owner
-			adteam.RocksKey = rk.String
-		} else {
-			adteam.RocksKey = ""
+			team.RocksKey = rk.String
 		}
+
 		if jlt.Valid {
-			adteam.JoinLinkToken = jlt.String
-		} else {
-			adteam.JoinLinkToken = ""
+			team.JoinLinkToken = jlt.String
 		}
-		ad.Teams = append(ad.Teams, adteam)
+
+		if shareLoc {
+			team.ShareLoc = "On"
+		} else {
+			team.ShareLoc = "Off"
+		}
+
+		if shareWD {
+			team.ShareWD = "On"
+		} else {
+			team.ShareWD = "Off"
+		}
+
+		if loadWD {
+			team.LoadWD = "On"
+		} else {
+			team.LoadWD = "Off"
+		}
+
+		ad.Teams = append(ad.Teams, team)
 	}
 	return nil
 }

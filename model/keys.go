@@ -25,6 +25,12 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 	}
 	if details.Name == "" {
 		log.Infow("attempt to assign key count to portal not in op", "GID", k.Gid, "resource", o.ID, "portal", k.ID)
+
+		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID); err != nil {
+			log.Info(err)
+			err := fmt.Errorf("unable to remove key count for portal")
+			return err
+		}
 		return nil
 	}
 

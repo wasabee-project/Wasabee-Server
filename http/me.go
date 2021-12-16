@@ -95,8 +95,12 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := model.TeamID(vars["team"])
 	state := vars["state"]
+	b := false
+	if state == "On" || state == "on" {
+		b = true
+	}
 
-	if err = gid.SetTeamState(team, state); err != nil {
+	if err = gid.SetTeamState(team, b); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -118,8 +122,12 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := model.TeamID(vars["team"])
 	state := vars["state"]
+	b := false
+	if state == "On" || state == "on" {
+		b = true
+	}
 
-	if err = gid.SetWDShare(team, state); err != nil {
+	if err = gid.SetWDShare(team, b); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -140,8 +148,12 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := model.TeamID(vars["team"])
 	state := vars["state"]
+	b := false
+	if state == "On" || state == "on" {
+		b = true
+	}
 
-	if err = gid.SetWDLoad(team, state); err != nil {
+	if err = gid.SetWDLoad(team, b); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

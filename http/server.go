@@ -273,7 +273,6 @@ func authMW(next http.Handler) http.Handler {
 
 			// expiration validation is implicit
 			// XXX make sure JwtID is not on the "revoked" list -- in a way that doesn't hit the database too hard
-			// XXX make sure the GID is valid -- in a way that doesn't hit the database too hard
 			if err := jwt.Validate(token, jwt.WithAudience("wasabee")); err != nil {
 				sub, _ := token.Get("sub")
 				log.Infow("JWT validate failed", "error", err, "sub", sub)
@@ -281,10 +280,11 @@ func authMW(next http.Handler) http.Handler {
 				return
 			}
 
-			gid := model.GoogleID(token.Subject()) // to db intensive?
+			gid := model.GoogleID(token.Subject())
+			// too db intensive? -- cache it?
 			if !gid.Valid() {
-				err := gid.FirstLogin() // token minted on another server, never logged in to this server
-				if err != nil {
+				// token minted on another server, never logged in to this server
+				if err := gid.FirstLogin(); err != nil {
 					log.Info(err)
 					http.Error(res, err.Error(), http.StatusUnauthorized)
 					return

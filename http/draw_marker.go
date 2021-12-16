@@ -12,44 +12,50 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
+func markerRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *model.Marker, *model.Operation, error) {
+	op := model.Operation{}
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
+		return gid, &model.Marker{}, &op, err
 	}
 
 	vars := mux.Vars(req)
-	var op model.Operation
 	op.ID = model.OperationID(vars["document"])
-
-	if !op.WriteAccess(gid) {
-		err = fmt.Errorf("write access required to assign targets")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
+		return gid, &model.Marker{}, &op, err
 	}
 
 	markerID := model.MarkerID(vars["marker"])
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
+		return gid, &model.Marker{}, &op, err
 	}
 
 	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
+		return gid, marker, &op, err
+	}
+	return gid, marker, &op, nil
+}
+
+func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
+	gid, marker, op, err := markerRequires(res, req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	if !op.WriteAccess(gid) {
+		err = fmt.Errorf("write access required to assign targets")
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -61,43 +67,22 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := markerAssignTouch(gid, markerID, op)
-	// log.Infow("assigned marker", "GID", gid, "resource", op.ID, "marker", marker, "agent", agent, "message", "assigned marker")
+	uid := markerAssignTouch(gid, marker.ID, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if read, _ := op.ReadAccess(gid); !read {
 		err = fmt.Errorf("read access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -107,43 +92,22 @@ func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// log.Infow("claimed marker", "GID", gid, "resource", op.ID, "marker", marker, "message", "claimed marker")
-	uid := markerStatusTouch(op, markerID, "claimed")
+	uid := markerStatusTouch(op, marker.ID, "claimed")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set marker comments")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -153,42 +117,22 @@ func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := markerStatusTouch(op, markerID, "comment")
+	uid := markerStatusTouch(op, marker.ID, "comment")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set marker zone")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -198,23 +142,17 @@ func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := markerStatusTouch(op, markerID, "zone")
+	uid := markerStatusTouch(op, marker.ID, "zone")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to set delta")
@@ -230,44 +168,23 @@ func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
-		return
-	}
-
 	if err = marker.SetDelta(int(delta)); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := markerStatusTouch(op, markerID, "delta")
+	uid := markerStatusTouch(op, marker.ID, "delta")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
-
-	// o.Populate determines all or assigned-only
 	read, _ := op.ReadAccess(gid)
 	if !read && !op.AssignedOnlyAccess(gid) {
 		if op.ID.IsDeletedOp() {
@@ -283,60 +200,27 @@ func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
-		return
-	}
 	j, err := json.Marshal(marker)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
 	fmt.Fprint(res, string(j))
 }
 
 func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -346,23 +230,17 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID, "completed")
-	// log.Infow("completed marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "completed marker")
+	uid := markerStatusTouch(op, marker.ID, "completed")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
@@ -371,42 +249,23 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
 	if err = marker.Incomplete(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID, "incomplete")
-	log.Infow("incompleted marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "incompleted marker")
+	uid := markerStatusTouch(op, marker.ID, "incomplete")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
@@ -415,62 +274,28 @@ func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
 	if err = marker.Reject(gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID, "reject")
-	log.Infow("reject marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "rejected marker")
+	uid := markerStatusTouch(op, marker.ID, "reject")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
+	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
 
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	markerID := model.MarkerID(vars["marker"])
-	marker, err := op.GetMarker(markerID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -480,13 +305,12 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := markerStatusTouch(op, markerID, "acknowledge")
-	log.Infow("acknowledged marker", "GID", gid, "resource", op.ID, "marker", markerID, "message", "acknowledged marker")
+	uid := markerStatusTouch(op, marker.ID, "acknowledge")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 // markerAssignTouch updates the updateID and notifies ONLY the agent to whom the assigment was made
-func markerAssignTouch(gid model.GoogleID, markerID model.MarkerID, op model.Operation) string {
+func markerAssignTouch(gid model.GoogleID, markerID model.MarkerID, op *model.Operation) string {
 	uid, err := op.Touch()
 	if err != nil {
 		log.Error(err)
@@ -497,7 +321,7 @@ func markerAssignTouch(gid model.GoogleID, markerID model.MarkerID, op model.Ope
 }
 
 // linkStatusTouch updates the updateID and notifies all teams of the update
-func markerStatusTouch(op model.Operation, markerID model.MarkerID, status string) string {
+func markerStatusTouch(op *model.Operation, markerID model.MarkerID, status string) string {
 	// update the timestamp and updateID
 	uid, err := op.Touch()
 	if err != nil {
@@ -528,6 +352,7 @@ func markerStatusTouch(op model.Operation, markerID model.MarkerID, status strin
 	return uid
 }
 
+/*
 func drawMarkerDependAddRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
@@ -649,4 +474,4 @@ func drawMarkerDependDelRoute(res http.ResponseWriter, req *http.Request) {
 
 	uid := markerStatusTouch(op, markerID, "acknowledge")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-}
+} */

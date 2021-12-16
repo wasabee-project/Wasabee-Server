@@ -21,11 +21,11 @@ func teamKeyboard(gid model.GoogleID) tgbotapi.InlineKeyboardMarkup {
 			i++
 			var row []tgbotapi.InlineKeyboardButton
 			var on, off tgbotapi.InlineKeyboardButton
-			if v.State == "Off" {
+			if v.ShareLoc == "Off" {
 				on = tgbotapi.NewInlineKeyboardButtonData("Activate "+v.Name, "team/activate/"+v.ID.String())
 				row = append(row, on)
 			}
-			if v.State == "On" {
+			if v.ShareLoc == "On" {
 				off = tgbotapi.NewInlineKeyboardButtonData("Deactivate "+v.Name, "team/deactivate/"+v.ID.String())
 				row = append(row, off)
 			}
@@ -126,7 +126,7 @@ func callbackTeam(action, team string, gid model.GoogleID, lang string, msg *tgb
 			State: "On",
 			Team:  name,
 		})
-		err = gid.SetTeamState(t, "On")
+		err = gid.SetTeamState(t, true)
 		if err != nil {
 			log.Error(err)
 		}
@@ -135,7 +135,7 @@ func callbackTeam(action, team string, gid model.GoogleID, lang string, msg *tgb
 			State: "Off",
 			Team:  name,
 		})
-		if err = gid.SetTeamState(t, "Off"); err != nil {
+		if err = gid.SetTeamState(t, false); err != nil {
 			log.Error(err)
 		}
 	default:
