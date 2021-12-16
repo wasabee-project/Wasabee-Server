@@ -3,14 +3,14 @@ package risc
 import (
 	// "bytes"
 	"context"
-	"crypto/rsa"
+	// "crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwa"
+	// "github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jwt"
 
@@ -143,40 +143,26 @@ func RISC(configfile string) {
 }
 
 // This is called from the webhook
+// the JWT library has improved a lot, most of this can be simplified
 func validateToken(rawjwt []byte) error {
-	var token jwt.Token
-	for iter := c.keys.Iterate(context.TODO()); iter.Next(context.TODO()); {
-		pair := iter.Pair()
-		key := pair.Value.(jwk.RSAPublicKey)
-		var pk rsa.PublicKey
-		if err := key.Raw(&pk); err != nil {
-			log.Errorw("unable to get public key from set", "error", err, "subsystem", "RISC", "message", "unable to get public key from set")
-			continue
-		}
-
-		var err error
-		token, err = jwt.Parse(rawjwt,
-			jwt.WithValidate(true),
-			jwt.WithVerify(jwa.RS256, &pk),
-			jwt.WithIssuer("https://accounts.google.com"),
-		)
-		if err == nil {
-			// found a good key, we are done
-			break
-		}
-
-		// log.Debugw(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", string(rawjwt), "pair", pair, "note", "this is probably harmless unless you see an error following")
-		token = nil
-		// try the next key if one exists
+	token, err := jwt.Parse(rawjwt, jwt.WithValidate(true), jwt.WithIssuer("https://accounts.google.com"), jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(c.keys))
+	if err != nil {
+		log.Errorw("RISC", "error", err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
+		return err
 	}
-
 	if token == nil {
 		err := fmt.Errorf("unable to verify RISC event")
 		log.Errorw(err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
 		return err
 	}
 
-	tmp, ok := token.Get("events")
+	// XXX doe jwt.WithValidate(true) make this redundant?
+	if err := jwt.Validate(token); err != nil {
+		log.Infow("RISC jwt validate failed", "error", err)
+		return err
+	}
+
+	events, ok := token.Get("events")
 	if !ok {
 		err := fmt.Errorf("unable to get events from token")
 		log.Error(err)
@@ -184,7 +170,7 @@ func validateToken(rawjwt []byte) error {
 	}
 
 	// multiple events per message are possible
-	for k, v := range tmp.(map[string]interface{}) {
+	for k, v := range events.(map[string]interface{}) {
 		var r riscmsg
 		r.Subject.Type = k
 
