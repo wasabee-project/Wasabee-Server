@@ -70,7 +70,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	vars := mux.Vars(req)
-	id := vars["document"]
+	id := vars["opID"]
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -162,7 +162,7 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	// only the ID needs to be set for this
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	// op.Delete checks ownership, do we need this check? -- yes for good status codes
 	if !op.ID.IsOwner(gid) {
@@ -185,7 +185,7 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
@@ -262,7 +262,7 @@ func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 
 	// only the ID needs to be set for this
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("forbidden: only the owner can set operation ownership ")
@@ -284,7 +284,7 @@ func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 /*
 func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	id := vars["document"]
+	id := vars["opID"]
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -351,7 +351,7 @@ func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set portal comments")
@@ -385,7 +385,7 @@ func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set portal hardness")
@@ -416,7 +416,7 @@ func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set operation order")
@@ -453,7 +453,7 @@ func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set operation info")
@@ -483,7 +483,7 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 	portalID := model.PortalID(vars["portal"])
 
 	onhand, err := strconv.ParseInt(req.FormValue("count"), 10, 32)
@@ -523,7 +523,7 @@ func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("permission to edit permissions denied")
@@ -566,7 +566,7 @@ func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("permission to edit permissions denied")

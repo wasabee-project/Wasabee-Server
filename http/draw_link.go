@@ -24,7 +24,7 @@ func linkRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	}
 
 	vars := mux.Vars(req)
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
 		return gid, &model.Link{}, &op, err
@@ -387,7 +387,7 @@ func drawLinkDependAddRoute(res http.ResponseWriter, req *http.Request) {
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to set dependency")
@@ -443,7 +443,7 @@ func drawLinkDependDelRoute(res http.ResponseWriter, req *http.Request) {
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to delete dependency")

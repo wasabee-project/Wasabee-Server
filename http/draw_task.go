@@ -24,7 +24,7 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	}
 
 	vars := mux.Vars(req)
-	op.ID = model.OperationID(vars["document"])
+	op.ID = model.OperationID(vars["opID"])
 
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
