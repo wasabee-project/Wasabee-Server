@@ -91,41 +91,45 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}", drawUpdateRoute).Methods("PUT")
 	r.HandleFunc("/draw/{document}/delete", drawDeleteRoute).Methods("GET", "DELETE")
 	r.HandleFunc("/draw/{document}/chown", drawChownRoute).Methods("GET").Queries("to", "{to}")
-	// r.HandleFunc("/draw/{document}/stock", drawStockRoute).Methods("GET")
 	r.HandleFunc("/draw/{document}/order", drawOrderRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/info", drawInfoRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/perms", drawPermsAddRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/perms", drawPermsDeleteRoute).Methods("DELETE")
 	r.HandleFunc("/draw/{document}/delperm", drawPermsDeleteRoute).Methods("GET") // .Queries("team", "{team}", "role", "{role}")
+
+	// links
 	r.HandleFunc("/draw/{document}/link/{link}", drawLinkFetch).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/assign", drawLinkAssignRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/color", drawLinkColorRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/desc", drawLinkDescRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/complete", drawLinkCompleteRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/reject", drawLinkRejectRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/claim", drawLinkClaimRoute).Methods("POST")
 	r.HandleFunc("/draw/{document}/link/{link}/swap", drawLinkSwapRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependAddRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependDelRoute).Methods("DELETE")
-	//
+	r.HandleFunc("/draw/{document}/link/{link}/assign", drawLinkAssignRoute).Methods("POST")        // deprecated, use task
+	r.HandleFunc("/draw/{document}/link/{link}/desc", drawLinkDescRoute).Methods("POST")            // deprecated, use task
+	r.HandleFunc("/draw/{document}/link/{link}/complete", drawLinkCompleteRoute).Methods("GET")     // deprecated, use task
+	r.HandleFunc("/draw/{document}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET") // deprecated, use task
+	r.HandleFunc("/draw/{document}/link/{link}/reject", drawLinkRejectRoute).Methods("POST")        // deprecated, use task
+	r.HandleFunc("/draw/{document}/link/{link}/claim", drawLinkClaimRoute).Methods("POST")          // deprecated, use task
+	r.HandleFunc("/draw/{document}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")            // deprecated, use task
+	r.HandleFunc("/draw/{document}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")          // deprecated, use task
+	// r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependAddRoute).Methods("PUT")
+	// r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependDelRoute).Methods("DELETE")
+
+	// markers
 	r.HandleFunc("/draw/{document}/marker/{marker}", drawMarkerFetch).Methods("GET")
-	r.HandleFunc("/draw/{document}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/acknowledge", drawMarkerAcknowledgeRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/marker/{marker}/complete", drawMarkerCompleteRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", drawMarkerIncompleteRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/marker/{marker}/reject", drawMarkerRejectRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")
+	r.HandleFunc("/draw/{document}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")          // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")        // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/acknowledge", drawMarkerAcknowledgeRoute).Methods("GET") // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/complete", drawMarkerCompleteRoute).Methods("GET")       // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", drawMarkerIncompleteRoute).Methods("GET")   // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/reject", drawMarkerRejectRoute).Methods("GET")           // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")            // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")              // deprecated, use task
+	r.HandleFunc("/draw/{document}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")            // deprecated, use task
 	// r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependAddRoute).Methods("PUT")
 	// r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependDelRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{document}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST")
+
+	// portals
+	r.HandleFunc("/draw/{document}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST", "PUT")   // prefer PUT
+	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST", "PUT") // prefer PUT
+	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST", "PUT")    // prefer PUT
 
 	// tasks -- TODO unify between markers, links and generic tasks -- note changes from POST/GET to PUT
 	r.HandleFunc("/draw/{document}/task/{taskID}/order", drawTaskOrderRoute).Methods("PUT")                     // order int16
@@ -140,19 +144,19 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskDependAddRoute).Methods("PUT")    // none
 	r.HandleFunc("/draw/{document}/task/{taskID}/depend/{dependsOn}", drawTaskDependDelRoute).Methods("DELETE") // none
 
-	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
+	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET", "PUT").Queries("lat", "{lat}", "lon", "{lon}") // prefer PUT
 	r.HandleFunc("/me", meRoute).Methods("GET", "POST", "HEAD")
-	r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
-	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
+	r.HandleFunc("/me/delete", meDeleteRoute).Methods("DELETE")                                     // purge all info for a agent, requires query token
+	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET", "PUT").Queries("state", "{state}") // prefer PUT
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
-	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
-	r.HandleFunc("/me/{team}/wdshare", meToggleTeamWDShareRoute).Methods("GET").Queries("state", "{state}")
-	r.HandleFunc("/me/{team}/wdload", meToggleTeamWDLoadRoute).Methods("GET").Queries("state", "{state}")
-	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")
-	r.HandleFunc("/me/firebase", meFirebaseRoute).Methods("POST")      // post a token generated by google
-	r.HandleFunc("/me/intelid", meIntelIDRoute).Methods("PUT", "POST") // get ID from intel (not trusted)
-	r.HandleFunc("/me/VAPIkey", meVAPIkeyRoute).Methods("POST")        // send an V API key for team sync
-	r.HandleFunc("/me/jwtrefresh", meJwtRefreshRoute).Methods("GET")
+	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                            // deprecated, use DELETE /me/{team}
+	r.HandleFunc("/me/{team}/wdshare", meToggleTeamWDShareRoute).Methods("GET", "PUT").Queries("state", "{state}") // prefer PUT
+	r.HandleFunc("/me/{team}/wdload", meToggleTeamWDLoadRoute).Methods("GET", "PUT").Queries("state", "{state}")   // prefer PUT
+	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")                                                       // deprecated, no need with JWT
+	r.HandleFunc("/me/firebase", meFirebaseRoute).Methods("POST")                                                  // post a firebase token generated by google
+	r.HandleFunc("/me/intelid", meIntelIDRoute).Methods("PUT", "POST")                                             // get ID from intel (not trusted)
+	r.HandleFunc("/me/VAPIkey", meVAPIkeyRoute).Methods("POST")                                                    // send an V API key for team sync
+	r.HandleFunc("/me/jwtrefresh", meJwtRefreshRoute).Methods("GET")                                               // returns a new JWT with the current token ID
 
 	// other agents
 	// "profile" page, such as it is
@@ -160,8 +164,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/agent/{id}/image", agentPictureRoute).Methods("GET")
 	// send a message to a agent
 	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")
-	r.HandleFunc("/agent/{id}/fbMessage", agentFBMessageRoute).Methods("POST")
-	r.HandleFunc("/agent/{id}/target", agentTargetRoute).Methods("POST")
+	// r.HandleFunc("/agent/{id}/fbMessage", agentFBMessageRoute).Methods("POST") // deprecated, /agent/x/message will send it via firebase
+	r.HandleFunc("/agent/{id}/target", agentTargetRoute).Methods("POST") // send a target-formatted message
 
 	// teams
 	// create a new team
