@@ -73,10 +73,20 @@ func (opID OperationID) insertLink(l Link) error {
 		return err
 	}
 
-	err = l.Assign(l.Assignments, nil)
-	if err != nil {
-		log.Error(err)
-		return err
+	if len(l.Assignments) > 0 {
+		err = l.Assign(l.Assignments, nil)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	if len(l.DependsOn) > 0 {
+		err = l.SetDepends(l.DependsOn, nil)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 	}
 
 	return nil
@@ -95,6 +105,11 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 	if l.To == l.From {
 		log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
+	}
+
+	if l.opID != opID {
+		log.Debugw("link opID does not match", "link.opID", l.opID, "opID", opID, "link", l)
+		l.opID = opID
 	}
 
 	if !l.Zone.Valid() || l.Zone == ZoneAll {
@@ -140,6 +155,14 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		}
 	}
 
+	if len(l.DependsOn) > 0 {
+		err = l.SetDepends(l.DependsOn, tx)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -150,7 +173,7 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 
 	var description sql.NullString
 
-	rows, err := db.Query("SELECT link.ID, link.fromPortalID, link.toPortalID, task.comment, task.taskorder, task.state, link.color, task.zone, task.delta FROM link JOIN task ON link.ID = task.ID WHERE task.opID = ? ORDER BY task.taskorder", o.ID)
+	rows, err := db.Query("SELECT link.ID, link.fromPortalID, link.toPortalID, task.comment, task.taskorder, task.state, link.color, task.zone, task.delta FROM link JOIN task ON link.ID = task.ID WHERE task.opID = ? AND link.opID = task.opID", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -183,6 +206,12 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			tmpLink.AssignedTo = tmpLink.Assignments[0]
 		} else {
 			tmpLink.AssignedTo = ""
+		}
+
+		tmpLink.DependsOn, err = tmpLink.GetDepends()
+		if err != nil {
+			log.Error(err)
+			continue
 		}
 
 		// this isn't in a zone with which we are concerned AND not assigned to me, skip

@@ -128,7 +128,7 @@ func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
 }
 
 func (o *Operation) populateZones() error {
-	rows, err := db.Query("SELECT ID, name, color FROM zone WHERE opID = ? ORDER BY ID", o.ID)
+	rows, err := db.Query("SELECT ID, name, color FROM zone WHERE opID = ?", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -142,7 +142,7 @@ func (o *Operation) populateZones() error {
 			continue
 		}
 
-		pointrows, err := db.Query("SELECT position, X(point), Y(point) FROM zonepoints WHERE opID = ? AND zoneID = ? ORDER BY position", o.ID, tmpZone.Zone)
+		pointrows, err := db.Query("SELECT position, X(point), Y(point) FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, tmpZone.Zone)
 		if err != nil {
 			log.Error(err)
 			continue

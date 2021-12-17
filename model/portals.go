@@ -58,7 +58,7 @@ func (o *Operation) populatePortals() error {
 
 	var comment, hardness sql.NullString
 
-	rows, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? ORDER BY name", o.ID)
+	rows, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ?", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err

@@ -157,7 +157,7 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 }
 
 func adTeams(ad *Agent) error {
-	rows, err := db.Query("SELECT x.teamID, team.name, x.shareLoc, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken, team.vteam, team.vrole FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ? ORDER BY team.name", ad.GoogleID)
+	rows, err := db.Query("SELECT x.teamID, team.name, x.shareLoc, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken, team.vteam, team.vrole FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -231,7 +231,7 @@ func adTelegram(ad *Agent) error {
 func adOps(ad *Agent) error {
 	seen := make(map[OperationID]bool)
 
-	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ? ORDER BY Name", ad.GoogleID)
+	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -252,7 +252,7 @@ func adOps(ad *Agent) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, permissions.teamID FROM agentteams JOIN permissions ON agentteams.teamID = permissions.teamID JOIN operation ON permissions.opID = operation.ID WHERE agentteams.gid = ? ORDER BY operation.Name", ad.GoogleID)
+	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, permissions.teamID FROM agentteams JOIN permissions ON agentteams.teamID = permissions.teamID JOIN operation ON permissions.opID = operation.ID WHERE agentteams.gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err

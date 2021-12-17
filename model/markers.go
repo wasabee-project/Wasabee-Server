@@ -54,10 +54,20 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.Assignments = append(m.Assignments, m.AssignedTo)
 	}
 
-	err = m.Assign(m.Assignments, nil)
-	if err != nil {
-		log.Error(err)
-		return err
+	if len(m.Assignments) > 0 {
+		err = m.Assign(m.Assignments, nil)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	if len(m.DependsOn) > 0 {
+		err = m.SetDepends(m.DependsOn, nil)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 	}
 
 	return nil
@@ -112,6 +122,13 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		messaging.SendAssignment(messaging.GoogleID(m.AssignedTo), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 
+	if len(m.DependsOn) > 0 {
+		err = m.SetDepends(m.DependsOn, tx)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -140,7 +157,7 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 
 	var err error
 	var rows *sql.Rows
-	rows, err = db.Query("SELECT marker.ID, marker.PortalID, marker.type, task.comment, task.state, task.taskorder, task.zone, task.delta FROM marker JOIN task ON marker.ID = task.ID WHERE marker.opID = ? ORDER BY taskorder, type", o.ID)
+	rows, err = db.Query("SELECT marker.ID, marker.PortalID, marker.type, task.comment, task.state, task.taskorder, task.zone, task.delta FROM marker JOIN task ON marker.ID = task.ID WHERE marker.opID = ? AND marker.opID = task.opID", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -171,6 +188,12 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 			tmpMarker.AssignedTo = tmpMarker.Assignments[0]
 		} else {
 			tmpMarker.AssignedTo = ""
+		}
+
+		tmpMarker.DependsOn, err = tmpMarker.GetDepends()
+		if err != nil {
+			log.Error(err)
+			return err
 		}
 
 		if comment.Valid {

@@ -104,6 +104,8 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 	}
 
 	for _, m := range o.Markers {
+		m.opID = o.ID
+
 		_, ok := portalMap[m.PortalID]
 		if !ok {
 			log.Warnw("portalID missing from portal list", "portal", m.PortalID, "resource", o.ID)
@@ -119,6 +121,8 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 	}
 
 	for _, l := range o.Links {
+		l.opID = o.ID
+
 		_, ok := portalMap[l.From]
 		if !ok {
 			log.Warnw("source portal missing from portal list", "portal", l.From, "resource", o.ID)
@@ -330,6 +334,8 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 	}
 	// add/update markers sent in this update
 	for _, m := range o.Markers {
+		m.opID = o.ID
+
 		_, ok := portalMap[m.PortalID]
 		if !ok {
 			log.Warnw("portal missing from portal list", "marker", m.PortalID, "resource", o.ID)
@@ -375,6 +381,8 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 		curLinks[lid] = true
 	}
 	for _, l := range o.Links {
+		l.opID = o.ID
+
 		_, ok := portalMap[l.From]
 		if !ok {
 			log.Warnw("source portal missing from portal list", "portal", l.From, "resource", o.ID)

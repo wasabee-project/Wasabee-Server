@@ -25,13 +25,49 @@ type Task struct {
 
 // add/remove depends
 func (t *Task) AddDepend(task string) error {
-	// sanity checks
-
 	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, task)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+	return nil
+}
+
+func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
+	needtx := false
+	if tx == nil {
+		needtx = true
+		tx, _ = db.Begin()
+
+		defer func() {
+			err := tx.Rollback()
+			if err != nil && err != sql.ErrTxDone {
+				log.Error(err)
+			}
+		}()
+	}
+	_, err := tx.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	// we could just blit them all at once
+	for _, depend := range d {
+		_, err := tx.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, depend)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	if needtx {
+		if err := tx.Commit(); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -46,10 +82,10 @@ func (t *Task) DelDepend(task string) error {
 	return nil
 }
 
-func (t *Task) Depends() ([]TaskID, error) {
+func (t *Task) GetDepends() ([]TaskID, error) {
 	tmp := make([]TaskID, 0)
 
-	rows, err := db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ? ORDER BY dependsOn", t.opID, t.ID)
+	rows, err := db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID)
 	if err != nil {
 		log.Error(err)
 		return tmp, err
@@ -57,15 +93,13 @@ func (t *Task) Depends() ([]TaskID, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var tt TaskID
-		err := rows.Scan(&t)
+		var depend TaskID
+		err := rows.Scan(&depend)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		log.Infow("task depends found", "taskID", t.ID, "dependsOn", tt)
-
-		tmp = append(tmp, tt)
+		tmp = append(tmp, depend)
 	}
 
 	return tmp, nil
@@ -80,7 +114,7 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 		return tmp, err
 	}
 
-	rows, err := db.Query("SELECT gid FROM assignments WHERE opID = ? AND taskID = ? ORDER BY gid", t.opID, t.ID)
+	rows, err := db.Query("SELECT gid FROM assignments WHERE opID = ? AND taskID = ?", t.opID, t.ID)
 	if err != nil {
 		log.Error(err)
 		return tmp, err
