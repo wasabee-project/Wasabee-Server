@@ -171,6 +171,8 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 			tmpLink.Desc = ""
 		}
 
+		tmpLink.ThrowOrder = tmpLink.Order
+
 		tmpLink.Assignments, err = tmpLink.GetAssignments()
 		if err != nil {
 			log.Error(err)

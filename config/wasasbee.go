@@ -1,7 +1,7 @@
 package config
 
 import (
-	"context"
+	// "context"
 	// "encoding/json"
 	"sync"
 
@@ -31,6 +31,7 @@ type WasabeeConf struct {
 var once sync.Once
 var c WasabeeConf
 
+// Get the global configuration -- probably should not return a pointer so the callers can't overwrite
 func Get() *WasabeeConf {
 	return &c
 }
@@ -80,43 +81,38 @@ func GetWebAPIPath() string {
 	return c.HTTP.APIpath
 }
 
+// TGSetBot sets the bot name and ID for use in templates
 func TGSetBot(name string, id int) {
 	c.Telegram.Name = name
 	c.Telegram.ID = id
 }
 
+// TGRunning reports if telegram is running; used for templates
 func TGRunning() bool {
 	return c.Telegram.ID != 0
 }
 
+// SetupJWK loads the keys used for the JWK signing and verification, set the file paths
 func SetupJWK(signers, parsers string) error {
 	var err error
-	log.Debugw("Loading JWK signing keys", "path", signers)
-
 	c.JWSigningKeys, err = jwk.ReadFile(signers)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	log.Debugw("loaded signer keys", "count", c.JWSigningKeys.Len())
+	log.Debugw("loaded JWT signing keys", "count", c.JWSigningKeys.Len(), "path", signers)
 
-	for iter := c.JWSigningKeys.Iterate(context.TODO()); iter.Next(context.TODO()); {
+	/* for iter := c.JWSigningKeys.Iterate(context.TODO()); iter.Next(context.TODO()); {
 		x := iter.Pair()
 		log.Debugw("jwk signer", "key", x)
-	}
+	} */
 
-	log.Debugw("Loading JWK parsing keys", "path", parsers)
 	c.JWParsingKeys, err = jwk.ReadFile(parsers)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	log.Debugw("loaded parsing keys", "count", c.JWParsingKeys.Len())
-
-	for iter := c.JWParsingKeys.Iterate(context.TODO()); iter.Next(context.TODO()); {
-		x := iter.Pair()
-		log.Debugw("jwk parser", "key", x)
-	}
+	log.Debugw("loaded JWT parsing keys", "count", c.JWParsingKeys.Len(), "path", parsers)
 
 	return nil
 }

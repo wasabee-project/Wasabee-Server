@@ -38,7 +38,7 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 		return gid, &op, &model.Task{}, err
 	}
 
-	taskID := model.TaskID(vars["task"])
+	taskID := model.TaskID(vars["taskID"])
 	task, err := op.GetTask(taskID)
 	if err != nil {
 		log.Error(err)
@@ -342,9 +342,9 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 
-	dependsOn := vars["task"]
+	dependsOn := vars["dependsOn"]
 	if dependsOn == "" {
-		err = fmt.Errorf("empty task ID on depend add")
+		err = fmt.Errorf("empty dependency ID on depend add")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
@@ -374,9 +374,9 @@ func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	dependsOn := vars["task"]
+	dependsOn := vars["dependsOn"]
 	if dependsOn == "" {
-		err = fmt.Errorf("empty task on depend delete")
+		err = fmt.Errorf("empty dependency ID on depend delete")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return

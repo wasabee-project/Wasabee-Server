@@ -345,7 +345,5 @@ func getToken() (*oauth2.Token, error) {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return nil, err
 	}
-	token, err := creds.Token()
-	log.Debugw("new RISC token", "creds", creds, "token", token)
-	return token, err
+	return creds.Token()
 }

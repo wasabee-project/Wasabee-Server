@@ -109,8 +109,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{opID}/link/{link}/claim", drawLinkClaimRoute).Methods("POST")          // deprecated, use task
 	r.HandleFunc("/draw/{opID}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")            // deprecated, use task
 	r.HandleFunc("/draw/{opID}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")          // deprecated, use task
-	// r.HandleFunc("/draw/{opID}/link/{link}/depend/{task}", drawLinkDependAddRoute).Methods("PUT")
-	// r.HandleFunc("/draw/{opID}/link/{link}/depend/{task}", drawLinkDependDelRoute).Methods("DELETE")
 
 	// markers
 	r.HandleFunc("/draw/{opID}/marker/{marker}", drawMarkerFetch).Methods("GET")
@@ -123,8 +121,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{opID}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")            // deprecated, use task
 	r.HandleFunc("/draw/{opID}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")              // deprecated, use task
 	r.HandleFunc("/draw/{opID}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")            // deprecated, use task
-	// r.HandleFunc("/draw/{opID}/marker/{marker}/depend/{task}", drawMarkerDependAddRoute).Methods("PUT")
-	// r.HandleFunc("/draw/{opID}/marker/{marker}/depend/{task}", drawMarkerDependDelRoute).Methods("DELETE")
 
 	// portals
 	r.HandleFunc("/draw/{opID}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST", "PUT")   // prefer PUT
