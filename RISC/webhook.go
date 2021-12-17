@@ -2,6 +2,7 @@ package risc
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/oauth2"
@@ -10,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/lestrrat-go/jwx/jwk"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
@@ -24,8 +27,6 @@ const jwtService = "https://risc.googleapis.com/google.identity.risc.v1beta.Risc
 // Webhook is the http route for receiving RISC updates
 // pushes the updates into the RISC channel for processing
 func Webhook(res http.ResponseWriter, req *http.Request) {
-	// var err error
-
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/secevent+jwt" {
 		err := fmt.Errorf("invalid request (needs to be application/secevent+jwt)")
@@ -34,7 +35,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !c.running {
+	if !running {
 		err := fmt.Errorf("RISC not configured, yet somehow a message was received")
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -53,6 +54,8 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// validateToken pushes the token to the handlers
 	if err := validateToken(raw); err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -71,22 +74,25 @@ func WebhookStatus(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, "RISC listener service is Running")
 }
 
-func riscRegisterWebhook() {
+func registerWebhook(ctx context.Context) {
 	log.Infow("startup", "subsystem", "RISC", "message", "establishing RISC webhook with Google")
-	if err := googleLoadKeys(); err != nil {
-		log.Errorw(err.Error(), "subsystem", "RISC")
+
+	ar := jwk.NewAutoRefresh(ctx)
+	ar.Configure(googleConfig.JWKURI, jwk.WithMinRefreshInterval(60*time.Minute))
+	tmp, err := ar.Refresh(ctx, googleConfig.JWKURI)
+	if err != nil {
+		log.Error(err)
 		return
 	}
+	keys = tmp
 
 	if err := updateWebhook(); err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
-
 	defer DisableWebhook()
 
-	// if a secevent comes in between establishing the hook and loading the keys?
-	c.running = true
+	running = true
 
 	if err := ping(); err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
@@ -96,10 +102,20 @@ func riscRegisterWebhook() {
 
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
-		if err := googleLoadKeys(); err != nil {
-			log.Errorw(err.Error(), "subsystem", "RISC")
+		select {
+		case <-ctx.Done():
+			log.Info("got ctx.Done, shutting down RISC background processes")
+			running = false
+			return
+		default:
+		}
+		tmp, err := ar.Fetch(ctx, googleConfig.JWKURI)
+		if err != nil {
+			log.Error(err)
 			return
 		}
+		keys = tmp
+
 		if err := updateWebhook(); err != nil {
 			log.Errorw(err.Error(), "subsystem", "RISC")
 			return
@@ -207,7 +223,7 @@ func DisableWebhook() {
 		raw, _ = ioutil.ReadAll(response.Body)
 		log.Errorw("not OK status", "subsystem", "RISC", "content", string(raw))
 	}
-	c.running = false
+	running = false
 }
 
 func checkWebhook() error {
@@ -288,7 +304,7 @@ func AddSubject(gid model.GoogleID) error {
 	jmsg := map[string]interface{}{
 		"subject": map[string]string{
 			"subject_type": "iss-sub",
-			"iss":          c.Issuer,
+			"iss":          googleConfig.Issuer,
 			"sub":          gid.String(),
 		},
 		"verified": true,
@@ -299,10 +315,10 @@ func AddSubject(gid model.GoogleID) error {
 		return err
 	}
 
-	log.Debugw("AddSubject", "subsystem", "RISC", "data", c.AddEndpoint, "raw", string(raw))
+	log.Debugw("AddSubject", "subsystem", "RISC", "data", googleConfig.AddEndpoint, "raw", string(raw))
 
 	client := http.Client{}
-	req, err := http.NewRequest("POST", c.AddEndpoint, bytes.NewBuffer(raw))
+	req, err := http.NewRequest("POST", googleConfig.AddEndpoint, bytes.NewBuffer(raw))
 	if err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
@@ -324,10 +340,12 @@ func AddSubject(gid model.GoogleID) error {
 }
 
 func getToken() (*oauth2.Token, error) {
-	creds, err := google.JWTAccessTokenSourceFromJSON(c.authdata, jwtService)
+	creds, err := google.JWTAccessTokenSourceFromJSON(authdata, jwtService)
 	if err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return nil, err
 	}
-	return creds.Token()
+	token, err := creds.Token()
+	log.Debugw("new RISC token", "creds", creds, "token", token)
+	return token, err
 }
