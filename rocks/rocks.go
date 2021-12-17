@@ -342,7 +342,7 @@ func Authorize(gid model.GoogleID) bool {
 		}
 		log.Debugw("rocks cache refreshed", "gid", gid, "data", net)
 		if net.Gid == "" {
-			log.Info("Rocks returned a result without a GID, adding it", "gid", gid, "result", net)
+			log.Infow("Rocks returned a result without a GID, adding it", "gid", gid, "result", net)
 			net.Gid = gid
 		}
 		err = model.RocksToDB(net)
