@@ -86,6 +86,30 @@ func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.Operatio
 	return nil
 }
 
+// AssignTask lets an gent know they have a new assignment on a given operation
+func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID, status string) error {
+	if !c.running {
+		return nil
+	}
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	data := map[string]string{
+		"opID":   string(opID),
+		"taskID": string(taskID),
+		"msg":    status,
+		"cmd":    "Task Assignment Change",
+	}
+	genericMulticast(data, tokens)
+	return nil
+}
+
 // MarkerStatus reports a marker update to a team/topic
 func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.TeamID, status string) error {
 	if !c.running {
@@ -120,6 +144,30 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"linkID": string(linkID),
 		"msg":    status,
 		"cmd":    "Link Status Change",
+	}
+	msg := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	_, err := c.msg.Send(c.ctx, &msg)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// TaskStatus reports a task update to a team/topic
+func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string) error {
+	if !c.running {
+		return nil
+	}
+	data := map[string]string{
+		"opID":   string(opID),
+		"taskID": string(taskID),
+		"msg":    status,
+		"cmd":    "Task Status Change",
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
