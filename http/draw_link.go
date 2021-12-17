@@ -19,7 +19,7 @@ func linkRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return gid, &model.Link{}, &op, err
 	}
 
@@ -27,27 +27,27 @@ func linkRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	op.ID = model.OperationID(vars["opID"])
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return gid, &model.Link{}, &op, err
 	}
 
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
+		if op.ID.IsDeletedOp() {
+			err := fmt.Errorf("requested deleted op")
+			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+			http.Error(res, jsonError(err), http.StatusGone)
+			return gid, &model.Link{}, &op, err
+		}
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return gid, &model.Link{}, &op, err
 	}
-
-	/*
-		if op.ID.IsDeletedOp() {
-				err := fmt.Errorf("requested deleted op")
-				log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-				http.Error(res, jsonError(err), http.StatusGone)
-				return
-			}
-	*/
 
 	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
 		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return gid, link, &op, err
 	}
 	return gid, link, &op, nil
@@ -56,8 +56,6 @@ func linkRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -83,8 +81,6 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -109,8 +105,6 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -135,8 +129,6 @@ func drawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -160,8 +152,6 @@ func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -186,8 +176,6 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkDeltaRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -226,8 +214,6 @@ func drawLinkIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -252,8 +238,6 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -277,8 +261,6 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkRejectRoute(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -302,8 +284,6 @@ func drawLinkRejectRoute(res http.ResponseWriter, req *http.Request) {
 func drawLinkFetch(res http.ResponseWriter, req *http.Request) {
 	gid, link, op, err := linkRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 

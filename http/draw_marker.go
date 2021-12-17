@@ -13,8 +13,8 @@ import (
 )
 
 func markerRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *model.Marker, *model.Operation, error) {
-	op := model.Operation{}
 	res.Header().Set("Content-Type", jsonType)
+	op := model.Operation{}
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -27,18 +27,27 @@ func markerRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID,
 	op.ID = model.OperationID(vars["opID"])
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
+		if op.ID.IsDeletedOp() {
+			err := fmt.Errorf("requested deleted op")
+			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+			http.Error(res, jsonError(err), http.StatusGone)
+			return gid, &model.Marker{}, &op, err
+		}
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return gid, &model.Marker{}, &op, err
 	}
 
 	markerID := model.MarkerID(vars["marker"])
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return gid, &model.Marker{}, &op, err
 	}
 
 	marker, err := op.GetMarker(markerID)
 	if err != nil {
 		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return gid, marker, &op, err
 	}
 	return gid, marker, &op, nil
@@ -47,8 +56,6 @@ func markerRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID,
 func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -74,8 +81,6 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -99,8 +104,6 @@ func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -124,8 +127,6 @@ func drawMarkerCommentRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -149,8 +150,6 @@ func drawMarkerZoneRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -180,8 +179,6 @@ func drawMarkerDeltaRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -212,8 +209,6 @@ func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -237,8 +232,6 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -262,8 +255,6 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -287,8 +278,6 @@ func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, marker, op, err := markerRequires(res, req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 

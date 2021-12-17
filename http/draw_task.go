@@ -20,23 +20,29 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	gid, err := getAgentID(req)
 	if err != nil {
 		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return gid, &op, &model.Task{}, err
 	}
 
 	vars := mux.Vars(req)
 	op.ID = model.OperationID(vars["opID"])
-
 	if err = op.Populate(gid); err != nil {
 		log.Error(err)
+		if op.ID.IsDeletedOp() {
+			err := fmt.Errorf("requested deleted op")
+			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+			http.Error(res, jsonError(err), http.StatusGone)
+			return gid, &op, &model.Task{}, err
+		}
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return gid, &op, &model.Task{}, err
 	}
 
 	taskID := model.TaskID(vars["task"])
-
 	task, err := op.GetTask(taskID)
 	if err != nil {
 		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return gid, &op, task, err
 	}
 	return gid, &op, task, nil
@@ -45,7 +51,6 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -71,7 +76,6 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -95,7 +99,6 @@ func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -119,7 +122,6 @@ func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -143,7 +145,6 @@ func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -173,7 +174,6 @@ func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -205,7 +205,6 @@ func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
 func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -229,7 +228,6 @@ func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -253,7 +251,6 @@ func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -277,7 +274,6 @@ func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -304,7 +300,7 @@ func taskAssignTouch(gid model.GoogleID, markerID model.TaskID, op *model.Operat
 		log.Error(err)
 	}
 
-	// TODO wfb.AssignTask(gid, model.TaskID(markerID), op.ID, uid)
+	wfb.AssignTask(gid, model.TaskID(markerID), op.ID, uid)
 	return uid
 }
 
@@ -321,17 +317,9 @@ func taskStatusTouch(op *model.Operation, taskID model.TaskID, status string) st
 	for _, t := range op.Teams {
 		teams = append(teams, t.TeamID)
 	}
-	if len(teams) == 0 {
-		// not populated?
-		teams, err = op.ID.Teams()
-		if err != nil {
-			log.Error(err)
-			return uid
-		}
-	}
 
 	for _, t := range teams {
-		err := wfb.MarkerStatus(taskID, op.ID, t, status)
+		err := wfb.TaskStatus(taskID, op.ID, t, status)
 		if err != nil {
 			log.Error(err)
 		}
@@ -342,7 +330,6 @@ func taskStatusTouch(op *model.Operation, taskID model.TaskID, status string) st
 func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -376,7 +363,6 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
@@ -410,7 +396,6 @@ func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 func drawTaskOrderRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
