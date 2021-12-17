@@ -19,9 +19,10 @@ type WasabeeConf struct {
 		ID   int
 	}
 	HTTP struct {
-		Webroot string
-		APIpath string
-		Router  *mux.Router
+		Webroot  string
+		APIpath  string
+		WebUIurl string
+		Router   *mux.Router
 	}
 	JWSigningKeys jwk.Set
 	JWParsingKeys jwk.Set
@@ -62,6 +63,11 @@ func SetWebroot(w string) {
 // GetWebroot is called from templates
 func GetWebroot() string {
 	return c.HTTP.Webroot
+}
+
+// SetWebUIurl is called at https startup
+func SetWebUIurl(a string) {
+	c.HTTP.WebUIurl = a
 }
 
 // SetWebAPIPath is called at https startup

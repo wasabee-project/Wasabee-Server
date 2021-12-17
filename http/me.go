@@ -393,6 +393,13 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// this was already done in authMW, but double-check it here
+	if err := jwt.Validate(token, jwt.WithAudience("wasabee")); err != nil {
+		log.Info(err)
+		http.Error(res, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	jwtid := token.JwtID()
 
 	hostname, err := os.Hostname()
@@ -416,6 +423,9 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// get refreshed count from token
+	// increment and set refreshed count
+
 	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
 	hdrs.Set("jku", "https://cdn2.wasabee.rocks/.well-known/jwks.json")
@@ -427,7 +437,8 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	s := fmt.Sprintf("{\"status\":\"ok\", \"jwk\":\"%s\"}", string(signed[:]))
-	// log.Infow("jwt", "refreshed", s)
+	log.Infow("jwt Refresh", "gid", gid, "token ID", jwtid)
+	// jwk was a typo -- but the early clients used it, leave in place for a bit
+	s := fmt.Sprintf("{\"status\":\"ok\", \"jwk\":\"%s\", \"jwt\":\"%s\"}", string(signed[:]), string(signed[:]))
 	fmt.Fprint(res, s)
 }

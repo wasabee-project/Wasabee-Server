@@ -6,7 +6,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-func doPermissions () {
+func doPermissions() {
 	rows, err := old.Query("SELECT teamID, opID, permission, zone FROM opteams ORDER BY teamID, opID")
 	if err != nil {
 		log.Panic(err)

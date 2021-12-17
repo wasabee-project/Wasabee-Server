@@ -13,7 +13,7 @@ func doOperations() {
 	}
 
 	for rows.Next() {
-		var id, name, gid, color, modified, lasteditid, referencetime  string
+		var id, name, gid, color, modified, lasteditid, referencetime string
 		var comment sql.NullString
 
 		err := rows.Scan(&id, &name, &gid, &color, &modified, &comment, &lasteditid, &referencetime)
@@ -72,7 +72,7 @@ func doOperations() {
 
 		_, err = new.Exec("INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta)  VALUES (?,?,?,?,?,?,?)", id, opid, comment, taskorder, state, zone, deltaminutes)
 		if err != nil {
-			log.Debug("out", "taskorder", taskorder, "state", state, "zone", zone, "delta", deltaminutes);
+			log.Debug("out", "taskorder", taskorder, "state", state, "zone", zone, "delta", deltaminutes)
 			log.Panic(err)
 		}
 		_, err = new.Exec("INSERT INTO marker (ID, opID, portalID, type) VALUES (?,?,?,?)", id, opid, portalid, typeid)
@@ -100,7 +100,6 @@ func doOperations() {
 		var taskorder, completed int
 		var comment, gid, color sql.NullString
 		var zone, deltaminutes, mu sql.NullInt64
-
 
 		state = "pending"
 		if gid.Valid {

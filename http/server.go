@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"html/template"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -43,7 +42,7 @@ type Configuration struct {
 	store            *sessions.CookieStore
 	sessionName      string
 	CookieSessionKey string
-	TemplateSet      map[string]*template.Template // allow multiple translations
+	WebUIurl         string
 	Logfile          string
 	srv              *http.Server
 	logfileHandle    *os.File
@@ -77,9 +76,9 @@ func initializeConfig(initialConfig Configuration) {
 	}
 	c.path = strings.TrimSuffix("/"+strings.TrimPrefix(c.path, "/"), "/")
 
-	// used for templates
 	config.SetWebroot(c.Root)
 	config.SetWebAPIPath(apipath)
+	config.SetWebUIurl(c.WebUIurl)
 
 	if c.OauthConfig.ClientID == "" {
 		log.Fatal("OAUTH_CLIENT_ID unset: logins will fail")
@@ -136,27 +135,6 @@ func initializeConfig(initialConfig Configuration) {
 			"/apple-touch-icon.png"},
 	})
 	c.scanners = make(map[string]int64)
-}
-
-// templateExecute outputs directly to the ResponseWriter
-func templateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
-	var lang string
-	tmp := req.Header.Get("Accept-Language")
-	if tmp == "" || len(tmp) < 2 {
-		lang = "en"
-	} else {
-		lang = strings.ToLower(tmp)[:2]
-	}
-	_, ok := c.TemplateSet[lang]
-	if !ok {
-		lang = "en" // default to english if the map doesn't exist
-	}
-
-	if err := c.TemplateSet[lang].ExecuteTemplate(res, name, data); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
 }
 
 // StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.

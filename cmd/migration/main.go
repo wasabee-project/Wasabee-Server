@@ -124,7 +124,7 @@ func setupTables() {
 		{"operation", `CREATE TABLE operation ( ID char(40) NOT NULL, name varchar(128) NOT NULL DEFAULT 'new op', gid char(21) NOT NULL, color varchar(16) NOT NULL DEFAULT 'purple', modified datetime NOT NULL DEFAULT current_timestamp(), comment text DEFAULT NULL, referencetime datetime NOT NULL DEFAULT current_timestamp(), lasteditid char(40) NOT NULL DEFAULT 'unset', PRIMARY KEY (ID), KEY gid (gid), CONSTRAINT fk_operation_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"task", `CREATE TABLE task(ID char(40) NOT NULL, opID char(40) NOT NULL, comment text DEFAULT NULL, taskorder int(11) NOT NULL DEFAULT 0, state enum('pending','assigned','acknowledged','completed') NOT NULL DEFAULT 'pending', zone tinyint(4) NOT NULL DEFAULT 1, delta int(11) NOT NULL DEFAULT 0, PRIMARY KEY (ID,opID), KEY fk_operation_id_task (opID), CONSTRAINT fk_operation_id_task FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 
-	        {"agentteams", `CREATE TABLE agentteams ( teamID varchar(64) NOT NULL, gid char(21) NOT NULL, shareLoc tinyint(4) NOT NULL DEFAULT 0, shareWD tinyint(4) NOT NULL DEFAULT 0, loadWD tinyint(4) NOT NULL DEFAULT 0, comment varchar(32) NOT NULL DEFAULT 'agents', PRIMARY KEY (teamID,gid), KEY gidkey (gid), CONSTRAINT fk_agent_teams FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_t_teams FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"agentteams", `CREATE TABLE agentteams ( teamID varchar(64) NOT NULL, gid char(21) NOT NULL, shareLoc tinyint(4) NOT NULL DEFAULT 0, shareWD tinyint(4) NOT NULL DEFAULT 0, loadWD tinyint(4) NOT NULL DEFAULT 0, comment varchar(32) NOT NULL DEFAULT 'agents', PRIMARY KEY (teamID,gid), KEY gidkey (gid), CONSTRAINT fk_agent_teams FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_t_teams FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"assignments", `CREATE TABLE assignments ( opID char(40) NOT NULL, taskID char(40) NOT NULL, gid char(21) NOT NULL, KEY tid (opID,taskID), KEY opID (opID), KEY gid (gid), CONSTRAINT fk_assignments_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE, CONSTRAINT fk_taskid FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"defensivekeys", `CREATE TABLE defensivekeys ( gid char(21) NOT NULL, portalID varchar(41) NOT NULL, capID varchar(16) DEFAULT NULL, count int(3) NOT NULL DEFAULT 0, name varchar(128) DEFAULT NULL, loc point DEFAULT NULL, PRIMARY KEY (portalID,gid), KEY fk_dk_gid (gid), CONSTRAINT fk_dk_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"deletedops", `CREATE TABLE deletedops ( opID char(40) NOT NULL, deletedate datetime NOT NULL DEFAULT current_timestamp(), gid char(21) DEFAULT NULL, PRIMARY KEY (opID)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
@@ -186,7 +186,7 @@ func setupTables() {
 			}
 		}
 
-		_, err := tx.Exec("DELETE FROM "+ v.tablename)
+		_, err := tx.Exec("DELETE FROM " + v.tablename)
 		if err != nil {
 			log.Error(err)
 		}

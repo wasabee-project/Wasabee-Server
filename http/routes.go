@@ -29,7 +29,7 @@ func setupRouter() *mux.Router {
 
 	// Google Oauth2 stuff (constants defined in server.go)
 	router.HandleFunc(login, googleRoute).Methods("GET")
-	router.HandleFunc(callback, callbackRoute).Methods("GET")
+	// router.HandleFunc(callback, callbackRoute).Methods("GET")
 	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")
 	router.HandleFunc(oneTimeToken, oneTimeTokenRoute).Methods("POST")
 
@@ -38,11 +38,11 @@ func setupRouter() *mux.Router {
 	router.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
 	router.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
 	router.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
+
 	// this cannot be a redirect -- sent it raw
 	router.HandleFunc("/firebase-messaging-sw.js", fbmswRoute).Methods("GET")
-	// do not make these static -- they should be translated via the templates system
-	router.HandleFunc("/privacy", privacyRoute).Methods("GET")
 	router.HandleFunc("/", frontRoute).Methods("GET")
+
 	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
 	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
 
@@ -212,20 +212,9 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	err := templateExecute(res, req, "index", nil)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// display the privacy policy
-func privacyRoute(res http.ResponseWriter, req *http.Request) {
-	err := templateExecute(res, req, "privacy", nil)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
+	url := fmt.Sprintf("%s?server=%s", config.Get().HTTP.WebUIurl, config.Get().HTTP.Webroot)
+	log.Debug(url)
+	http.Redirect(res, req, url, 301)
 }
 
 // called when a resource/endpoint is not found

@@ -101,6 +101,9 @@ var flags = []cli.Flag{
 	cli.StringFlag{
 		Name: "jwkpub", EnvVar: "JWK_VERIFIER_PATH", Value: "certs/jwkpub.json",
 		Usage: "file containing the json-encoded JWK used to verify JWT"},
+	cli.StringFlag{
+		Name: "webui", EnvVar: "WEBUIURL", Value: "https://wasabee-project.github.io/Wasabee-WebUI/",
+		Usage: "URL to the WebUI"},
 	cli.BoolFlag{
 		Name: "debug", EnvVar: "DEBUG",
 		Usage: "Show (a lot) more output"},
@@ -236,7 +239,7 @@ func run(c *cli.Context) error {
 			OauthUserInfoURL: c.String("oauth-userinfo"),
 			CookieSessionKey: c.String("sessionkey"),
 			Logfile:          c.String("httpslog"),
-			TemplateSet:      ts,
+			WebUIurl:         c.String("webui"),
 		})
 	}
 
