@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"path"
@@ -248,7 +249,7 @@ func run(c *cli.Context) error {
 	if _, err := os.Stat(riscPath); err != nil {
 		log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", riscPath)
 	} else {
-		go risc.RISC(riscPath)
+		go risc.RISC(context.Background(), riscPath)
 	}
 
 	// requires Firebase SDK and PubSub publisher & subscriber access
