@@ -340,9 +340,9 @@ func Authorize(gid model.GoogleID) bool {
 			log.Error(err)
 			return !a.Smurf // do not block on network error unless already listed as a smurf in the cache
 		}
-		log.Debugw("rocks cache refreshed", "gid", gid, "data", net)
+		// log.Debugw("rocks cache refreshed", "gid", gid, "data", net)
 		if net.Gid == "" {
-			log.Infow("Rocks returned a result without a GID, adding it", "gid", gid, "result", net)
+			log.Debugw("Rocks returned a result without a GID, adding it", "gid", gid, "result", net)
 			net.Gid = gid
 		}
 		err = model.RocksToDB(net)
