@@ -1,4 +1,4 @@
-package wasabeetelegram
+package wtg
 
 import (
 	"bytes"

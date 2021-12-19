@@ -1,9 +1,9 @@
-package wasabeetelegram
+package wtg
 
 import (
 	"strconv"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -66,15 +66,17 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 
 // This is where command processing takes place
 func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid model.GoogleID) error {
-	// we don't get the name from the agent when verified via rocks, go ahead and update
+	// update name
 	if inMsg.Message.From.UserName != "" {
 		tgid := model.TelegramID(inMsg.Message.From.ID)
 		if err := tgid.SetName(inMsg.Message.From.UserName); err != nil {
 			log.Error(err)
 		}
 	}
+
 	if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
+		// add commands here
 		case "start":
 			tmp, _ := templateExecute("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
@@ -88,16 +90,11 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid mod
 			msg.Text = tmp
 			msg.ReplyMarkup = c.baseKbd
 		}
-
-		if _, err := bot.DeleteMessage(tgbotapi.NewDeleteMessage(inMsg.Message.Chat.ID, inMsg.Message.MessageID)); err != nil {
-			log.Error(err)
-			return err
-		}
 	} else if inMsg.Message.Text != "" {
 		switch inMsg.Message.Text {
-		case "Teams":
-			msg.ReplyMarkup = teamKeyboard(gid)
-			msg.Text = "Your Teams"
+		// and responses here
+		case "wasabee":
+			msg.Text = "wasabee rocks"
 		default:
 			msg.ReplyMarkup = c.baseKbd
 		}

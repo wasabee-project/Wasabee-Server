@@ -1,4 +1,4 @@
-package wasabeetelegram
+package wtg
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/gorilla/mux"
 
 	"github.com/wasabee-project/Wasabee-Server/log"

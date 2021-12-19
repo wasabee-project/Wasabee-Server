@@ -1,11 +1,11 @@
-package wasabeetelegram
+package wtg
 
 import (
 	"fmt"
 	"html/template"
 	"strings"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
@@ -40,12 +40,12 @@ func WasabeeBot(in TGConfiguration) {
 	c.APIKey = in.APIKey
 
 	if in.TemplateSet == nil {
-		log.Warnw("startup", "subsystem", "Telegram", "message", "the UI templates are not loaded; not starting Telegram bot")
+		log.Warnw("startup", "subsystem", "Telegram", "message", "the Telegram message templates are not loaded; not starting Telegram bot")
 		return
 	}
 	c.TemplateSet = in.TemplateSet
 
-	keyboards(&c)
+	c.baseKbd = keyboards()
 
 	c.HookPath = in.HookPath
 	if c.HookPath == "" {
@@ -56,15 +56,6 @@ func WasabeeBot(in TGConfiguration) {
 	webhook := config.Subrouter(c.HookPath)
 	webhook.HandleFunc("/{hook}", TGWebHook).Methods("POST")
 
-	b := messaging.Bus{
-		SendMessage:      SendMessage,
-		SendTarget:       SendTarget,
-		AddToRemote:      AddToChat,
-		RemoveFromRemote: RemoveFromChat,
-	}
-
-	messaging.RegisterMessageBus("Telegram", b)
-
 	var err error
 	bot, err = tgbotapi.NewBotAPI(c.APIKey)
 	if err != nil {
@@ -74,18 +65,28 @@ func WasabeeBot(in TGConfiguration) {
 
 	// bot.Debug = true
 	log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
-	config.TGSetBot(bot.Self.UserName, bot.Self.ID)
+	config.TGSetBot(bot.Self.UserName, int(bot.Self.ID))
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	webroot := config.GetWebroot()
 	c.hook = generatename.GenerateName()
-	t := fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
-	if _, err = bot.SetWebhook(tgbotapi.NewWebhook(t)); err != nil {
+	whurl := fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
+	wh, _ := tgbotapi.NewWebhook(whurl)
+	if _, err = bot.Request(wh); err != nil {
 		log.Error(err)
 		return
 	}
+
+	// let the messaging susbsystem know we exist and how to use us
+	b := messaging.Bus{
+		SendMessage:      SendMessage,
+		SendTarget:       SendTarget,
+		AddToRemote:      AddToChat,
+		RemoveFromRemote: RemoveFromChat,
+	}
+	messaging.RegisterMessageBus("Telegram", b)
 
 	i := 1
 	for update := range c.upChan {
@@ -94,11 +95,12 @@ func WasabeeBot(in TGConfiguration) {
 			log.Error(err)
 			continue
 		}
-		if (i % 100) == 0 { // every 100 requests, change the endpoint; I'm _not_ paranoid.
+		if (i % 100) == 0 { // every 100 requests, change the endpoint
 			i = 1
 			c.hook = generatename.GenerateName()
-			t = fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
-			_, err = bot.SetWebhook(tgbotapi.NewWebhook(t))
+			whurl = fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
+			wh, _ := tgbotapi.NewWebhook(whurl)
+			_, err = bot.Request(wh)
 			if err != nil {
 				log.Error(err)
 			}
@@ -108,10 +110,8 @@ func WasabeeBot(in TGConfiguration) {
 }
 
 // Shutdown closes all the Telegram connections
-// called only at server shutdown
 func Shutdown() {
 	log.Infow("shutdown", "subsystem", "Telegram", "message", "shutdown telegram")
-	_, _ = bot.RemoveWebhook()
 	bot.StopReceivingUpdates()
 }
 
@@ -127,10 +127,10 @@ func runUpdate(update tgbotapi.Update) error {
 			log.Error(err)
 			return err
 		}
-		if _, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)); err != nil {
+		/* if _, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)); err != nil {
 			log.Error(err)
 			return err
-		}
+		} */
 		return nil
 	}
 
@@ -205,11 +205,11 @@ func newUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
 	return err
 }
 
-func keyboards(c *TGConfiguration) {
-	c.baseKbd = tgbotapi.NewReplyKeyboard(
+func keyboards() tgbotapi.ReplyKeyboardMarkup {
+	return tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
-			tgbotapi.NewKeyboardButton("Teams"),
+			tgbotapi.NewKeyboardButton("Nothing"),
 		),
 	)
 }
@@ -304,6 +304,7 @@ func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 		log.Error(err)
 		return "", err
 	}
+
 	if agent.Gid != "" {
 		gid := model.GoogleID(agent.Gid)
 		if !gid.Valid() {
@@ -326,7 +327,7 @@ func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 		return "", err
 	}
 	if result.Gid != "" {
-		log.Debugw("v is fucking useless")
+		log.Debugw("v is so useless")
 		result.Gid, _ = model.GetGIDFromEnlID(result.EnlID)
 	}
 
@@ -342,7 +343,7 @@ func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 			log.Error(err)
 			return gid, err
 		}
-		// v success
+		// v success?!
 		return gid, nil
 	}
 
