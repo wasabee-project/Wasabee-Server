@@ -5,6 +5,7 @@ import (
 
 	"firebase.google.com/go/messaging"
 
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	wm "github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -22,6 +23,7 @@ func AgentLocation(teamID model.TeamID) error {
 	data := map[string]string{
 		"msg": string(teamID),
 		"cmd": "Agent Location Change",
+		"srv":      config.GetWebroot(),
 		// we could send gid here for a single agent location change...
 	}
 
@@ -120,6 +122,7 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 		"markerID": string(markerID),
 		"msg":      status,
 		"cmd":      "Marker Status Change",
+		"srv":      config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -144,6 +147,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"linkID": string(linkID),
 		"msg":    status,
 		"cmd":    "Link Status Change",
+		"srv":      config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -168,6 +172,7 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"taskID": string(taskID),
 		"msg":    status,
 		"cmd":    "Task Status Change",
+		"srv":      config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -303,6 +308,7 @@ func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) err
 		"opID":     string(opID),
 		"updateID": updateID,
 		"cmd":      "Map Change",
+		"srv":      config.GetWebroot(),
 	}
 
 	msg := messaging.Message{
@@ -325,6 +331,7 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 	data := map[string]string{
 		"gid": string(gid),
 		"cmd": "Login",
+		"srv":      config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -346,6 +353,7 @@ func SendAnnounce(teamID wm.TeamID, message string) error {
 	data := map[string]string{
 		"msg": message,
 		"cmd": "Generic Message",
+		"srv":      config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -429,6 +437,8 @@ func genericMulticast(data map[string]string, tokens []string) {
 		// log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 		processBatchResponse(br, subset)
 	}
+
+	data["srv"] = config.GetWebroot()
 
 	msg := messaging.MulticastMessage{
 		Data:   data,
