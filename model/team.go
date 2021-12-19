@@ -626,20 +626,20 @@ func (teamID TeamID) TelegramChat() (int64, error) {
 }
 
 // ChatToTeam takes a chatID and returns a linked teamID
-func ChatToTeam(chat int64) (TeamID, error) {
+func ChatToTeam(chat int64) (TeamID, OperationID, error) {
 	var t TeamID
+	var o OperationID
 
-	err := db.QueryRow("SELECT teamID FROM team WHERE telegram = ?", chat).Scan(&t)
+	err := db.QueryRow("SELECT teamID, opID FROM telegramteam WHERE telegram = ?", chat).Scan(&t, &o)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
-		return t, err
+		return t, o, err
 	}
 	if err == sql.ErrNoRows {
-		err := fmt.Errorf("attempt to get teamID for non–linked chat")
-		// log.Debug(err)
-		return t, err
+		err := fmt.Errorf("chat not linked to any teams")
+		return t, o, err
 	}
-	return t, nil
+	return t, o, nil
 }
 
 // GetAgentLocations is a fast-path to get all available agent locations

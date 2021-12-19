@@ -24,7 +24,7 @@ type Task struct {
 }
 
 // add/remove depends
-func (t *Task) AddDepend(task string) error {
+func (t *Task) AddDepend(task TaskID) error {
 	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, task)
 	if err != nil {
 		log.Error(err)

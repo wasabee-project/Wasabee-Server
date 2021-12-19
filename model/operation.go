@@ -253,6 +253,13 @@ func drawOpUpdateWorker(o *Operation) error {
 		return err
 	}
 
+	// clear here, add back in individual tasks
+	_, err = tx.Exec("DELETE FROM depends WHERE opID = ?", o.ID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	if err := drawOpUpdateMarkers(o, portalMap, agentMap, tx); err != nil {
 		log.Error(err)
 		return err
@@ -617,20 +624,20 @@ func (o *Operation) Touch() (string, error) {
 }
 
 // Stat returns useful info on an operation
-func (opID OperationID) Stat() (OpStat, error) {
-	var s OpStat
+func (opID OperationID) Stat() (*OpStat, error) {
+	s := OpStat{}
 	s.ID = opID
 	err := db.QueryRow("SELECT name, gid, modified, lasteditid FROM operation WHERE ID = ?", opID).Scan(&s.Name, &s.Gid, &s.Modified, &s.LastEditID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
-		return s, err
+		return &s, err
 	}
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("no such operation")
 		log.Warnw(err.Error(), "resource", opID)
-		return s, err
+		return &s, err
 	}
-	return s, nil
+	return &s, nil
 }
 
 // Rename changes an op's name
