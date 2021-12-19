@@ -264,7 +264,7 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "" {
-		go wasabeetelegram.WasabeeBot(wasabeetelegram.TGConfiguration{
+		go wtg.WasabeeBot(wtg.TGConfiguration{
 			APIKey:      c.String("tgkey"),
 			HookPath:    "/tg",
 			TemplateSet: ts,
@@ -287,7 +287,7 @@ func run(c *cli.Context) error {
 		risc.DisableWebhook()
 	}
 	if config.TGRunning() {
-		wasabeetelegram.Shutdown()
+		wtg.Shutdown()
 	}
 
 	// _ = log.Sync()
