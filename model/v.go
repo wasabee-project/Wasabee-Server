@@ -157,16 +157,7 @@ func (teamID TeamID) VConfigure(vteam int64, role uint8) error {
 	return nil
 }
 
-func (gid GoogleID) VAPIkey() (string, error) {
-	var key string
-	err := db.QueryRow("SELECT VAPIkey FROM v WHERE gid = ?", gid).Scan(&key)
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-	return key, nil
-}
-
+// Look up an agent's GoogleID by V EnlID
 func GetGIDFromEnlID(enlid string) (GoogleID, error) {
 	var gid GoogleID
 
@@ -176,4 +167,28 @@ func GetGIDFromEnlID(enlid string) (GoogleID, error) {
 		return gid, err
 	}
 	return gid, nil
+}
+
+// VAPIkey (gid GoogleID) loads an agents's V API key (this should be unusual); "" is "not set"
+func (gid GoogleID) GetVAPIkey() (string, error) {
+	var v sql.NullString
+
+	err := db.QueryRow("SELECT VAPIkey FROM v WHERE GID = ?", gid).Scan(&v)
+	if err != nil {
+		log.Error(err)
+		return "", nil
+	}
+	if !v.Valid {
+		return "", nil
+	}
+	return v.String, nil
+}
+
+// SetVAPIkey stores an agent's V API key (this should be unusual)
+func (gid GoogleID) SetVAPIkey(key string) error {
+	if _, err := db.Exec("UPDATE v SET VAPIkey = ? WHERE gid  = ? ", key, gid); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
 }

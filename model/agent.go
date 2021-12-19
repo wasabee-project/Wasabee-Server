@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -612,30 +613,6 @@ func (gid GoogleID) IntelSmurf() bool {
 	return false
 }
 
-// VAPIkey (gid GoogleID) loads an agents's V API key (this should be unusual); "" is "not set"
-func (gid GoogleID) GetVAPIkey() (string, error) {
-	var v sql.NullString
-
-	err := db.QueryRow("SELECT VAPIkey FROM v WHERE GID = ?", gid).Scan(&v)
-	if err != nil {
-		log.Error(err)
-		return "", nil
-	}
-	if !v.Valid {
-		return "", nil
-	}
-	return v.String, nil
-}
-
-// SetVAPIkey stores
-func (gid GoogleID) SetVAPIkey(key string) error {
-	if _, err := db.Exec("UPDATE agent SET VAPIkey = ? WHERE gid  = ? ", key, gid); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
-}
-
 func (gid GoogleID) FirstLogin() error {
 	log.Infow("first login", "GID", gid, "message", "first login for "+gid)
 
@@ -682,4 +659,50 @@ func (ad Agent) Save() error {
 	}
 
 	return nil
+}
+
+// GetAgentLocations is a fast-path to get all available agent locations
+func (gid GoogleID) GetAgentLocations() (string, error) {
+	type loc struct {
+		Gid  GoogleID `json:"gid"`
+		Lat  float64  `json:"lat"`
+		Lon  float64  `json:"lng"`
+		Date string   `json:"date"`
+	}
+
+	var list []loc
+	var tmpL loc
+	var lat, lon string
+
+	var rows *sql.Rows
+	rows, err := db.Query("SELECT x.gid, Y(l.loc), X(l.loc), l.upTime "+
+		"FROM agentteams=x, locations=l "+
+		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ?) "+
+		"AND x.shareLoc= 1 AND x.gid = l.gid", gid)
+	if err != nil {
+		log.Error(err)
+		return "", err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&tmpL.Gid, &lat, &lon, &tmpL.Date); err != nil {
+			log.Error(err)
+			return "", err
+		}
+		tmpL.Lat, _ = strconv.ParseFloat(lat, 64)
+		tmpL.Lon, _ = strconv.ParseFloat(lon, 64)
+
+		if tmpL.Lat == 0 || tmpL.Lon == 0 {
+			continue
+		}
+
+		list = append(list, tmpL)
+	}
+
+	jList, err := json.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	return string(jList), nil
 }

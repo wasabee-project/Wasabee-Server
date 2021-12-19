@@ -27,9 +27,9 @@ func setupRouter() *mux.Router {
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff (constants defined in server.go)
-	router.HandleFunc(login, googleRoute).Methods("GET")  // deprecated -- belongs in clients now
-	router.HandleFunc(callback, callbackRoute).Methods("GET") // deprecated cookie mode
-	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")  // all clients should use this
+	router.HandleFunc(login, googleRoute).Methods("GET")               // deprecated -- belongs in clients now
+	router.HandleFunc(callback, callbackRoute).Methods("GET")          // deprecated cookie mode
+	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")           // all clients should use this
 	router.HandleFunc(oneTimeToken, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
 
 	// common files that live under /static

@@ -126,7 +126,7 @@ func GetMyTeams(gid model.GoogleID) (*myTeams, error) {
 	log.Debug("v get my team", "gid", gid)
 	var v myTeams
 
-	key, err := gid.VAPIkey()
+	key, err := gid.GetVAPIkey()
 	if err != nil {
 		log.Error(err)
 		return &v, err
@@ -509,7 +509,7 @@ func BulkImport(gid model.GoogleID, mode string) error {
 	log.Debug("v BuklImport")
 	var teamstomake []teamToMake
 
-	key, err := gid.VAPIkey()
+	key, err := gid.GetVAPIkey()
 	if err != nil {
 		log.Error(err)
 		return err

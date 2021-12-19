@@ -138,3 +138,63 @@ func (tgid TelegramID) VerifyAgent(authtoken string) error {
 func (tgid TelegramID) String() string {
 	return strconv.Itoa(int(tgid))
 }
+
+// LinkToTelegramChat associates a telegram chat ID with the team, performs authorization
+func (teamID TeamID) LinkToTelegramChat(chat TelegramID, opID OperationID) error {
+	log.Debugw("linking team to chat", "chat", chat, "teamID", teamID, "opID", opID)
+
+	_, err := db.Exec("REPLACE INTO telegramteam (teamID, telegram, opID) VALUES (?,?,?)", teamID, chat, MakeNullString(string(opID)))
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// UnlinkFromTelegramChat disassociates a telegram chat ID from the team -- not authenticated since bot removal from chat is enough
+func (teamID TeamID) UnlinkFromTelegramChat(chat TelegramID) error {
+	_, err := db.Exec("DELETE FROM telegramteam WHERE teamID = ? AND telegram = ?", teamID, chat)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	log.Debugw("unlinked team from telegram", "teamID", teamID, "chat", chat)
+	return nil
+}
+
+// TelegramChat returns the associated telegram chat ID for this team, if any
+func (teamID TeamID) TelegramChat() (int64, error) {
+	var chatID int64
+
+	err := db.QueryRow("SELECT telegram FROM telegramteam WHERE teamID = ?", teamID).Scan(&chatID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return chatID, err
+	}
+	if err == sql.ErrNoRows {
+		return chatID, nil
+	}
+	return chatID, nil
+}
+
+// ChatToTeam takes a chatID and returns a linked teamID
+func ChatToTeam(chat int64) (TeamID, OperationID, error) {
+	var t TeamID
+	var o OperationID
+	var on sql.NullString
+
+	err := db.QueryRow("SELECT teamID, opID FROM telegramteam WHERE telegram = ?", chat).Scan(&t, &on)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return t, o, err
+	}
+	if err == sql.ErrNoRows {
+		err := fmt.Errorf("chat not linked to any teams")
+		return t, o, err
+	}
+	if on.Valid {
+		o = OperationID(on.String)
+	}
+	return t, o, nil
+}

@@ -23,7 +23,7 @@ func AgentLocation(teamID model.TeamID) error {
 	data := map[string]string{
 		"msg": string(teamID),
 		"cmd": "Agent Location Change",
-		"srv":      config.GetWebroot(),
+		"srv": config.GetWebroot(),
 		// we could send gid here for a single agent location change...
 	}
 
@@ -147,7 +147,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"linkID": string(linkID),
 		"msg":    status,
 		"cmd":    "Link Status Change",
-		"srv":      config.GetWebroot(),
+		"srv":    config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -172,7 +172,7 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"taskID": string(taskID),
 		"msg":    status,
 		"cmd":    "Task Status Change",
-		"srv":      config.GetWebroot(),
+		"srv":    config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -331,7 +331,7 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 	data := map[string]string{
 		"gid": string(gid),
 		"cmd": "Login",
-		"srv":      config.GetWebroot(),
+		"srv": config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
@@ -353,7 +353,7 @@ func SendAnnounce(teamID wm.TeamID, message string) error {
 	data := map[string]string{
 		"msg": message,
 		"cmd": "Generic Message",
-		"srv":      config.GetWebroot(),
+		"srv": config.GetWebroot(),
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),

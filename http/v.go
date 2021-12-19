@@ -51,7 +51,7 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 		key := keys[gid]
 		if key != "" {
-			key, err = gid.VAPIkey()
+			key, err = gid.GetVAPIkey()
 			if err != nil {
 				log.Error(err)
 				continue
@@ -99,7 +99,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vkey, err := gid.VAPIkey()
+	vkey, err := gid.GetVAPIkey()
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
