@@ -19,7 +19,6 @@ func setupRouter() *mux.Router {
 
 	// apply to all
 	router.Use(headersMW)
-	router.Use(scannerMW)
 	// router.Use(logRequestMW)
 	// router.Use(debugMW)
 	router.Use(c.unrolled.Handler)
@@ -28,10 +27,10 @@ func setupRouter() *mux.Router {
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff (constants defined in server.go)
-	router.HandleFunc(login, googleRoute).Methods("GET")
-	// router.HandleFunc(callback, callbackRoute).Methods("GET")
-	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")
-	router.HandleFunc(oneTimeToken, oneTimeTokenRoute).Methods("POST")
+	router.HandleFunc(login, googleRoute).Methods("GET")  // deprecated -- belongs in clients now
+	router.HandleFunc(callback, callbackRoute).Methods("GET") // deprecated cookie mode
+	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")  // all clients should use this
+	router.HandleFunc(oneTimeToken, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
 
 	// common files that live under /static
 	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
@@ -209,37 +208,47 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	url := fmt.Sprintf("%s?server=%s", config.Get().HTTP.WebUIurl, config.Get().HTTP.Webroot)
-	log.Debug(url)
 	http.Redirect(res, req, url, 301)
 }
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
-	// log.Debugf("404: %s", req.URL)
-	http.Error(res, "404: no light here.", http.StatusNotFound)
+	log.Debugw("404", "req", req.URL)
+	http.Error(res, "404: file not found", http.StatusNotFound)
 }
 
 // called when a resource/endpoint is not found
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
-	err := fmt.Errorf("404 not found")
-	// log.Debugw(err.Error(), "URL", req.URL)
 	incrementScanner(req)
+	err := fmt.Errorf("file not found")
+	log.Debugw(err.Error(), "URL", req.URL)
 	http.Error(res, jsonError(err), http.StatusNotFound)
 }
 
 func incrementScanner(req *http.Request) {
 	scannerMux.Lock()
-	defer scannerMux.Unlock()
 	i, ok := c.scanners[req.RemoteAddr]
 	if ok {
 		c.scanners[req.RemoteAddr] = i + 1
 	} else {
 		c.scanners[req.RemoteAddr] = 1
 	}
+	scannerMux.Unlock()
+}
+
+// true == block, false == permit
+func isScanner(req *http.Request) bool {
+	scannerMux.Lock()
+	i, ok := c.scanners[req.RemoteAddr]
+	scannerMux.Unlock()
+
+	if !ok || i < 20 {
+		return false
+	}
+	return true
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {
-	prefix := http.Dir(c.FrontendPath)
-	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", prefix))
+	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", http.Dir(c.FrontendPath)))
 }

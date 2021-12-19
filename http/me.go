@@ -291,11 +291,9 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	token := string(t)
-	// XXX limit to 152 char? 1k?
-
 	if token == "" {
-		err := fmt.Errorf("token empty")
-		log.Warn(err)
+		err := fmt.Errorf("firebase token empty")
+		log.Debugw(err.Error(), "gid", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}

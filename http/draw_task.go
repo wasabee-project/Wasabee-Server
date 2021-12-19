@@ -350,7 +350,7 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = task.AddDepend(dependsOn); err != nil {
+	if err = task.AddDepend(model.TaskID(dependsOn)); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

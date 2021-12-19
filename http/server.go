@@ -196,6 +196,12 @@ func headersMW(next http.Handler) http.Handler {
 			}
 		}
 
+		if isScanner(req) {
+			log.Warnw("scanner detected", "ip", req.RemoteAddr)
+			http.Error(res, "permission denied", http.StatusForbidden)
+			return
+		}
+
 		res.Header().Add("Server", "Wasabee-Server")
 		res.Header().Add("Content-Security-Policy", fmt.Sprintf("frame-ancestors %s", ref))
 		res.Header().Add("X-Frame-Options", fmt.Sprintf("allow-from %s", ref)) // deprecated
@@ -207,27 +213,7 @@ func headersMW(next http.Handler) http.Handler {
 	})
 }
 
-func scannerMW(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		i, ok := c.scanners[req.RemoteAddr]
-		if ok && i > 30 {
-			http.Error(res, "scanner detected", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(res, req)
-	})
-}
-
-type statusRecorder struct {
-	http.ResponseWriter
-	status int
-}
-
-func (rec *statusRecorder) WriteHeader(code int) {
-	rec.status = code
-	rec.ResponseWriter.WriteHeader(code)
-}
-
+/*
 func logRequestMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		log.Debug("REQ", req.Method, req.RequestURI)
@@ -236,6 +222,7 @@ func logRequestMW(next http.Handler) http.Handler {
 		log.Debug("RESP", rec.status, req.RequestURI)
 	})
 }
+*/
 
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
