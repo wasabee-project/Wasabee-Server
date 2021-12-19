@@ -91,13 +91,12 @@ func CanSendTo(fromGID GoogleID, toGID GoogleID) bool {
 }
 
 func SendAnnounce(teamID TeamID, message string) error {
-	for name, bus := range busses {
+	for _, bus := range busses {
 		if bus.SendAnnounce != nil {
 			err := bus.SendAnnounce(teamID, message)
 			if err != nil {
 				log.Error(err)
 			}
-			log.Infow("announcement sent", "bus", name, "teamID", teamID)
 		}
 	}
 	return nil
@@ -108,52 +107,50 @@ func RegisterMessageBus(busname string, b Bus) {
 }
 
 func AddToRemote(gid GoogleID, teamID TeamID) error {
-	for name, bus := range busses {
+	for _, bus := range busses {
 		if bus.AddToRemote != nil {
 			err := bus.AddToRemote(gid, teamID)
 			if err != nil {
 				log.Error(err)
 			}
-			log.Infow("added to remote", "gid", gid, "bus", name, "teamID", teamID)
+			// log.Debugw("added to remote", "gid", gid, "bus", name, "teamID", teamID)
 		}
 	}
 	return nil
 }
 
 func RemoveFromRemote(gid GoogleID, teamID TeamID) error {
-	for name, bus := range busses {
+	for _, bus := range busses {
 		if bus.RemoveFromRemote != nil {
 			err := bus.RemoveFromRemote(gid, teamID)
 			if err != nil {
 				log.Error(err)
 			}
-			log.Infow("removed from remote", "gid", gid, "bus", name, "teamID", teamID)
+			// log.Debugw("removed from remote", "gid", gid, "bus", name, "teamID", teamID)
 		}
 	}
 	return nil
 }
 
 func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string) error {
-	for name, bus := range busses {
+	for _, bus := range busses {
 		if bus.SendAssignment != nil {
 			err := bus.SendAssignment(gid, taskID, opID, status)
 			if err != nil {
 				log.Error(err)
 			}
-			log.Infow("removed from remote", "gid", gid, "taskID", taskID, "bus", name)
 		}
 	}
 	return nil
 }
 
 func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
-	for name, bus := range busses {
+	for _, bus := range busses {
 		if bus.AgentDeleteOperation != nil {
 			err := bus.AgentDeleteOperation(gid, opID)
 			if err != nil {
 				log.Error(err)
 			}
-			log.Infow("removed from remote", "gid", gid, "resource", opID, "bus", name)
 		}
 	}
 	return nil
