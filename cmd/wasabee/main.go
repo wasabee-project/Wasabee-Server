@@ -264,7 +264,7 @@ func run(c *cli.Context) error {
 
 	// Serve Telegram
 	if c.String("tgkey") != "" {
-		go wtg.WasabeeBot(wtg.TGConfiguration{
+		go wtg.WasabeeBot(&wtg.Config{
 			APIKey:      c.String("tgkey"),
 			HookPath:    "/tg",
 			TemplateSet: ts,
