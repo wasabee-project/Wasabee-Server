@@ -1,12 +1,16 @@
 package wtg
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/rocks"
+	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
 func processDirectMessage(inMsg *tgbotapi.Update) error {
@@ -17,25 +21,35 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		return err
 	}
 
-	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
-	defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
+	/* defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
 		log.Error(err)
 		return err
-	}
-	msg.Text = defaultReply
-	msg.ParseMode = "HTML"
+	} */
 
+	// telegram ID is unknown to this server
 	if gid == "" {
 		log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
+
+		// never logged into this server, check Rocks & V
 		fgid, err := firstlogin(tgid, inMsg.Message.From.UserName)
 		if fgid != "" && err == nil {
+			// firstlogin found something at Rocks (or V lol), use that
+			msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+			msg.ParseMode = "HTML"
 			tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-		} else {
-			if err = newUserInit(&msg, inMsg); err != nil {
+			if _, err = bot.Send(msg); err != nil {
 				log.Error(err)
+				return err
 			}
+			return nil
+		}
+
+		// start manual assocation process
+		msg, err := newUserInit(inMsg)
+		if err != nil {
+			log.Error(err)
 		}
 		if _, err = bot.Send(msg); err != nil {
 			log.Error(err)
@@ -44,9 +58,12 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		return nil
 	}
 
+	// verification process started, but not completed
 	if !verified {
 		log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
-		if err = newUserVerify(&msg, inMsg); err != nil {
+
+		msg, err := newUserVerify(inMsg)
+		if err != nil {
 			log.Error(err)
 		}
 		if _, err = bot.Send(msg); err != nil {
@@ -57,7 +74,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 	}
 
 	// user is verified, process message
-	if err := processMessage(&msg, inMsg, gid); err != nil {
+	if err := processMessage(inMsg, gid); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -65,7 +82,10 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 }
 
 // This is where command processing takes place
-func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid model.GoogleID) error {
+func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	msg.ParseMode = "HTML"
+
 	// update name
 	if inMsg.Message.From.UserName != "" {
 		tgid := model.TelegramID(inMsg.Message.From.ID)
@@ -113,4 +133,114 @@ func processMessage(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update, gid mod
 	}
 
 	return nil
+}
+
+// checks rocks/v based on tgid, Inits agent if found
+func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
+	agent, err := rocks.Search(fmt.Sprint(tgid))
+	if err != nil {
+		log.Error(err)
+		return "", err
+	}
+
+	if agent.Gid != "" {
+		gid := model.GoogleID(agent.Gid)
+		if !gid.Valid() {
+			if err := gid.FirstLogin(); err != nil {
+				log.Error(err)
+				return "", err
+			}
+		}
+		if err := gid.SetTelegramID(tgid, name); err != nil {
+			log.Error(err)
+			return gid, err
+		}
+		// rocks success
+		return gid, nil
+	}
+
+	result, err := v.TelegramSearch(tgid)
+	if err != nil {
+		log.Error(err)
+		return "", err
+	}
+	if result.Gid != "" {
+		log.Debugw("v is so useless")
+		result.Gid, _ = model.GetGIDFromEnlID(result.EnlID)
+	}
+
+	if result.Gid != "" {
+		gid := model.GoogleID(result.Gid)
+		if !gid.Valid() {
+			if err := gid.FirstLogin(); err != nil {
+				log.Error(err)
+				return "", err
+			}
+		}
+		if err := gid.SetTelegramID(tgid, name); err != nil {
+			log.Error(err)
+			return gid, err
+		}
+		// v success?!
+		return gid, nil
+	}
+
+	// not found in either service
+	return "", nil
+}
+
+func newUserInit(inMsg *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	msg.ParseMode = "HTML"
+
+	var ott model.OneTimeToken
+	if inMsg.Message.IsCommand() {
+		tokens := strings.Split(inMsg.Message.Text, " ")
+		if len(tokens) == 2 {
+			ott = model.OneTimeToken(strings.TrimSpace(tokens[1]))
+		}
+	} else {
+		ott = model.OneTimeToken(strings.TrimSpace(inMsg.Message.Text))
+	}
+
+	log.Debugw("newUserInit", "text", inMsg.Message.Text)
+
+	tid := model.TelegramID(inMsg.Message.From.ID)
+	err := tid.InitAgent(inMsg.Message.From.UserName, ott)
+	if err != nil {
+		log.Error(err)
+		tmp, _ := templateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
+		msg.Text = tmp
+	} else {
+		tmp, _ := templateExecute("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
+		msg.Text = tmp
+	}
+	return &msg, err
+}
+
+func newUserVerify(inMsg *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	msg.ParseMode = "HTML"
+
+	var authtoken string
+	if inMsg.Message.IsCommand() {
+		tokens := strings.Split(inMsg.Message.Text, " ")
+		if len(tokens) == 2 {
+			authtoken = tokens[1]
+		}
+	} else {
+		authtoken = inMsg.Message.Text
+	}
+	authtoken = strings.TrimSpace(authtoken)
+	tid := model.TelegramID(inMsg.Message.From.ID)
+	err := tid.VerifyAgent(authtoken)
+	if err != nil {
+		log.Error(err)
+		tmp, _ := templateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
+		msg.Text = tmp
+	} else {
+		tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
+		msg.Text = tmp
+	}
+	return &msg, err
 }

@@ -3,7 +3,6 @@ package wtg
 import (
 	"fmt"
 	"html/template"
-	"strings"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -12,14 +11,12 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
-	"github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/templates"
-	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
 // TGConfiguration is the main configuration data for the Telegram interface
 // passed to main() pre-loaded with APIKey and TemplateSet set, the rest is built when the bot starts
-type TGConfiguration struct {
+type Config struct {
 	APIKey      string
 	HookPath    string
 	TemplateSet map[string]*template.Template
@@ -29,10 +26,10 @@ type TGConfiguration struct {
 }
 
 var bot *tgbotapi.BotAPI
-var c TGConfiguration
+var c Config
 
 // WasabeeBot is called from main() to start the bot.
-func WasabeeBot(in TGConfiguration) {
+func WasabeeBot(in *Config) {
 	if in.APIKey == "" {
 		log.Infow("startup", "subsystem", "Telegram", "message", "Telegram API key not set; not starting")
 		return
@@ -44,9 +41,7 @@ func WasabeeBot(in TGConfiguration) {
 		return
 	}
 	c.TemplateSet = in.TemplateSet
-
 	c.baseKbd = keyboards()
-
 	c.HookPath = in.HookPath
 	if c.HookPath == "" {
 		c.HookPath = "/tg"
@@ -80,13 +75,12 @@ func WasabeeBot(in TGConfiguration) {
 	}
 
 	// let the messaging susbsystem know we exist and how to use us
-	b := messaging.Bus{
+	messaging.RegisterMessageBus("Telegram", messaging.Bus{
 		SendMessage:      SendMessage,
 		SendTarget:       SendTarget,
 		AddToRemote:      AddToChat,
 		RemoveFromRemote: RemoveFromChat,
-	}
-	messaging.RegisterMessageBus("Telegram", b)
+	})
 
 	i := 1
 	for update := range c.upChan {
@@ -155,61 +149,11 @@ func runUpdate(update tgbotapi.Update) error {
 	return nil
 }
 
-func newUserInit(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	var ott model.OneTimeToken
-	if inMsg.Message.IsCommand() {
-		tokens := strings.Split(inMsg.Message.Text, " ")
-		if len(tokens) == 2 {
-			ott = model.OneTimeToken(strings.TrimSpace(tokens[1]))
-		}
-	} else {
-		ott = model.OneTimeToken(strings.TrimSpace(inMsg.Message.Text))
-	}
-
-	log.Debugw("newUserInit", "text", inMsg.Message.Text)
-
-	tid := model.TelegramID(inMsg.Message.From.ID)
-	err := tid.InitAgent(inMsg.Message.From.UserName, ott)
-	if err != nil {
-		log.Error(err)
-		tmp, _ := templateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
-	} else {
-		tmp, _ := templateExecute("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
-	}
-	return err
-}
-
-func newUserVerify(msg *tgbotapi.MessageConfig, inMsg *tgbotapi.Update) error {
-	var authtoken string
-	if inMsg.Message.IsCommand() {
-		tokens := strings.Split(inMsg.Message.Text, " ")
-		if len(tokens) == 2 {
-			authtoken = tokens[1]
-		}
-	} else {
-		authtoken = inMsg.Message.Text
-	}
-	authtoken = strings.TrimSpace(authtoken)
-	tid := model.TelegramID(inMsg.Message.From.ID)
-	err := tid.VerifyAgent(authtoken)
-	if err != nil {
-		log.Error(err)
-		tmp, _ := templateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
-	} else {
-		tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
-	}
-	return err
-}
-
 func keyboards() tgbotapi.ReplyKeyboardMarkup {
 	return tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonLocation("Send Location"),
-			tgbotapi.NewKeyboardButton("Nothing"),
+			tgbotapi.NewKeyboardButton("Tasks"),
 		),
 	)
 }
@@ -295,58 +239,4 @@ func SendTarget(g messaging.GoogleID, target messaging.Target) error {
 
 	log.Debugw("sent target", "subsystem", "Telegram", "GID", gid, "target", target)
 	return nil
-}
-
-// checks rocks/v based on tgid, Inits agent if found
-func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
-	agent, err := rocks.Search(fmt.Sprint(tgid))
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-
-	if agent.Gid != "" {
-		gid := model.GoogleID(agent.Gid)
-		if !gid.Valid() {
-			if err := gid.FirstLogin(); err != nil {
-				log.Error(err)
-				return "", err
-			}
-		}
-		if err := gid.SetTelegramID(tgid, name); err != nil {
-			log.Error(err)
-			return gid, err
-		}
-		// rocks success
-		return gid, nil
-	}
-
-	result, err := v.TelegramSearch(tgid)
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-	if result.Gid != "" {
-		log.Debugw("v is so useless")
-		result.Gid, _ = model.GetGIDFromEnlID(result.EnlID)
-	}
-
-	if result.Gid != "" {
-		gid := model.GoogleID(result.Gid)
-		if !gid.Valid() {
-			if err := gid.FirstLogin(); err != nil {
-				log.Error(err)
-				return "", err
-			}
-		}
-		if err := gid.SetTelegramID(tgid, name); err != nil {
-			log.Error(err)
-			return gid, err
-		}
-		// v success?!
-		return gid, nil
-	}
-
-	// not found in either service
-	return "", nil
 }

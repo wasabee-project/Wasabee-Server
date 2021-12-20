@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -27,14 +28,14 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		return err
 	}
 
-	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, defaultReply)
 	msg.ParseMode = "HTML"
-	msg.Text = defaultReply
+	msg.DisableWebPagePreview = true
 
 	switch inMsg.Message.Command() {
 	case "unlink":
@@ -110,7 +111,6 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			return err
 		}
 	case "status":
-		msg.ParseMode = "HTML"
 		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
 			// log.Debug(err) // not linked is not an error
@@ -140,10 +140,10 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 	case "assignments":
 		var filterGid model.GoogleID
 		msg.ParseMode = "HTML"
+		msg.DisableWebPagePreview = true
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) > 1 {
-			agent := strings.TrimSpace(tokens[1])
-			filterGid, err := model.SearchAgentName(agent)
+			filterGid, err := model.SearchAgentName(strings.TrimSpace(tokens[1]))
 			if err != nil {
 				log.Error(err)
 				filterGid = "0"
@@ -178,10 +178,10 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		b.WriteString("<b>Order / Portal / Action / Agent / State</b>\n")
 		for _, m := range o.Markers {
 			// if the caller requested the results to be filtered...
-			if filterGid != "" && m.AssignedTo != filterGid {
+			if filterGid != "" && m.IsAssignedTo(filterGid) {
 				continue
 			}
-			if m.State != "pending" && m.AssignedTo != "" {
+			if m.State != "pending" {
 				p, _ := o.PortalDetails(m.PortalID, gid)
 				a, _ := m.AssignedTo.IngressName()
 				tg, _ := m.AssignedTo.TelegramName()
@@ -198,13 +198,11 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 					m.Order, stateIndicatorStart, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type), a, m.State, stateIndicatorEnd))
 			}
 			msg.Text = b.String()
-			if _, err := bot.Send(msg); err != nil {
-				log.Error(err)
-			}
-			continue
+		}
+		if _, err := bot.Send(msg); err != nil {
+			log.Error(err)
 		}
 	case "unassigned":
-		msg.ParseMode = "HTML"
 		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
 			log.Error(err)
@@ -234,10 +232,9 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 				b.WriteString(fmt.Sprintf("<b>%d</b> / <a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s\n", m.Order, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type)))
 			}
 			msg.Text = b.String()
-			if _, err := bot.Send(msg); err != nil {
-				log.Error(err)
-				continue
-			}
+		}
+		if _, err := bot.Send(msg); err != nil {
+			log.Error(err)
 		}
 	default:
 		log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
@@ -253,7 +250,8 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 		return nil
 	}
 
-	log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "team", teamID, "op", opID)
+	// we see messages if the bot is admin
+	// log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "team", teamID, "op", opID)
 
 	// if the bot is removed from the chat, unlink the team from the chat
 	if inMsg.Message.LeftChatMember != nil && inMsg.Message.LeftChatMember.ID == bot.Self.ID {
@@ -274,7 +272,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 			}
 			tgid.SetName(new.UserName)
 			if err = teamID.AddAgent(gid); err != nil {
-				log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid)
+				log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid, "opID", opID)
 			}
 		}
 	}
@@ -285,10 +283,10 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 		tgid := model.TelegramID(left.ID)
 		gid, err := tgid.Gid()
 		if err != nil {
-			log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID)
+			log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "opID", opID)
 		} else {
 			if err := teamID.RemoveAgent(gid); err != nil {
-				log.Errorw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "GID", gid)
+				log.Errorw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "GID", gid, "opID", opID)
 			}
 		}
 	}
@@ -303,15 +301,12 @@ func liveLocationUpdate(inMsg *tgbotapi.Update) error {
 		return err
 	}
 	if !verified || gid == "" {
-		// log.Debugw("user not initialized/verified, ignoring location", "GID", gid, "tgid", tgid)
 		return nil
 	}
-	// log.Debugw("live location inMsg", "GID", gid, "message", "live location update")
 
 	lat := strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(inMsg.EditedMessage.Location.Longitude, 'f', -1, 64)
 	_ = gid.SetLocation(lat, lon)
-	// gid.PSLocation(lat, lon)
 	return nil
 }
 
@@ -323,17 +318,20 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 		return err
 	}
 
-	// XXX make sure sender is on the team
+	if inteam, _ := gid.AgentInTeam(teamID); !inteam {
+		err := fmt.Errorf("attempt to send to team without being a member")
+		log.Errorw(err.Error(), "gid", gid, "teamID", teamID, "message", message)
+		return err
+	}
 
-	msg := tgbotapi.NewMessage(chatID, "")
-
-	msg.Text = message
+	msg := tgbotapi.NewMessage(chatID, message)
 	msg.ParseMode = "HTML"
+	msg.DisableWebPagePreview = true
+
 	if _, err := bot.Send(msg); err != nil {
 		log.Error(err)
 		return err
 	}
-
 	return nil
 }
 
@@ -352,9 +350,9 @@ func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		return nil
 	}
 
+	// can't clean this up since cic.ChatID is included type
 	cic := tgbotapi.ChatInfoConfig{}
 	cic.ChatID = chatID
-
 	chat, err := bot.GetChat(cic)
 	if err != nil {
 		log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
@@ -373,6 +371,8 @@ func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		log.Error(err)
 		return err
 	}
+
+	// XXX create a join link for this agent
 	return nil
 }
 
@@ -414,14 +414,25 @@ func RemoveFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		name = fmt.Sprint("@", tmp)
 	}
 
-	text := fmt.Sprintf("%s left the linked team (%s). Please remove them from this chat", name, teamID)
+	text := fmt.Sprintf("%s left the linked team (%s). Attempting to remove them from this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
 		log.Error(err)
-		return err
 	}
 
-	// XXX ban agent from chat, unban 5 seconds later
-
+	// XXX determine if bot is admin, don't bother with this if not
+	bcmc := tgbotapi.BanChatMemberConfig{
+		ChatMemberConfig: tgbotapi.ChatMemberConfig{
+			ChatID: chatID,
+			UserID: int64(tgid),
+		},
+		UntilDate:      time.Now().Add(30 * time.Second).Unix(),
+		RevokeMessages: false,
+	}
+	if _, err = bot.Request(bcmc); err != nil {
+		log.Error(err)
+		msg := tgbotapi.NewMessage(chat.ID, err.Error())
+		bot.Send(msg)
+	}
 	return nil
 }
