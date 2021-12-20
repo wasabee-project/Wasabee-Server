@@ -109,9 +109,7 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 	tmp := make([]GoogleID, 0)
 
 	if t.ID == "" {
-		err := fmt.Errorf("unset taskID")
-		log.Error(err)
-		return tmp, err
+		return tmp, nil
 	}
 
 	rows, err := db.Query("SELECT gid FROM assignments WHERE opID = ? AND taskID = ?", t.opID, t.ID)
@@ -121,19 +119,45 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 	}
 	defer rows.Close()
 
+	var g GoogleID
 	for rows.Next() {
-		var g GoogleID
-		err := rows.Scan(&g)
-		if err != nil {
+		if err := rows.Scan(&g); err != nil {
 			log.Error(err)
 			continue
 		}
-		// log.Debugw("task assignment found", "taskID", t.ID, "assigned to", g)
-
 		tmp = append(tmp, g)
 	}
 
 	return tmp, nil
+}
+
+func (o OperationID) assignmentPrecache() (map[TaskID][]GoogleID, error) {
+	buf := make(map[TaskID][]GoogleID)
+
+	rows, err := db.Query("SELECT taskID, gid FROM assignments WHERE opID = ?", o)
+	if err != nil {
+		log.Error(err)
+		return buf, err
+	}
+	defer rows.Close()
+
+	var g GoogleID
+	var t TaskID
+	for rows.Next() {
+		if err := rows.Scan(&t, &g); err != nil {
+			log.Error(err)
+			continue
+		}
+		_, ok := buf[t]
+		if !ok {
+			tmp := make([]GoogleID, 0)
+			tmp = append(tmp, g)
+			buf[t] = tmp
+		} else {
+			buf[t] = append(buf[t], g)
+		}
+	}
+	return buf, nil
 }
 
 // Assign assigns a task to an agent using a given transaction, if the transaction is nil, one is created for this block
