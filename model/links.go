@@ -167,10 +167,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 }
 
 // PopulateLinks fills in the Links list for the Operation.
-func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
-	var tmpLink Link
-	tmpLink.opID = o.ID
-
+func (o *Operation) populateLinks(zones []Zone, inGid GoogleID, assignments map[TaskID][]GoogleID, depends map[TaskID][]TaskID) error {
 	var description sql.NullString
 
 	rows, err := db.Query("SELECT link.ID, link.fromPortalID, link.toPortalID, task.comment, task.taskorder, task.state, link.color, task.zone, task.delta FROM link JOIN task ON link.ID = task.ID WHERE task.opID = ? AND link.opID = task.opID", o.ID)
@@ -179,7 +176,11 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 		return err
 	}
 	defer rows.Close()
+
 	for rows.Next() {
+		tmpLink := Link{}
+		tmpLink.opID = o.ID
+
 		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &tmpLink.Order, &tmpLink.State, &tmpLink.Color, &tmpLink.Zone, &tmpLink.DeltaMinutes)
 		if err != nil {
 			log.Error(err)
@@ -190,28 +191,17 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID) error {
 		if description.Valid {
 			tmpLink.Desc = description.String
 			tmpLink.Comment = description.String
-		} else {
-			tmpLink.Desc = ""
 		}
 
 		tmpLink.ThrowOrder = tmpLink.Order
 
-		tmpLink.Assignments, err = tmpLink.GetAssignments()
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		if len(tmpLink.Assignments) > 0 {
-			// log.Debugw("link assignment", "taskID", tmpLink.TaskID, "assignments", tmpLink.Assignments)
-			tmpLink.AssignedTo = tmpLink.Assignments[0]
-		} else {
-			tmpLink.AssignedTo = ""
+		if a, ok := assignments[tmpLink.Task.ID]; ok {
+			tmpLink.Assignments = a
+			tmpLink.AssignedTo = a[0]
 		}
 
-		tmpLink.DependsOn, err = tmpLink.GetDepends()
-		if err != nil {
-			log.Error(err)
-			continue
+		if d, ok := depends[tmpLink.Task.ID]; ok {
+			tmpLink.DependsOn = d
 		}
 
 		// this isn't in a zone with which we are concerned AND not assigned to me, skip

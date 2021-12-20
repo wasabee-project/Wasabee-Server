@@ -133,10 +133,10 @@ func (o *Operation) populateZones() error {
 		log.Error(err)
 		return err
 	}
-
 	defer rows.Close()
-	var tmpZone ZoneListElement
+
 	for rows.Next() {
+		var tmpZone ZoneListElement
 		if err := rows.Scan(&tmpZone.Zone, &tmpZone.Name, &tmpZone.Color); err != nil {
 			log.Error(err)
 			continue

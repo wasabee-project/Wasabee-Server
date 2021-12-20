@@ -163,8 +163,8 @@ func adTeams(ad *Agent) error {
 		log.Error(err)
 		return err
 	}
-
 	defer rows.Close()
+
 	for rows.Next() {
 		var team AdTeam
 		var shareLoc, shareWD, loadWD bool
@@ -238,6 +238,7 @@ func adOps(ad *Agent) error {
 		return err
 	}
 	defer rowOwned.Close()
+
 	for rowOwned.Next() {
 		var op AdOperation
 		err := rowOwned.Scan(&op.ID, &op.Name, &op.Color)
@@ -259,6 +260,7 @@ func adOps(ad *Agent) error {
 		return err
 	}
 	defer rowTeam.Close()
+
 	for rowTeam.Next() {
 		var op AdOperation
 		err := rowTeam.Scan(&op.ID, &op.Name, &op.Color, &op.TeamID)
@@ -446,6 +448,7 @@ func (gid GoogleID) Delete() error {
 		return err
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		err = rows.Scan(&teamID)
 		if err != nil {

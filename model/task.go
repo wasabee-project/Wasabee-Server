@@ -82,7 +82,35 @@ func (t *Task) DelDepend(task string) error {
 	return nil
 }
 
-func (t *Task) GetDepends() ([]TaskID, error) {
+func (o OperationID) dependsPrecache() (map[TaskID][]TaskID, error) {
+	buf := make(map[TaskID][]TaskID)
+
+	rows, err := db.Query("SELECT taskID, dependsOn FROM depends WHERE opID = ?", o)
+	if err != nil {
+		log.Error(err)
+		return buf, err
+	}
+	defer rows.Close()
+
+	var t, d TaskID
+	for rows.Next() {
+		if err := rows.Scan(&t, &d); err != nil {
+			log.Error(err)
+			continue
+		}
+		_, ok := buf[t]
+		if !ok {
+			tmp := make([]TaskID, 0)
+			tmp = append(tmp, d)
+			buf[t] = tmp
+		} else {
+			buf[t] = append(buf[t], d)
+		}
+	}
+	return buf, nil
+}
+
+func (t *Task) getDepends() ([]TaskID, error) {
 	tmp := make([]TaskID, 0)
 
 	rows, err := db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID)

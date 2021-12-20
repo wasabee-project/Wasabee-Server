@@ -149,10 +149,7 @@ func (opID OperationID) deleteMarker(mid MarkerID, tx *sql.Tx) error {
 }
 
 // PopulateMarkers fills in the Markers list for the Operation.
-func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
-	var tmpMarker Marker
-	tmpMarker.opID = o.ID
-
+func (o *Operation) populateMarkers(zones []Zone, gid GoogleID, assignments map[TaskID][]GoogleID, depends map[TaskID][]TaskID) error {
 	var comment sql.NullString
 
 	var err error
@@ -163,7 +160,11 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 		return err
 	}
 	defer rows.Close()
+
 	for rows.Next() {
+		tmpMarker := Marker{}
+		tmpMarker.opID = o.ID
+
 		err := rows.Scan(&tmpMarker.ID, &tmpMarker.PortalID, &tmpMarker.Type, &comment, &tmpMarker.State, &tmpMarker.Order, &tmpMarker.Zone, &tmpMarker.DeltaMinutes)
 		if err != nil {
 			log.Error(err)
@@ -176,24 +177,13 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID) error {
 			tmpMarker.State = "pending"
 		}
 
-		// log.Debugw("marker ID", "id", tmpMarker.ID)
-
-		tmpMarker.Assignments, err = tmpMarker.GetAssignments()
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-		if len(tmpMarker.Assignments) > 0 {
-			// log.Debugw("assignments", "marker", tmpMarker.ID, "assignments", tmpMarker.Assignments)
-			tmpMarker.AssignedTo = tmpMarker.Assignments[0]
-		} else {
-			tmpMarker.AssignedTo = ""
+		if a, ok := assignments[tmpMarker.Task.ID]; ok {
+			tmpMarker.Assignments = a
+			tmpMarker.AssignedTo = a[0]
 		}
 
-		tmpMarker.DependsOn, err = tmpMarker.GetDepends()
-		if err != nil {
-			log.Error(err)
-			return err
+		if d, ok := depends[tmpMarker.Task.ID]; ok {
+			tmpMarker.DependsOn = d
 		}
 
 		if comment.Valid {

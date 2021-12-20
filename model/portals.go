@@ -53,10 +53,8 @@ func (opID OperationID) deletePortal(p PortalID, tx *sql.Tx) error {
 
 // PopulatePortals fills in the OpPortals list for the Operation. No authorization takes place.
 func (o *Operation) populatePortals() error {
-	var tmpPortal Portal
-	tmpPortal.opID = o.ID
-
-	var comment, hardness sql.NullString
+	var p Portal
+	p.opID = o.ID
 
 	rows, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ?", o.ID)
 	if err != nil {
@@ -64,24 +62,27 @@ func (o *Operation) populatePortals() error {
 		return err
 	}
 	defer rows.Close()
+
 	for rows.Next() {
-		err := rows.Scan(&tmpPortal.ID, &tmpPortal.Name, &tmpPortal.Lat, &tmpPortal.Lon, &comment, &hardness)
+		var comment, hardness sql.NullString
+
+		err := rows.Scan(&p.ID, &p.Name, &p.Lat, &p.Lon, &comment, &hardness)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
 		if comment.Valid {
-			tmpPortal.Comment = comment.String
+			p.Comment = comment.String
 		} else {
-			tmpPortal.Comment = ""
+			p.Comment = ""
 		}
 		if hardness.Valid {
-			tmpPortal.Hardness = hardness.String
+			p.Hardness = hardness.String
 		} else {
-			tmpPortal.Hardness = ""
+			p.Hardness = ""
 		}
 
-		o.OpPortals = append(o.OpPortals, tmpPortal)
+		o.OpPortals = append(o.OpPortals, p)
 	}
 	return nil
 }

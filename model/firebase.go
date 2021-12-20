@@ -21,6 +21,7 @@ func (gid GoogleID) GetFirebaseTokens() ([]string, error) {
 	if err != nil && err == sql.ErrNoRows {
 		return toks, nil
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&token)
@@ -99,9 +100,10 @@ func FirebaseBroadcastList() ([]string, error) {
 		log.Error(err)
 		return out, err
 	}
+	defer rows.Close()
 
-	var token string
 	for rows.Next() {
+		var token string
 		err := rows.Scan(&token)
 		if err != nil {
 			log.Error(err)

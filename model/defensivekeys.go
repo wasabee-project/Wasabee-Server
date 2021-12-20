@@ -37,9 +37,10 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 		log.Error(err)
 		return dkl, err
 	}
-	var dk DefensiveKey
 	defer rows.Close()
+
 	for rows.Next() {
+		dk := DefensiveKey{}
 		err := rows.Scan(&dk.GID, &dk.PortalID, &dk.CapID, &dk.Count, &name, &lat, &lon)
 		if err != nil {
 			log.Error(err)

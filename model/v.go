@@ -126,8 +126,8 @@ func GetTeamsByVID(v int64) ([]TeamID, error) {
 	}
 	defer row.Close()
 
-	var teamID TeamID
 	for row.Next() {
+		var teamID TeamID
 		err = row.Scan(&teamID)
 		if err != nil {
 			log.Error(err)

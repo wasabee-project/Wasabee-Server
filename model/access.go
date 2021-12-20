@@ -9,19 +9,21 @@ import (
 
 // PopulateTeams loads the permissions from the database into the op data
 func (o *Operation) PopulateTeams() error {
-	// start empty, trust only what is in the database
-	o.Teams = nil
+	// do not do duplicate work
+	if len(o.Teams) > 0 {
+		return nil
+	}
 
 	rows, err := db.Query("SELECT teamID, permission, zone FROM permissions WHERE opID = ?", o.ID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return err
 	}
-
-	var tid, role string
-	var zone Zone
 	defer rows.Close()
+
 	for rows.Next() {
+		var tid, role string
+		var zone Zone
 		err := rows.Scan(&tid, &role, &zone)
 		if err != nil {
 			log.Error(err)
@@ -42,17 +44,15 @@ func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
 	var zones []Zone
 	var permitted bool
 
-	if o.ID.IsOwner(gid) {
+	if o.IsOwner(gid) {
 		permitted = true
 		zones = append(zones, ZoneAll)
 		return true, zones
 	}
 
-	if len(o.Teams) == 0 {
-		if err := o.PopulateTeams(); err != nil {
-			log.Error(err)
-			return false, zones
-		}
+	if err := o.PopulateTeams(); err != nil {
+		log.Error(err)
+		return false, zones
 	}
 
 	for _, t := range o.Teams {
@@ -80,14 +80,15 @@ func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
 
 // WriteAccess determines if an agent has write access to an op
 func (o *Operation) WriteAccess(gid GoogleID) bool {
-	// do not cache -- force reset on uploads
+	if o.IsOwner(gid) {
+		return true
+	}
+
 	if err := o.PopulateTeams(); err != nil {
 		log.Error(err)
 		return false
 	}
-	if o.ID.IsOwner(gid) {
-		return true
-	}
+
 	for _, t := range o.Teams {
 		if t.Role != opPermRoleWrite {
 			continue
@@ -111,10 +112,10 @@ func (o OperationID) WriteAccess(gid GoogleID) bool {
 		log.Error(err)
 		return false
 	}
-
-	var tid TeamID
 	defer rows.Close()
+
 	for rows.Next() {
+		var tid TeamID
 		err := rows.Scan(&tid)
 		if err != nil {
 			log.Error(err)
@@ -139,6 +140,19 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 		return false
 	}
 	return true
+}
+
+// IsOwner checks to see if the operation is owned a given GoogleID
+// result cached so it may be called multiple times
+func (o *Operation) IsOwner(gid GoogleID) bool {
+	if o.Gid != "" {
+		return o.Gid == gid
+	}
+	if o.ID.IsOwner(gid) {
+		o.Gid = gid
+		return true
+	}
+	return false
 }
 
 // Chown changes an operation's owner
@@ -172,11 +186,9 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 
 // AssignedOnlyAccess verifies if an agent has AO access to an op
 func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
-	if len(o.Teams) == 0 {
-		if err := o.PopulateTeams(); err != nil {
-			log.Error(err)
-			return false
-		}
+	if err := o.PopulateTeams(); err != nil {
+		log.Error(err)
+		return false
 	}
 
 	for _, t := range o.Teams {
@@ -260,11 +272,11 @@ func (t TeamID) Operations() ([]OpPermission, error) {
 		log.Error(err)
 		return perms, err
 	}
-
-	var opid, role string
-	var zone Zone
 	defer rows.Close()
+
 	for rows.Next() {
+		var opid, role string
+		var zone Zone
 		err := rows.Scan(&opid, &role, &zone)
 		if err != nil {
 			log.Error(err)
@@ -283,11 +295,12 @@ func (t TeamID) Operations() ([]OpPermission, error) {
 // Teams returns a list of every team with access to this operation
 func (o OperationID) Teams() ([]TeamID, error) {
 	var teams []TeamID
-	rows, err := db.Query("SELECT teamID FROM permissions WHERE opID = ?", o)
+	rows, err := db.Query("SELECT DISTINCT teamID FROM permissions WHERE opID = ?", o)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return teams, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var t TeamID

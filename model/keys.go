@@ -64,8 +64,8 @@ func (o *Operation) populateKeys() error {
 		log.Error(err)
 		return err
 	}
-
 	defer rows.Close()
+
 	for rows.Next() {
 		var cap sql.NullString
 		err := rows.Scan(&k.ID, &k.Gid, &k.Onhand, &cap)
@@ -93,8 +93,8 @@ func (o *Operation) populateMyKeys(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
-
 	defer rows.Close()
+
 	for rows.Next() {
 		var cap sql.NullString
 		err := rows.Scan(&k.ID, &k.Onhand, &cap)

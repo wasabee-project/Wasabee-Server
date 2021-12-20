@@ -74,65 +74,65 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		log.Error(err)
 		return &teamList, err
 	}
-
 	defer rows.Close()
+
 	for rows.Next() {
-		tmpU := TeamMember{}
+		agent := TeamMember{}
 		var lat, lon string
 		var faction IntelFaction
 		var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
 		var enlID, vname, rocksname, picurl sql.NullString
 
-		err := rows.Scan(&tmpU.Gid, &vname, &tmpU.IntelName, &rocksname, &tmpU.Comment, &tmpU.ShareLocation, &lat, &lon, &tmpU.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &tmpU.ShareWD, &tmpU.LoadWD, &faction, &picurl)
+		err := rows.Scan(&agent.Gid, &vname, &agent.IntelName, &rocksname, &agent.Comment, &agent.ShareLocation, &lat, &lon, &agent.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &agent.ShareWD, &agent.LoadWD, &faction, &picurl)
 		if err != nil {
 			log.Error(err)
 			return &teamList, err
 		}
 
-		tmpU.Name = tmpU.Gid.bestname(tmpU.IntelName, vname, rocksname)
+		agent.Name = agent.Gid.bestname(agent.IntelName, vname, rocksname)
 
 		if vname.Valid {
-			tmpU.VName = vname.String
+			agent.VName = vname.String
 		}
 
 		if rocksname.Valid {
-			tmpU.RocksName = rocksname.String
+			agent.RocksName = rocksname.String
 		}
 
 		if enlID.Valid {
-			tmpU.EnlID = enlID.String
+			agent.EnlID = enlID.String
 		}
 
 		if vverified.Valid {
-			tmpU.Verified = vverified.Bool
+			agent.Verified = vverified.Bool
 		}
 
 		if vblacklisted.Valid {
-			tmpU.Verified = vblacklisted.Bool
+			agent.Verified = vblacklisted.Bool
 		}
 
 		if rocksverified.Valid {
-			tmpU.Verified = rocksverified.Bool
+			agent.Verified = rocksverified.Bool
 		}
 
 		if rockssmurf.Valid {
-			tmpU.Verified = rockssmurf.Bool
+			agent.Verified = rockssmurf.Bool
 		}
 
-		if tmpU.ShareLocation {
-			tmpU.Lat, _ = strconv.ParseFloat(lat, 64)
-			tmpU.Lon, _ = strconv.ParseFloat(lon, 64)
+		if agent.ShareLocation {
+			agent.Lat, _ = strconv.ParseFloat(lat, 64)
+			agent.Lon, _ = strconv.ParseFloat(lon, 64)
 		} else {
-			tmpU.Lat = 0
-			tmpU.Lon = 0
+			agent.Lat = 0
+			agent.Lon = 0
 		}
 
 		if picurl.Valid {
-			tmpU.PictureURL = picurl.String
+			agent.PictureURL = picurl.String
 		}
 
-		tmpU.IntelFaction = faction.String()
-		teamList.TeamMembers = append(teamList.TeamMembers, tmpU)
+		agent.IntelFaction = faction.String()
+		teamList.TeamMembers = append(teamList.TeamMembers, agent)
 	}
 
 	var rockscomm, rockskey, joinlinktoken sql.NullString
@@ -227,10 +227,10 @@ func (teamID TeamID) Delete() error {
 		log.Error(err)
 		return err
 	}
-
-	var gid GoogleID
 	defer rows.Close()
+
 	for rows.Next() {
+		var gid GoogleID
 		err = rows.Scan(&gid)
 		if err != nil {
 			log.Warn(err)
@@ -300,9 +300,10 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		log.Error(err)
 		return err
 	}
-	var opID OperationID
 	defer rows.Close()
+
 	for rows.Next() {
+		var opID OperationID
 		err = rows.Scan(&opID)
 		if err != nil {
 			log.Error(err)
@@ -481,8 +482,8 @@ func (gid GoogleID) teamList() []TeamID {
 		log.Error(err)
 		return x
 	}
-
 	defer rows.Close()
+
 	for rows.Next() {
 		if err := rows.Scan(&tid); err != nil {
 			log.Error(err)

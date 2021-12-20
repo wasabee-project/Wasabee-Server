@@ -292,9 +292,10 @@ func drawOpUpdatePortals(o *Operation, tx *sql.Tx) (map[PortalID]Portal, error) 
 		log.Error(err)
 		return nil, err
 	}
-	var pid PortalID
 	defer portalRows.Close()
+
 	for portalRows.Next() {
+		var pid PortalID
 		err := portalRows.Scan(&pid)
 		if err != nil {
 			log.Error(err)
@@ -302,6 +303,7 @@ func drawOpUpdatePortals(o *Operation, tx *sql.Tx) (map[PortalID]Portal, error) 
 		}
 		curPortals[pid] = true
 	}
+
 	// update/add portals that were sent in the update
 	portalMap := make(map[PortalID]Portal)
 	for _, p := range o.OpPortals {
@@ -329,9 +331,10 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 		log.Error(err)
 		return err
 	}
-	var mid MarkerID
 	defer markerRows.Close()
+
 	for markerRows.Next() {
+		var mid MarkerID
 		err := markerRows.Scan(&mid)
 		if err != nil {
 			log.Error(err)
@@ -377,9 +380,10 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 		log.Error(err)
 		return err
 	}
-	var lid LinkID
 	defer linkRows.Close()
+
 	for linkRows.Next() {
+		var lid LinkID
 		err := linkRows.Scan(&lid)
 		if err != nil {
 			log.Error(err)
@@ -433,8 +437,9 @@ func drawOpUpdateZones(o *Operation, tx *sql.Tx) error {
 		return err
 	}
 	defer zoneRows.Close()
-	var zoneID Zone
+
 	for zoneRows.Next() {
+		var zoneID Zone
 		err := zoneRows.Scan(&zoneID)
 		if err != nil {
 			log.Error(err)
@@ -511,11 +516,16 @@ func (opID OperationID) IsDeletedOp() bool {
 // Populate takes a pointer to an Operation and fills it in; o.ID must be set
 // checks to see that either the gid created the operation or the gid is on the team assigned to the operation
 func (o *Operation) Populate(gid GoogleID) error {
+	start := time.Now()
+	defer func() {
+		log.Debugw("Timing", "section", "final", "t", time.Since(start), "opID", o.ID)
+	}()
+
 	var comment sql.NullString
 	err := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, referencetime FROM operation WHERE ID = ?", o.ID).Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.ReferenceTime)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("operation not found")
-		log.Errorw(err.Error(), "resource", o.ID, "GID", gid)
+		log.Errorw(err.Error(), "resource", o.ID, "GID", gid, "opID", o.ID)
 		return err
 	}
 	if err != nil {
@@ -532,15 +542,15 @@ func (o *Operation) Populate(gid GoogleID) error {
 	}
 	o.ReferenceTime = st.Format(time.RFC1123)
 
-	if err := o.PopulateTeams(); err != nil {
-		log.Error(err)
-		return err
-	}
-
 	if comment.Valid {
 		o.Comment = comment.String
 	} else {
 		o.Comment = ""
+	}
+
+	if err := o.PopulateTeams(); err != nil {
+		log.Error(err)
+		return err
 	}
 
 	read, zones := o.ReadAccess(gid)
@@ -553,23 +563,36 @@ func (o *Operation) Populate(gid GoogleID) error {
 		}
 	}
 
+	// get all the assignments in a single query, so we don't lock up the database when one agent requests 50 ops, each with hundreds of links
+	assignments, err := o.ID.assignmentPrecache()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	// same for depends
+	depends, err := o.ID.dependsPrecache()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	// start with everything -- filter after the rest is set up
 	if err = o.populatePortals(); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if err = o.populateMarkers(zones, gid); err != nil {
+	if err = o.populateMarkers(zones, gid, assignments, depends); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if err = o.populateLinks(zones, gid); err != nil {
+	if err = o.populateLinks(zones, gid, assignments, depends); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	// built based on available links, zone filtering has taken places
 	if err = o.populateAnchors(); err != nil {
 		log.Error(err)
 		return err
@@ -663,23 +686,24 @@ func (opID OperationID) Rename(gid GoogleID, name string) error {
 }
 
 func allOpAgents(perms []OpPermission, tx *sql.Tx) (map[GoogleID]bool, error) {
-	agentMap := make(map[GoogleID]bool)
+	am := make(map[GoogleID]bool)
 
-	var gid GoogleID
 	for _, p := range perms {
-		agentRows, err := tx.Query("SELECT gid FROM agentteams WHERE teamID = ?", p.TeamID)
+		rows, err := tx.Query("SELECT gid FROM agentteams WHERE teamID = ?", p.TeamID)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		for agentRows.Next() {
-			if err := agentRows.Scan(&gid); err != nil {
+		defer rows.Close()
+
+		for rows.Next() {
+			var gid GoogleID
+			if err := rows.Scan(&gid); err != nil {
 				log.Error(err)
 				continue
 			}
-			agentMap[gid] = true
+			am[gid] = true
 		}
-		agentRows.Close()
 	}
-	return agentMap, nil
+	return am, nil
 }
