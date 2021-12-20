@@ -98,8 +98,9 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// o.Populate determines all, zone, or assigned-only
-	if err = o.Populate(gid); err != nil {
+	// don't do full populate (slow) just yet
+	stat, err := o.ID.Stat()
+	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -107,14 +108,14 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	// basically the same as If-Modified-Since
 	im := req.Header.Get("If-None-Match")
-	if im != "" && im == o.LastEditID {
+	if im != "" && im == stat.LastEditID {
 		err := fmt.Errorf("local copy matches server copy")
-		// log.Debugw(err.Error(), "GID", gid, "resource", o.ID, "If-None-Match", im, "LastEditID", o.LastEditID)
+		// log.Debugw(err.Error(), "GID", gid, "resource", o.ID, "If-None-Match", im, "LastEditID", stat.LastEditID)
 		http.Error(res, jsonError(err), http.StatusNotModified)
 		return
 	}
 
-	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", o.Modified, time.UTC)
+	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", stat.Modified, time.UTC)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -134,6 +135,13 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 			http.Redirect(res, req, "", http.StatusNotModified)
 			return
 		}
+	}
+
+	// o.Populate determines all, zone, or assigned-only
+	if err = o.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
 	}
 
 	s, err := json.Marshal(o)
