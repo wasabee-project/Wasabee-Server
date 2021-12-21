@@ -252,7 +252,7 @@ func CommunityMemberPull(teamID model.TeamID) error {
 }
 
 func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	log.Debug("add to remote rocks", "gid", gid, "teamID", teamID)
+	// log.Debug("add to remote rocks", "gid", gid, "teamID", teamID)
 	t := model.TeamID(teamID)
 	cid, err := t.RocksKey()
 	if err != nil {
@@ -303,14 +303,13 @@ func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 
 // RemoveFromRemote removes an agent from a Rocks Community IF that community has API enabled.
 func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	log.Debug("remove from remote rocks", "gid", gid, "teamID", teamID)
+	// log.Debugw("remove from remote rocks", "gid", gid, "teamID", teamID)
 	t := model.TeamID(teamID)
 	cid, err := t.RocksKey()
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-
 	if cid == "" || gid == "" {
 		return nil
 	}
