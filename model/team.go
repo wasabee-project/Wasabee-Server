@@ -271,7 +271,7 @@ func (teamID TeamID) AddAgent(in AgentID) error {
 	}
 
 	messaging.AddToRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
-	log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
+	// log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
 	return nil
 }
 
@@ -312,7 +312,7 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		messaging.AgentDeleteOperation(messaging.GoogleID(gid), messaging.OperationID(opID))
 	}
 
-	log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
+	// log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
 	return nil
 }
 
