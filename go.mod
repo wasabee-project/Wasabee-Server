@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	cloud.google.com/go/logging v1.4.2
+	cloud.google.com/go/profiler v0.1.1
 	cloud.google.com/go/pubsub v1.17.1
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
@@ -36,6 +37,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
