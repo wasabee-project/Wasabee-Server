@@ -98,7 +98,7 @@ func (teamID TeamID) RocksCommunity() (string, error) {
 func (teamID TeamID) RocksKey() (string, error) {
 	var rc sql.NullString
 	err := db.QueryRow("SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return "", err
 	}
