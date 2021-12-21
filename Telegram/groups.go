@@ -338,7 +338,7 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
-	log.Debugw("AddToChat called", "GID", gid, "resource", teamID)
+	// log.Debugw("AddToChat called", "GID", gid, "resource", teamID)
 
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
@@ -346,7 +346,7 @@ func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		return err
 	}
 	if chatID == 0 {
-		log.Debug("no chat linked to team")
+		// log.Debug("no chat linked to team")
 		return nil
 	}
 
