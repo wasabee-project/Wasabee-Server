@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
+	// "strconv"
 	"strings"
 	"time"
 
@@ -40,8 +40,9 @@ type trustResult struct {
 
 // Version 2.0 of the team query
 type teamResult struct {
-	Status string         `json:"status"`
-	Agents []model.VAgent `json:"data"`
+	Status  string         `json:"status"`
+	Message string         `json:"message,omitempty"`
+	Agents  []model.VAgent `json:"data"`
 }
 
 type bulkResult struct {
@@ -51,8 +52,9 @@ type bulkResult struct {
 
 // myTeams is what V returns when an agent's teams are requested
 type myTeams struct {
-	Status string   `json:"status"`
-	Teams  []myTeam `json:"data"`
+	Status  string   `json:"status"`
+	Teams   []myTeam `json:"data"`
+	Message string   `json:"message,omitempty"`
 }
 
 type myTeam struct {
@@ -127,9 +129,8 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 	return &tr, nil
 }
 
-// GetMyTeams pulls a list of teams the agent is on at V
-func GetMyTeams(gid model.GoogleID) (*myTeams, error) {
-	log.Debug("v get my team", "gid", gid)
+// geTeams pulls a list of teams the agent is on at V
+func getTeams(gid model.GoogleID) (*myTeams, error) {
 	var v myTeams
 
 	key, err := gid.GetVAPIkey()
@@ -175,8 +176,6 @@ func GetMyTeams(gid model.GoogleID) (*myTeams, error) {
 }
 
 func (vteamID VTeamID) GetTeamFromV(key string) (*teamResult, error) {
-	log.Debug("get team from v")
-
 	var vt teamResult
 	if vteamID == 0 {
 		return &vt, nil
@@ -211,9 +210,15 @@ func (vteamID VTeamID) GetTeamFromV(key string) (*teamResult, error) {
 		log.Error(err)
 		return &vt, err
 	}
+	// log.Debug(string(body))
 
 	err = json.Unmarshal(body, &vt)
 	if err != nil {
+		log.Error(err)
+		return &vt, err
+	}
+	if vt.Status != "ok" {
+		err := fmt.Errorf(vt.Message)
 		log.Error(err)
 		return &vt, err
 	}
@@ -222,15 +227,11 @@ func (vteamID VTeamID) GetTeamFromV(key string) (*teamResult, error) {
 
 // Sync pulls a team (and role) from V to sync with a Wasabee team
 func Sync(teamID model.TeamID, key string) error {
-	log.Debug("v sync")
-
 	x, role, err := teamID.VTeam()
-	vteamID := VTeamID(x)
-
-	log.Debug("V Sync", "team", vteamID, "role", role)
 	if err != nil {
 		return err
 	}
+	vteamID := VTeamID(x)
 	if vteamID == 0 {
 		return nil
 	}
@@ -246,7 +247,7 @@ func Sync(teamID model.TeamID, key string) error {
 		log.Error(err)
 		return err
 	}
-	log.Debug("V Sync", "team", vt)
+	// log.Debug("V Sync", "team", vt)
 
 	// do not remove the owner from the team
 	owner, err := teamID.Owner()
@@ -264,13 +265,18 @@ func Sync(teamID model.TeamID, key string) error {
 			err := agent.Gid.FirstLogin()
 			if err != nil {
 				log.Error(err)
-				return err
+				continue
+			}
+			err = model.VToDB(&agent)
+			if err != nil {
+				log.Error(err)
+				continue
 			}
 		}
 
 		if role != 0 { // role 0 means "any"
 			for _, r := range agent.Roles {
-				if r == role {
+				if r.ID == role {
 					atv[agent.Gid] = true
 					break
 				}
@@ -286,16 +292,15 @@ func Sync(teamID model.TeamID, key string) error {
 			continue
 		}
 		if in {
-			log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
+			// log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
 			continue
 		}
 		if _, ok := atv[agent.Gid]; ok {
-			log.Debugw("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
+			log.Infow("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
 			if err := teamID.AddAgent(agent.Gid); err != nil {
 				log.Info(err)
 				continue
 			}
-			// XXX set startlat, startlon, etc...
 		}
 	}
 
@@ -366,8 +371,6 @@ func Authorize(gid model.GoogleID) bool {
 		return true
 	}
 
-	// log.Debugw("v from cache", "gid", gid, "data", a, "fetched", fetched)
-
 	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
 		net, err := trustCheck(gid)
 		if err != nil {
@@ -401,119 +404,8 @@ func Authorize(gid model.GoogleID) bool {
 	return true
 }
 
-func processTeams(data myTeams) ([]teamToMake, error) {
-	log.Debug("v processTeams")
-
-	var m []teamToMake
-	for _, t := range data.Teams {
-		if !t.Admin {
-			// log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
-			continue
-		}
-
-		/* don't make duplicates
-		already := false
-		for _, adt := range teams {
-			if adt.TeamID == t.TeamID && adt.Role == 0 {
-				log.Debugw("Wasabee team already exists for this V team", "v team", t.TeamID, "role", 0, "teamID", adt.ID)
-				already = true
-				break
-			}
-		}
-		if already {
-			continue
-		}
-		m = append(m, teamToMake{
-			ID:   t.TeamID,
-			Role: 0,
-			Name: fmt.Sprintf("%s (all)", t.Name),
-		})
-		*/
-	}
-
-	return m, nil
-}
-
-// internal type
-type teamToMake struct {
-	ID   VTeamID
-	Role uint8
-	Name string
-}
-
-func processRoleSingleTeam(t myTeam, teams []vt, key string) ([]teamToMake, error) {
-	log.Debug("v processRoleSingleTeam")
-	var m []teamToMake
-
-	/*
-		if !t.Admin {
-			log.Debugw("not admin of v team, not creating w team", "v team", t.TeamID)
-			return m, nil
-		}
-		roles := make(map[uint8]bool)
-
-		vteamID, role, err := t.TeamID.VTeam()
-		if err != nil {
-			log.Error(err)
-			return m, err
-		}
-
-		vt, err := vteamID.GetTeamFromV(key)
-		if err != nil {
-			log.Error(err)
-			return m, err
-		}
-
-		// for every role of every agent -- this logic order is better, update the processRoleTeams to use it...
-		for _, a := range vt {
-			for _, r := range a.Roles {
-				if !roles[r.ID] { // first time we've seen this team/role
-					roles[r.ID] = true
-
-					already := false
-					for _, adt := range teams {
-						if adt.TeamID == t.TeamID && adt.Role == r.ID {
-							// log.Debugw("Wasabee team already exists for this V team/role", "v team", t.TeamID, "role", r.ID, "teamID", adt.ID)
-							already = true
-							break
-						}
-					}
-					if already {
-						continue
-					}
-
-					m = append(m, teamToMake{
-						ID:   t.TeamID,
-						Role: r.ID,
-						Name: fmt.Sprintf("%s (%s)", t.Name, r.Name),
-					})
-				}
-			}
-		}
-	*/
-	return m, nil
-}
-
-func processRoleTeams(data *myTeams) ([]teamToMake, error) {
-	log.Debug("v processRoleTeams")
-	var m []teamToMake
-
-	// raw := make(map[VTeamID]map[uint8]bool)
-
-	log.Error("rewrite processRoleTeams")
-
-	return m, nil
-}
-
-type vt struct {
-	Name   string
-	TeamID VTeamID
-	Role   uint8
-}
-
 func BulkImport(gid model.GoogleID, mode string) error {
-	log.Debug("v BuklImport")
-	var teamstomake []teamToMake
+	log.Debug("v BulkImport")
 
 	key, err := gid.GetVAPIkey()
 	if err != nil {
@@ -521,55 +413,79 @@ func BulkImport(gid model.GoogleID, mode string) error {
 		return err
 	}
 
-	agent, err := gid.GetAgent()
+	teamsfromv, err := getTeams(gid)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+	log.Debugw("bulk import", "teams", teamsfromv)
 
-	var vteams []vt
+	// this might take a while, let the client get on their way
+	go bulkImportWorker(gid, key, mode, teamsfromv)
 
-	for _, t := range agent.Teams {
-		vteams = append(vteams, vt{
-			Name:   t.Name,
-			TeamID: VTeamID(t.VTeam),
-			Role:   t.VTeamRole,
-		})
+	return nil
+}
+
+func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *myTeams) error {
+	type teamToMake struct {
+		ID   VTeamID
+		Role uint8
+		Name string
+	}
+	var tomake []teamToMake
+
+	for _, t := range teamsfromv.Teams {
+		if !t.Admin {
+			continue // agent is not admin at V, we won't link
+		}
+
+		switch mode {
+		case "role":
+			// one Wasabee team per each V team/role pair in use
+			vt, err := t.TeamID.GetTeamFromV(key)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			roles := make(map[uint8]bool)
+
+			for _, a := range vt.Agents {
+				for _, r := range a.Roles {
+					if !roles[r.ID] { // first time we've seen this team/role
+						roles[r.ID] = true
+						tomake = append(tomake, teamToMake{
+							ID:   t.TeamID,
+							Role: r.ID,
+							Name: fmt.Sprintf("%s (%s)", t.Name, Roles[r.ID]),
+						})
+					}
+				}
+			}
+		case "team":
+			// one Wasabee team per V team
+			tomake = append(tomake, teamToMake{
+				ID:   t.TeamID,
+				Role: 0,
+				Name: fmt.Sprintf("%s (all)", t.Name),
+			})
+		default:
+			log.Info("unknown mode")
+		}
 	}
 
-	teamsfromv, err := GetMyTeams(gid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	switch mode {
-	case "role":
-		teamstomake, err = processRoleTeams(teamsfromv)
-	case "team":
-		teamstomake, err = processTeams(*teamsfromv)
-	default:
-		id, err := strconv.ParseInt(mode, 10, 64)
+	for _, t := range tomake {
+		exists, err := model.VTeamExists(int64(t.ID), uint8(t.Role), gid)
 		if err != nil {
 			log.Error(err)
-			return err
+			continue
+			// return err
 		}
-		for _, t := range teamsfromv.Teams {
-			if t.TeamID == VTeamID(id) {
-				teamstomake, err = processRoleSingleTeam(t, vteams, key)
-				if err != nil {
-					return err
-				}
-				break
-			}
+		if exists {
+			continue
 		}
-	}
-	if err != nil {
-		log.Error(err)
-	}
 
-	for _, t := range teamstomake {
-		log.Debugw("Creating Wasabee team for V team", "v team", t.ID, "role", t.Role)
+		log.Infow("Creating Wasabee team for V team", "v team", t.ID, "role", t.Role)
 		teamID, err := gid.NewTeam(t.Name)
 		if err != nil {
 			log.Error(err)
@@ -586,7 +502,6 @@ func BulkImport(gid model.GoogleID, mode string) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -637,11 +552,13 @@ func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 }
 
 func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	log.Info("v add to remote not written")
+	// V's api doesn't support this?
+	// log.Info("v add to remote not written")
 	return nil
 }
 
 func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	log.Info("v remove from remote not written")
+	// V's api doesn't support this?
+	// log.Info("v remove from remote not written")
 	return nil
 }
