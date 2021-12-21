@@ -22,13 +22,16 @@ type VAgent struct {
 	Flagged     bool     `json:"flagged"`
 	Banned      bool     `json:"banned_by_nia"`
 	CellID      string   `json:"cellid"`
-	TelegramID  string   `json:"telegramid"` // is this really an int?
+	TelegramID  int64    `json:"telegramid"`
 	Telegram    string   `json:"telegram"`
 	Email       string   `json:"email"`
 	StartLat    float64  `json:"lat"`
 	StartLon    float64  `json:"lon"`
 	Distance    int64    `json:"distance"`
-	Roles       []uint8  `json:"roles"`
+	Roles       []struct {
+		ID   uint8  `json:"id"`
+		Name string `json:"name"`
+	} `json:"roles"`
 }
 
 // vToDB updates the database to reflect an agent's current status at V.
@@ -39,12 +42,29 @@ func VToDB(a *VAgent) error {
 	}
 
 	// telegram, startlat, startlon, distance, fetched are not set on the "trust" API call.
-	// do not overwrite telegram if we happen to get it from another source
-	_, err := db.Exec("REPLACE INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())",
-		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.CellID, a.StartLat, a.StartLon, a.Distance)
+	// use ON DUPLICATE so as to not overwrite apikey & telegram from other sources
+	// TODO: prune fields we will never use or that V never sends
+	_, err := db.Exec("INSERT INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE agent=?, quarantine=?, blacklisted=?, verified=?, flagged=?, banned=?, fetched=UTC_TIMESTAMP()",
+		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.CellID, a.StartLat, a.StartLon, a.Distance,
+		a.Agent, a.Quarantine, a.Blacklisted, a.Verified, a.Flagged, a.Banned)
 	if err != nil {
 		log.Error(err)
 		return err
+	}
+
+	if a.TelegramID != 0 {
+		existing, err := a.Gid.TelegramID()
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		if existing == 0 {
+			err := a.Gid.SetTelegramID(TelegramID(a.TelegramID), a.Telegram)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -136,6 +156,16 @@ func GetTeamsByVID(v int64) ([]TeamID, error) {
 		teams = append(teams, teamID)
 	}
 	return teams, nil
+}
+
+func VTeamExists(vteam int64, vrole uint8, gid GoogleID) (bool, error) {
+	i := false
+	err := db.QueryRow("SELECT COUNT(*) FROM team WHERE vteam = ? AND vrole = ? AND owner = ?", vteam, vrole, gid).Scan(&i)
+	if err != nil {
+		log.Error(err)
+		return i, err
+	}
+	return i, nil
 }
 
 // VConfigure sets V connection for a Wasabee team -- caller should verify ownership
