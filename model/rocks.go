@@ -80,8 +80,22 @@ func RocksFromDB(gid GoogleID) (*RocksAgent, time.Time, error) {
 	return &a, t, nil
 }
 
-// RocksCommunity returns a rocks key for a TeamID
+// RocksCommunity returns a communityID for a TeamID
 func (teamID TeamID) RocksCommunity() (string, error) {
+	var rc sql.NullString
+	err := db.QueryRow("SELECT rockscomm FROM team WHERE teamID = ?", teamID).Scan(&rc)
+	if err != nil {
+		log.Error(err)
+		return "", err
+	}
+	if !rc.Valid {
+		return "", nil
+	}
+	return rc.String, nil
+}
+
+// RocksKey returns a rocks key for a TeamID
+func (teamID TeamID) RocksKey() (string, error) {
 	var rc sql.NullString
 	err := db.QueryRow("SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
 	if err != nil {

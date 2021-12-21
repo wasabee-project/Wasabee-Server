@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
@@ -69,6 +70,11 @@ func Startup(key string) {
 	log.Debugw("startup", "V.enl.one API Key", key)
 	vc.APIKey = key
 	vc.configured = true
+
+	messaging.RegisterMessageBus("v.enl.one", messaging.Bus{
+		AddToRemote:      AddToRemote,
+		RemoveFromRemote: RemoveFromRemote,
+	})
 }
 
 // trustCheck checks a agent at V and populates a trustResult
@@ -628,4 +634,14 @@ func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 	}
 	a := br.Agents[tgid]
 	return &a, nil
+}
+
+func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+	log.Info("v add to remote not written")
+	return nil
+}
+
+func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+	log.Info("v remove from remote not written")
+	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
@@ -32,6 +33,7 @@ type CommunityResponse struct {
 	Members    []model.GoogleID `json:"members"`    // googleID
 	Moderators []string         `json:"moderators"` // googleID
 	User       Agent            `json:"user"`       // (Members,Moderators || User) present, not both
+	Error      string           `json:"error"`
 }
 
 // Agent is the data sent by enl.rocks -- the version sent in the CommunityResponse is different, but close enough for our purposes
@@ -61,16 +63,21 @@ var Config struct {
 	limiter        *rate.Limiter
 }
 
-func init() {
-	Config.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
-	Config.StatusEndpoint = "https://enlightened.rocks/api/user/status"
-	Config.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
-}
-
 // Start is called from main() to initialize the config
 func Start(apikey string) {
 	log.Debugw("startup", "enl.rocks API Key", apikey)
 	Config.APIKey = apikey
+
+	Config.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
+	Config.StatusEndpoint = "https://enlightened.rocks/api/user/status"
+	Config.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
+
+	// let the messaging susbsystem know we exist and how to use us
+	messaging.RegisterMessageBus("Rocks", messaging.Bus{
+		AddToRemote:      AddToRemote,
+		RemoveFromRemote: RemoveFromRemote,
+	})
+
 }
 
 func Active() bool {
@@ -152,6 +159,9 @@ func CommunitySync(msg json.RawMessage) error {
 	}
 
 	if rc.Action == "onJoin" {
+		if inteam, err := rc.User.Gid.AgentInTeam(teamID); inteam {
+			return err
+		}
 		err := teamID.AddAgent(rc.User.Gid)
 		if err != nil {
 			log.Error(err)
@@ -173,9 +183,13 @@ func CommunitySync(msg json.RawMessage) error {
 }
 
 // CommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
-func CommunityMemberPull(communityID string) error {
-	log.Debug("rocks community member pull", "community", communityID)
-	if communityID == "" {
+func CommunityMemberPull(teamID model.TeamID) error {
+	cid, err := teamID.RocksKey()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if cid == "" {
 		return nil
 	}
 
@@ -186,7 +200,7 @@ func CommunityMemberPull(communityID string) error {
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s?key=%s", Config.CommunityEndpoint, communityID)
+	apiurl := fmt.Sprintf("%s?key=%s", Config.CommunityEndpoint, cid)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		err := fmt.Errorf("error establishing community pull request")
@@ -215,25 +229,38 @@ func CommunityMemberPull(communityID string) error {
 		log.Error(err)
 		return err
 	}
+	if rr.Error != "" {
+		log.Error(rr.Error)
+		return err
+	}
+	log.Debugw("rocks sync", "response", rr)
 
-	teamID, err := model.RocksCommunityToTeam(communityID)
+	// process in the background, telegram rate-limits adds, we need to go slow, let the client get on with life
+	go func() {
+		for _, gid := range rr.Members {
+			if inteam, _ := gid.AgentInTeam(teamID); inteam {
+				continue
+			}
+			log.Debugw("rocks sync", "adding", gid)
+			if err := teamID.AddAgent(gid); err != nil {
+				log.Info(err)
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}()
+	return nil
+}
+
+func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+	log.Debug("add to remote rocks", "gid", gid, "teamID", teamID)
+	t := model.TeamID(teamID)
+	cid, err := t.RocksKey()
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	for _, gid := range rr.Members {
-		if err := teamID.AddAgent(gid); err != nil {
-			log.Info(err)
-			continue
-		}
-	}
-	return nil
-}
-
-func AddToRemoteRocksCommunity(gid, communityID string) error {
-	log.Debug("add to remote rocks", "gid", gid, "community", "communityID")
-	if communityID == "" || gid == "" {
+	if cid == "" || gid == "" {
 		return nil
 	}
 
@@ -241,20 +268,21 @@ func AddToRemoteRocksCommunity(gid, communityID string) error {
 	defer cancel()
 	if err := Config.limiter.Wait(ctx); err != nil {
 		log.Infow("timeout waiting on .rocks rate limiter", "GID", gid)
-		// just keep going
 	}
 
-	// XXX use NewRequest/client
-	apiurl := fmt.Sprintf("%s/%s?key=%s", Config.CommunityEndpoint, gid, communityID)
+	client := &http.Client{
+		Timeout: (3 * time.Second),
+	}
+	apiurl := fmt.Sprintf("%s/%s?key=%s", Config.CommunityEndpoint, gid, cid)
 	// #nosec
-	resp, err := http.PostForm(apiurl, url.Values{"Agent": {gid}})
+	resp, err := client.PostForm(apiurl, url.Values{"Agent": {string(gid)}})
 	if err != nil {
-		// default err leaks API key to logs
-		err := fmt.Errorf("error adding agent to .rocks community")
+		err := fmt.Errorf("error adding agent to rocks community")
 		log.Errorw(err.Error(), "GID", gid)
 		return err
 	}
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
@@ -273,10 +301,17 @@ func AddToRemoteRocksCommunity(gid, communityID string) error {
 	return nil
 }
 
-// RemoveFromRemoteRocksCommunity removes an agent from a Rocks Community IF that community has API enabled.
-func RemoveFromRemoteRocksCommunity(gid, communityID string) error {
-	log.Debug("remove from remote rocks", "gid", gid, "community", "communityID")
-	if communityID == "" || gid == "" {
+// RemoveFromRemote removes an agent from a Rocks Community IF that community has API enabled.
+func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+	log.Debug("remove from remote rocks", "gid", gid, "teamID", teamID)
+	t := model.TeamID(teamID)
+	cid, err := t.RocksKey()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if cid == "" || gid == "" {
 		return nil
 	}
 
@@ -287,7 +322,7 @@ func RemoveFromRemoteRocksCommunity(gid, communityID string) error {
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s/%s?key=%s", Config.CommunityEndpoint, gid, communityID)
+	apiurl := fmt.Sprintf("%s/%s?key=%s", Config.CommunityEndpoint, gid, cid)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
 	if err != nil {
 		log.Error(err)

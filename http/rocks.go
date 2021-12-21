@@ -75,8 +75,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = rocks.CommunityMemberPull(string(teamID))
-	if err != nil {
+	if err := rocks.CommunityMemberPull(teamID); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
