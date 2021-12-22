@@ -314,6 +314,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
 	name, err := m.Gid.IngressName()
 	if err != nil {
 		log.Error(err)
@@ -326,9 +327,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	agent.QueryToken = formValidationToken(req)
-
 	agent.JWT, err = mintjwt(m.Gid)
-
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -356,6 +355,9 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
 	res.Header().Set("Cache-Control", "no-store")
+
+	// update picture
+	_ = m.Gid.UpdatePicture(m.Pic)
 
 	fmt.Fprint(res, string(data))
 }
