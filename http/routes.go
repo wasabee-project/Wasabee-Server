@@ -208,7 +208,7 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	url := fmt.Sprintf("%s?server=%s", config.Get().HTTP.WebUIurl, config.Get().HTTP.Webroot)
-	http.Redirect(res, req, url, 301)
+	http.Redirect(res, req, url, http.StatusMovedPermanently)
 }
 
 // called when a resource/endpoint is not found
