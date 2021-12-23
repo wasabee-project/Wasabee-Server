@@ -296,7 +296,11 @@ func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 		log.Debug(string(body))
 	}
 	if !rr.Success {
-		log.Error(rr.Error)
+		log.Errorw("unable to add to remote rocks team", "teamID", teamID, "gid", gid, "cid", cid, "error", rr.Error)
+		if rr.Error == "Invalid key" {
+			c, _ := t.RocksCommunity()
+			t.SetRocks("", c) // unlink
+		}
 	}
 	return nil
 }
@@ -354,6 +358,10 @@ func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	if !rr.Success {
 		err = fmt.Errorf(rr.Error)
 		log.Error(err)
+		if rr.Error == "Invalid key" {
+			c, _ := t.RocksCommunity()
+			t.SetRocks("", c) // unlink
+		}
 		return err
 	}
 	return nil

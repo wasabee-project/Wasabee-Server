@@ -241,6 +241,7 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// linkRequires runs Populate, which checks ReadAccess... this is redundant
 	if r, _ := op.ReadAccess(gid); !r {
 		err = fmt.Errorf("permission to claim link assignment denied")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -287,16 +288,11 @@ func drawLinkFetch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// linkRequires runs Populate, which checks ReadAccess... this is redundant
 	if r, _ := op.ReadAccess(gid); !r && !op.AssignedOnlyAccess(gid) {
 		err := fmt.Errorf("forbidden")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 

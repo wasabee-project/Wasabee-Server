@@ -159,3 +159,15 @@ func RocksRemoveAgentFromTeam(g, communityID string) error {
 
 	return nil
 }
+
+// SetRocks links a team to a community at enl.rocks.
+// Does not check team ownership -- caller should take care of authorization.
+// Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).
+// adds/deletes at enl.rocks will be pushed here (onJoin/onLeave web hooks must be configured in the community at enl.rocks)
+func (teamID TeamID) SetRocks(key, community string) error {
+	_, err := db.Exec("UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", MakeNullString(key), MakeNullString(community), teamID)
+	if err != nil {
+		log.Error(err)
+	}
+	return err
+}

@@ -548,6 +548,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 		o.Comment = ""
 	}
 
+	// ReadAccess will do this if we don't, but this is a harmless redundancy since it won't double-query (unless no permissions are set)
 	if err := o.PopulateTeams(); err != nil {
 		log.Error(err)
 		return err

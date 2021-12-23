@@ -67,7 +67,12 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		teamList.JoinLinkToken = ""
 	}
 
-	data, _ := json.Marshal(teamList)
+	data, err := json.Marshal(teamList)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprint(res, string(data))
 }
 

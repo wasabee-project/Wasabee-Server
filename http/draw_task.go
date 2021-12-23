@@ -79,6 +79,7 @@ func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// taskRequires does Populate, which does this, ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read {
 		err = fmt.Errorf("read access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -177,6 +178,7 @@ func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// taskRequires does Populate, which does this, ... this is redundant
 	read, _ := op.ReadAccess(gid)
 	if !read && !op.AssignedOnlyAccess(gid) {
 		if op.ID.IsDeletedOp() {
@@ -208,6 +210,7 @@ func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// taskRequires does Populate, which does this, ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -231,6 +234,7 @@ func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// taskRequires does Populate, which does this, ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -254,6 +258,7 @@ func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// taskRequires does Populate, which does this, ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -277,6 +282,7 @@ func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// taskRequires does Populate, which does this, ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)

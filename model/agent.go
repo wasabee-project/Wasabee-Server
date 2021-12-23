@@ -15,44 +15,45 @@ type GoogleID string
 // Agent is the complete agent struct, used for the /me page.
 type Agent struct {
 	GoogleID      GoogleID     `json:"GoogleID"`
-	Name          string       `json:"name"`
-	VName         string       `json:"vname"`
-	RocksName     string       `json:"rocksname"`
-	IntelName     string       `json:"intelname"`
-	Level         uint8        `json:"level"`  // from v
-	OneTimeToken  OneTimeToken `json:"lockey"` // historical name, is this used by any clients?
-	VVerified     bool         `json:"Vverified"`
-	VBlacklisted  bool         `json:"blacklisted"`
-	EnlID         string       `json:"enlid"` // clients use this to draw URLs to V profiles
-	RocksVerified bool         `json:"rocks"`
-	RISC          bool         `json:"RISC"`
-	ProfileImage  string       `json:"pic"`
+	Name          string       `json:"name,omitempty"`
+	VName         string       `json:"vname,omitempty"`
+	RocksName     string       `json:"rocksname,omitempty"`
+	IntelName     string       `json:"intelname,omitempty"`
+	CommunityName string       `json:"communityname,omitempty"`
+	Level         uint8        `json:"level,omitempty"`  // from v
+	OneTimeToken  OneTimeToken `json:"lockey,omitempty"` // historical name, is this used by any clients?
+	VVerified     bool         `json:"Vverified,omitempty"`
+	VBlacklisted  bool         `json:"blacklisted,omitempty"`
+	EnlID         string       `json:"enlid,omitempty"` // clients use this to draw URLs to V profiles
+	RocksVerified bool         `json:"rocks,omitempty"`
+	RISC          bool         `json:"RISC,omitempty"`
+	ProfileImage  string       `json:"pic,omitempty"`
 	Teams         []AdTeam
 	Ops           []AdOperation
 	Telegram      struct {
-		ID        int64
-		Verified  bool
-		Authtoken string
+		ID        int64  `json:"ID,omitempty"`
+		Verified  bool   `json:"Verified,omitempty"`
+		Authtoken string `json:"Authtoken,omitempty"`
 	}
-	IntelFaction string `json:"intelfaction"`
-	QueryToken   string `json:"querytoken"`
-	VAPIkey      string `json:"vapi"`
+	IntelFaction string `json:"intelfaction,omitempty"`
+	QueryToken   string `json:"querytoken,omitempty"`
+	VAPIkey      string `json:"vapi,omitempty"`
 	JWT          string `json:"jwt,omitempty"`
 }
 
 // AdTeam is a sub-struct of Agent
 type AdTeam struct {
 	ID            TeamID
-	Name          string
-	RocksComm     string
-	RocksKey      string
-	JoinLinkToken string
+	Name          string `json:"Name,omitempty"`
+	RocksComm     string `json:"RocksComm,omitempty"`
+	RocksKey      string `json:"RocksKey,omitempty"`
+	JoinLinkToken string `json:"JoinLinkToken,omitempty"`
 	ShareLoc      string `json:"State"`
 	ShareWD       string
 	LoadWD        string
 	Owner         GoogleID
-	VTeam         int64
-	VTeamRole     uint8
+	VTeam         int64 `json:"VTeam,omitempty"`
+	VTeamRole     uint8 `json:"VTeamRole,omitempty"`
 }
 
 // AdOperation is a sub-struct of Agent
@@ -62,6 +63,8 @@ type AdOperation struct {
 	IsOwner bool
 	Color   string
 	TeamID  TeamID
+	Modified string
+	LastEditID string
 }
 
 // AgentID is anything that can be converted to a GoogleID or a string
@@ -79,11 +82,11 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgent() (*Agent, error) {
 	var a Agent
 	a.GoogleID = gid
-	var level, vname, vid, pic, vapi, rocksname sql.NullString
+	var level, vname, vid, pic, vapi, intelname, rocksname, communityname sql.NullString
 	var vverified, vblacklisted, rocksverified sql.NullBool
 	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &a.IntelName, &level, &a.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &a.RISC, &ifac, &pic, &vapi)
+	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.communityname, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &a.IntelName, &level, &a.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &a.RISC, &ifac, &communityname, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return &a, err
@@ -93,7 +96,15 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 		return &a, err
 	}
 
-	a.Name = gid.bestname(a.IntelName, vname, rocksname)
+	a.Name = gid.bestname(intelname, vname, rocksname, communityname)
+
+	if intelname.Valid {
+		a.IntelName = intelname.String
+	}
+
+	if communityname.Valid {
+		a.CommunityName = communityname.String
+	}
 
 	if rocksname.Valid {
 		a.RocksName = rocksname.String
@@ -232,7 +243,7 @@ func adTelegram(ad *Agent) error {
 func adOps(ad *Agent) error {
 	seen := make(map[OperationID]bool)
 
-	rowOwned, err := db.Query("SELECT ID, Name, Color FROM operation WHERE gid = ?", ad.GoogleID)
+	rowOwned, err := db.Query("SELECT ID, Name, Color, modified, lasteditid FROM operation WHERE gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -241,7 +252,7 @@ func adOps(ad *Agent) error {
 
 	for rowOwned.Next() {
 		var op AdOperation
-		err := rowOwned.Scan(&op.ID, &op.Name, &op.Color)
+		err := rowOwned.Scan(&op.ID, &op.Name, &op.Color, &op.Modified, &op.LastEditID)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -254,7 +265,7 @@ func adOps(ad *Agent) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, permissions.teamID FROM agentteams JOIN permissions ON agentteams.teamID = permissions.teamID JOIN operation ON permissions.opID = operation.ID WHERE agentteams.gid = ?", ad.GoogleID)
+	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, permissions.teamID, operation.modified, operation.lasteditid FROM agentteams JOIN permissions ON agentteams.teamID = permissions.teamID JOIN operation ON permissions.opID = operation.ID WHERE agentteams.gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -263,7 +274,7 @@ func adOps(ad *Agent) error {
 
 	for rowTeam.Next() {
 		var op AdOperation
-		err := rowTeam.Scan(&op.ID, &op.Name, &op.Color, &op.TeamID)
+		err := rowTeam.Scan(&op.ID, &op.Name, &op.Color, &op.TeamID, &op.Modified, &op.LastEditID)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -311,9 +322,8 @@ func (gid GoogleID) SetLocation(lat, lon string) error {
 // IngressName returns an agent's name for a given GoogleID.
 // returns err == sql.ErrNoRows if there is no such agent.
 func (gid GoogleID) IngressName() (string, error) {
-	var intelname string
-	var rocksname, vname sql.NullString
-	err := db.QueryRow("SELECT rocks.agent, v.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &vname, &intelname)
+	var intelname, rocksname, vname, communityname sql.NullString
+	err := db.QueryRow("SELECT rocks.agent, v.agent, agent.intelname, agent.communityname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &vname, &intelname, &communityname)
 
 	if err != nil && err == sql.ErrNoRows {
 		log.Error("getting ingressname for unknown gid")
@@ -324,10 +334,14 @@ func (gid GoogleID) IngressName() (string, error) {
 		return string(gid), err
 	}
 
-	return gid.bestname(intelname, vname, rocksname), nil
+	return gid.bestname(intelname, vname, rocksname, communityname), nil
 }
 
-func (gid GoogleID) bestname(intel string, v sql.NullString, rocks sql.NullString) string {
+func (gid GoogleID) bestname(intel, v, rocks, communityname sql.NullString) string {
+	if communityname.Valid {
+		return communityname.String
+	}
+
 	if v.Valid {
 		return v.String
 	}
@@ -336,8 +350,8 @@ func (gid GoogleID) bestname(intel string, v sql.NullString, rocks sql.NullStrin
 		return rocks.String
 	}
 
-	if intel != "" {
-		return intel
+	if intel.Valid {
+		return intel.String
 	}
 
 	return fmt.Sprint("UnverifiedAgent_", gid)
@@ -376,8 +390,17 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		}
 	}
 
+	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(communityname) = LOWER(?)", agent).Scan(&gid)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return "", err
+	}
+	if err != sql.ErrNoRows && gid != "" {
+		return gid, nil
+	}
+
 	// v.agent does NOT have a unique key
-	err := db.QueryRow("SELECT COUNT(gid) FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(gid) FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err
@@ -708,4 +731,12 @@ func (gid GoogleID) GetAgentLocations() (string, error) {
 		return "", err
 	}
 	return string(jList), nil
+}
+
+func (gid GoogleID) SetCommunityName(name string) error {
+	if _, err := db.Exec("UPDATE agent SET communityname = ? WHERE gid = ?", name, gid); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
 }

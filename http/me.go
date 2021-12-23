@@ -21,6 +21,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
+	"github.com/wasabee-project/Wasabee-Server/community"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -63,27 +64,9 @@ func formValidationToken(req *http.Request) string {
 	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 }
 
-// almost everything should return JSON now. The few things that do not redirect elsewhere.
-/* func wantsJSON(req *http.Request) bool {
-	// if specified, use what is requested
-	sendjson := req.FormValue("json")
-	if sendjson == "y" {
-		return true
-	}
-	if sendjson == "n" {
-		return false
-	}
-
-	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		return true
-	}
-
-	return false
-} */
-
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", jsonType)
-	res.Header().Set("Cache-Control", "no-store")
+	// res.Header().Set("Cache-Control", "no-store")
 
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -436,7 +419,72 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Infow("jwt Refresh", "gid", gid, "token ID", jwtid)
-	// jwk was a typo -- but the early clients used it, leave in place for a bit
-	s := fmt.Sprintf("{\"status\":\"ok\", \"jwk\":\"%s\", \"jwt\":\"%s\"}", string(signed[:]), string(signed[:]))
+	s := fmt.Sprintf("{\"status\":\"ok\", \"jwt\":\"%s\"}", string(signed[:]))
 	fmt.Fprint(res, s)
+}
+
+func meCommProofRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	log.Debugw("generating community ID proof JWT", "GID", gid)
+
+	vars := mux.Vars(req)
+	name := vars["name"]
+	if name == "" {
+		err := fmt.Errorf("name unset")
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	signed, err := community.BuildToken(gid, name)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	s := fmt.Sprintf("{\"status\":\"ok\", \"jwt\":\"%s\"}", signed)
+	fmt.Fprint(res, s)
+}
+
+func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	log.Debugw("verifying community proof JWT", "GID", gid)
+
+	vars := mux.Vars(req)
+	name := vars["name"]
+
+	if name == "" {
+		err := fmt.Errorf("name unset")
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	ok, err := community.Validate(gid, name)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		err := fmt.Errorf("unable to verify")
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	fmt.Fprint(res, jsonStatusOK)
 }

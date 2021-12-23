@@ -28,21 +28,22 @@ type TeamData struct {
 type TeamMember struct {
 	Gid           GoogleID `json:"id"`
 	Name          string   `json:"name"`
-	VName         string   `json:"vname"`
-	RocksName     string   `json:"rocksname"`
-	IntelName     string   `json:"intelname"`
-	Level         uint8    `json:"level"`
-	EnlID         string   `json:"enlid"`
-	PictureURL    string   `json:"pic"`
+	VName         string   `json:"vname,omitempty"`
+	RocksName     string   `json:"rocksname,omitempty"`
+	IntelName     string   `json:"intelname,omitempty"`
+	CommunityName string   `json:"communityname,omitempty"`
+	Level         uint8    `json:"level,omitempty"`
+	EnlID         string   `json:"enlid,omitempty"`
+	PictureURL    string   `json:"pic,omitempty"`
 	Verified      bool     `json:"Vverified"`
 	Blacklisted   bool     `json:"blacklisted"`
 	RocksVerified bool     `json:"rocks"`
 	RocksSmurf    bool     `json:"smurf"`
 	IntelFaction  string   `json:"intelfaction"`
-	Comment       string   `json:"squad"`
+	Comment       string   `json:"squad,omitempty"`
 	ShareLocation bool     `json:"state"`
-	Lat           float64  `json:"lat"`
-	Lon           float64  `json:"lng"`
+	Lat           float64  `json:"lat,omitempty"`
+	Lon           float64  `json:"lng,omitempty"`
 	Date          string   `json:"date"`
 	ShareWD       bool     `json:"shareWD"`
 	LoadWD        bool     `json:"loadWD"`
@@ -68,7 +69,7 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 	var teamList TeamData
 	var rows *sql.Rows
 
-	rows, err := db.Query("SELECT agentteams.gid, v.Agent, agent.IntelName, rocks.Agent, agentteams.comment, agentteams.shareLoc, Y(locations.loc), X(locations.loc), locations.upTime, v.Verified, v.Blacklisted, v.EnlID, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction, agent.picurl "+
+	rows, err := db.Query("SELECT agentteams.gid, v.Agent, agent.IntelName, rocks.Agent, agentteams.comment, agentteams.shareLoc, Y(locations.loc), X(locations.loc), locations.upTime, v.Verified, v.Blacklisted, v.EnlID, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction, agent.communityname, agent.picurl "+
 		" FROM agentteams JOIN team ON agentteams.teamID = team.teamID JOIN agent ON agentteams.gid = agent.gid JOIN locations ON agentteams.gid = locations.gid LEFT JOIN v ON agentteams.gid = v.gid LEFT JOIN rocks ON agentteams.gid = rocks.gid WHERE agentteams.teamID = ?", teamID)
 	if err != nil {
 		log.Error(err)
@@ -81,15 +82,23 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		var lat, lon string
 		var faction IntelFaction
 		var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-		var enlID, vname, rocksname, picurl sql.NullString
+		var intelname, communityname, enlID, vname, rocksname, picurl sql.NullString
 
-		err := rows.Scan(&agent.Gid, &vname, &agent.IntelName, &rocksname, &agent.Comment, &agent.ShareLocation, &lat, &lon, &agent.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &agent.ShareWD, &agent.LoadWD, &faction, &picurl)
+		err := rows.Scan(&agent.Gid, &vname, &intelname, &rocksname, &agent.Comment, &agent.ShareLocation, &lat, &lon, &agent.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &agent.ShareWD, &agent.LoadWD, &faction, &communityname, &picurl)
 		if err != nil {
 			log.Error(err)
 			return &teamList, err
 		}
 
-		agent.Name = agent.Gid.bestname(agent.IntelName, vname, rocksname)
+		agent.Name = agent.Gid.bestname(intelname, vname, rocksname, communityname)
+
+		if intelname.Valid {
+			agent.IntelName = intelname.String
+		}
+
+		if communityname.Valid {
+			agent.CommunityName = communityname.String
+		}
 
 		if vname.Valid {
 			agent.VName = vname.String
@@ -333,18 +342,6 @@ func (teamID TeamID) Chown(to AgentID) error {
 	return nil
 }
 
-// SetRocks links a team to a community at enl.rocks.
-// Does not check team ownership -- caller should take care of authorization.
-// Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).
-// adds/deletes at enl.rocks will be pushed here (onJoin/onLeave web hooks must be configured in the community at enl.rocks)
-func (teamID TeamID) SetRocks(key, community string) error {
-	_, err := db.Exec("UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", key, community, teamID)
-	if err != nil {
-		log.Error(err)
-	}
-	return err
-}
-
 func (teamID TeamID) String() string {
 	return string(teamID)
 }
@@ -381,7 +378,7 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	var tm TeamMember
 
 	var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-	var level, enlID, vname, rocksname sql.NullString
+	var level, enlID, vname, rocksname, intelname, communityname sql.NullString
 	var ifac IntelFaction
 
 	gid, err := id.Gid()
@@ -390,13 +387,21 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 		return nil, err
 	}
 
-	if err = db.QueryRow("SELECT agent.gid, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
-		&tm.Gid, &vname, &rocksname, &tm.IntelName, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf); err != nil {
+	if err = db.QueryRow("SELECT agent.gid, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf, agent.communityname FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
+		&tm.Gid, &vname, &rocksname, &intelname, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &communityname); err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	tm.Name = tm.Gid.bestname(tm.IntelName, vname, rocksname)
+	tm.Name = tm.Gid.bestname(intelname, vname, rocksname, communityname)
+
+	if intelname.Valid {
+		tm.IntelName = intelname.String
+	}
+
+	if communityname.Valid {
+		tm.IntelName = communityname.String
+	}
 
 	if vname.Valid {
 		tm.VName = vname.String

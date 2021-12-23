@@ -356,6 +356,9 @@ func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	chat, err := bot.GetChat(cic)
 	if err != nil {
 		log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
+		if err.Error() == "Bad Request: chat not found" {
+			_ = teamID.UnlinkFromTelegramChat(model.TelegramID(chatID))
+		}
 		return err
 	}
 

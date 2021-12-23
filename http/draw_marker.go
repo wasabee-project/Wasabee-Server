@@ -84,6 +84,7 @@ func drawMarkerClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// markerRequires does Populate, which checks for read access ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read {
 		err = fmt.Errorf("read access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -182,6 +183,7 @@ func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// markerRequires does Populate, which checks for read access ... this is redundant
 	read, _ := op.ReadAccess(gid)
 	if !read && !op.AssignedOnlyAccess(gid) {
 		if op.ID.IsDeletedOp() {
@@ -212,6 +214,7 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// markerRequires does Populate, which checks for read access ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -235,6 +238,7 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// markerRequires does Populate, which checks for read access ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -258,6 +262,7 @@ func drawMarkerRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// markerRequires does Populate, which checks for read access ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -281,6 +286,7 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// markerRequires does Populate, which checks for read access ... this is redundant
 	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
