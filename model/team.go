@@ -378,7 +378,7 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	var tm TeamMember
 
 	var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-	var level, enlID, vname, rocksname, intelname, communityname sql.NullString
+	var level, enlID, vname, rocksname, intelname, communityname, picurl sql.NullString
 	var ifac IntelFaction
 
 	gid, err := id.Gid()
@@ -387,8 +387,8 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 		return nil, err
 	}
 
-	if err = db.QueryRow("SELECT agent.gid, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf, agent.communityname FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
-		&tm.Gid, &vname, &rocksname, &intelname, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &communityname); err != nil {
+	if err = db.QueryRow("SELECT agent.gid, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf, agent.communityname, agent.picurl FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
+		&tm.Gid, &vname, &rocksname, &intelname, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &communityname, &picurl); err != nil {
 		log.Error(err)
 		return nil, err
 	}
@@ -400,7 +400,7 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	}
 
 	if communityname.Valid {
-		tm.IntelName = communityname.String
+		tm.CommunityName = communityname.String
 	}
 
 	if vname.Valid {
@@ -441,8 +441,9 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 
 	tm.IntelFaction = ifac.String()
 
-	//  XXX just JOIN the agentextras table, don't do another query
-	tm.PictureURL = gid.GetPicture()
+	if picurl.Valid {
+		tm.PictureURL = picurl.String
+	}
 
 	// XXX make this a distinct function?
 	var count int

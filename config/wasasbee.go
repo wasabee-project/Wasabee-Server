@@ -7,8 +7,12 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/lestrrat-go/jwx/jwk"
+
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
+
+const defPicUrl = "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
+const jku = "https://cdn2.wasabee.rocks/.well-known/jwks.json"
 
 type WasabeeConf struct {
 	V        bool
@@ -24,8 +28,10 @@ type WasabeeConf struct {
 		WebUIurl string
 		Router   *mux.Router
 	}
-	JWSigningKeys jwk.Set
-	JWParsingKeys jwk.Set
+	JWSigningKeys     jwk.Set
+	JWParsingKeys     jwk.Set
+	JKU               string
+	DefaultPictureURL string
 }
 
 var once sync.Once
@@ -38,7 +44,6 @@ func Get() *WasabeeConf {
 
 // NewRouter creates the HTTPS router
 func NewRouter() *mux.Router {
-	// http://marcio.io/2015/07/singleton-pattern-in-go/
 	once.Do(func() {
 		log.Debugw("startup", "router", "main HTTPS router")
 		c.HTTP.Router = mux.NewRouter()
@@ -115,4 +120,18 @@ func SetupJWK(signers, parsers string) error {
 	log.Debugw("loaded JWT parsing keys", "count", c.JWParsingKeys.Len(), "path", parsers)
 
 	return nil
+}
+
+func PictureURL() string {
+	if c.DefaultPictureURL == "" {
+		return defPicUrl
+	}
+	return c.DefaultPictureURL
+}
+
+func JKU() string {
+	if c.JKU != "" {
+		return c.JKU
+	}
+	return jku
 }

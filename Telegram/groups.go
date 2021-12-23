@@ -39,7 +39,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 
 	switch inMsg.Message.Command() {
 	case "unlink":
-		teamID, _, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+		teamID, _, _ := model.ChatToTeam(inMsg.Message.Chat.ID)
 		log.Debugw("unlinking team from chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", teamID)
 
 		owns, err := gid.OwnsTeam(teamID)

@@ -67,12 +67,6 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	if !messaging.CanSendTo(messaging.GoogleID(gid), messaging.GoogleID(togid)) {
-		err := fmt.Errorf("forbidden: only team owners can send to agents on the team")
-		log.Warnw(err.Error(), "GID", gid, "resource", togid)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
 	ok, err := messaging.SendMessage(messaging.GoogleID(togid), message)
 	if err != nil {
 		log.Error(err)
@@ -82,78 +76,6 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 	if !ok {
 		err := fmt.Errorf("message did not send")
 		log.Warnw(err.Error(), "from", gid, "to", togid, "contents", message)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprint(res, jsonStatusOK)
-}
-
-func agentFBMessageRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	id := vars["id"]
-	togid, err := model.ToGid(id)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if !contentTypeIs(req, jsonTypeShort) {
-		err := fmt.Errorf("invalid request (needs to be application/json)")
-		log.Warnw(err.Error(), "GID", gid, "resource", togid)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	jBlob, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if string(jBlob) == "" {
-		err := fmt.Errorf("empty JSON on firebase message")
-		log.Warnw(err.Error(), "GID", gid, "resource", togid)
-		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
-		return
-	}
-
-	jRaw := json.RawMessage(jBlob)
-
-	var msg struct {
-		Sender  string
-		Message string
-		Date    string
-	}
-
-	if err = json.Unmarshal(jRaw, &msg); err != nil {
-		log.Errorw(err.Error(), "GID", gid, "content", jRaw)
-		return
-	}
-
-	if msg.Sender, err = gid.IngressName(); err != nil {
-		log.Errorw("sender ingress name unknown", "GID", gid)
-		return
-	}
-
-	toSend, err := json.Marshal(msg)
-	if err != nil {
-		log.Errorw(err.Error(), "GID", gid, "content", jRaw)
-		return
-	}
-
-	_, err = messaging.SendMessage(messaging.GoogleID(togid), string(toSend))
-	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

@@ -10,22 +10,13 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
-type logoutList struct {
-	logoutlist map[model.GoogleID]bool
-	mux        sync.Mutex
-}
-
-var ll logoutList
-
-func init() {
-	ll.logoutlist = make(map[model.GoogleID]bool)
-}
-
-// Authorize is called from Oauth callback to set up a agent for the first time or revalidate them on subsequent logins.
-// It also checks and updates the local V and enl.rocks data, if configured.
+// Authorize is called to verify that an agent is permitted to use Wasabee.
+// V and Rocks are updated (if configured).
+// Accounts that are locked due to Google RISC are blocked.
+// Accounts that have indicated they are RES in Intel are blocked.
 // Returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked.
 func Authorize(gid model.GoogleID) (bool, error) {
-	// if the agent doesn't exist, prepopulate everything
+	// if the agent isn't known to this server, pre-populate everything
 	if !gid.Valid() {
 		gid.FirstLogin()
 	}
@@ -45,13 +36,13 @@ func Authorize(gid model.GoogleID) (bool, error) {
 	// query both rocks and V at the same time -- probably not necessary now
 	// *.Authorize checks cache in db, if too old, checks service and saves updates
 	channel := make(chan bool, 2)
+	defer close(channel)
 	go func() {
 		channel <- v.Authorize(gid)
 	}()
 	go func() {
 		channel <- rocks.Authorize(gid)
 	}()
-	defer close(channel)
 
 	// "true" means "not blocked", "false" means "blocked"
 	e1, e2 := <-channel, <-channel
@@ -62,7 +53,17 @@ func Authorize(gid model.GoogleID) (bool, error) {
 	return true, nil
 }
 
-// The logout stuff goes away when we move to JWT
+// The logout stuff goes away when we fully migrate to JWT
+type logoutList struct {
+	logoutlist map[model.GoogleID]bool
+	mux        sync.Mutex
+}
+
+var ll logoutList
+
+func init() {
+	ll.logoutlist = make(map[model.GoogleID]bool)
+}
 
 // Logout sets a temporary logout token - not stored in DB since logout cases are not critical
 // and sessions are refreshed with google hourly

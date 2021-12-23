@@ -6,7 +6,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// wrapper
+// model includes this package, so it can't include model, to enforce type-consistency, we re-define some types from model and rely on the callers to cast them
 type GoogleID string
 type TeamID string
 type TaskID string
@@ -40,8 +40,6 @@ func init() {
 }
 
 func SendTarget(toGID GoogleID, target Target) error {
-	log.Debugw("send target", "gid", toGID, "target", target)
-
 	if target.Name == "" {
 		err := fmt.Errorf("portal not set")
 		log.Warnw(err.Error(), "GID", toGID)
@@ -54,13 +52,11 @@ func SendTarget(toGID GoogleID, target Target) error {
 		return err
 	}
 
-	for name, bus := range busses {
+	for _, bus := range busses {
 		if bus.SendTarget != nil {
-			err := bus.SendTarget(toGID, target)
-			if err != nil {
+			if err := bus.SendTarget(toGID, target); err != nil {
 				log.Error(err)
 			}
-			log.Infow("target sent", "toGID", toGID, "bus", name, "message", target)
 		}
 	}
 
@@ -85,16 +81,10 @@ func SendMessage(toGID GoogleID, message string) (bool, error) {
 	return sent, nil
 }
 
-func CanSendTo(fromGID GoogleID, toGID GoogleID) bool {
-	log.Error("cansendto called but not written")
-	return false
-}
-
 func SendAnnounce(teamID TeamID, message string) error {
 	for _, bus := range busses {
 		if bus.SendAnnounce != nil {
-			err := bus.SendAnnounce(teamID, message)
-			if err != nil {
+			if err := bus.SendAnnounce(teamID, message); err != nil {
 				log.Error(err)
 			}
 		}
@@ -106,14 +96,16 @@ func RegisterMessageBus(busname string, b Bus) {
 	busses[busname] = b
 }
 
+func RemoveMessageBus(busname string) {
+	delete(busses, busname)
+}
+
 func AddToRemote(gid GoogleID, teamID TeamID) error {
 	for _, bus := range busses {
 		if bus.AddToRemote != nil {
-			err := bus.AddToRemote(gid, teamID)
-			if err != nil {
+			if err := bus.AddToRemote(gid, teamID); err != nil {
 				log.Error(err)
 			}
-			// log.Debugw("added to remote", "gid", gid, "bus", name, "teamID", teamID)
 		}
 	}
 	return nil
@@ -122,11 +114,9 @@ func AddToRemote(gid GoogleID, teamID TeamID) error {
 func RemoveFromRemote(gid GoogleID, teamID TeamID) error {
 	for _, bus := range busses {
 		if bus.RemoveFromRemote != nil {
-			err := bus.RemoveFromRemote(gid, teamID)
-			if err != nil {
+			if err := bus.RemoveFromRemote(gid, teamID); err != nil {
 				log.Error(err)
 			}
-			// log.Debugw("removed from remote", "gid", gid, "bus", name, "teamID", teamID)
 		}
 	}
 	return nil
@@ -135,8 +125,7 @@ func RemoveFromRemote(gid GoogleID, teamID TeamID) error {
 func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string) error {
 	for _, bus := range busses {
 		if bus.SendAssignment != nil {
-			err := bus.SendAssignment(gid, taskID, opID, status)
-			if err != nil {
+			if err := bus.SendAssignment(gid, taskID, opID, status); err != nil {
 				log.Error(err)
 			}
 		}
@@ -147,8 +136,7 @@ func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string
 func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
 	for _, bus := range busses {
 		if bus.AgentDeleteOperation != nil {
-			err := bus.AgentDeleteOperation(gid, opID)
-			if err != nil {
+			if err := bus.AgentDeleteOperation(gid, opID); err != nil {
 				log.Error(err)
 			}
 		}
@@ -159,8 +147,7 @@ func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
 func DeleteOperation(opID OperationID) error {
 	for _, bus := range busses {
 		if bus.DeleteOperation != nil {
-			err := bus.DeleteOperation(opID)
-			if err != nil {
+			if err := bus.DeleteOperation(opID); err != nil {
 				log.Error(err)
 			}
 		}

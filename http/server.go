@@ -169,8 +169,7 @@ func StartHTTP(initialConfig Configuration) {
 
 	log.Infow("startup", "port", c.ListenHTTPS, "url", c.Root, "message", "online at "+c.Root)
 	if err := c.srv.ListenAndServeTLS(c.CertDir+"/wasabee.fullchain.pem", c.CertDir+"/wasabee.key"); err != nil {
-		log.Fatal(err)
-		// panic(err)
+		log.Info(err)
 	}
 }
 

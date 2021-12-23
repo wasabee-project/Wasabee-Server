@@ -98,7 +98,7 @@ func drawLinkDescRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "comment")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -122,7 +122,7 @@ func drawLinkColorRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "color")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -145,7 +145,7 @@ func drawLinkSwapRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "swap")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -169,7 +169,7 @@ func drawLinkZoneRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "zone")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -199,7 +199,7 @@ func drawLinkDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "delta")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -231,7 +231,7 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "complete")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -255,7 +255,7 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "assigned")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -278,7 +278,7 @@ func drawLinkRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := linkStatusTouch(op, link.ID)
+	uid := linkStatusTouch(op, link.ID, "pending")
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -318,8 +318,7 @@ func linkAssignTouch(gid model.GoogleID, linkID model.LinkID, op *model.Operatio
 }
 
 // linkStatusTouch updates the updateID and notifies all teams of the update
-func linkStatusTouch(op *model.Operation, linkID model.LinkID) string {
-	// update the timestamp and updateID
+func linkStatusTouch(op *model.Operation, linkID model.LinkID, status string) string {
 	uid, err := op.Touch()
 	if err != nil {
 		log.Error(err)
@@ -341,123 +340,10 @@ func linkStatusTouch(op *model.Operation, linkID model.LinkID) string {
 	}
 
 	for _, t := range teams {
-		err := wfb.LinkStatus(model.TaskID(linkID), op.ID, t, uid)
+		err := wfb.LinkStatus(model.TaskID(linkID), op.ID, t, status, uid)
 		if err != nil {
 			log.Error(err)
 		}
 	}
 	return uid
 }
-
-/*
-func drawLinkDependAddRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// only the ID needs to be set for this
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
-
-	if !op.WriteAccess(gid) {
-		err = fmt.Errorf("forbidden: write access required to set dependency")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	linkID := model.LinkID(vars["link"])
-	if linkID == "" {
-		err = fmt.Errorf("empty link ID on depend add")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	task := vars["task"]
-	if task == "" {
-		err = fmt.Errorf("empty task ID on depend add")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	link, err := op.GetLink(linkID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
-		return
-	}
-
-	err = link.AddDepend(task)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	uid := linkStatusTouch(op, linkID)
-	fmt.Fprint(res, jsonOKUpdateID(uid))
-}
-
-func drawLinkDependDelRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// only the ID needs to be set for this
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
-
-	if !op.WriteAccess(gid) {
-		err = fmt.Errorf("forbidden: write access required to delete dependency")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-
-	linkID := model.LinkID(vars["link"])
-	if linkID == "" {
-		err = fmt.Errorf("empty link ID on depend delete")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	task := vars["task"]
-	if task == "" {
-		err = fmt.Errorf("empty task ID on depend delete")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	link, err := op.GetLink(linkID)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotFound)
-		return
-	}
-
-	err = link.DelDepend(task)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	uid := linkStatusTouch(op, linkID)
-	fmt.Fprint(res, jsonOKUpdateID(uid))
-} */

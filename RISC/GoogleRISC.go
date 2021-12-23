@@ -26,8 +26,7 @@ const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configu
 // internal channel
 var riscchan chan event
 
-// the top-level configuration
-// some of this is populated by googleRiscDiscover(), the reset set manually, don't do this
+// the top-level configuration, populated by googleRiscDiscover()
 var googleConfig struct {
 	Issuer      string   `json:"issuer"`
 	JWKURI      string   `json:"jwks_uri"`
@@ -82,7 +81,6 @@ func RISC(ctx context.Context, configfile string) {
 
 	risc := config.Subrouter(riscHook)
 	risc.HandleFunc("", Webhook).Methods("POST")
-	risc.HandleFunc("", WebhookStatus).Methods("GET")
 
 	// start a thread for keeping the connection to Google fresh
 	go registerWebhook(ctx)
@@ -147,7 +145,7 @@ func validateToken(rawjwt []byte) error {
 		return err
 	}
 
-	// XXX does jwt.WithValidate(true) make this redundant?
+	// jwt.WithValidate(true) makes this redundant
 	if err := jwt.Validate(token); err != nil {
 		log.Infow("RISC jwt validate failed", "error", err)
 		return err
@@ -190,7 +188,6 @@ func validateToken(rawjwt []byte) error {
 		r.Subject.Subject = y["sub"].(string)
 		r.Subject.Email = y["email"].(string)
 
-		// r.Subject.Reason = r.Reason
 		riscchan <- r.Subject
 	}
 	return nil

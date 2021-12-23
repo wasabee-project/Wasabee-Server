@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	firebase "firebase.google.com/go"
-	"firebase.google.com/go/auth"
+	// "firebase.google.com/go/auth"
 	"firebase.google.com/go/messaging"
 	"google.golang.org/api/option"
 
@@ -16,10 +16,10 @@ import (
 var c struct {
 	running bool
 	c       chan bool
-	app     *firebase.App
-	msg     *messaging.Client
-	auth    *auth.Client
-	ctx     context.Context
+	// app     *firebase.App
+	msg *messaging.Client
+	// auth    *auth.Client
+	ctx context.Context
 }
 
 // Serve is the main startup function for the Firebase subsystem
@@ -27,32 +27,28 @@ func Serve(keypath string) error {
 	log.Infow("startup", "subsystem", "Firebase", "version", firebase.Version, "message", "Firebase starting")
 
 	c.ctx = context.Background()
-	opt := option.WithCredentialsFile(keypath)
-	app, err := firebase.NewApp(c.ctx, nil, opt)
+	app, err := firebase.NewApp(c.ctx, nil, option.WithCredentialsFile(keypath))
 	if err != nil {
 		err := fmt.Errorf("error initializing firebase messaging: %v", err)
 		log.Error(err)
 		return err
 	}
+	// c.app = app // not used outside this function
 
-	// make sure we can send messages
 	msg, err := app.Messaging(c.ctx)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+	c.msg = msg
 
-	client, err := app.Auth(c.ctx)
+	// not currently used
+	/* client, err := app.Auth(c.ctx)
 	if err != nil {
 		err := fmt.Errorf("error initializing firebase auth: %v", err)
 		log.Error(err)
-	}
-
-	c.c = make(chan bool, 1)
-	c.running = true
-	c.app = app
-	c.auth = client
-	c.msg = msg
+	} */
+	// c.auth = client
 
 	wm.RegisterMessageBus("firebase", wm.Bus{
 		SendMessage:      SendMessage,
@@ -65,6 +61,10 @@ func Serve(keypath string) error {
 		DeleteOperation:      DeleteOperation,
 	})
 
+	c.running = true
+
+	// this channel is no longer used, it just keeps this go process alive
+	c.c = make(chan bool, 1)
 	for b := range c.c {
 		log.Debugw("Command on Firebase control channel", "value", b)
 	}

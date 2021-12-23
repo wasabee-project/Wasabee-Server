@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -58,12 +59,12 @@ type AdTeam struct {
 
 // AdOperation is a sub-struct of Agent
 type AdOperation struct {
-	ID      OperationID
-	Name    string
-	IsOwner bool
-	Color   string
-	TeamID  TeamID
-	Modified string
+	ID         OperationID
+	Name       string
+	IsOwner    bool
+	Color      string
+	TeamID     TeamID
+	Modified   string
 	LastEditID string
 }
 
@@ -561,17 +562,15 @@ func (gid GoogleID) UpdatePicture(picurl string) error {
 
 // GetPicture returns the agent's Google Picture URL
 func (gid GoogleID) GetPicture() string {
-	// XXX don't hardcode this
-	unset := "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
 	var url sql.NullString
 
 	err := db.QueryRow("SELECT picurl FROM agent WHERE gid = ?", gid).Scan(&url)
 	if err == sql.ErrNoRows || !url.Valid || url.String == "" {
-		return unset
+		return config.PictureURL()
 	}
 	if err != nil {
 		log.Error(err)
-		return unset
+		return config.PictureURL()
 	}
 
 	return url.String

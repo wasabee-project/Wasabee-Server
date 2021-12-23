@@ -468,14 +468,13 @@ func drawOpUpdateZones(o *Operation, tx *sql.Tx) error {
 
 // Delete removes an operation and all associated data
 func (o *Operation) Delete(gid GoogleID) error {
-	if !o.ID.IsOwner(gid) {
+	if !o.IsOwner(gid) {
 		err := fmt.Errorf("permission denied")
 		log.Error(err)
 		return err
 	}
 
-	// deletedate is automatic
-	_, err := db.Exec("INSERT INTO deletedops (opID, deletedate, gid) VALUES (?, NOW(), ?)", o.ID, gid)
+	_, err := db.Exec("INSERT INTO deletedops (opID, deletedate, gid) VALUES (?, UTC_TIMESTAMP(), ?)", o.ID, gid)
 	if err != nil {
 		log.Error(err)
 		// carry on
@@ -486,14 +485,16 @@ func (o *Operation) Delete(gid GoogleID) error {
 		log.Error(err)
 		return err
 	}
+
 	// the foreign key constraints should take care of these, but just in case...
-	_, _ = db.Exec("DELETE FROM marker WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM link WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM portal WHERE opID = ?", o.ID)
-	// XXX not needed going forward, but leaving for now
-	_, _ = db.Exec("DELETE FROM anchor WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM opkeys WHERE opID = ?", o.ID)
-	_, _ = db.Exec("DELETE FROM opteams WHERE opID = ?", o.ID)
+	tables := []string{"marker", "link", "portal", "anchor", "opkeys", "permissions"}
+	for _, v := range tables {
+		q := fmt.Sprintf("DELETE FROM %s WHERE opID = ?", v)
+		if _, err = db.Exec(q, o.ID); err != nil {
+			log.Info(err)
+			// carry on
+		}
+	}
 
 	return nil
 }
@@ -507,10 +508,7 @@ func (opID OperationID) IsDeletedOp() bool {
 		log.Error(err)
 		return false
 	}
-	if i > 0 {
-		return true
-	}
-	return false
+	return (i > 0)
 }
 
 // Populate takes a pointer to an Operation and fills it in; o.ID must be set
@@ -644,6 +642,8 @@ func (o *Operation) Touch() (string, error) {
 		log.Error(err)
 		return "", err
 	}
+
+	log.Debugw("touch", "updateID", updateID)
 	return updateID, nil
 }
 

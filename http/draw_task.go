@@ -311,7 +311,6 @@ func taskAssignTouch(gid model.GoogleID, markerID model.TaskID, op *model.Operat
 }
 
 func taskStatusTouch(op *model.Operation, taskID model.TaskID, status string) string {
-	// update the timestamp and updateID
 	uid, err := op.Touch()
 	if err != nil {
 		log.Error(err)
@@ -325,7 +324,7 @@ func taskStatusTouch(op *model.Operation, taskID model.TaskID, status string) st
 	}
 
 	for _, t := range teams {
-		err := wfb.TaskStatus(taskID, op.ID, t, status)
+		err := wfb.TaskStatus(taskID, op.ID, t, status, uid)
 		if err != nil {
 			log.Error(err)
 		}

@@ -127,15 +127,18 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/draw/{opID}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST", "PUT")    // prefer PUT
 
 	// tasks -- TODO unify between markers, links and generic tasks -- note changes from POST/GET to PUT
+	r.HandleFunc("/draw/{opID}/task/{taskID}", drawTaskFetch).Methods("GET")                                // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/order", drawTaskOrderRoute).Methods("PUT")                     // order int16
 	r.HandleFunc("/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute).Methods("PUT")                   // assign []GoogleID
 	r.HandleFunc("/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute).Methods("DELETE")                // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/comment", drawTaskCommentRoute).Methods("PUT")                 // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/complete", drawTaskCompleteRoute).Methods("PUT")               // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/acknowledge", drawTaskAcknowledgeRoute).Methods("PUT")         // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/incomplete", drawTaskIncompleteRoute).Methods("PUT")           // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/reject", drawTaskRejectRoute).Methods("PUT")                   // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/claim", drawTaskClaimRoute).Methods("PUT")                     // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/zone", drawTaskZoneRoute).Methods("PUT")                       // zone uint8
+	r.HandleFunc("/draw/{opID}/task/{taskID}/delta", drawTaskDeltaRoute).Methods("PUT")                     // delta int64
 	r.HandleFunc("/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependAddRoute).Methods("PUT")    // none
 	r.HandleFunc("/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependDelRoute).Methods("DELETE") // none
 

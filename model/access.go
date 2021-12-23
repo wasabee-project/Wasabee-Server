@@ -101,33 +101,6 @@ func (o *Operation) WriteAccess(gid GoogleID) bool {
 	return false
 }
 
-// WriteAccess is the lesser form of determining if a gid has write access to an operation, used when the op handle isn't accessible
-func (o OperationID) WriteAccess(gid GoogleID) bool {
-	if o.IsOwner(gid) {
-		return true
-	}
-
-	rows, err := db.Query("SELECT teamID FROM permissions WHERE opID = ? AND permission = ?", o, opPermRoleWrite)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return false
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var tid TeamID
-		err := rows.Scan(&tid)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		if inteam, _ := gid.AgentInTeam(tid); inteam {
-			return true
-		}
-	}
-	return false
-}
-
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID
 func (opID OperationID) IsOwner(gid GoogleID) bool {
 	var c int

@@ -11,8 +11,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// 	"Generic Message", "Agent Location Change", "Map Change", "Marker Status Change", "Marker Assignment Change", "Link Status Change", "Link Assignment Change", "Login", "Delete", "Target"
-
 // AgentLocation alerts a team to refresh agent location data
 // we do not send the agent's location via firebase since it is possible to subscribe to topics (teams) via a client
 // the clients must pull the server to get the updates
@@ -32,8 +30,7 @@ func AgentLocation(teamID model.TeamID) error {
 		Data:  data,
 	}
 
-	_, err := c.msg.Send(c.ctx, &msg)
-	if err != nil {
+	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
 		log.Errorw(err.Error(), "Command", msg)
 		return err
 	}
@@ -41,7 +38,7 @@ func AgentLocation(teamID model.TeamID) error {
 }
 
 // AssignLink lets an agent know they have a new assignment on a given operation
-func AssignLink(gid model.GoogleID, linkID model.TaskID, opID model.OperationID, status string) error {
+func AssignLink(gid model.GoogleID, linkID model.TaskID, opID model.OperationID, updateID string) error {
 	if !c.running {
 		return nil
 	}
@@ -55,17 +52,17 @@ func AssignLink(gid model.GoogleID, linkID model.TaskID, opID model.OperationID,
 	}
 
 	data := map[string]string{
-		"opID":   string(opID),
-		"linkID": string(linkID),
-		"msg":    status,
-		"cmd":    "Link Assignment Change",
+		"opID":     string(opID),
+		"linkID":   string(linkID),
+		"cmd":      "Link Assignment Change",
+		"updateID": updateID,
 	}
 	genericMulticast(data, tokens)
 	return nil
 }
 
 // AssignMarker lets an gent know they have a new assignment on a given operation
-func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.OperationID, status string) error {
+func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.OperationID, updateID string) error {
 	if !c.running {
 		return nil
 	}
@@ -81,15 +78,15 @@ func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.Operatio
 	data := map[string]string{
 		"opID":     string(opID),
 		"markerID": string(markerID),
-		"msg":      status,
 		"cmd":      "Marker Assignment Change",
+		"updateID": updateID,
 	}
 	genericMulticast(data, tokens)
 	return nil
 }
 
 // AssignTask lets an gent know they have a new assignment on a given operation
-func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID, status string) error {
+func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID, updateID string) error {
 	if !c.running {
 		return nil
 	}
@@ -103,17 +100,17 @@ func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID,
 	}
 
 	data := map[string]string{
-		"opID":   string(opID),
-		"taskID": string(taskID),
-		"msg":    status,
-		"cmd":    "Task Assignment Change",
+		"opID":     string(opID),
+		"taskID":   string(taskID),
+		"cmd":      "Task Assignment Change",
+		"updateID": updateID,
 	}
 	genericMulticast(data, tokens)
 	return nil
 }
 
 // MarkerStatus reports a marker update to a team/topic
-func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.TeamID, status string) error {
+func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
 	if !c.running {
 		return nil
 	}
@@ -123,14 +120,14 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 		"msg":      status,
 		"cmd":      "Marker Status Change",
 		"srv":      config.GetWebroot(),
+		"updateID": updateID,
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	_, err := c.msg.Send(c.ctx, &msg)
-	if err != nil {
+	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -138,24 +135,24 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 }
 
 // LinkStatus reports a link update to a team/topic
-func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID, status string) error {
+func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
 	if !c.running {
 		return nil
 	}
 	data := map[string]string{
-		"opID":   string(opID),
-		"linkID": string(linkID),
-		"msg":    status,
-		"cmd":    "Link Status Change",
-		"srv":    config.GetWebroot(),
+		"opID":     string(opID),
+		"linkID":   string(linkID),
+		"msg":      status,
+		"cmd":      "Link Status Change",
+		"srv":      config.GetWebroot(),
+		"updateID": updateID,
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	_, err := c.msg.Send(c.ctx, &msg)
-	if err != nil {
+	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -163,24 +160,24 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 }
 
 // TaskStatus reports a task update to a team/topic
-func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string) error {
+func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
 	if !c.running {
 		return nil
 	}
 	data := map[string]string{
-		"opID":   string(opID),
-		"taskID": string(taskID),
-		"msg":    status,
-		"cmd":    "Task Status Change",
-		"srv":    config.GetWebroot(),
+		"opID":     string(opID),
+		"taskID":   string(taskID),
+		"msg":      status,
+		"cmd":      "Task Status Change",
+		"srv":      config.GetWebroot(),
+		"updateID": updateID,
 	}
 	msg := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	_, err := c.msg.Send(c.ctx, &msg)
-	if err != nil {
+	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -189,11 +186,11 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 
 // AddToRemote subscribes all tokens for a given agent to a team/topic
 func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
-	gid := model.GoogleID(g)
-
 	if !c.running {
 		return nil
 	}
+
+	gid := model.GoogleID(g)
 	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
@@ -218,11 +215,11 @@ func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 
 // RemoveFromRemote removes an agent's subscriptions to a given topic/team
 func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
-	gid := model.GoogleID(g)
-
 	if !c.running {
 		return nil
 	}
+
+	gid := model.GoogleID(g)
 	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
@@ -247,11 +244,11 @@ func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 
 // SendMessage is registered with Wasabee for sending messages
 func SendMessage(g wm.GoogleID, message string) (bool, error) {
-	gid := model.GoogleID(g)
-
 	if !c.running {
 		return false, nil
 	}
+
+	gid := model.GoogleID(g)
 	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
@@ -271,11 +268,11 @@ func SendMessage(g wm.GoogleID, message string) (bool, error) {
 
 // SendTarget sends a portal name/guid to an agent
 func SendTarget(g wm.GoogleID, t wm.Target) error {
-	gid := model.GoogleID(g)
-
 	if !c.running {
 		return nil
 	}
+
+	gid := model.GoogleID(g)
 	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)
@@ -316,8 +313,7 @@ func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) err
 		Data:  data,
 	}
 
-	_, err := c.msg.Send(c.ctx, &msg)
-	if err != nil {
+	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -338,8 +334,7 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 		Data:  data,
 	}
 
-	_, err := c.msg.Send(c.ctx, &msg)
-	if err != nil {
+	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -360,8 +355,7 @@ func SendAnnounce(teamID wm.TeamID, message string) error {
 		Data:  data,
 	}
 
-	_, err := c.msg.Send(c.ctx, &msg)
-	if err != nil {
+	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -393,11 +387,11 @@ func DeleteOperation(opID wm.OperationID) error {
 }
 
 func AgentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
-	gid := model.GoogleID(g)
-
 	if !c.running {
 		return nil
 	}
+
+	gid := model.GoogleID(g)
 	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
 		log.Error(err)

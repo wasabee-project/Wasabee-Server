@@ -48,7 +48,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if string(raw) == "" {
+	if len(raw) == 0 {
 		err = fmt.Errorf("empty JWT")
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -62,16 +62,6 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	res.WriteHeader(http.StatusAccepted)
-}
-
-// WebhookStatus exposes the running RISC status to the HTTP process
-func WebhookStatus(res http.ResponseWriter, req *http.Request) {
-	if err := checkWebhook(); err != nil {
-		log.Errorw(err.Error(), "subsystem", "RISC")
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprint(res, "RISC listener service is Running")
 }
 
 func registerWebhook(ctx context.Context) {
@@ -98,7 +88,6 @@ func registerWebhook(ctx context.Context) {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
-	// checkWebhook()
 
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
@@ -136,6 +125,7 @@ func updateWebhook() error {
 
 	apiurl := apiBase + "stream:update"
 	webroot := config.GetWebroot()
+	// this is a static string, don't marshal it every time...
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
@@ -226,7 +216,7 @@ func DisableWebhook() {
 	running = false
 }
 
-func checkWebhook() error {
+/* func checkWebhook() error {
 	token, err := getToken()
 	if err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
@@ -252,7 +242,7 @@ func checkWebhook() error {
 	log.Info(string(raw))
 
 	return nil
-}
+} */
 
 func ping() error {
 	token, err := getToken()

@@ -409,7 +409,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 
 	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
-	hdrs.Set("jku", "https://cdn2.wasabee.rocks/.well-known/jwks.json")
+	hdrs.Set("jku", config.JKU())
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {
@@ -461,7 +461,7 @@ func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	log.Debugw("verifying community proof JWT", "GID", gid)
+	// log.Debugw("verifying community proof JWT", "GID", gid)
 
 	vars := mux.Vars(req)
 	name := vars["name"]
