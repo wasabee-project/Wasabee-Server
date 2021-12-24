@@ -35,9 +35,9 @@ type profile struct {
 }
 
 const profileURL = "https://community.ingress.com/en/profile"
-const xgid = "x-gid"
-const xme = "x-me"
-const aud = "c2g"
+const xgid = "x-gid" // custom claim name for GoogleID; not "sub" to prevent use as authorization
+const xme = "x-me"   // custom claim name for "name"
+const aud = "c2g"    // short for: community to GoogleID
 
 // Validate checks the community website for the token and makes sure the token is correct
 func Validate(gid model.GoogleID, name string) (bool, error) {
@@ -46,14 +46,20 @@ func Validate(gid model.GoogleID, name string) (bool, error) {
 		return false, err
 	}
 
-	if err := checkJWT(strings.TrimSpace(profile.About), name, gid); err != nil {
+	if profile.Name != name {
+		err := fmt.Errorf("requested name does not match profile name")
+		log.Errorw(err.Error(), "requested", name, "profile", profile.Name)
+		return false, nil // NotAcceptable
+	}
+
+	if err := checkJWT(strings.TrimSpace(profile.About), profile.Name, gid); err != nil {
 		return false, nil // nil to trigger NotAcceptable rather than InternalServerError
 	}
 
-	if err := gid.SetCommunityName(name); err != nil {
+	if err := gid.SetCommunityName(profile.Name); err != nil {
 		return false, err
 	}
-	log.Infow("validated niantic community name", "gid", gid, "name", name)
+	log.Infow("validated niantic community name", "gid", gid, "name", profile.Name, "requested", name)
 	return true, nil
 }
 
@@ -88,7 +94,7 @@ func fetch(name string) (*profile, error) {
 	if p.Exception != "" {
 		err := fmt.Errorf(p.Exception)
 		log.Errorw(err.Error(), "code", p.Code, "class", p.Class)
-		return &p.Profile, nil
+		return &p.Profile, err
 	}
 
 	return &p.Profile, nil
