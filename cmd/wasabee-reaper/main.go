@@ -57,7 +57,7 @@ func run(c *cli.Context) error {
 		return nil
 	}
 
-	logconf := log.LogConfiguration{
+	logconf := log.Configuration{
 		Console:      true,
 		ConsoleLevel: zap.InfoLevel,
 		FilePath:     c.String("log"),
@@ -79,7 +79,7 @@ func run(c *cli.Context) error {
 
 	// this will loop until an OS signal is sent
 	// Location cleanup, waypoint expiration, etc
-	background.BackgroundTasks(sigch)
+	background.Run(sigch)
 
 	model.Disconnect()
 

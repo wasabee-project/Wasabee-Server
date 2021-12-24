@@ -12,6 +12,7 @@ import (
 // TelegramID is a user ID from telegram
 type TelegramID int64
 
+// GidV returns a googleID/verified pair for a given telegram ID
 func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 	var gid GoogleID
 	var verified bool
@@ -83,8 +84,7 @@ func (tgid TelegramID) InitAgent(name string, ott OneTimeToken) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tgid, name, gid, authtoken)
-	if err != nil {
+	if _, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tgid, name, gid, authtoken); err != nil {
 		log.Info(err)
 		return err
 	}
@@ -92,10 +92,9 @@ func (tgid TelegramID) InitAgent(name string, ott OneTimeToken) error {
 	return nil
 }
 
-// UpdateName is used to set an agent's telegram display name
+// SetName is used to set an agent's telegram display name
 func (tgid TelegramID) SetName(name string) error {
-	_, err := db.Exec("UPDATE telegram SET telegramName = ? WHERE telegramID = ?", name, tgid)
-	if err != nil {
+	if _, err := db.Exec("UPDATE telegram SET telegramName = ? WHERE telegramID = ?", name, tgid); err != nil {
 		log.Info(err)
 		return err
 	}
@@ -104,8 +103,7 @@ func (tgid TelegramID) SetName(name string) error {
 
 // SetTelegramID adds a verified agent's telegram ID
 func (gid GoogleID) SetTelegramID(tgid TelegramID, name string) error {
-	_, err := db.Exec("INSERT INTO telegram (gid, telegramID, telegramName, verified) VALUES (?, ?, ?, 1)", gid, tgid, name)
-	if err != nil {
+	if _, err := db.Exec("INSERT INTO telegram (gid, telegramID, telegramName, verified) VALUES (?, ?, ?, 1)", gid, tgid, name); err != nil {
 		log.Info(err)
 		return err
 	}

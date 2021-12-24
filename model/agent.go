@@ -289,7 +289,7 @@ func adOps(ad *Agent) error {
 	return nil
 }
 
-// AgentLocation updates the database to reflect a agent's current location
+// SetLocation updates the database to reflect a agent's current location
 func (gid GoogleID) SetLocation(lat, lon string) error {
 	if lat == "" || lon == "" {
 		return nil
@@ -602,8 +602,8 @@ func ToGid(in string) (GoogleID, error) {
 	return gid, nil
 }
 
-// Stores the untrusted data from IITC - do not depend on these values for authorization
-// but if someone says they are a smurf, who are we to ignore their self-identity?
+// SetIntelData sets the untrusted data from IITC - do not depend on these values for authorization
+// but if someone says they are a smurf, who are we to deny their self-identity?
 func (gid GoogleID) SetIntelData(name, faction string) error {
 	if name == "" {
 		return nil
@@ -638,6 +638,7 @@ func (gid GoogleID) IntelSmurf() bool {
 	return false
 }
 
+// FirstLogin sets the required database records for a new agent
 func (gid GoogleID) FirstLogin() error {
 	log.Infow("first login", "GID", gid, "message", "first login for "+gid)
 
@@ -732,6 +733,7 @@ func (gid GoogleID) GetAgentLocations() (string, error) {
 	return string(jList), nil
 }
 
+// SetCommunityName sets the name the agent is known as on the Niantic Community -- this is the most trustworthy source of agent identity
 func (gid GoogleID) SetCommunityName(name string) error {
 	if _, err := db.Exec("UPDATE agent SET communityname = ? WHERE gid = ?", name, gid); err != nil {
 		log.Error(err)

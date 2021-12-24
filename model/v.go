@@ -7,7 +7,8 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// agent is set by the V API
+// VAgent is set by the V API
+// most of these fields are empty unless filled in by a team query
 type VAgent struct {
 	EnlID       string   `json:"enlid"`
 	Gid         GoogleID `json:"gid"`
@@ -34,8 +35,7 @@ type VAgent struct {
 	} `json:"roles"`
 }
 
-// vToDB updates the database to reflect an agent's current status at V.
-// callback
+// VToDB updates the database to reflect an agent's current status at V.
 func VToDB(a *VAgent) error {
 	if a.Agent == "" {
 		return nil
@@ -70,6 +70,7 @@ func VToDB(a *VAgent) error {
 	return nil
 }
 
+// VFromDB pulls a V agent from the database
 func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	a := VAgent{
 		Gid: gid,
@@ -125,6 +126,7 @@ func VFromDB(gid GoogleID) (*VAgent, time.Time, error) {
 	return &a, t, nil
 }
 
+// VTeam returns the V team/role pair for a Wasabee team
 func (teamID TeamID) VTeam() (int64, uint8, error) {
 	var team int64
 	var role uint8
@@ -136,6 +138,7 @@ func (teamID TeamID) VTeam() (int64, uint8, error) {
 	return team, role, nil
 }
 
+// GetTeamsByVID returns all wasabee teams which match the V team ID
 func GetTeamsByVID(v int64) ([]TeamID, error) {
 	var teams []TeamID
 
@@ -158,6 +161,7 @@ func GetTeamsByVID(v int64) ([]TeamID, error) {
 	return teams, nil
 }
 
+// VTeamExists checks if a v-team/role pair exists for a specific googleID
 func VTeamExists(vteam int64, vrole uint8, gid GoogleID) (bool, error) {
 	i := false
 	err := db.QueryRow("SELECT COUNT(*) FROM team WHERE vteam = ? AND vrole = ? AND owner = ?", vteam, vrole, gid).Scan(&i)
@@ -170,24 +174,16 @@ func VTeamExists(vteam int64, vrole uint8, gid GoogleID) (bool, error) {
 
 // VConfigure sets V connection for a Wasabee team -- caller should verify ownership
 func (teamID TeamID) VConfigure(vteam int64, role uint8) error {
-	/* r := v.Roles[role]
-	if !ok {
-		err := fmt.Errorf("invalid role")
-		log.Error(err)
-		return err
-	} */
-
 	log.Infow("linking team to V", "teamID", teamID, "vteam", vteam, "role", role)
 
-	_, err := db.Exec("UPDATE team SET vteam = ?, vrole = ? WHERE teamID = ?", vteam, role, teamID)
-	if err != nil {
+	if _, err := db.Exec("UPDATE team SET vteam = ?, vrole = ? WHERE teamID = ?", vteam, role, teamID); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
-// Look up an agent's GoogleID by V EnlID
+// GetGIDFromEnlID looks up an agent's GoogleID by V EnlID
 func GetGIDFromEnlID(enlid string) (GoogleID, error) {
 	var gid GoogleID
 
@@ -199,7 +195,7 @@ func GetGIDFromEnlID(enlid string) (GoogleID, error) {
 	return gid, nil
 }
 
-// VAPIkey (gid GoogleID) loads an agents's V API key (this should be unusual); "" is "not set"
+// GetVAPIkey (gid GoogleID) loads an agents's V API key (this should be unusual); "" is "not set"
 func (gid GoogleID) GetVAPIkey() (string, error) {
 	var v sql.NullString
 

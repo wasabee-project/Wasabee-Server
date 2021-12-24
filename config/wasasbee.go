@@ -11,9 +11,12 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-const defPicUrl = "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
+// I'm not happy with this yet, but it works for what we need for now. More of what is in cmd.../main.go can be pushed into here.
+
+const defPicURL = "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
 const jku = "https://cdn2.wasabee.rocks/.well-known/jwks.json"
 
+// WasabeeConf is the primary config structure
 type WasabeeConf struct {
 	V        bool
 	Rocks    bool
@@ -122,13 +125,15 @@ func SetupJWK(signers, parsers string) error {
 	return nil
 }
 
+// PictureURL returns a url for a picture if the agent does not have one set
 func PictureURL() string {
 	if c.DefaultPictureURL == "" {
-		return defPicUrl
+		return defPicURL
 	}
 	return c.DefaultPictureURL
 }
 
+// JKU returns the path to the keyset URL to use to validate Wasabee JWTs
 func JKU() string {
 	if c.JKU != "" {
 		return c.JKU

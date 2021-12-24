@@ -7,7 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// TaskID
+// TaskID is the basic type for a task identifier
 type TaskID string
 
 // Task is the imported things for markers and links
@@ -23,7 +23,7 @@ type Task struct {
 	opID         OperationID
 }
 
-// add/remove depends
+// AddDepend add a single task dependency
 func (t *Task) AddDepend(task TaskID) error {
 	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, task)
 	if err != nil {
@@ -33,6 +33,7 @@ func (t *Task) AddDepend(task TaskID) error {
 	return nil
 }
 
+// SetDepends overwrites a task's dependencies, if tx is null, one is created
 func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 	needtx := false
 	if tx == nil {
@@ -71,6 +72,7 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 	return nil
 }
 
+// DelDepend deletes all dependencies for a task
 func (t *Task) DelDepend(task string) error {
 	// sanity checks
 
@@ -82,6 +84,7 @@ func (t *Task) DelDepend(task string) error {
 	return nil
 }
 
+// dependsPrecache -- used to save queries in op.Populate
 func (o OperationID) dependsPrecache() (map[TaskID][]TaskID, error) {
 	buf := make(map[TaskID][]TaskID)
 
@@ -110,7 +113,8 @@ func (o OperationID) dependsPrecache() (map[TaskID][]TaskID, error) {
 	return buf, nil
 }
 
-func (t *Task) getDepends() ([]TaskID, error) {
+// get all dependencies for a task
+/* func (t *Task) getDepends() ([]TaskID, error) {
 	tmp := make([]TaskID, 0)
 
 	rows, err := db.Query("SELECT dependsOn FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID)
@@ -122,8 +126,7 @@ func (t *Task) getDepends() ([]TaskID, error) {
 
 	for rows.Next() {
 		var depend TaskID
-		err := rows.Scan(&depend)
-		if err != nil {
+		if err := rows.Scan(&depend); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -131,8 +134,9 @@ func (t *Task) getDepends() ([]TaskID, error) {
 	}
 
 	return tmp, nil
-}
+} */
 
+// GetAssignments gets all assignments for a task
 func (t *Task) GetAssignments() ([]GoogleID, error) {
 	tmp := make([]GoogleID, 0)
 
@@ -159,6 +163,7 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 	return tmp, nil
 }
 
+// assignmentsPrecache is used by op.Populate to reduce the number of queries
 func (o OperationID) assignmentPrecache() (map[TaskID][]GoogleID, error) {
 	buf := make(map[TaskID][]GoogleID)
 
@@ -204,8 +209,7 @@ func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
 	}
 
 	// we could be smarter and load the existing, then only add new, but this is fast and easy
-	_, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID)
-	if err != nil {
+	if _, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -225,8 +229,7 @@ func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
 	if len(gs) == 0 {
 		state = "pending"
 	}
-	_, err = tx.Exec("UPDATE task SET state = ? WHERE ID = ? AND opID = ?", state, t.ID, t.opID)
-	if err != nil {
+	if _, err := tx.Exec("UPDATE task SET state = ? WHERE ID = ? AND opID = ?", state, t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -253,6 +256,7 @@ func (t *Task) IsAssignedTo(gid GoogleID) bool {
 	return x == 1
 }
 
+// Claim assignes a task to the calling agent
 func (t *Task) Claim(gid GoogleID) error {
 	_, err := db.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID)
 	if err != nil {
@@ -267,48 +271,47 @@ func (t *Task) Claim(gid GoogleID) error {
 	return nil
 }
 
-func (t *Task) Complete(gid GoogleID) error {
-	_, err := db.Exec("UPDATE task SET state = 'completed' WHERE ID = ? AND opID = ?", t.ID, t.opID)
-	if err != nil {
+// Complete marks as task as completed
+func (t *Task) Complete() error {
+	if _, err := db.Exec("UPDATE task SET state = 'completed' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
-func (t *Task) Incomplete(gid GoogleID) error {
-	_, err := db.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID)
-	if err != nil {
+// Incomplete marks a task as not completed
+func (t *Task) Incomplete() error {
+	if _, err := db.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
-func (t *Task) Acknowledge(gid GoogleID) error {
-	_, err := db.Exec("UPDATE task SET state = 'acknowledged' WHERE ID = ? AND opID = ?", t.ID, t.opID)
-	if err != nil {
+// Acknowledge marks a task as acknowledged
+func (t *Task) Acknowledge() error {
+	if _, err := db.Exec("UPDATE task SET state = 'acknowledged' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
+// Reject unassignes an agent from a task
 func (t *Task) Reject(gid GoogleID) error {
-	_, err := db.Exec("UPDATE task SET state = 'pending' WHERE ID = ? AND opID = ?", t.ID, t.opID)
-	if err != nil {
+	if _, err := db.Exec("UPDATE task SET state = 'pending' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
-	_, err = db.Exec("DELETE FROM assignments WHERE opID = ? AND taskID = ? AND gid = ?", t.opID, t.ID, gid)
-	if err != nil {
+	if _, err := db.Exec("DELETE FROM assignments WHERE opID = ? AND taskID = ? AND gid = ?", t.opID, t.ID, gid); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
-// Delta sets the DeltaMinutes of a link in an operation
+// SetDelta sets the DeltaMinutes of a link in an operation
 func (t *Task) SetDelta(delta int) error {
 	_, err := db.Exec("UPDATE link SET delta = ? WHERE ID = ? and opID = ?", delta, t.ID, t.opID)
 	if err != nil {
@@ -317,7 +320,7 @@ func (t *Task) SetDelta(delta int) error {
 	return err
 }
 
-// Comment sets the comment on a task
+// SetComment sets the comment on a task
 func (t *Task) SetComment(desc string) error {
 	_, err := db.Exec("UPDATE task SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(desc), t.ID, t.opID)
 	if err != nil {
@@ -345,7 +348,7 @@ func (t *Task) SetOrder(order int16) error {
 	return nil
 }
 
-// GetTask lookup and return a populated Task from an id
+// GetTask looks up and returns a populated Task from an id
 func (o *Operation) GetTask(taskID TaskID) (*Task, error) {
 	for _, m := range o.Markers {
 		if m.Task.ID == taskID {

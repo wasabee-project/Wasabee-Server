@@ -241,7 +241,7 @@ func (o *Operation) LinkOrder(order string) error {
 	return err
 }
 
-// LinkColor changes the color of a link in an operation
+// SetColor changes the color of a link in an operation
 func (l *Link) SetColor(color string) error {
 	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", color, l.ID, l.opID)
 	if err != nil {
@@ -271,7 +271,7 @@ func (l *Link) Swap() error {
 // GetLink looks up and returns a populated Link from an id
 func (o *Operation) GetLink(linkID LinkID) (*Link, error) {
 	if len(o.Links) == 0 { // XXX not a good test, not all ops have links
-		err := fmt.Errorf("Attempt to use GetLink on unpopulated *Operation")
+		err := fmt.Errorf("attempt to use GetLink on unpopulated *Operation")
 		log.Error(err)
 		return &Link{}, err
 	}

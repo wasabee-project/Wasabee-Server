@@ -65,6 +65,7 @@ func Startup(frontendPath string) (map[string]*template.Template, error) {
 	return templateSet, nil
 }
 
+// Execute runs a template with the given data
 func Execute(name string, data interface{}) (string, error) {
 	lang := "en"
 

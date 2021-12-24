@@ -335,7 +335,7 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 	return nil
 }
 
-func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
+func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
 	// log.Debugw("AddToChat called", "GID", gid, "resource", teamID)
@@ -379,7 +379,7 @@ func AddToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	return nil
 }
 
-func RemoveFromChat(g messaging.GoogleID, t messaging.TeamID) error {
+func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
 

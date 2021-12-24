@@ -225,7 +225,7 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 		return
 	}
 
-	if err = link.Complete(gid); err != nil {
+	if err = link.Complete(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

@@ -7,7 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
-// FirebaseTokens gets an agents FirebaseToken from the database
+// GetFirebaseTokens gets an agents FirebaseToken from the database
 func (gid GoogleID) GetFirebaseTokens() ([]string, error) {
 	var token string
 	var toks []string
@@ -68,7 +68,7 @@ func (gid GoogleID) StoreFirebaseToken(token string) error {
 	return nil
 }
 
-// pass this as a callback to Firebase so it can remove rejected tokens
+// RemoveFirebaseToken removes a given token from the database
 func RemoveFirebaseToken(token string) error {
 	_, err := db.Exec("DELETE FROM firebase WHERE token = ?", token)
 	if err != nil {

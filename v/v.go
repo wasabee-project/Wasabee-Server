@@ -14,7 +14,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-type VTeamID int64
+type vTeamID int64
 
 // Config contains configuration for calling v.enl.one APIs
 type Config struct {
@@ -58,7 +58,7 @@ type myTeams struct {
 }
 
 type myTeam struct {
-	TeamID VTeamID `json:"teamid"`
+	TeamID vTeamID `json:"teamid"`
 	Name   string  `json:"team"`
 	Roles  []struct {
 		ID   uint8  `json:"id"`
@@ -74,8 +74,8 @@ func Startup(key string) {
 	vc.configured = true
 
 	messaging.RegisterMessageBus("v.enl.one", messaging.Bus{
-		AddToRemote:      AddToRemote,
-		RemoveFromRemote: RemoveFromRemote,
+		AddToRemote:      addToRemote,
+		RemoveFromRemote: removeFromRemote,
 	})
 }
 
@@ -175,7 +175,7 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 	return &v, nil
 }
 
-func (vteamID VTeamID) GetTeamFromV(key string) (*teamResult, error) {
+func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 	var vt teamResult
 	if vteamID == 0 {
 		return &vt, nil
@@ -231,7 +231,7 @@ func Sync(teamID model.TeamID, key string) error {
 	if err != nil {
 		return err
 	}
-	vteamID := VTeamID(x)
+	vteamID := vTeamID(x)
 	if vteamID == 0 {
 		return nil
 	}
@@ -242,7 +242,7 @@ func Sync(teamID model.TeamID, key string) error {
 		return err
 	}
 
-	vt, err := vteamID.GetTeamFromV(key)
+	vt, err := vteamID.getTeamFromV(key)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -326,7 +326,7 @@ func Sync(teamID model.TeamID, key string) error {
 	return nil
 }
 
-var Roles = map[uint8]string{
+var rolenames = map[uint8]string{
 	0:   "All",
 	1:   "Planner",
 	2:   "Operator",
@@ -363,6 +363,10 @@ var Roles = map[uint8]string{
 	119: "Team-19",
 }
 
+// Authorize checks if an agent is permitted to use Wasabee based on V data
+// data is cached per-agent for one hour
+// if an agent is not known at V, they are implicitly permitted
+// if an agent is banned, blacklisted, etc at V, they are prohibited
 func Authorize(gid model.GoogleID) bool {
 	a, fetched, err := model.VFromDB(gid)
 	if err != nil {
@@ -404,6 +408,11 @@ func Authorize(gid model.GoogleID) bool {
 	return true
 }
 
+// BulkImport imports all teams of which the GoogleID is an admin
+// mode determines how many teams are created
+// team = one Wasabee Team per V team -- roles are ignored
+// role = one Wasabee Team per V team/role pair
+// team data is populated from V at creation
 func BulkImport(gid model.GoogleID, mode string) error {
 	log.Debug("v BulkImport")
 
@@ -428,7 +437,7 @@ func BulkImport(gid model.GoogleID, mode string) error {
 
 func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *myTeams) error {
 	type teamToMake struct {
-		ID   VTeamID
+		ID   vTeamID
 		Role uint8
 		Name string
 	}
@@ -442,7 +451,7 @@ func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *m
 		switch mode {
 		case "role":
 			// one Wasabee team per each V team/role pair in use
-			vt, err := t.TeamID.GetTeamFromV(key)
+			vt, err := t.TeamID.getTeamFromV(key)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -457,7 +466,7 @@ func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *m
 						tomake = append(tomake, teamToMake{
 							ID:   t.TeamID,
 							Role: r.ID,
-							Name: fmt.Sprintf("%s (%s)", t.Name, Roles[r.ID]),
+							Name: fmt.Sprintf("%s (%s)", t.Name, rolenames[r.ID]),
 						})
 					}
 				}
@@ -505,6 +514,7 @@ func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *m
 	return nil
 }
 
+// TelegramSearch queries V for information about an agent by TelegramID
 func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 	var br bulkResult
 	if !vc.configured {
@@ -551,13 +561,13 @@ func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 	return &a, nil
 }
 
-func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	// V's api doesn't support this?
 	// log.Info("v add to remote not written")
 	return nil
 }
 
-func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	// V's api doesn't support this?
 	// log.Info("v remove from remote not written")
 	return nil

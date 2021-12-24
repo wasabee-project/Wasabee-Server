@@ -7,6 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
+// RocksAgent is defined by enlightened.rocks
 type RocksAgent struct {
 	Gid      GoogleID `json:"gid"`
 	TGId     int64    `json:"tgid"`
@@ -15,6 +16,7 @@ type RocksAgent struct {
 	Smurf    bool     `json:"smurf"`
 }
 
+// RocksToDB writes a rocks agent to the database
 func RocksToDB(a *RocksAgent) error {
 	if a.Agent == "" {
 		return nil
@@ -42,8 +44,9 @@ func RocksToDB(a *RocksAgent) error {
 	return nil
 }
 
+// RocksFromDB returns a rocks agent from the database
 func RocksFromDB(gid GoogleID) (*RocksAgent, time.Time, error) {
-	var a RocksAgent
+	a := RocksAgent{}
 	var fetched string
 	var t time.Time
 	var tgid sql.NullInt64
@@ -117,47 +120,6 @@ func RocksCommunityToTeam(communityID string) (TeamID, error) {
 		return "", err
 	}
 	return teamID, nil
-}
-
-func RocksAddAgentToTeam(g, communityID string) error {
-	gid := GoogleID(g)
-
-	if !gid.Valid() {
-		log.Infow("Importing previously unknown agent", "GID", gid)
-		err := gid.FirstLogin()
-		if err != nil {
-			log.Info(err)
-			return err
-		}
-	}
-
-	teamID, err := RocksCommunityToTeam(communityID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if err := teamID.AddAgent(gid); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func RocksRemoveAgentFromTeam(g, communityID string) error {
-	gid := GoogleID(g)
-
-	teamID, err := RocksCommunityToTeam(communityID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if err := teamID.RemoveAgent(gid); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
 }
 
 // SetRocks links a team to a community at enl.rocks.

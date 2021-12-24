@@ -17,8 +17,8 @@ import (
 // Log is the primary log interface for Wasabee-Server
 var Log *zap.SugaredLogger
 
-// LogConfiguration is passed to SetupLogging to configure logging
-type LogConfiguration struct {
+// Configuration is passed to SetupLogging to configure logging
+type Configuration struct {
 	Console            bool
 	ConsoleLevel       zapcore.Level
 	GoogleCloudProject string
@@ -28,7 +28,7 @@ type LogConfiguration struct {
 }
 
 // SetupLogging is called very early by the startup routine to configure logging
-func SetupLogging(c LogConfiguration) {
+func SetupLogging(c Configuration) {
 	var cores []zapcore.Core
 
 	if c.Console {
@@ -98,7 +98,7 @@ func addGoogleCloud(project string, jsonPath string) (zapcore.Core, error) {
 	return gcore, nil
 }
 
-// AddFileLog duplicates the console log to a file
+// addFileLog duplicates the console log to a file
 func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 	// #nosec
 	lf, err := os.OpenFile(logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
@@ -119,50 +119,62 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 	return fileCore, nil
 }
 
+// Debug logs at the lowest level
 func Debug(args ...interface{}) {
 	Log.Debug(args...)
 }
 
+// Debugw logs structured logs at the lowest level
 func Debugw(msg string, args ...interface{}) {
 	Log.Debugw(msg, args...)
 }
 
+// Error logs at the level which requires attention
 func Error(args ...interface{}) {
 	Log.Error(args...)
 }
 
+// Errorw logs structured logs at the level which requires attention
 func Errorw(msg string, args ...interface{}) {
 	Log.Errorw(msg, args...)
 }
 
+// Fatal logs a message and stops the process
 func Fatal(args ...interface{}) {
 	Log.Fatal(args...)
 }
 
+// Fatalw logs a structured log and stops the process
 func Fatalw(msg string, args ...interface{}) {
 	Log.Fatalw(msg, args...)
 }
 
+// Info logs messages which are helpful for tracking problems
 func Info(args ...interface{}) {
 	Log.Info(args...)
 }
 
+// Infow logs structured logs which are helpful for tracking problems
 func Infow(msg string, args ...interface{}) {
 	Log.Infow(msg, args...)
 }
 
+// Panic logs critical messages and stops the process
 func Panic(args ...interface{}) {
 	Log.Panic(args...)
 }
 
+// Panicw logs structured logs and stops the process
 func Panicw(msg string, args ...interface{}) {
 	Log.Panicw(msg, args...)
 }
 
+// Warn logs unusual situations
 func Warn(args ...interface{}) {
 	Log.Warn(args...)
 }
 
+// Warnw logs strucutured logs for unusual situations
 func Warnw(msg string, args ...interface{}) {
 	Log.Warnw(msg, args...)
 }

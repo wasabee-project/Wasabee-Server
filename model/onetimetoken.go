@@ -10,7 +10,7 @@ import (
 // OneTimeToken - used to authenticate users in IITC when GAPI doesn't work for them
 type OneTimeToken string
 
-// String is a stringer for LocKey
+// String is a stringer for OTT
 func (ott OneTimeToken) String() string {
 	return string(ott)
 }
@@ -33,9 +33,8 @@ func (ott OneTimeToken) Gid() (GoogleID, error) {
 	return gid, nil
 }
 
-// NewLocKey generates a new LocationKey for an agent -- exported for use in test scripts
-func (gid GoogleID) NewOneTimeToken() (OneTimeToken, error) {
-	// we could just use UUID() here...
+// NewOneTimeToken generates a new OTT for an agent
+func (gid GoogleID) newOneTimeToken() (OneTimeToken, error) {
 	ott, err := GenerateSafeName()
 	if err != nil {
 		log.Error(err)
@@ -45,11 +44,10 @@ func (gid GoogleID) NewOneTimeToken() (OneTimeToken, error) {
 		log.Error(err)
 		return "", err
 	}
-	o := OneTimeToken(ott)
-	return o, nil
+	return OneTimeToken(ott), nil
 }
 
-// Validate attempts to resolve a submitted OTT and updates it if valid
+// Increment "uses" the OTT and returns a googleID, replacing the agent's OTT in the databse
 func (ott OneTimeToken) Increment() (GoogleID, error) {
 	gid, err := ott.Gid()
 	if err != nil {
@@ -57,7 +55,7 @@ func (ott OneTimeToken) Increment() (GoogleID, error) {
 		return "", err
 	}
 
-	_, err = gid.NewOneTimeToken()
+	_, err = gid.newOneTimeToken()
 	if err != nil {
 		log.Warn(err)
 	}

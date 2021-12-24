@@ -8,8 +8,8 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// BackgroundTasks runs the database cleaning tasks such as expiring stale user locations
-func BackgroundTasks(c chan os.Signal) {
+// Run runs the database cleaning tasks such as expiring stale user locations
+func Run(c chan os.Signal) {
 	log.Infow("startup", "message", "running initial background tasks")
 	model.LocationClean()
 

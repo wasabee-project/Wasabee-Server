@@ -14,7 +14,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
-// TGConfiguration is the main configuration data for the Telegram interface
+// Config is the main configuration data for the Telegram interface
 // passed to main() pre-loaded with APIKey and TemplateSet set, the rest is built when the bot starts
 type Config struct {
 	APIKey      string
@@ -76,10 +76,10 @@ func WasabeeBot(in *Config) {
 
 	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Telegram", messaging.Bus{
-		SendMessage:      SendMessage,
-		SendTarget:       SendTarget,
-		AddToRemote:      AddToChat,
-		RemoveFromRemote: RemoveFromChat,
+		SendMessage:      sendMessage,
+		SendTarget:       sendTarget,
+		AddToRemote:      addToChat,
+		RemoveFromRemote: removeFromChat,
 	})
 
 	i := 1
@@ -158,8 +158,8 @@ func keyboards() tgbotapi.ReplyKeyboardMarkup {
 	)
 }
 
-// SendMessage is registered with Wasabee-Server as a message bus to allow other modules to send messages via Telegram
-func SendMessage(g messaging.GoogleID, message string) (bool, error) {
+// sendMessage is registered with Wasabee-Server as a message bus to allow other modules to send messages via Telegram
+func sendMessage(g messaging.GoogleID, message string) (bool, error) {
 	gid := model.GoogleID(g)
 	tgid, err := gid.TelegramID()
 	if err != nil {
@@ -189,7 +189,8 @@ func SendMessage(g messaging.GoogleID, message string) (bool, error) {
 	return true, nil
 }
 
-func SendTarget(g messaging.GoogleID, target messaging.Target) error {
+// sendTarget is used to send a formatted target to an agent
+func sendTarget(g messaging.GoogleID, target messaging.Target) error {
 	gid := model.GoogleID(g)
 	tgid, err := gid.TelegramID()
 	if err != nil {

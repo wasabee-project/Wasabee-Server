@@ -215,7 +215,7 @@ func (m MarkerID) String() string {
 // GetMarker lookup and return a populated Marker from an id
 func (o *Operation) GetMarker(markerID MarkerID) (*Marker, error) {
 	if len(o.Markers) == 0 { // XXX not a good test, not all ops have markers
-		err := fmt.Errorf("Attempt to use GetMarker on unpopulated *Operation")
+		err := fmt.Errorf("attempt to use GetMarker on unpopulated *Operation")
 		log.Error(err)
 		return &Marker{}, err
 	}
@@ -252,6 +252,7 @@ func (o *Operation) MarkerOrder(order string) error {
 	return nil
 }
 
+// NewMarkerType is used to change from the old to the new marker type names
 func NewMarkerType(old MarkerType) string {
 	switch old {
 	case "CapturePortalMarker":

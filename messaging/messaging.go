@@ -7,11 +7,20 @@ import (
 )
 
 // model includes this package, so it can't include model, to enforce type-consistency, we re-define some types from model and rely on the callers to cast them
+
+// GoogleID is a wrapper for model.GoogleID
 type GoogleID string
+
+// TeamID is a wrapper for model.TeamID
 type TeamID string
+
+// TaskID is a wrapper for model.TaskID
 type TaskID string
+
+// OperationID is a wrapper for model.OperationID
 type OperationID string
 
+// Target is the type used for the SendTarget call
 type Target struct {
 	Name   string
 	ID     string
@@ -21,6 +30,7 @@ type Target struct {
 	Sender string
 }
 
+// Bus is the type that services use to register with the messaging framework
 type Bus struct {
 	SendMessage          func(GoogleID, string) (bool, error)              // send a message to an individual agent
 	SendTarget           func(GoogleID, Target) error                      // send a formatted target to an individual agent
@@ -39,6 +49,7 @@ func init() {
 	busses = make(map[string]Bus)
 }
 
+// SendTarget is called to send target information to agents
 func SendTarget(toGID GoogleID, target Target) error {
 	if target.Name == "" {
 		err := fmt.Errorf("portal not set")
@@ -63,6 +74,7 @@ func SendTarget(toGID GoogleID, target Target) error {
 	return nil
 }
 
+// SendMessage is used to send a generic message to a single agent
 func SendMessage(toGID GoogleID, message string) (bool, error) {
 	var sent bool
 
@@ -81,6 +93,7 @@ func SendMessage(toGID GoogleID, message string) (bool, error) {
 	return sent, nil
 }
 
+// SendAnnounce sends a generic message to a team
 func SendAnnounce(teamID TeamID, message string) error {
 	for _, bus := range busses {
 		if bus.SendAnnounce != nil {
@@ -92,14 +105,17 @@ func SendAnnounce(teamID TeamID, message string) error {
 	return nil
 }
 
+// RegisterMessageBus is called by a service to register with the messaging system
 func RegisterMessageBus(busname string, b Bus) {
 	busses[busname] = b
 }
 
+// RemoveMessageBus is called to remove a service from the messaging system
 func RemoveMessageBus(busname string) {
 	delete(busses, busname)
 }
 
+// AddToRemote is called to add an agent to various services
 func AddToRemote(gid GoogleID, teamID TeamID) error {
 	for _, bus := range busses {
 		if bus.AddToRemote != nil {
@@ -111,6 +127,7 @@ func AddToRemote(gid GoogleID, teamID TeamID) error {
 	return nil
 }
 
+// RemoveFromRemote is called to remove an agent from various services
 func RemoveFromRemote(gid GoogleID, teamID TeamID) error {
 	for _, bus := range busses {
 		if bus.RemoveFromRemote != nil {
@@ -122,6 +139,7 @@ func RemoveFromRemote(gid GoogleID, teamID TeamID) error {
 	return nil
 }
 
+// SendAssignment sends a task to an agent
 func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string) error {
 	for _, bus := range busses {
 		if bus.SendAssignment != nil {
@@ -133,6 +151,7 @@ func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string
 	return nil
 }
 
+// AgentDeleteOperation instructs a single agent to delete an operation (e.g. at removal from team)
 func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
 	for _, bus := range busses {
 		if bus.AgentDeleteOperation != nil {
@@ -144,6 +163,7 @@ func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
 	return nil
 }
 
+// DeleteOperation is called to broadcst a delete operation command to all agents (e.g. Firebase)
 func DeleteOperation(opID OperationID) error {
 	for _, bus := range busses {
 		if bus.DeleteOperation != nil {

@@ -16,28 +16,31 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// CommunityNotice is sent from a community when an agent is added or removed
+var communityEndpointURL = "https://enlightened.rocks/comm/api/membership"
+var statusEndpointURL = "https://enlightened.rocks/api/user/status"
+
+// communityNotice is sent from a community when an agent is added or removed
 // consumed by RocksCommunitySync function below
-type CommunityNotice struct {
+type communityNotice struct {
 	Community string           `json:"community"`
 	Action    string           `json:"action"`
-	User      Agent            `json:"user"`
+	User      agent            `json:"user"`
 	TGId      model.TelegramID `json:"tg_id"`
 	TGName    string           `json:"tg_user"`
 }
 
-// CommunityResponse is returned from a query request
-type CommunityResponse struct {
+// communityResponse is returned from a query request
+type communityResponse struct {
 	Community  string           `json:"community"`
 	Title      string           `json:"title"`
 	Members    []model.GoogleID `json:"members"`    // googleID
 	Moderators []string         `json:"moderators"` // googleID
-	User       Agent            `json:"user"`       // (Members,Moderators || User) present, not both
+	User       agent            `json:"user"`       // (Members,Moderators || User) present, not both
 	Error      string           `json:"error"`
 }
 
-// Agent is the data sent by enl.rocks -- the version sent in the CommunityResponse is different, but close enough for our purposes
-type Agent struct {
+// Agent is the data sent by enl.rocks -- the version sent in the communityResponse is different, but close enough for our purposes
+type agent struct {
 	Gid      model.GoogleID `json:"gid"`
 	TGId     int64          `json:"tgid"`
 	Agent    string         `json:"agentid"`
@@ -53,7 +56,7 @@ type rocksPushResponse struct {
 }
 
 // Config contains configuration for interacting with the enl.rocks APIs.
-var Config struct {
+var c struct {
 	// APIKey is the API Key for enl.rocks.
 	APIKey string
 	// CommunityEndpoint is the API endpoint for viewing community membership
@@ -65,40 +68,35 @@ var Config struct {
 
 // Start is called from main() to initialize the config
 func Start(apikey string) {
-	log.Debugw("startup", "enl.rocks API Key", apikey)
-	Config.APIKey = apikey
+	// log.Debugw("startup", "enl.rocks API Key", apikey)
+	c.APIKey = apikey
 
-	Config.CommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
-	Config.StatusEndpoint = "https://enlightened.rocks/api/user/status"
-	Config.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
+	c.CommunityEndpoint = communityEndpointURL
+	c.StatusEndpoint = statusEndpointURL
+	c.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
 
 	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Rocks", messaging.Bus{
-		AddToRemote:      AddToRemote,
-		RemoveFromRemote: RemoveFromRemote,
+		AddToRemote:      addToRemote,
+		RemoveFromRemote: removeFromRemote,
 	})
-
-}
-
-func Active() bool {
-	return !(Config.APIKey == "")
 }
 
 // Search checks a agent at enl.rocks and returns an Agent
 func Search(id string) (*model.RocksAgent, error) {
 	var agent model.RocksAgent
-	if Config.APIKey == "" {
+	if c.APIKey == "" {
 		return &agent, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
 	defer cancel()
-	if err := Config.limiter.Wait(ctx); err != nil {
+	if err := c.limiter.Wait(ctx); err != nil {
 		log.Warn(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s/%s?apikey=%s", Config.StatusEndpoint, id, Config.APIKey)
+	apiurl := fmt.Sprintf("%s/%s?apikey=%s", c.StatusEndpoint, id, c.APIKey)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		// do not leak API key to logs
@@ -136,7 +134,7 @@ func CommunitySync(msg json.RawMessage) error {
 	log.Debug("rocks community request", "data", string(msg))
 
 	// check the source? is the community key enough for this? I don't think so
-	var rc CommunityNotice
+	var rc communityNotice
 	err := json.Unmarshal(msg, &rc)
 	if err != nil {
 		log.Error(err)
@@ -195,12 +193,12 @@ func CommunityMemberPull(teamID model.TeamID) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
 	defer cancel()
-	if err := Config.limiter.Wait(ctx); err != nil {
+	if err := c.limiter.Wait(ctx); err != nil {
 		log.Warn(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s?key=%s", Config.CommunityEndpoint, cid)
+	apiurl := fmt.Sprintf("%s?key=%s", c.CommunityEndpoint, cid)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		err := fmt.Errorf("error establishing community pull request")
@@ -223,7 +221,7 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		return err
 	}
 
-	var rr CommunityResponse
+	var rr communityResponse
 	err = json.Unmarshal(body, &rr)
 	if err != nil {
 		log.Error(err)
@@ -251,7 +249,8 @@ func CommunityMemberPull(teamID model.TeamID) error {
 	return nil
 }
 
-func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+// addToRemote adds an agent to a Rocks Community IF that community has API enabled.
+func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	// log.Debug("add to remote rocks", "gid", gid, "teamID", teamID)
 	t := model.TeamID(teamID)
 	cid, err := t.RocksKey()
@@ -266,14 +265,14 @@ func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
 	defer cancel()
-	if err := Config.limiter.Wait(ctx); err != nil {
+	if err := c.limiter.Wait(ctx); err != nil {
 		log.Infow("timeout waiting on .rocks rate limiter", "GID", gid)
 	}
 
 	client := &http.Client{
 		Timeout: (3 * time.Second),
 	}
-	apiurl := fmt.Sprintf("%s/%s?key=%s", Config.CommunityEndpoint, gid, cid)
+	apiurl := fmt.Sprintf("%s/%s?key=%s", c.CommunityEndpoint, gid, cid)
 	// #nosec
 	resp, err := client.PostForm(apiurl, url.Values{"Agent": {string(gid)}})
 	if err != nil {
@@ -305,8 +304,8 @@ func AddToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	return nil
 }
 
-// RemoveFromRemote removes an agent from a Rocks Community IF that community has API enabled.
-func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
+// removeFromRemote removes an agent from a Rocks Community IF that community has API enabled.
+func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	// log.Debugw("remove from remote rocks", "gid", gid, "teamID", teamID)
 	t := model.TeamID(teamID)
 	cid, err := t.RocksKey()
@@ -320,12 +319,12 @@ func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if err := Config.limiter.Wait(ctx); err != nil {
+	if err := c.limiter.Wait(ctx); err != nil {
 		log.Info(err)
 		// just keep going
 	}
 
-	apiurl := fmt.Sprintf("%s/%s?key=%s", Config.CommunityEndpoint, gid, cid)
+	apiurl := fmt.Sprintf("%s/%s?key=%s", c.CommunityEndpoint, gid, cid)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
 	if err != nil {
 		log.Error(err)
@@ -367,6 +366,10 @@ func RemoveFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	return nil
 }
 
+// Authorize checks Rocks to see if an agent is permitted to use Wasabee
+// responses are cached for an hour
+// unknown agents are permitted implicitly
+// if an agent is marked as smurf at rocks, they are prohibited
 func Authorize(gid model.GoogleID) bool {
 	a, fetched, err := model.RocksFromDB(gid)
 	if err != nil {

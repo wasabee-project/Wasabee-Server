@@ -58,7 +58,7 @@ func run(c *cli.Context) error {
 		return nil
 	}
 
-	logconf := log.LogConfiguration{
+	logconf := log.Configuration{
 		Console:      true,
 		ConsoleLevel: zap.InfoLevel,
 		FilePath:     c.String("log"),
@@ -70,11 +70,11 @@ func run(c *cli.Context) error {
 	log.SetupLogging(logconf)
 
 	var err error
-	old, err = Connect(c.String("old"))
+	old, err = connect(c.String("old"))
 	if err != nil {
 		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
 	}
-	new, err = Connect(c.String("new"))
+	new, err = connect(c.String("new"))
 	if err != nil {
 		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
 	}
@@ -96,7 +96,7 @@ func run(c *cli.Context) error {
 	return nil
 }
 
-func Connect(uri string) (*sql.DB, error) {
+func connect(uri string) (*sql.DB, error) {
 	// log.Debugw("startup", "database uri", uri)
 	result, err := sql.Open("mysql", uri)
 	if err != nil {
@@ -119,7 +119,7 @@ func setupTables() {
 		creation  string
 	}{
 		// agent must come first, team must come second, operation must come third, task fourth, the rest can be in alphabetical order
-		{"agent", `CREATE TABLE agent ( gid char(21) NOT NULL, OneTimeToken varchar(64) NOT NULL DEFAULT uuid(), RISC tinyint(1) NOT NULL DEFAULT 0, intelname varchar(64) NOT NULL DEFAULT '', intelfaction tinyint(1) NOT NULL DEFAULT -1, picurl text DEFAULT NULL, PRIMARY KEY (gid), UNIQUE KEY OneTimeToken (OneTimeToken)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
+		{"agent", `CREATE TABLE agent ( gid char(21) NOT NULL, OneTimeToken varchar(64) NOT NULL DEFAULT uuid(), RISC tinyint(1) NOT NULL DEFAULT 0, intelname varchar(64) DEFAULT NULL, intelfaction tinyint(1) NOT NULL DEFAULT -1, communityname varchar(64) DEFAULT NULL, picurl text DEFAULT NULL, PRIMARY KEY (gid), UNIQUE KEY OneTimeToken (OneTimeToken), UNIQUE KEY communityname (communityname)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"team", `CREATE TABLE team ( teamID varchar(64) NOT NULL, owner char(21) NOT NULL, name varchar(64) DEFAULT NULL, rockskey varchar(32) DEFAULT NULL, rockscomm varchar(32) DEFAULT NULL, joinLinkToken varchar(64) DEFAULT NULL, vteam int(11) unsigned DEFAULT 0, vrole int(11) unsigned DEFAULT 0, PRIMARY KEY (teamID), KEY fk_team_owner (owner), CONSTRAINT fk_team_owner FOREIGN KEY (owner) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"operation", `CREATE TABLE operation ( ID char(40) NOT NULL, name varchar(128) NOT NULL DEFAULT 'new op', gid char(21) NOT NULL, color varchar(16) NOT NULL DEFAULT 'purple', modified datetime NOT NULL DEFAULT current_timestamp(), comment text DEFAULT NULL, referencetime datetime NOT NULL DEFAULT current_timestamp(), lasteditid char(40) NOT NULL DEFAULT 'unset', PRIMARY KEY (ID), KEY gid (gid), CONSTRAINT fk_operation_agent FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 		{"task", `CREATE TABLE task(ID char(40) NOT NULL, opID char(40) NOT NULL, comment text DEFAULT NULL, taskorder int(11) NOT NULL DEFAULT 0, state enum('pending','assigned','acknowledged','completed') NOT NULL DEFAULT 'pending', zone tinyint(4) NOT NULL DEFAULT 1, delta int(11) NOT NULL DEFAULT 0, PRIMARY KEY (ID,opID), KEY fk_operation_id_task (opID), CONSTRAINT fk_operation_id_task FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},

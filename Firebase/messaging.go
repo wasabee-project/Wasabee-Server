@@ -297,6 +297,7 @@ func SendTarget(g wm.GoogleID, t wm.Target) error {
 	return nil
 }
 
+// MapChange alerts a team of the need to need to refresh map data
 func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) error {
 	if !c.running {
 		return nil
@@ -320,6 +321,7 @@ func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) err
 	return nil
 }
 
+// AgentLogin alerts a team of an agent on that team logging in
 func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 	if !c.running {
 		return nil
@@ -341,6 +343,7 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 	return nil
 }
 
+// SendAnnounce sends a generic message to a team
 func SendAnnounce(teamID wm.TeamID, message string) error {
 	if !c.running {
 		return nil
@@ -386,6 +389,7 @@ func DeleteOperation(opID wm.OperationID) error {
 	return nil
 }
 
+// AgentDeleteOperation notifies a single agent of the need to delete an operation (e.g. when removed from a team)
 func AgentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
 	if !c.running {
 		return nil
@@ -410,6 +414,7 @@ func AgentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
 	return nil
 }
 
+// genericMulticast sends multicast messages directly to agents, taking care of breaking into proper segments and cleaning up invalid tokens
 func genericMulticast(data map[string]string, tokens []string) {
 	if len(tokens) == 0 {
 		return
@@ -447,6 +452,7 @@ func genericMulticast(data map[string]string, tokens []string) {
 	processBatchResponse(br, tokens)
 }
 
+// processBatchResponse looks for invalid tokens responses and removes the offending tokens
 func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 	for pos, resp := range br.Responses {
 		if !resp.Success {

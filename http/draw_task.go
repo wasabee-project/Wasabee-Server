@@ -218,7 +218,7 @@ func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := task.Complete(gid); err != nil {
+	if err := task.Complete(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -242,7 +242,7 @@ func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = task.Incomplete(gid); err != nil {
+	if err = task.Incomplete(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -290,7 +290,7 @@ func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = task.Acknowledge(gid); err != nil {
+	if err = task.Acknowledge(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

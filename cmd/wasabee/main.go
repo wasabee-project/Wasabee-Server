@@ -8,8 +8,9 @@ import (
 	"strings"
 	"syscall"
 
-	// "cloud.google.com/go/profiler"
-	// "google.golang.org/api/option"
+	"cloud.google.com/go/profiler"
+	"google.golang.org/api/option"
+	// "github.com/google/pprof"
 
 	"github.com/urfave/cli"
 
@@ -31,6 +32,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
 )
+
+const version = "0.99.1"
 
 var flags = []cli.Flag{
 	cli.StringFlag{
@@ -120,7 +123,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "wasabee-server"
-	app.Version = "0.99.0"
+	app.Version = version
 	app.Usage = "Wasabee Server"
 	app.Authors = []cli.Author{
 		{
@@ -152,7 +155,7 @@ func run(c *cli.Context) error {
 		return nil
 	}
 
-	logconf := log.LogConfiguration{
+	logconf := log.Configuration{
 		Console:            true,
 		ConsoleLevel:       zap.InfoLevel,
 		FilePath:           c.String("log"),
@@ -165,22 +168,21 @@ func run(c *cli.Context) error {
 	}
 	log.SetupLogging(logconf)
 
-	/*
-		if creds != "" {
-			if _, err := os.Stat(creds); err == nil {
-				opts := option.WithCredentialsFile(creds)
-				cfg := profiler.Config{
-					Service:        "wasabee",
-					ServiceVersion: "0.7.0",
-					ProjectID:      "phdevbin",
-				}
-				if err := profiler.Start(cfg, opts); err != nil {
-					log.Errorw("startup", "message", "unable to start profiler", "error", err)
-				} else {
-					log.Infow("startup", "message", "starting gcloud profiling")
-				}
+	if creds != "" {
+		if _, err := os.Stat(creds); err == nil {
+			opts := option.WithCredentialsFile(creds)
+			cfg := profiler.Config{
+				Service:        "wasabee",
+				ServiceVersion: version,
+				ProjectID:      "phdevbin",
 			}
-		} */
+			if err := profiler.Start(cfg, opts); err != nil {
+				log.Errorw("startup", "message", "unable to start profiler", "error", err)
+			} else {
+				log.Infow("startup", "message", "starting gcloud profiling")
+			}
+		}
+	}
 
 	// Load words
 	err := generatename.LoadWordsFile(c.String("wordlist"))

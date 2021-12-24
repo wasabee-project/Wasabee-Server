@@ -222,7 +222,7 @@ func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := marker.Complete(gid); err != nil {
+	if err := marker.Complete(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -246,7 +246,7 @@ func drawMarkerIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = marker.Incomplete(gid); err != nil {
+	if err = marker.Incomplete(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -294,7 +294,7 @@ func drawMarkerAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = marker.Acknowledge(gid); err != nil {
+	if err = marker.Acknowledge(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

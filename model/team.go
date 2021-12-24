@@ -163,6 +163,7 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 	return &teamList, nil
 }
 
+// Owner returns the owner of the team
 func (teamID TeamID) Owner() (GoogleID, error) {
 	var owner GoogleID
 

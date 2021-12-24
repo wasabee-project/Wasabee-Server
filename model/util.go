@@ -40,24 +40,22 @@ func GenerateSafeName() (string, error) {
 	return name, nil
 }
 
-// called from the background process
+// LocationClean is called from the background process to remove out-dated agent locations
 func LocationClean() {
-	r, err := db.Query("SELECT gid FROM locations WHERE loc != POINTFROMTEXT(?) AND upTime < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)", "POINT(0 0)")
+	rows, err := db.Query("SELECT gid FROM locations WHERE loc != POINTFROMTEXT(?) AND upTime < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)", "POINT(0 0)")
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	defer r.Close()
+	defer rows.Close()
 
 	var gid GoogleID
-	for r.Next() {
-		err = r.Scan(&gid)
-		if err != nil {
+	for rows.Next() {
+		if err = rows.Scan(&gid); err != nil {
 			log.Error(err)
 			continue
 		}
-		_, err = db.Exec("UPDATE locations SET loc = POINTFROMTEXT(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", "POINT(0 0)", gid)
-		if err != nil {
+		if _, err = db.Exec("UPDATE locations SET loc = POINTFROMTEXT(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", "POINT(0 0)", gid); err != nil {
 			log.Error(err)
 			continue
 		}

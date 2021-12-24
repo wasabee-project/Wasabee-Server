@@ -53,7 +53,7 @@ func Request(gid model.GoogleID) {
 	}
 }
 
-// Push an Agent's location to PubSub
+// Location pushes an agent's location to PubSub
 func Location(gid model.GoogleID, lat, lon string) {
 	if !ps.running {
 		return
@@ -78,7 +78,7 @@ func Location(gid model.GoogleID, lat, lon string) {
 	}
 }
 
-// Pushes the agent name from intel to PubSub
+// IntelData pushes the agent name from intel to PubSub
 func IntelData(gid model.GoogleID, name, faction string) {
 	if !ps.running {
 		return
