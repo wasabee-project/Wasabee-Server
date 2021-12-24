@@ -148,16 +148,14 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 
 	if l.Changed && len(l.Assignments) > 0 {
 		messaging.SendAssignment(messaging.GoogleID(l.AssignedTo), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
-		err := l.Assign(l.Assignments, tx)
-		if err != nil {
+		if err := l.Assign(l.Assignments, tx); err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
 	if len(l.DependsOn) > 0 {
-		err = l.SetDepends(l.DependsOn, tx)
-		if err != nil {
+		if err := l.SetDepends(l.DependsOn, tx); err != nil {
 			log.Error(err)
 			return err
 		}
