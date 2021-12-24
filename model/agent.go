@@ -741,3 +741,15 @@ func (gid GoogleID) SetCommunityName(name string) error {
 	}
 	return nil
 }
+
+// CommunityNameToGID takes a community name and returns a GoogleID
+func CommunityNameToGID(name string) (GoogleID, error) {
+	var gid GoogleID
+
+	err := db.QueryRow("SELECT gid FROM agent WHERE communityname = ?", name).Scan(&gid)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return "", err
+	}
+	return gid, nil
+}

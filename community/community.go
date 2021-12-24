@@ -50,7 +50,9 @@ func Validate(gid model.GoogleID, name string) (bool, error) {
 		return false, nil // nil to trigger NotAcceptable rather than InternalServerError
 	}
 
-	gid.SetCommunityName(name)
+	if err := gid.SetCommunityName(name); err != nil {
+		return false, err
+	}
 	log.Infow("validated niantic community name", "gid", gid, "name", name)
 	return true, nil
 }
@@ -109,6 +111,17 @@ func checkJWT(raw, name string, gid model.GoogleID) error {
 
 // BuildToken generates a token to be posted on the community site to verify the agent's name
 func BuildToken(gid model.GoogleID, name string) (string, error) {
+	t, err := model.CommunityNameToGID(name)
+	if err != nil {
+		log.Error(err)
+		return "", err
+	}
+	if t != "" {
+		err := fmt.Errorf("name '%s' already claimed by GID '%s'", name, t)
+		log.Errorw(err.Error(), "gid", gid, "name", name, "owner", t)
+		return "", err
+	}
+
 	key, ok := config.Get().JWSigningKeys.Get(0)
 	if !ok {
 		err := fmt.Errorf("encryption jwk not set")
