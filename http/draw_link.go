@@ -67,8 +67,8 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	agent := model.GoogleID(req.FormValue("agent"))
-	g := []model.GoogleID{agent}
-	if err = link.Assign(g, nil); err != nil {
+	link.Assignments = []model.GoogleID{agent}
+	if err = link.Assign(nil); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

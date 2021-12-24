@@ -54,12 +54,10 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.Assignments = append(m.Assignments, m.AssignedTo)
 	}
 
-	if len(m.Assignments) > 0 {
-		err = m.Assign(m.Assignments, nil)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+	// empty m.Assignments clears any
+	if err := m.Assign(nil); err != nil {
+		log.Error(err)
+		return err
 	}
 
 	if len(m.DependsOn) > 0 {
@@ -82,6 +80,12 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		m.Zone = zonePrimary
 	}
 
+	// until clients update
+	if m.AssignedTo != "" {
+		m.Assignments = append(m.Assignments, m.AssignedTo)
+	}
+
+	// XXX this will not work as intended once the clients support multiple assignments
 	assignmentChanged := false
 	if m.AssignedTo != "" {
 		var count uint8
@@ -108,17 +112,14 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		return err
 	}
 
-	if assignmentChanged {
-		// until clients get updated
-		if m.AssignedTo != "" {
-			m.Assignments = append(m.Assignments, m.AssignedTo)
-		}
+	// empty m.Assignments clears any stored
+	if err = m.Assign(tx); err != nil {
+		log.Error(err)
+		return err
+	}
 
-		err = m.Assign(m.Assignments, tx)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+	// XXX this is not correct for multiple assignments
+	if assignmentChanged {
 		messaging.SendAssignment(messaging.GoogleID(m.AssignedTo), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 

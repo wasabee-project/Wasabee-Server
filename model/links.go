@@ -73,12 +73,10 @@ func (opID OperationID) insertLink(l Link) error {
 		return err
 	}
 
-	if len(l.Assignments) > 0 {
-		err = l.Assign(l.Assignments, nil)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+	// clears if none set
+	if err := l.Assign(nil); err != nil {
+		log.Error(err)
+		return err
 	}
 
 	if len(l.DependsOn) > 0 {
@@ -146,11 +144,15 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		return err
 	}
 
-	if l.Changed && len(l.Assignments) > 0 {
-		messaging.SendAssignment(messaging.GoogleID(l.AssignedTo), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
-		if err := l.Assign(l.Assignments, tx); err != nil {
+	// only update assignments if Changed bit is set -- don't flood messages if nothing changed
+	if l.Changed {
+		// emtpy assignments clears them
+		if err := l.Assign(tx); err != nil {
 			log.Error(err)
 			return err
+		}
+		if len(l.Assignments) > 0 {
+			messaging.SendAssignment(messaging.GoogleID(l.AssignedTo), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
 		}
 	}
 

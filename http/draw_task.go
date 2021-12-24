@@ -62,8 +62,8 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	agent := model.GoogleID(req.FormValue("agent"))
-	g := []model.GoogleID{agent}
-	if err = task.Assign(g, nil); err != nil {
+	task.Assignments = []model.GoogleID{agent}
+	if err = task.Assign(nil); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

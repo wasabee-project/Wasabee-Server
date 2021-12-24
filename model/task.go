@@ -194,7 +194,8 @@ func (o OperationID) assignmentPrecache() (map[TaskID][]GoogleID, error) {
 }
 
 // Assign assigns a task to an agent using a given transaction, if the transaction is nil, one is created for this block
-func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
+// func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
+func (t *Task) Assign(tx *sql.Tx) error {
 	needtx := false
 	if tx == nil {
 		needtx = true
@@ -209,29 +210,27 @@ func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
 	}
 
 	// we could be smarter and load the existing, then only add new, but this is fast and easy
-	if _, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID); err != nil {
+	if err := t.ClearAssignments(tx); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	for _, gid := range gs {
-		if gid == "" {
-			continue
+	if len(t.Assignments) > 0 {
+		for _, gid := range t.Assignments {
+			if gid == "" {
+				continue
+			}
+			_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.ID, gid)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
 		}
-		_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.ID, gid)
-		if err != nil {
+
+		if _, err := tx.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 			log.Error(err)
 			return err
 		}
-	}
-
-	state := "assigned"
-	if len(gs) == 0 {
-		state = "pending"
-	}
-	if _, err := tx.Exec("UPDATE task SET state = ? WHERE ID = ? AND opID = ?", state, t.ID, t.opID); err != nil {
-		log.Error(err)
-		return err
 	}
 
 	if needtx {
@@ -241,6 +240,18 @@ func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
 		}
 	}
 
+	return nil
+}
+
+func (t *Task) ClearAssignments(tx *sql.Tx) error {
+	if _, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID); err != nil {
+		log.Error(err)
+		return err
+	}
+	if _, err := tx.Exec("UPDATE task SET state = 'pending' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
