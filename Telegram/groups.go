@@ -148,9 +148,6 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 				log.Error(err)
 				filterGid = "0"
 			}
-			if filterGid == "" {
-				filterGid = "0"
-			}
 		} else {
 			filterGid = ""
 		}

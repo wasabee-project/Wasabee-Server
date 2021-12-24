@@ -45,7 +45,6 @@ func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
 	var permitted bool
 
 	if o.IsOwner(gid) {
-		permitted = true
 		zones = append(zones, ZoneAll)
 		return true, zones
 	}
