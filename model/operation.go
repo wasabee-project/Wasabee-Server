@@ -514,11 +514,6 @@ func (opID OperationID) IsDeletedOp() bool {
 // Populate takes a pointer to an Operation and fills it in; o.ID must be set
 // checks to see that either the gid created the operation or the gid is on the team assigned to the operation
 func (o *Operation) Populate(gid GoogleID) error {
-	start := time.Now()
-	defer func() {
-		log.Debugw("Timing", "section", "final", "t", time.Since(start), "opID", o.ID)
-	}()
-
 	var comment sql.NullString
 	err := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, referencetime FROM operation WHERE ID = ?", o.ID).Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.ReferenceTime)
 	if err != nil && err == sql.ErrNoRows {
