@@ -181,7 +181,6 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 		log.Error(err)
 		return err
 	}
-	wasabee.Log.Debugw("marker status", "subsystem", "Firebase", "msg", data)
 	return nil
 }
 
