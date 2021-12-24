@@ -270,7 +270,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 			if err != nil {
 				continue
 			}
-			tgid.SetName(new.UserName)
+			_ = tgid.SetName(new.UserName)
 			if err = teamID.AddAgent(gid); err != nil {
 				log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid, "opID", opID)
 			}
@@ -435,7 +435,9 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	if _, err = bot.Request(bcmc); err != nil {
 		log.Error(err)
 		msg := tgbotapi.NewMessage(chat.ID, err.Error())
-		bot.Send(msg)
+		if _, err = bot.Send(msg); err != nil {
+			log.Error(err)
+		}
 	}
 	return nil
 }

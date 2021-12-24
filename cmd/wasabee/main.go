@@ -220,7 +220,7 @@ func run(c *cli.Context) error {
 		rocks.Config.CommunityEndpoint = c.String("enlrockscommurl")
 	} */
 
-	config.SetupJWK(c.String("jwkpriv"), c.String("jwkpub"))
+	_ = config.SetupJWK(c.String("jwkpriv"), c.String("jwkpub"))
 
 	// Serve HTTPS
 	if c.String("https") != "none" {

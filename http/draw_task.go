@@ -306,7 +306,9 @@ func taskAssignTouch(gid model.GoogleID, markerID model.TaskID, op *model.Operat
 		log.Error(err)
 	}
 
-	wfb.AssignTask(gid, model.TaskID(markerID), op.ID, uid)
+	if err := wfb.AssignTask(gid, model.TaskID(markerID), op.ID, uid); err != nil {
+		log.Error(err)
+	}
 	return uid
 }
 
@@ -324,8 +326,7 @@ func taskStatusTouch(op *model.Operation, taskID model.TaskID, status string) st
 	}
 
 	for _, t := range teams {
-		err := wfb.TaskStatus(taskID, op.ID, t, status, uid)
-		if err != nil {
+		if err := wfb.TaskStatus(taskID, op.ID, t, status, uid); err != nil {
 			log.Error(err)
 		}
 	}

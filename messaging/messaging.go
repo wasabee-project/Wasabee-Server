@@ -94,7 +94,7 @@ func SendMessage(toGID GoogleID, message string) (bool, error) {
 }
 
 // SendAnnounce sends a generic message to a team
-func SendAnnounce(teamID TeamID, message string) error {
+func SendAnnounce(teamID TeamID, message string) {
 	for _, bus := range busses {
 		if bus.SendAnnounce != nil {
 			if err := bus.SendAnnounce(teamID, message); err != nil {
@@ -102,7 +102,6 @@ func SendAnnounce(teamID TeamID, message string) error {
 			}
 		}
 	}
-	return nil
 }
 
 // RegisterMessageBus is called by a service to register with the messaging system
@@ -116,7 +115,7 @@ func RemoveMessageBus(busname string) {
 }
 
 // AddToRemote is called to add an agent to various services
-func AddToRemote(gid GoogleID, teamID TeamID) error {
+func AddToRemote(gid GoogleID, teamID TeamID) {
 	for _, bus := range busses {
 		if bus.AddToRemote != nil {
 			if err := bus.AddToRemote(gid, teamID); err != nil {
@@ -124,11 +123,10 @@ func AddToRemote(gid GoogleID, teamID TeamID) error {
 			}
 		}
 	}
-	return nil
 }
 
 // RemoveFromRemote is called to remove an agent from various services
-func RemoveFromRemote(gid GoogleID, teamID TeamID) error {
+func RemoveFromRemote(gid GoogleID, teamID TeamID) {
 	for _, bus := range busses {
 		if bus.RemoveFromRemote != nil {
 			if err := bus.RemoveFromRemote(gid, teamID); err != nil {
@@ -136,11 +134,10 @@ func RemoveFromRemote(gid GoogleID, teamID TeamID) error {
 			}
 		}
 	}
-	return nil
 }
 
 // SendAssignment sends a task to an agent
-func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string) error {
+func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string) {
 	for _, bus := range busses {
 		if bus.SendAssignment != nil {
 			if err := bus.SendAssignment(gid, taskID, opID, status); err != nil {
@@ -148,11 +145,10 @@ func SendAssignment(gid GoogleID, taskID TaskID, opID OperationID, status string
 			}
 		}
 	}
-	return nil
 }
 
 // AgentDeleteOperation instructs a single agent to delete an operation (e.g. at removal from team)
-func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
+func AgentDeleteOperation(gid GoogleID, opID OperationID) {
 	for _, bus := range busses {
 		if bus.AgentDeleteOperation != nil {
 			if err := bus.AgentDeleteOperation(gid, opID); err != nil {
@@ -160,11 +156,10 @@ func AgentDeleteOperation(gid GoogleID, opID OperationID) error {
 			}
 		}
 	}
-	return nil
 }
 
 // DeleteOperation is called to broadcst a delete operation command to all agents (e.g. Firebase)
-func DeleteOperation(opID OperationID) error {
+func DeleteOperation(opID OperationID) {
 	for _, bus := range busses {
 		if bus.DeleteOperation != nil {
 			if err := bus.DeleteOperation(opID); err != nil {
@@ -172,5 +167,4 @@ func DeleteOperation(opID OperationID) error {
 			}
 		}
 	}
-	return nil
 }

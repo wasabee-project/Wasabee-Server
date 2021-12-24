@@ -92,7 +92,7 @@ func RISC(ctx context.Context, configfile string) {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
 			log.Errorw("locking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			_ = gid.Lock(e.Reason)
-			gid.RemoveAllFirebaseTokens()
+			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
 			log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
@@ -103,22 +103,22 @@ func RISC(ctx context.Context, configfile string) {
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.RemoveAllFirebaseTokens()
+			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.RemoveAllFirebaseTokens()
+			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.RemoveAllFirebaseTokens()
+			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			// no need to do anything
 		case "https://accounts.google.com/risc/event/sessions-revoked":
 			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.RemoveAllFirebaseTokens()
+			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		default:
 			log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)

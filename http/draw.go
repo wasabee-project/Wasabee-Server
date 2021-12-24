@@ -632,7 +632,9 @@ func touch(op model.Operation) string {
 	}
 
 	for _, t := range teams {
-		wfb.MapChange(t, op.ID, uid)
+		if err := wfb.MapChange(t, op.ID, uid); err != nil {
+			log.Error(err)
+		}
 	}
 	return uid
 }

@@ -313,7 +313,9 @@ func linkAssignTouch(gid model.GoogleID, linkID model.LinkID, op *model.Operatio
 		log.Error(err)
 	}
 
-	wfb.AssignLink(gid, model.TaskID(linkID), op.ID, uid)
+	if err := wfb.AssignLink(gid, model.TaskID(linkID), op.ID, uid); err != nil {
+		log.Error(err)
+	}
 	return uid
 }
 

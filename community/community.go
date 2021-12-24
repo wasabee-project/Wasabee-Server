@@ -140,7 +140,7 @@ func BuildToken(gid model.GoogleID, name string) (string, error) {
 	}
 
 	hdrs := jws.NewHeaders()
-	hdrs.Set("jku", config.JKU())
+	_ = hdrs.Set(jws.JWKSetURLKey, config.JKU())
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {

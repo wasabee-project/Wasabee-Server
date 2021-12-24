@@ -311,7 +311,9 @@ func markerAssignTouch(gid model.GoogleID, markerID model.MarkerID, op *model.Op
 		log.Error(err)
 	}
 
-	wfb.AssignMarker(gid, model.TaskID(markerID), op.ID, uid)
+	if err := wfb.AssignMarker(gid, model.TaskID(markerID), op.ID, uid); err != nil {
+		log.Error(err)
+	}
 	return uid
 }
 

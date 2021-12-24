@@ -208,7 +208,7 @@ func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	}
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
-			model.RemoveFirebaseToken(tokens[f.Index])
+			_ = model.RemoveFirebaseToken(tokens[f.Index])
 		}
 	}
 	return nil
@@ -237,7 +237,7 @@ func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	}
 	if tmr != nil && tmr.FailureCount > 0 {
 		for _, f := range tmr.Errors {
-			model.RemoveFirebaseToken(tokens[f.Index])
+			_ = model.RemoveFirebaseToken(tokens[f.Index])
 		}
 	}
 	return nil
@@ -458,7 +458,7 @@ func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 	for pos, resp := range br.Responses {
 		if !resp.Success {
 			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
-				model.RemoveFirebaseToken(tokens[pos])
+				_ = model.RemoveFirebaseToken(tokens[pos])
 			}
 		}
 	}

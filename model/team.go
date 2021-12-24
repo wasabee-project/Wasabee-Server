@@ -299,9 +299,7 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		return err
 	}
 
-	if err = messaging.RemoveFromRemote(messaging.GoogleID(gid), messaging.TeamID(teamID)); err != nil {
-		log.Error(err)
-	}
+	messaging.RemoveFromRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
 
 	// instruct the agent to delete all associated ops
 	// this may get ops for which the agent has double-access, but they can just re-fetch them

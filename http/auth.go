@@ -106,7 +106,9 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	// log.Debugw("minted jwt for testing", "jwt", j)
 
 	for _, t := range m.Gid.TeamListEnabled() {
-		wfb.AgentLogin(t, m.Gid)
+		if err := wfb.AgentLogin(t, m.Gid); err != nil {
+			log.Error(err)
+		}
 	}
 
 	name, err := m.Gid.IngressName()
@@ -350,7 +352,9 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 
 	// notify other teams of agent login
 	for _, t := range m.Gid.TeamListEnabled() {
-		wfb.AgentLogin(t, m.Gid)
+		if err := wfb.AgentLogin(t, m.Gid); err != nil {
+			log.Error(err)
+		}
 	}
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
@@ -391,7 +395,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 
 	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
-	hdrs.Set(jws.JWKSetURLKey, "https://cdn2.wasabee.rocks/.well-known/jwks.json")
+	_ = hdrs.Set(jws.JWKSetURLKey, config.JKU())
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {
@@ -503,7 +507,9 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		"client", req.Header.Get("User-Agent"))
 
 	for _, t := range gid.TeamListEnabled() {
-		wfb.AgentLogin(t, gid)
+		if err := wfb.AgentLogin(t, gid); err != nil {
+			log.Error(err)
+		}
 	}
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2

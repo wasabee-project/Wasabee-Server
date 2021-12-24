@@ -262,13 +262,11 @@ func Sync(teamID model.TeamID, key string) error {
 	for _, agent := range vt.Agents {
 		if !agent.Gid.Valid() {
 			log.Infow("Importing previously unknown agent", "GID", agent.Gid)
-			err := agent.Gid.FirstLogin()
-			if err != nil {
+			if err := agent.Gid.FirstLogin(); err != nil {
 				log.Error(err)
 				continue
 			}
-			err = model.VToDB(&agent)
-			if err != nil {
+			if err := model.VToDB(&agent); err != nil {
 				log.Error(err)
 				continue
 			}

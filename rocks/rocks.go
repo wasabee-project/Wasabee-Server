@@ -166,15 +166,17 @@ func CommunitySync(msg json.RawMessage) error {
 			return err
 		}
 	} else {
-		err := teamID.RemoveAgent(rc.User.Gid)
-		if err != nil {
+		if err := teamID.RemoveAgent(rc.User.Gid); err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
 	if rc.TGId > 0 && rc.TGName != "" {
-		rc.TGId.SetName(rc.TGName)
+		if err := rc.TGId.SetName(rc.TGName); err != nil {
+			log.Error(err)
+			return err
+		}
 	}
 
 	return nil
@@ -298,7 +300,7 @@ func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 		log.Errorw("unable to add to remote rocks team", "teamID", teamID, "gid", gid, "cid", cid, "error", rr.Error)
 		if rr.Error == "Invalid key" {
 			c, _ := t.RocksCommunity()
-			t.SetRocks("", c) // unlink
+			_ = t.SetRocks("", c) // unlink
 		}
 	}
 	return nil
@@ -359,7 +361,7 @@ func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 		log.Error(err)
 		if rr.Error == "Invalid key" {
 			c, _ := t.RocksCommunity()
-			t.SetRocks("", c) // unlink
+			_ = t.SetRocks("", c) // unlink
 		}
 		return err
 	}

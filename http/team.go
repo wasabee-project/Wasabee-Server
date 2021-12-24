@@ -298,12 +298,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	err = messaging.SendAnnounce(messaging.TeamID(team), message)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
+	messaging.SendAnnounce(messaging.TeamID(team), message)
 	fmt.Fprint(res, jsonStatusOK)
 }
 

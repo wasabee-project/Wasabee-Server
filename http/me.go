@@ -188,7 +188,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 
 	// announce to teams with which this agent is sharing location information
 	for _, teamID := range gid.TeamListEnabled() {
-		wfb.AgentLocation(teamID)
+		_ = wfb.AgentLocation(teamID)
 	}
 
 	fmt.Fprint(res, jsonStatusOK)
@@ -299,7 +299,11 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	req.ParseMultipartForm(1024)
+	if err := req.ParseMultipartForm(1024); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 	qt := req.FormValue("qt")
 	name := req.FormValue("name")
 	faction := req.FormValue("faction")
@@ -312,7 +316,11 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	gid.SetIntelData(name, faction)
+	if err := gid.SetIntelData(name, faction); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -409,7 +417,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 
 	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
-	hdrs.Set("jku", config.JKU())
+	_ = hdrs.Set(jws.JWKSetURLKey, config.JKU())
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {

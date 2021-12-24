@@ -18,7 +18,10 @@ import (
 func Authorize(gid model.GoogleID) (bool, error) {
 	// if the agent isn't known to this server, pre-populate everything
 	if !gid.Valid() {
-		gid.FirstLogin()
+		if err := gid.FirstLogin(); err != nil {
+			log.Error(err)
+			return false, err
+		}
 	}
 
 	if gid.RISC() {
