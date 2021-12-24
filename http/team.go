@@ -159,14 +159,7 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	to, ok := vars["to"]
-	if !ok { // this should not happen unless the router gets misconfigured
-		err = fmt.Errorf("team new owner unset")
-		log.Warnw(err.Error(), "resource", team, "GID", gid)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	togid, err := model.ToGid(to)
+	togid, err := model.ToGid(vars["to"])
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -316,7 +309,7 @@ func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 	teamID := model.TeamID(vars["team"])
 
 	if owns, _ := gid.OwnsTeam(teamID); !owns {
-		err = fmt.Errorf("forbidden: only the team owner can set squads")
+		err = fmt.Errorf("forbidden: only the team owner can set comments")
 		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
@@ -324,8 +317,7 @@ func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 
 	inGid := model.GoogleID(vars["gid"])
 	squad := req.FormValue("squad")
-	err = teamID.SetComment(inGid, squad)
-	if err != nil {
+	if err = teamID.SetComment(inGid, squad); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -399,7 +391,6 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 		Ok  string
 		Key string
 	}
-
 	o := Out{
 		Ok:  "OK",
 		Key: key,
@@ -502,19 +493,17 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if string(jBlob) == "" {
+	if len(jBlob) == 0 {
 		err := fmt.Errorf("empty JSON on bulk team request")
-		log.Warnw(err.Error(), "GID", gid, "resource", "new operation")
+		log.Warnw(err.Error(), "GID", gid)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
-	jRaw := json.RawMessage(jBlob)
 	var requestedteams struct {
 		TeamIDs []model.TeamID `json:"teamids"`
 	}
-
-	if err := json.Unmarshal(jRaw, &requestedteams); err != nil {
+	if err := json.Unmarshal(json.RawMessage(jBlob), &requestedteams); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -534,8 +523,8 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 			continue
 		}
 		if !isowner && !onteam {
-			err := fmt.Errorf("not on team - in bulk pull; probably an op where agent can't see all teams")
-			log.Debugw(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
+			// err := fmt.Errorf("not on team - in bulk pull; probably an op where agent can't see all teams")
+			// log.Debugw(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
 			continue
 		}
 		t, err := team.FetchTeam()
@@ -568,6 +557,5 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Warn(err)
 	}
-	/* out := string(data) if out == "" { out = "[]" } */
 	fmt.Fprint(res, string(data))
 }

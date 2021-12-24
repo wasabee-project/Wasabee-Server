@@ -143,7 +143,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		msg.DisableWebPagePreview = true
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) > 1 {
-			filterGid, err := model.SearchAgentName(strings.TrimSpace(tokens[1]))
+			filterGid, err = model.SearchAgentName(strings.TrimSpace(tokens[1]))
 			if err != nil {
 				log.Error(err)
 				filterGid = "0"
