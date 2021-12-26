@@ -225,18 +225,9 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		return err
 	}
 	// log.Debugw("rocks sync", "response", rr)
-
-	// process in the background, telegram rate-limits adds, we need to go slow, let the client get on with life
-	go func() {
-		limiter := rate.NewLimiter(rate.Every(1*time.Minute), 20)
-		ctx, cancel := context.WithCancel(context.Background())
-
+	if c, _ := teamID.TelegramChat(); c == 0 {
+		// team not linked to telegram, we can go at full-speed
 		for _, gid := range rr.Members {
-			if err := limiter.Wait(ctx); err != nil {
-				log.Error(err)
-				cancel()
-				return
-			}
 			if inteam, _ := gid.AgentInTeam(teamID); inteam {
 				continue
 			}
@@ -245,7 +236,28 @@ func CommunityMemberPull(teamID model.TeamID) error {
 				log.Info(err)
 			}
 		}
-	}()
+	} else {
+		// process in the background, telegram rate-limits adds, we need to go slow, let the client get on with life
+		go func() {
+			limiter := rate.NewLimiter(rate.Every(5*time.Second), 19) // 3/20 would be fine, but this leave space for other chats
+			ctx, cancel := context.WithCancel(context.Background())
+
+			for _, gid := range rr.Members {
+				if inteam, _ := gid.AgentInTeam(teamID); inteam {
+					continue
+				}
+				if err := limiter.Wait(ctx); err != nil {
+					log.Error(err)
+					cancel()
+					return
+				}
+				log.Debugw("rocks sync", "adding", gid)
+				if err := teamID.AddAgent(gid); err != nil {
+					log.Info(err)
+				}
+			}
+		}()
+	}
 	return nil
 }
 
