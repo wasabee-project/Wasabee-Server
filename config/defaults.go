@@ -2,75 +2,35 @@ package config
 
 import (
 	"golang.org/x/oauth2/google"
-	"path"
-)
-
-const (
-	// wasabee constants
-	defPicURL = "https://cdn2.wasabee.rocks/android-chrome-512x512.png"
-	jku       = "https://cdn2.wasabee.rocks/.well-known/jwks.json"
-
-	// V constants
-	vAPIEndpoint    = "https://v.enl.one/api/v1"
-	vStatusEndpoint = "https://status.enl.one/api/location"
-	vTeamEndpoint   = "https://v.enl.one/api/v2/teams"
-
-	// Rocks constants
-	rocksCommunityEndpoint = "https://enlightened.rocks/comm/api/membership"
-	rocksStatusEndpoint    = "https://enlightened.rocks/api/user/status"
-
-	// Google RISC
-	riscHook           = "/GoogleRISC"
-	googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configuration"
-
-	// the directory the certificates are stored in
-	certs = "certs"
-
-	// JWK signing and verification keys
-	jwkpriv = "jwkpriv.json"
-	jwkpub  = "jwkpub.json"
-
-	// the firebase key file
-	fbkey = "firebase.json"
-
-	oauthUserInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo"
-	// oauthAuthURL = google.Endpoint.AuthURL
-	// oauthTokenURL =  google.Endpoint.TokenURL
-
-	// Telegram
-	tgHookPath = "/tg"
-
-	// REST API URLs
-	meURL           = "/me"
-	loginURL        = "/login"
-	callbackURL     = "/callback"
-	aptokenURL      = "/aptok"
-	apipathURL      = "/api/v1"
-	oneTimeTokenURL = "/oneTimeToken"
 )
 
 var defaults *WasabeeConf = &WasabeeConf{
-	WordListFile: "eff_large_wordlist.txt",
-	FrontendPath: "Wasabee-Frontend",
-	FirebaseKey:  fbkey,
-	WebUIURL:     "https://wasabee-project.github.io/Wasabee-WebUI/",
+	DB:                "wasabee:test@unix(/var/www/var/run/mysql/mysql.sock)/wasabee",
+	WordListFile:      "eff_large_wordlist.txt",
+	FrontendPath:      "Wasabee-Frontend",
+	WebUIURL:          "https://wasabee-project.github.io/Wasabee-WebUI/",
+	JKU:               "https://cdn2.wasabee.rocks/.well-known/jwks.json",
+	DefaultPictureURL: "https://cdn2.wasabee.rocks/android-chrome-512x512.png",
 
-	Certs:    certs,
-	CertFile: "wasabee.fullchain.pem",
-	CertKey:  "wasabee.key",
-	DB:       "wasabee:test@unix(/var/www/var/run/mysql/mysql.sock)/wasabee",
+	Certs:       "certs",
+	CertFile:    "wasabee.fullchain.pem",
+	CertKey:     "wasabee.key",
+	FirebaseKey: "firebase.json",
+	JWKpriv:     "jwkpriv.json",
+	JWKpub:      "jwkpub.json",
+
 	V: wv{
-		APIEndpoint:    vAPIEndpoint,
-		StatusEndpoint: vStatusEndpoint,
-		TeamEndpoint:   vTeamEndpoint,
+		APIEndpoint:    "https://v.enl.one/api/v1",
+		StatusEndpoint: "https://status.enl.one/api/location",
+		TeamEndpoint:   "https://v.enl.one/api/v2/teams",
 	},
 	RISC: wrisc{
-		Webhook:   riscHook,
-		Discovery: googleDiscoveryURL,
+		Webhook:   "/GoogleRISC",
+		Discovery: "https://accounts.google.com/.well-known/risc-configuration",
 	},
 	Rocks: wrocks{
-		CommunityEndpoint: rocksCommunityEndpoint,
-		StatusEndpoint:    rocksStatusEndpoint,
+		CommunityEndpoint: "https://enlightened.rocks/comm/api/membership",
+		StatusEndpoint:    "https://enlightened.rocks/api/user/status",
 	},
 	HTTP: whttp{
 		Webroot:          "https://locallhost/",
@@ -78,21 +38,17 @@ var defaults *WasabeeConf = &WasabeeConf{
 		CookieSessionKey: "soontobeunused",
 		Logfile:          "logs/wasabee.log",
 		SessionName:      "wasabee",
-		MeURL:            meURL,
-		LoginURL:         loginURL,
-		CallbackURL:      callbackURL,
-		APIPathURL:       apipathURL,
-		ApTokenURL:       aptokenURL,
-		OneTimeTokenURL:  oneTimeTokenURL,
-		OauthUserInfoURL: oauthUserInfoURL,
+		MeURL:            "/me",
+		LoginURL:         "/login",
+		CallbackURL:      "/callback",
+		APIPathURL:       "/api/v1",
+		ApTokenURL:       "/aptok",
+		OneTimeTokenURL:  "/oneTimeToken",
+		OauthUserInfoURL: "https://www.googleapis.com/oauth2/v2/userinfo",
 		OauthAuthURL:     google.Endpoint.AuthURL,
 		OauthTokenURL:    google.Endpoint.TokenURL,
 	},
 	Telegram: wtg{
-		HookPath: tgHookPath,
+		HookPath: "/tg",
 	},
-	JKU:               jku,
-	DefaultPictureURL: defPicURL,
-	JWKpriv:           path.Join(certs, jwkpriv),
-	JWKpub:            path.Join(certs, jwkpub),
 }

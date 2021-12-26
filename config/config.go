@@ -4,6 +4,7 @@ import (
 	// "context"
 	"encoding/json"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 
@@ -139,7 +140,7 @@ func LoadFile(f string) (*WasabeeConf, error) {
 	c = *in
 
 	// finish setup
-	setupJWK(c.JWKpriv, c.JWKpub)
+	setupJWK(certdir, c.JWKpriv, c.JWKpub)
 
 	c.HTTP.oauthConfig = &oauth2.Config{
 		ClientID:     c.HTTP.OauthClientID,
@@ -193,9 +194,9 @@ func IsTelegramRunning() bool {
 }
 
 // SetupJWK loads the keys used for the JWK signing and verification, set the file paths
-func setupJWK(signers, parsers string) error {
+func setupJWK(certdir, signers, parsers string) error {
 	var err error
-	c.jwSigningKeys, err = jwk.ReadFile(signers)
+	c.jwSigningKeys, err = jwk.ReadFile(path.Join(certdir, signers))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -207,7 +208,7 @@ func setupJWK(signers, parsers string) error {
 		log.Debugw("jwk signer", "key", x)
 	} */
 
-	c.jwParsingKeys, err = jwk.ReadFile(parsers)
+	c.jwParsingKeys, err = jwk.ReadFile(path.Join(certdir, parsers))
 	if err != nil {
 		log.Error(err)
 		return err
