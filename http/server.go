@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
+	// "net/http/httputil"
 	"os"
 	"path"
 	"strings"
@@ -52,22 +52,15 @@ func Start() {
 	}
 
 	oauthStateString = generatename.GenerateName()
-	log.Debugw("startup", "oauthStateString", oauthStateString)
+	// log.Debugw("startup", "oauthStateString", oauthStateString)
 
-	if c.HTTP.CookieSessionKey == "" {
-		log.Error("SessionKey unset: logins will fail")
-	} else {
-		key := c.HTTP.CookieSessionKey
-		log.Debugw("startup", "Session Key", key)
-		store = sessions.NewCookieStore([]byte(key))
+	key := c.HTTP.CookieSessionKey
+	if len(key) != 32 {
+		log.Error("SessionKey not 32 characters long: logins will fail")
 	}
+	store = sessions.NewCookieStore([]byte(key))
 
-	if c.HTTP.Logfile == "" {
-		log.Debug("https logfile unset: defaulting to 'wasabee-https.log'")
-		c.HTTP.Logfile = "wasabee-https.log"
-	}
 	log.Debugw("startup", "https logfile", c.HTTP.Logfile)
-
 	// #nosec
 	logfileHandle, err := os.OpenFile(c.HTTP.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -333,13 +326,13 @@ func jsonError(e error) string {
 	return fmt.Sprintf(`{"status":"error","error":"%s"}`, e.Error())
 }
 
-func debugMW(next http.Handler) http.Handler {
+/* func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		dump, _ := httputil.DumpRequest(req, false)
 		log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
-}
+} */
 
 func contentTypeIs(req *http.Request, check string) bool {
 	contentType := strings.Split(strings.Replace(req.Header.Get("Content-Type"), " ", "", -1), ";")[0]
