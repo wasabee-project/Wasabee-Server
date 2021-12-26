@@ -55,8 +55,10 @@ var defaults *WasabeeConf = &WasabeeConf{
 	FirebaseKey:  fbkey,
 	WebUIURL:     "https://wasabee-project.github.io/Wasabee-WebUI/",
 
-	Certs: certs,
-	DB:    "wasabee:test@unix(/var/www/var/run/mysql/mysql.sock)/wasabee",
+	Certs:    certs,
+	CertFile: "wasabee.fullchain.pem",
+	CertKey:  "wasabee.key",
+	DB:       "wasabee:test@unix(/var/www/var/run/mysql/mysql.sock)/wasabee",
 	V: wv{
 		APIEndpoint:    vAPIEndpoint,
 		StatusEndpoint: vStatusEndpoint,

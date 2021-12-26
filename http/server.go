@@ -110,9 +110,8 @@ func Start() {
 		},
 	}
 
-	// XXX the cert file names need to be in the config
-	fc := path.Join(c.Certs, "wasabee.fullchain.pem")
-	k := path.Join(c.Certs, "wasabee.key")
+	fc := path.Join(c.Certs, c.CertFile)
+	k := path.Join(c.Certs, c.CertKey)
 	log.Infow("startup", "port", c.HTTP.ListenHTTPS, "url", c.HTTP.Webroot, "message", "online at "+c.HTTP.Webroot)
 	if err := srv.ListenAndServeTLS(fc, k); err != nil {
 		log.Info(err)

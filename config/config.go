@@ -23,6 +23,8 @@ type WasabeeConf struct {
 	DB                string // db connect string
 	FrontendPath      string // path to directory
 	Certs             string // path to director containing certs
+	CertFile          string // name of file (relative to Certs)
+	CertKey           string // name of file (relative to Certs)
 	WebUIURL          string // URL of WebUI
 	JKU               string // URL to well-known JKU (for 3rd parties to verify our JWT)
 	DefaultPictureURL string // URL to a default image for agents
