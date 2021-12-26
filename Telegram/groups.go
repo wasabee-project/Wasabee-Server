@@ -369,7 +369,7 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	text := fmt.Sprintf("%s joined the linked team (%s): Please add them to this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	if _, err := bot.Send(msg); err != nil {
-		log.Error(err)
+		log.Errorw(err.Error(), "gid", g, "team", t, "chat", chatID)
 		return err
 	}
 
