@@ -91,13 +91,6 @@ func registerWebhook(ctx context.Context) {
 
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
-		select {
-		case <-ctx.Done():
-			log.Info("got ctx.Done, shutting down RISC background processes")
-			running = false
-			return
-		default:
-		}
 		tmp, err := ar.Fetch(ctx, googleConfig.JWKURI)
 		if err != nil {
 			log.Error(err)
