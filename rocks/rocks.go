@@ -224,11 +224,19 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		log.Error(rr.Error)
 		return err
 	}
-	log.Debugw("rocks sync", "response", rr)
+	// log.Debugw("rocks sync", "response", rr)
 
 	// process in the background, telegram rate-limits adds, we need to go slow, let the client get on with life
 	go func() {
+		limiter := rate.NewLimiter(rate.Every(1*time.Minute), 20)
+		ctx, cancel := context.WithCancel(context.Background())
+
 		for _, gid := range rr.Members {
+			if err := limiter.Wait(ctx); err != nil {
+				log.Error(err)
+				cancel()
+				return
+			}
 			if inteam, _ := gid.AgentInTeam(teamID); inteam {
 				continue
 			}
@@ -236,7 +244,6 @@ func CommunityMemberPull(teamID model.TeamID) error {
 			if err := teamID.AddAgent(gid); err != nil {
 				log.Info(err)
 			}
-			time.Sleep(5 * time.Second)
 		}
 	}()
 	return nil
