@@ -113,8 +113,8 @@ func Start() {
 	fc := path.Join(c.Certs, c.CertFile)
 	k := path.Join(c.Certs, c.CertKey)
 	log.Infow("startup", "port", c.HTTP.ListenHTTPS, "url", c.HTTP.Webroot, "message", "online at "+c.HTTP.Webroot)
-	if err := srv.ListenAndServeTLS(fc, k); err != nil {
-		log.Info(err)
+	if err := srv.ListenAndServeTLS(fc, k); err != http.ErrServerClosed {
+		log.Error(err)
 	}
 }
 
