@@ -20,15 +20,15 @@ Access to your data is controlled by teams you define. By default each op gets a
 
 ## My personal data, GDPR and such!
 
-We do not store your real name, email address, or any personal identifiying information. We do store your GoogleID, the EnlID that V creates (if you use V), and your agent name (if you use V or rocks). If you configure Telegram (either here or at .rocks), we store your telegram ID as well. As support is added for other messaging systems, we will store any messaging identifiers you opt-in to.
+We do not store your real name, email address, or any personal identifiying information. We do store your GoogleID, the EnlID that V creates (if you use V), and your agent name (if we have it). If you configure Telegram, we store your telegram ID as well.
 
-We do not retain historical location data. The only data point stored is your most recent check-in. If, at the end of your op, you use the web interface to set the values to something absurd (0,0 is handy), we will not know where you are or where you've been. Location data older than 3 hours is considered stale and removed.
+We do not retain historical location data. The only data point stored is your most recent check-in. Location data older than 3 hours is considered stale and removed.
 
 ## But... how do you make sure that only ENL agents use this.
 
 RES have RESwue. They techincally _could_ use this (minimally). But why would they? Why whould they trust us?
 
-The "good" stuff/features require agent verifcation. We verify agent information with trusted ENL providers V and .rocks. We observe negative agent status (aka RES/SMURF). If an agent is not verified at V or rocks, they are displayed as unverified. You can add unverified agents to your teams if you want, that's up to you. We don't force people to use V or rocks. They are helpful tools, not systems that control.
+The "good" features require agent verifcation. We verify agent information with trusted ENL providers V and .rocks. We observe negative agent status (aka RES/SMURF). If an agent is not verified at V or rocks, they are displayed as unverified. You can add unverified agents to your teams if you want, that's up to you. We don't force people to use V or rocks. They are helpful tools, not systems that control.
 
 ## I already use use an enl.rocks community to manage my telegram channel. I don't want to manage a second list of users. 
 
@@ -40,7 +40,7 @@ You can configure uni-directional or bi-directional linking, depending on your n
 
 ## I use V teams ...
 
-That's cool also. It wouldn't be hard to add support for manually pulling team data across. V does not have push notifications, nor does it have an API to manage team members, so it would require operator action to sync the changes.  If you are insterested in adding this, open a pull request.
+Wasabee can pull team data from V if you register your V api key with us. We cannot manage V teams due to limitations in the V API. We hope we are able to get V to add the necessary API for us.
 
 ## Our group uses GroupMe/Slack/Hangouts/AIM/ICQ/IRC...
 
@@ -48,25 +48,25 @@ Look through the Telegram code. Adding support for your favorite system probably
 
 ## I don't want to use your app for sharing my location data.
 
-We can pull from the RAID location store if you give us permission.
-
 You can send your location via the telegram bot.
 
 You can send your location via the web interface.
 
+You can send your location via the Wasabee-IITC in your IITC program.
+
 You don't have to opt into sharing your location. You lose some functionalty, but location based notifications is only one part of this tool.
 
-Maybe we will support glympse someday, if someone really wants it.
+## Why not just use <insert tool here> ? Why did you "reinvent the wheel"? ... "such a waste of developer time" ...
 
-## Why not just use <insert tool here> ?
-
-Because we like building our own tools.  When we are not smashing blue, and making the world green, we need something to keep our Ingress brains churning.  Genetic diversity is a good thing.
+Because we like building our own tools.  When we are not smashing blue, and making the world green, we need something to keep our Ingress brains churning.  Genetic diversity is a good thing. Not everyone likes Coke, some pople like tea, coffee, beer or water. 
 
 ## But ... opsec, why is the code open?
 
 We believe that having the code open means people looked at it. People will find bugs and hopfully fix them. New features will be added and new ways to solve problems will be shared. ENL have previoulsy completely decompiled/deobfuscated the RESwue client. All the attempts to hide the code was wasted effort. We have little doubt they have seen or heard of most of the ENL "secret" tools (People flip sides). Hiding code does not make it secure. API endpoint probing tools exist. Obscurity is not security, it only makes life harder on the tool maintainers, which can actaully make the code less secure because it is harder to audit. 
 
 Yes, anyone can run this server software. That does not give everyone access to all the ENL data. You would still need API keys for V and rocks. To get those you need to be a trusted ENL agent. It does run (well, it ought to, and probably needs to be tested that way) without V and rocks support enabled. Do you have moral objections to V? Do you hate the rocks people? That's fine. Run your own instance. Disable the parts you don't like. Keep your data on a private server. You do not have to trust us or them to use these tools. We don't have to trust you to let you use the tools. There is no strategic advantage to be had in secrecy when the other side already has a full toolset available to every agent. 
+
+Yes, RES can review all our code and look for vulnerabilities. We hope they do (they won't, unless they just don't have anything else to do with their lives...). We believe that open code is better. Problems get seen, and solved, much more quickly than with closed code.
 
 ## Wouldn't (my favorite database) be a better choice than MariaDB/MySQL?
 
@@ -116,11 +116,8 @@ https://letsencrypt.org/docs/client-options/
 7. Create the certificate directories
 ```
 mkdir certs
+
 #install certificates as wasabee.fullchain.pem and wasabee.key
-```
-```
-NB: you can point wasabee-server to your ACME directory, so long as both files are named correctly and in the same directory
-TODO: allow different names and the key to be in $CERT_DIR/keys/ as how most ACME clients create them
 ```
 
 8. Get a GoogleAPI client ID and secret
@@ -128,29 +125,12 @@ https://developers.google.com/identity/protocols/OAuth2
 https://developers.google.com/identity/protocols/OAuth2WebServer
 
 8.1 Get your V API key (if you want V support)
-8.2 Get your .Rocks API key (if you want .Rocks support)
+8.2 Get your .Rocks API key (if you want .Rocks support) (gfl)
 8.3 Get your Telegram API key (if you want telegram support)
 
 9. Configure your environment (don't just copy-and-paste this, tweak for your setup!)
-```
-setenv GOPATH ~/go
-setenv DATABASE "wasabee:password@tcp(localhost)/wasabee"
-setenv ROOT_URL "https://wasabee.example.com:8443"
-# this is the port to listen on, :8443 is the suggested value
-setenv HTTPS_LISTEN ":8443"
-setenv GOOGLE_CLIENT_ID "--SOMETHING--SOMETHING--SOMETHING--.apps.googleusercontent.com"
-setenv GOOGLE_CLIENT_SECRET "--SOMETHING--SOMETHING--"
-# The session-key is what encrypts the authentication cookie, it can be completely random, but must be 32 characters long
-setenv SESSION_KEY "!-rand0m-32-_char-sTring-blah-xy"
-setenv TELEGRAM_API_KEY "--SOMETHING--"
-setenv VENLONE_API_KEY "--SOMETHING--"
-setenv ENLROCKS_API_KEY "--SOMETHING--"
-# enable DEBUG to see verbose output
-#setenv DEBUG 0
-# enable the poller if you need JEAH/RAID support
-#setenv VENLONE_POLLER 0
-
-```
+9.1 copy wasabee-example.json to wasabee.json
+9.2 fill in the fields marked with "..."
 
 10. Start the processes
 ```
