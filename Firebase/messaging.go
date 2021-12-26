@@ -30,7 +30,7 @@ func AgentLocation(teamID model.TeamID) error {
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Errorw(err.Error(), "Command", m)
 		return err
 	}
@@ -127,7 +127,7 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -152,7 +152,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -177,7 +177,7 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -200,7 +200,7 @@ func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 		return nil
 	}
 
-	tmr, err := msg.SubscribeToTopic(ctx, tokens, string(teamID))
+	tmr, err := msg.SubscribeToTopic(fbctx, tokens, string(teamID))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -229,7 +229,7 @@ func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 		return nil
 	}
 
-	tmr, err := msg.UnsubscribeFromTopic(ctx, tokens, string(teamID))
+	tmr, err := msg.UnsubscribeFromTopic(fbctx, tokens, string(teamID))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -314,7 +314,7 @@ func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) err
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -336,7 +336,7 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -358,7 +358,7 @@ func SendAnnounce(teamID wm.TeamID, message string) error {
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -428,7 +428,7 @@ func genericMulticast(data map[string]string, tokens []string) {
 			Data:   data,
 			Tokens: subset,
 		}
-		br, err := msg.SendMulticast(ctx, &m)
+		br, err := msg.SendMulticast(fbctx, &m)
 		if err != nil {
 			log.Error(err)
 			// carry on
@@ -443,7 +443,7 @@ func genericMulticast(data map[string]string, tokens []string) {
 		Data:   data,
 		Tokens: tokens,
 	}
-	br, err := msg.SendMulticast(ctx, &m)
+	br, err := msg.SendMulticast(fbctx, &m)
 	if err != nil {
 		log.Error(err)
 		// carry on

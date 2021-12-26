@@ -17,7 +17,7 @@ import (
 )
 
 var msg *messaging.Client
-var ctx context.Context
+var fbctx context.Context
 
 // app     *firebase.App
 // auth    *auth.Client
@@ -65,6 +65,7 @@ func Start(ctx context.Context) error {
 		DeleteOperation:      DeleteOperation,
 	})
 
+	fbctx = ctx
 	config.SetFirebaseRunning(true)
 	return nil
 }
