@@ -65,7 +65,7 @@ func run(c *cli.Context) error {
 	if c.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	log.SetupLogging(logconf)
+	log.SetupLogging(&logconf)
 
 	// Connect to database
 	err := model.Connect(c.String("database"))

@@ -85,20 +85,6 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		m.Assignments = append(m.Assignments, m.AssignedTo)
 	}
 
-	// XXX this will not work as intended once the clients support multiple assignments
-	assignmentChanged := false
-	if m.AssignedTo != "" {
-		var count uint8
-		err := tx.QueryRow("SELECT COUNT(*) FROM assignments WHERE taskID = ? AND opID = ? AND gid = ?", m.ID, opID, m.AssignedTo).Scan(&count)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-		if count != 1 {
-			assignmentChanged = true
-		}
-	}
-
 	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		m.ID, opID, MakeNullString(m.Comment), m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
@@ -112,15 +98,15 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		return err
 	}
 
-	// empty m.Assignments clears any stored
+	// empty m.Assignments clears any
 	if err = m.Assign(tx); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	// XXX this is not correct for multiple assignments
-	if assignmentChanged {
-		messaging.SendAssignment(messaging.GoogleID(m.AssignedTo), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
+	// TBD: not spam assignments on updates if nothing has changed
+	for _, g := range m.Assignments {
+		messaging.SendAssignment(messaging.GoogleID(g), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 
 	if len(m.DependsOn) > 0 {

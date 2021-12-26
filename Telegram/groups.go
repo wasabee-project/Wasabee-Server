@@ -12,6 +12,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
 func processChatMessage(inMsg *tgbotapi.Update) error {
@@ -28,7 +29,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		return err
 	}
 
-	defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
+	defaultReply, err := templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
 		log.Error(err)
 		return err

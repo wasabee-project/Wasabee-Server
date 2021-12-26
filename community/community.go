@@ -102,7 +102,7 @@ func fetch(name string) (*profile, error) {
 
 // move the constants into the config package
 func checkJWT(raw, name string, gid model.GoogleID) error {
-	token, err := jwt.Parse([]byte(raw), jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.Get().JWParsingKeys))
+	token, err := jwt.Parse([]byte(raw), jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
 	if err != nil {
 		log.Errorw("community token parse failed", "err", err.Error(), "gid", gid, "name", name)
 		return err
@@ -128,7 +128,7 @@ func BuildToken(gid model.GoogleID, name string) (string, error) {
 		return "", err
 	}
 
-	key, ok := config.Get().JWSigningKeys.Get(0)
+	key, ok := config.JWSigningKeys().Get(0)
 	if !ok {
 		err := fmt.Errorf("encryption jwk not set")
 		log.Error(err)
@@ -146,7 +146,7 @@ func BuildToken(gid model.GoogleID, name string) (string, error) {
 	}
 
 	hdrs := jws.NewHeaders()
-	_ = hdrs.Set(jws.JWKSetURLKey, config.JKU())
+	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {

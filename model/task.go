@@ -243,6 +243,7 @@ func (t *Task) Assign(tx *sql.Tx) error {
 	return nil
 }
 
+// ClearAssignments removes any assignments for this task from the database
 func (t *Task) ClearAssignments(tx *sql.Tx) error {
 	if _, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)

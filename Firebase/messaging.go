@@ -15,23 +15,23 @@ import (
 // we do not send the agent's location via firebase since it is possible to subscribe to topics (teams) via a client
 // the clients must pull the server to get the updates
 func AgentLocation(teamID model.TeamID) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
 		"msg": string(teamID),
 		"cmd": "Agent Location Change",
-		"srv": config.GetWebroot(),
+		"srv": config.Get().HTTP.Webroot,
 		// we could send gid here for a single agent location change...
 	}
 
-	msg := messaging.Message{
+	m := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
-		log.Errorw(err.Error(), "Command", msg)
+	if _, err := msg.Send(ctx, &m); err != nil {
+		log.Errorw(err.Error(), "Command", m)
 		return err
 	}
 	return nil
@@ -39,7 +39,7 @@ func AgentLocation(teamID model.TeamID) error {
 
 // AssignLink lets an agent know they have a new assignment on a given operation
 func AssignLink(gid model.GoogleID, linkID model.TaskID, opID model.OperationID, updateID string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	tokens, err := gid.GetFirebaseTokens()
@@ -63,7 +63,7 @@ func AssignLink(gid model.GoogleID, linkID model.TaskID, opID model.OperationID,
 
 // AssignMarker lets an gent know they have a new assignment on a given operation
 func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.OperationID, updateID string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	tokens, err := gid.GetFirebaseTokens()
@@ -87,7 +87,7 @@ func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.Operatio
 
 // AssignTask lets an gent know they have a new assignment on a given operation
 func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID, updateID string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	tokens, err := gid.GetFirebaseTokens()
@@ -111,7 +111,7 @@ func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID,
 
 // MarkerStatus reports a marker update to a team/topic
 func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
@@ -119,15 +119,15 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 		"markerID": string(markerID),
 		"msg":      status,
 		"cmd":      "Marker Status Change",
-		"srv":      config.GetWebroot(),
+		"srv":      config.Get().HTTP.Webroot,
 		"updateID": updateID,
 	}
-	msg := messaging.Message{
+	m := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
+	if _, err := msg.Send(ctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -136,7 +136,7 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 
 // LinkStatus reports a link update to a team/topic
 func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
@@ -144,15 +144,15 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"linkID":   string(linkID),
 		"msg":      status,
 		"cmd":      "Link Status Change",
-		"srv":      config.GetWebroot(),
+		"srv":      config.Get().HTTP.Webroot,
 		"updateID": updateID,
 	}
-	msg := messaging.Message{
+	m := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
+	if _, err := msg.Send(ctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -161,7 +161,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 
 // TaskStatus reports a task update to a team/topic
 func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
@@ -169,15 +169,15 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"taskID":   string(taskID),
 		"msg":      status,
 		"cmd":      "Task Status Change",
-		"srv":      config.GetWebroot(),
+		"srv":      config.Get().HTTP.Webroot,
 		"updateID": updateID,
 	}
-	msg := messaging.Message{
+	m := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
+	if _, err := msg.Send(ctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -186,7 +186,7 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 
 // AddToRemote subscribes all tokens for a given agent to a team/topic
 func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 
@@ -200,7 +200,7 @@ func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 		return nil
 	}
 
-	tmr, err := c.msg.SubscribeToTopic(c.ctx, tokens, string(teamID))
+	tmr, err := msg.SubscribeToTopic(ctx, tokens, string(teamID))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -215,7 +215,7 @@ func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 
 // RemoveFromRemote removes an agent's subscriptions to a given topic/team
 func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 
@@ -229,7 +229,7 @@ func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 		return nil
 	}
 
-	tmr, err := c.msg.UnsubscribeFromTopic(c.ctx, tokens, string(teamID))
+	tmr, err := msg.UnsubscribeFromTopic(ctx, tokens, string(teamID))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -244,7 +244,7 @@ func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 
 // SendMessage is registered with Wasabee for sending messages
 func SendMessage(g wm.GoogleID, message string) (bool, error) {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return false, nil
 	}
 
@@ -268,7 +268,7 @@ func SendMessage(g wm.GoogleID, message string) (bool, error) {
 
 // SendTarget sends a portal name/guid to an agent
 func SendTarget(g wm.GoogleID, t wm.Target) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 
@@ -282,14 +282,14 @@ func SendTarget(g wm.GoogleID, t wm.Target) error {
 		return nil
 	}
 
-	message, err := json.Marshal(t)
+	m, err := json.Marshal(t)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
 	data := map[string]string{
-		"msg": string(message),
+		"msg": string(m),
 		"cmd": "Target",
 	}
 
@@ -299,22 +299,22 @@ func SendTarget(g wm.GoogleID, t wm.Target) error {
 
 // MapChange alerts a team of the need to need to refresh map data
 func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
 		"opID":     string(opID),
 		"updateID": updateID,
 		"cmd":      "Map Change",
-		"srv":      config.GetWebroot(),
+		"srv":      config.Get().HTTP.Webroot,
 	}
 
-	msg := messaging.Message{
+	m := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
+	if _, err := msg.Send(ctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -323,20 +323,20 @@ func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) err
 
 // AgentLogin alerts a team of an agent on that team logging in
 func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
 		"gid": string(gid),
 		"cmd": "Login",
-		"srv": config.GetWebroot(),
+		"srv": config.Get().HTTP.Webroot,
 	}
-	msg := messaging.Message{
+	m := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
+	if _, err := msg.Send(ctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -345,20 +345,20 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 
 // SendAnnounce sends a generic message to a team
 func SendAnnounce(teamID wm.TeamID, message string) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
 		"msg": message,
 		"cmd": "Generic Message",
-		"srv": config.GetWebroot(),
+		"srv": config.Get().HTTP.Webroot,
 	}
-	msg := messaging.Message{
+	m := messaging.Message{
 		Topic: string(teamID),
 		Data:  data,
 	}
 
-	if _, err := c.msg.Send(c.ctx, &msg); err != nil {
+	if _, err := msg.Send(ctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -367,7 +367,7 @@ func SendAnnounce(teamID wm.TeamID, message string) error {
 
 // DeleteOperation tells everyone (on this server) to remove a specific op
 func DeleteOperation(opID wm.OperationID) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	tokens, err := model.FirebaseBroadcastList()
@@ -391,7 +391,7 @@ func DeleteOperation(opID wm.OperationID) error {
 
 // AgentDeleteOperation notifies a single agent of the need to delete an operation (e.g. when removed from a team)
 func AgentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
-	if !c.running {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
 
@@ -424,11 +424,11 @@ func genericMulticast(data map[string]string, tokens []string) {
 	for len(tokens) > 500 {
 		subset := tokens[:500]
 		tokens = tokens[500:]
-		msg := messaging.MulticastMessage{
+		m := messaging.MulticastMessage{
 			Data:   data,
 			Tokens: subset,
 		}
-		br, err := c.msg.SendMulticast(c.ctx, &msg)
+		br, err := msg.SendMulticast(ctx, &m)
 		if err != nil {
 			log.Error(err)
 			// carry on
@@ -437,13 +437,13 @@ func genericMulticast(data map[string]string, tokens []string) {
 		processBatchResponse(br, subset)
 	}
 
-	data["srv"] = config.GetWebroot()
+	data["srv"] = config.Get().HTTP.Webroot
 
-	msg := messaging.MulticastMessage{
+	m := messaging.MulticastMessage{
 		Data:   data,
 		Tokens: tokens,
 	}
-	br, err := c.msg.SendMulticast(c.ctx, &msg)
+	br, err := msg.SendMulticast(ctx, &m)
 	if err != nil {
 		log.Error(err)
 		// carry on

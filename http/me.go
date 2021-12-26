@@ -58,7 +58,7 @@ func formValidationToken(req *http.Request) string {
 		idx = len(req.RemoteAddr)
 	}
 	ip := req.RemoteAddr[0:idx]
-	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("User-Agent"), ip, c.OauthConfig.ClientSecret)
+	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("User-Agent"), ip, config.GetOauthConfig().ClientSecret)
 	hasher := sha256.New()
 	hasher.Write([]byte(toHash))
 	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
@@ -232,7 +232,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	ses, err := c.store.Get(req, c.sessionName)
+	ses, err := store.Get(req, config.Get().HTTP.SessionName)
 	delete(ses.Values, "nonce")
 	delete(ses.Values, "id")
 	delete(ses.Values, "loginReq")
@@ -367,7 +367,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	key, ok := config.Get().JWSigningKeys.Get(0)
+	key, ok := config.JWSigningKeys().Get(0)
 	if !ok {
 		err := fmt.Errorf("encryption jwk not set")
 		log.Error(err)
@@ -375,7 +375,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.Get().JWParsingKeys))
+	token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
 	if err != nil {
 		log.Info(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
@@ -417,7 +417,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 
 	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
-	_ = hdrs.Set(jws.JWKSetURLKey, config.JKU())
+	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {

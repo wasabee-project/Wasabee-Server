@@ -124,12 +124,12 @@ func updateWebhook() error {
 	}
 
 	apiurl := apiBase + "stream:update"
-	webroot := config.GetWebroot()
+	webroot := config.Get().HTTP.Webroot
 	// this is a static string, don't marshal it every time...
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
-			"url":             webroot + riscHook,
+			"url":             webroot + config.Get().RISC.Webhook,
 		},
 		"events_requested": []string{
 			"https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required",
@@ -173,6 +173,11 @@ func updateWebhook() error {
 
 // DisableWebhook tells Google to stop sending messages
 func DisableWebhook() {
+	if !running {
+		log.Infow("shutdown", "message", "RISC not running...not shutting down again")
+		return
+	}
+
 	log.Infow("shutdown", "subsystem", "RISC", "message", "disabling RISC webhook with Google")
 
 	token, err := getToken()
@@ -182,11 +187,11 @@ func DisableWebhook() {
 	}
 
 	apiurl := apiBase + "stream:update"
-	webroot := config.GetWebroot()
+	webroot := config.Get().HTTP.Webroot
 	jmsg := map[string]interface{}{
 		"delivery": map[string]string{
 			"delivery_method": "https://schemas.openid.net/secevent/risc/delivery-method/push",
-			"url":             webroot + riscHook,
+			"url":             webroot + config.Get().RISC.Webhook,
 		},
 		"status": "disabled",
 	}

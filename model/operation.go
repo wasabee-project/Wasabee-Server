@@ -637,8 +637,6 @@ func (o *Operation) Touch() (string, error) {
 		log.Error(err)
 		return "", err
 	}
-
-	log.Debugw("touch", "updateID", updateID)
 	return updateID, nil
 }
 

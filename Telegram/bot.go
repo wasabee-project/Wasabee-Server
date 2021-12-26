@@ -1,8 +1,8 @@
 package wtg
 
 import (
+	"context"
 	"fmt"
-	"html/template"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -14,42 +14,26 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
-// Config is the main configuration data for the Telegram interface
-// passed to main() pre-loaded with APIKey and TemplateSet set, the rest is built when the bot starts
-type Config struct {
-	APIKey      string
-	HookPath    string
-	TemplateSet map[string]*template.Template
-	baseKbd     tgbotapi.ReplyKeyboardMarkup
-	upChan      chan tgbotapi.Update
-	hook        string
-}
+var baseKbd tgbotapi.ReplyKeyboardMarkup
+var upChan chan tgbotapi.Update
+var hook string
 
 var bot *tgbotapi.BotAPI
-var c Config
 
-// WasabeeBot is called from main() to start the bot.
-func WasabeeBot(in *Config) {
-	if in.APIKey == "" {
+// Start is called from main() to start the bot.
+func Start(ctx context.Context) {
+	c := config.Get().Telegram
+
+	if c.APIKey == "" {
 		log.Infow("startup", "subsystem", "Telegram", "message", "Telegram API key not set; not starting")
 		return
 	}
-	c.APIKey = in.APIKey
 
-	if in.TemplateSet == nil {
-		log.Warnw("startup", "subsystem", "Telegram", "message", "the Telegram message templates are not loaded; not starting Telegram bot")
-		return
-	}
-	c.TemplateSet = in.TemplateSet
-	c.baseKbd = keyboards()
-	c.HookPath = in.HookPath
-	if c.HookPath == "" {
-		c.HookPath = "/tg"
-	}
+	baseKbd = keyboards()
 
-	c.upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
-	webhook := config.Subrouter(c.HookPath)
-	webhook.HandleFunc("/{hook}", TGWebHook).Methods("POST")
+	upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
+	subrouter := config.Subrouter(c.HookPath)
+	subrouter.HandleFunc("/{hook}", webhook).Methods("POST")
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(c.APIKey)
@@ -57,6 +41,7 @@ func WasabeeBot(in *Config) {
 		log.Error(err)
 		return
 	}
+	defer Shutdown()
 
 	// bot.Debug = true
 	log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
@@ -65,9 +50,8 @@ func WasabeeBot(in *Config) {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	webroot := config.GetWebroot()
-	c.hook = generatename.GenerateName()
-	whurl := fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
+	hook = generatename.GenerateName()
+	whurl := fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
 	wh, _ := tgbotapi.NewWebhook(whurl)
 	if _, err = bot.Request(wh); err != nil {
 		log.Error(err)
@@ -82,8 +66,10 @@ func WasabeeBot(in *Config) {
 		RemoveFromRemote: removeFromChat,
 	})
 
+	// XXX await <-ctx.Done and bail
+
 	i := 1
-	for update := range c.upChan {
+	for update := range upChan {
 		// log.Debugf("running update: %s", update)
 		if err = runUpdate(update); err != nil {
 			log.Error(err)
@@ -91,8 +77,8 @@ func WasabeeBot(in *Config) {
 		}
 		if (i % 100) == 0 { // every 100 requests, change the endpoint
 			i = 1
-			c.hook = generatename.GenerateName()
-			whurl = fmt.Sprintf("%s%s/%s", webroot, c.HookPath, c.hook)
+			hook = generatename.GenerateName()
+			whurl = fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
 			wh, _ := tgbotapi.NewWebhook(whurl)
 			_, err = bot.Request(wh)
 			if err != nil {

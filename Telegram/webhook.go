@@ -13,22 +13,22 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// TGWebHook is the http route for receiving Telegram updates
-func TGWebHook(res http.ResponseWriter, req *http.Request) {
+// webhook is the http route for receiving Telegram updates
+func webhook(res http.ResponseWriter, req *http.Request) {
 	var err error
 
-	if c.APIKey == "" || c.hook == "" {
-		err = fmt.Errorf("the Telegram API is not configured")
+	if hook == "" {
+		err := fmt.Errorf("the Telegram API is not configured")
 		log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	hook := vars["hook"]
+	h := vars["hook"]
 
-	if hook != c.hook {
-		err = fmt.Errorf("%s is not a valid hook", hook)
+	if h != hook {
+		err = fmt.Errorf("%s is not a valid hook", h)
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return
@@ -64,7 +64,7 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// put the update into the subsystem update channel for processing by the bot logic
-	c.upChan <- update
+	upChan <- update
 
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(res, `{"status":"ok"}`)

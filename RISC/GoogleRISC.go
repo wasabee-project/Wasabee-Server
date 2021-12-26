@@ -1,16 +1,15 @@
 package risc
 
 import (
-	// "bytes"
 	"context"
-	// "crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"time"
 
-	// "github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jwt"
 
@@ -19,9 +18,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
-
-const riscHook = "/GoogleRISC"
-const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configuration"
 
 // internal channel
 var riscchan chan event
@@ -59,11 +55,19 @@ type riscmsg struct {
 	Reason  string `json:"reason"`
 }
 
-// RISC sets up the data structures and starts the processing threads
-func RISC(ctx context.Context, configfile string) {
-	// load service-account info from JSON file
-	// #nosec
-	tmp, err := ioutil.ReadFile(configfile)
+// Start sets up the data structures and starts the processing threads
+func Start(ctx context.Context) {
+	c := config.Get()
+	if c.RISC.Cert == "" {
+		log.Debugw("startup", "message", "RISC not configured")
+		return
+	}
+	full := path.Join(c.Certs, c.RISC.Cert)
+
+	if _, err := os.Stat(full); err != nil {
+		log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", full)
+	}
+	tmp, err := ioutil.ReadFile(full)
 	if err != nil {
 		log.Error(err)
 		return
@@ -79,7 +83,7 @@ func RISC(ctx context.Context, configfile string) {
 	// make a channel to read for events
 	riscchan = make(chan event, 1)
 
-	risc := config.Subrouter(riscHook)
+	risc := config.Subrouter(config.Get().RISC.Webhook)
 	risc.HandleFunc("", Webhook).Methods("POST")
 
 	// start a thread for keeping the connection to Google fresh
@@ -194,7 +198,7 @@ func validateToken(rawjwt []byte) error {
 }
 
 func googleRiscDiscovery() error {
-	req, err := http.NewRequest("GET", googleDiscoveryURL, nil)
+	req, err := http.NewRequest("GET", config.Get().RISC.Discovery, nil)
 	if err != nil {
 		log.Error(err)
 		return err

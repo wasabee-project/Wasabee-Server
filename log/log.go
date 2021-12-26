@@ -11,13 +11,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/api/option"
-	// "github.com/blendle/zapdriver"
 )
 
-// Log is the primary log interface for Wasabee-Server
-var Log *zap.SugaredLogger
-
-// Configuration is passed to SetupLogging to configure logging
+// Configuration is the primary config for logging
 type Configuration struct {
 	Console            bool
 	ConsoleLevel       zapcore.Level
@@ -27,8 +23,11 @@ type Configuration struct {
 	FileLevel          zapcore.Level
 }
 
+// sugared is the primary log interface for Wasabee-Server
+var sugared *zap.SugaredLogger
+
 // SetupLogging is called very early by the startup routine to configure logging
-func SetupLogging(c Configuration) {
+func SetupLogging(c *Configuration) {
 	var cores []zapcore.Core
 
 	if c.Console {
@@ -69,7 +68,7 @@ func SetupLogging(c Configuration) {
 		undo()
 	}
 
-	Log = sugarfree.Sugar()
+	sugared = sugarfree.Sugar()
 }
 
 func addGoogleCloud(project string, jsonPath string) (zapcore.Core, error) {
@@ -121,60 +120,60 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 
 // Debug logs at the lowest level
 func Debug(args ...interface{}) {
-	Log.Debug(args...)
+	sugared.Debug(args...)
 }
 
 // Debugw logs structured logs at the lowest level
 func Debugw(msg string, args ...interface{}) {
-	Log.Debugw(msg, args...)
+	sugared.Debugw(msg, args...)
 }
 
 // Error logs at the level which requires attention
 func Error(args ...interface{}) {
-	Log.Error(args...)
+	sugared.Error(args...)
 }
 
 // Errorw logs structured logs at the level which requires attention
 func Errorw(msg string, args ...interface{}) {
-	Log.Errorw(msg, args...)
+	sugared.Errorw(msg, args...)
 }
 
 // Fatal logs a message and stops the process
 func Fatal(args ...interface{}) {
-	Log.Fatal(args...)
+	sugared.Fatal(args...)
 }
 
 // Fatalw logs a structured log and stops the process
 func Fatalw(msg string, args ...interface{}) {
-	Log.Fatalw(msg, args...)
+	sugared.Fatalw(msg, args...)
 }
 
 // Info logs messages which are helpful for tracking problems
 func Info(args ...interface{}) {
-	Log.Info(args...)
+	sugared.Info(args...)
 }
 
 // Infow logs structured logs which are helpful for tracking problems
 func Infow(msg string, args ...interface{}) {
-	Log.Infow(msg, args...)
+	sugared.Infow(msg, args...)
 }
 
 // Panic logs critical messages and stops the process
 func Panic(args ...interface{}) {
-	Log.Panic(args...)
+	sugared.Panic(args...)
 }
 
 // Panicw logs structured logs and stops the process
 func Panicw(msg string, args ...interface{}) {
-	Log.Panicw(msg, args...)
+	sugared.Panicw(msg, args...)
 }
 
 // Warn logs unusual situations
 func Warn(args ...interface{}) {
-	Log.Warn(args...)
+	sugared.Warn(args...)
 }
 
 // Warnw logs strucutured logs for unusual situations
 func Warnw(msg string, args ...interface{}) {
-	Log.Warnw(msg, args...)
+	sugared.Warnw(msg, args...)
 }

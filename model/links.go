@@ -151,8 +151,8 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 			log.Error(err)
 			return err
 		}
-		if len(l.Assignments) > 0 {
-			messaging.SendAssignment(messaging.GoogleID(l.AssignedTo), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
+		for _, g := range l.Assignments {
+			messaging.SendAssignment(messaging.GoogleID(g), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
 		}
 	}
 

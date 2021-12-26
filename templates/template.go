@@ -7,12 +7,10 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/wasabee-project/Wasabee-Server/log"
-	// "github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// XXX this is a kludge
 var ts map[string]*template.Template
 var funcMap = template.FuncMap{
 	// "TGGetBotName": wasabeetelegram.TGGetBotName,
@@ -21,16 +19,12 @@ var funcMap = template.FuncMap{
 	"WebAPIPath": config.GetWebAPIPath,
 }
 
-// Startup should be called once from main to establish the templates.
-// Individual subsystems should provide their own execution function since requirements will vary
-// XXX TODO: establish a way of refreshing/reloading that doesn't leak
-//
-func Startup(frontendPath string) (map[string]*template.Template, error) {
-	// Transform frontendPath to an absolute path
+// Start should be called once from main to establish the templates.
+func Start(frontendPath string) error {
 	fp, err := filepath.Abs(frontendPath)
 	if err != nil {
-		log.Fatalw("startup", "error", "frontend path could not be resolved.")
-		// panic(err)
+		log.Fatalw("startup", "error", "template path could not be resolved.")
+		panic(err)
 	}
 
 	templateSet := make(map[string]*template.Template)
@@ -39,7 +33,7 @@ func Startup(frontendPath string) (map[string]*template.Template, error) {
 	files, err := ioutil.ReadDir(fp)
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return err
 	}
 
 	for _, f := range files {
@@ -58,17 +52,21 @@ func Startup(frontendPath string) (map[string]*template.Template, error) {
 			if err != nil {
 				log.Error(err)
 			}
-			log.Debugw("startup", "language", lang, "templates", templateSet[lang].DefinedTemplates())
+			// log.Debugw("startup", "language", lang, "templates", templateSet[lang].DefinedTemplates())
 		}
 	}
+
 	ts = templateSet
-	return templateSet, nil
+	return nil
 }
 
-// Execute runs a template with the given data
+// Execute runs a template with the given data -- defaulting to English
 func Execute(name string, data interface{}) (string, error) {
-	lang := "en"
+	return ExecuteLang(name, "en", data)
+}
 
+// ExecuteLang runs a given template in a specified langauge
+func ExecuteLang(name, lang string, data interface{}) (string, error) {
 	var tpBuffer bytes.Buffer
 	if err := ts[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
 		log.Info(err)

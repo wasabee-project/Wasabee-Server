@@ -16,21 +16,22 @@ var scannerMux sync.Mutex
 func setupRouter() *mux.Router {
 	// Main Router
 	router := config.NewRouter()
+	c := config.Get().HTTP
 
 	// apply to all
 	router.Use(headersMW)
 	// router.Use(logRequestMW)
 	// router.Use(debugMW)
-	router.Use(c.unrolled.Handler)
+	router.Use(unrolled.Handler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 	router.MethodNotAllowedHandler = http.HandlerFunc(notFoundRoute)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff (constants defined in server.go)
-	router.HandleFunc(login, googleRoute).Methods("GET")               // deprecated -- belongs in clients now
-	router.HandleFunc(callback, callbackRoute).Methods("GET")          // deprecated cookie mode
-	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")           // all clients should use this
-	router.HandleFunc(oneTimeToken, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
+	router.HandleFunc(c.LoginURL, googleRoute).Methods("GET")               // deprecated -- belongs in clients now
+	router.HandleFunc(c.CallbackURL, callbackRoute).Methods("GET")          // deprecated cookie mode
+	router.HandleFunc(c.ApTokenURL, apTokenRoute).Methods("POST")           // all clients should use this
+	router.HandleFunc(c.OneTimeTokenURL, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
 
 	// common files that live under /static
 	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
@@ -46,7 +47,7 @@ func setupRouter() *mux.Router {
 	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
 
 	// /api/v1/... route
-	api := config.Subrouter(apipath)
+	api := config.Subrouter(c.APIPathURL)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	setupAuthRoutes(api)
 	api.Use(authMW)
@@ -55,7 +56,7 @@ func setupRouter() *mux.Router {
 	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
 
 	// /me route
-	meRouter := config.Subrouter(me)
+	meRouter := config.Subrouter(c.MeURL)
 	meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	meRouter.HandleFunc("", meRoute).Methods("GET", "POST", "HEAD")
 	meRouter.Use(authMW)
@@ -72,7 +73,7 @@ func setupRouter() *mux.Router {
 
 	// /static files
 	static := config.Subrouter("/static")
-	static.PathPrefix("/").Handler(http.FileServer(http.Dir(c.FrontendPath)))
+	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.Get().FrontendPath)))
 	// static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
 	// catch all others -- jacks up later subrouters (e.g. Telegram and GoogleRISC)
@@ -212,7 +213,8 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	url := fmt.Sprintf("%s?server=%s", config.Get().HTTP.WebUIurl, config.Get().HTTP.Webroot)
+	c := config.Get()
+	url := fmt.Sprintf("%s?server=%s", c.WebUIURL, c.HTTP.Webroot)
 	http.Redirect(res, req, url, http.StatusMovedPermanently)
 }
 
@@ -233,11 +235,11 @@ func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 
 func incrementScanner(req *http.Request) {
 	scannerMux.Lock()
-	i, ok := c.scanners[req.RemoteAddr]
+	i, ok := scanners[req.RemoteAddr]
 	if ok {
-		c.scanners[req.RemoteAddr] = i + 1
+		scanners[req.RemoteAddr] = i + 1
 	} else {
-		c.scanners[req.RemoteAddr] = 1
+		scanners[req.RemoteAddr] = 1
 	}
 	scannerMux.Unlock()
 }
@@ -245,7 +247,7 @@ func incrementScanner(req *http.Request) {
 // true == block, false == permit
 func isScanner(req *http.Request) bool {
 	scannerMux.Lock()
-	i, ok := c.scanners[req.RemoteAddr]
+	i, ok := scanners[req.RemoteAddr]
 	scannerMux.Unlock()
 
 	if !ok || i < 20 {
@@ -255,5 +257,5 @@ func isScanner(req *http.Request) bool {
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {
-	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", http.Dir(c.FrontendPath)))
+	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", http.Dir(config.Get().FrontendPath)))
 }

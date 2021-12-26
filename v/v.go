@@ -9,27 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 type vTeamID int64
-
-// Config contains configuration for calling v.enl.one APIs
-type Config struct {
-	APIKey         string
-	APIEndpoint    string
-	StatusEndpoint string
-	TeamEndpoint   string
-	configured     bool
-}
-
-var vc = Config{
-	APIEndpoint:    "https://v.enl.one/api/v1",
-	StatusEndpoint: "https://status.enl.one/api/location",
-	TeamEndpoint:   "https://v.enl.one/api/v2/teams",
-}
 
 // Result is set by the V trust API
 type trustResult struct {
@@ -67,11 +53,12 @@ type myTeam struct {
 	Admin bool `json:"admin"`
 }
 
-// Startup is called from main() to initialize the config
-func Startup(key string) {
-	log.Debugw("startup", "V.enl.one API Key", key)
-	vc.APIKey = key
-	vc.configured = true
+// Start is called start V integration
+func Start() {
+	if config.Get().V.APIKey == "" {
+		return
+	}
+	config.SetVRunning(true)
 
 	messaging.RegisterMessageBus("v.enl.one", messaging.Bus{
 		AddToRemote:      addToRemote,
@@ -81,20 +68,20 @@ func Startup(key string) {
 
 // trustCheck checks a agent at V and populates a trustResult
 func trustCheck(id model.GoogleID) (*trustResult, error) {
-	var tr trustResult
-	if !vc.configured {
-		return &tr, nil
+	if !config.IsVRunning() {
+		return &trustResult{}, nil
 	}
 	if id == "" {
-		return &tr, fmt.Errorf("empty trustCheck value")
+		return &trustResult{}, fmt.Errorf("empty trustCheck value")
 	}
 
+	vc := config.Get().V
 	url := fmt.Sprintf("%s/agent/%s/trust?apikey=%s", vc.APIEndpoint, id, vc.APIKey)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Error(err)
-		return &tr, err
+		return &trustResult{}, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -103,19 +90,18 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 	if err != nil {
 		log.Debug(err)
 		err = fmt.Errorf("unable to request user info from V")
-		return &tr, err
+		return &trustResult{}, err
 	}
-
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return &tr, err
+		return &trustResult{}, err
 	}
 
-	// log.Debug(string(body))
-	err = json.Unmarshal(body, &tr)
-	if err != nil {
+	var tr trustResult
+	if err := json.Unmarshal(body, &tr); err != nil {
 		log.Error(err)
 		return &tr, err
 	}
@@ -124,32 +110,30 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 		log.Info(err)
 		return &tr, err
 	}
-	// log.Debug(tr)
 	tr.Data.Gid = id // V isn't sending the GIDs
 	return &tr, nil
 }
 
 // geTeams pulls a list of teams the agent is on at V
 func getTeams(gid model.GoogleID) (*myTeams, error) {
-	var v myTeams
-
 	key, err := gid.GetVAPIkey()
 	if err != nil {
 		log.Error(err)
-		return &v, err
+		return &myTeams{}, err
 	}
 	if key == "" {
 		err := fmt.Errorf("cannot get V teams if no V API key set")
 		log.Error(err)
-		return &v, err
+		return &myTeams{}, err
 	}
 
+	vc := config.Get().V
 	apiurl := fmt.Sprintf("%s?apikey=%s", vc.TeamEndpoint, key)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		err := fmt.Errorf("error establishing agent's team pull request")
 		log.Error(err)
-		return &v, err
+		return &myTeams{}, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -158,15 +142,16 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 	if err != nil {
 		err := fmt.Errorf("error executing team pull request")
 		log.Error(err)
-		return &v, err
+		return &myTeams{}, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return &v, err
+		return &myTeams{}, err
 	}
 
+	var v myTeams
 	err = json.Unmarshal(body, &v)
 	if err != nil {
 		log.Error(err)
@@ -176,24 +161,24 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 }
 
 func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
-	var vt teamResult
 	if vteamID == 0 {
-		return &vt, nil
+		return &teamResult{}, nil
 	}
 
 	if key == "" {
 		err := fmt.Errorf("cannot get V team if no V API key set")
 		log.Error(err)
-		return &vt, err
+		return &teamResult{}, err
 	}
 
+	vc := config.Get().V
 	apiurl := fmt.Sprintf("%s/%d?apikey=%s", vc.TeamEndpoint, vteamID, key)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
-		// log.Error(err) // do not leak API key to logs
+		// do not leak API key to logs
 		err := fmt.Errorf("error establishing team pull request")
 		log.Error(err)
-		return &vt, err
+		return &teamResult{}, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -202,16 +187,16 @@ func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 	if err != nil {
 		err := fmt.Errorf("error executing team pull request")
 		log.Error(err)
-		return &vt, err
+		return &teamResult{}, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return &vt, err
+		return &teamResult{}, err
 	}
-	// log.Debug(string(body))
 
+	var vt teamResult
 	err = json.Unmarshal(body, &vt)
 	if err != nil {
 		log.Error(err)
@@ -515,10 +500,11 @@ func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *m
 // TelegramSearch queries V for information about an agent by TelegramID
 func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 	var br bulkResult
-	if !vc.configured {
+	if !config.IsVRunning() {
 		return &model.VAgent{}, nil
 	}
 
+	vc := config.Get().V
 	url := fmt.Sprintf("%s/bulk/agent/info/telegramid?apikey=%s", vc.APIEndpoint, vc.APIKey)
 	postdata := fmt.Sprintf("[%d]", tgid)
 

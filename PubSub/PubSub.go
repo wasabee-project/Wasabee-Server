@@ -58,8 +58,7 @@ func Start(incoming Configuration) error {
 	c.requestTopic = client.Topic("requests")
 
 	// are we a responder or a requester
-	w := config.Get()
-	if !w.V && !w.Rocks {
+	if !config.IsVRunning() && !config.IsRocksRunning() {
 		// use a subscription for one who requests
 		c.responder = false
 		c.subscription = c.hostname
@@ -303,8 +302,7 @@ func inteldata(gid, data, sender string) {
 
 func respond(g string, sender string) (bool, error) {
 	// if the APIs are not running, don't respond
-	w := config.Get()
-	if !w.V && !w.Rocks {
+	if !config.IsVRunning() && !config.IsRocksRunning() {
 		return false, nil
 	}
 

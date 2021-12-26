@@ -46,11 +46,12 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// session cookie
-	ses, err := c.store.Get(req, c.sessionName)
+	c := config.Get().HTTP
+	ses, err := store.Get(req, c.SessionName)
 	if err != nil {
-		// cookie is borked, maybe sessionName or key changed
+		// cookie is borked, maybe SessionName or key changed
 		log.Error("Cookie error: ", err)
-		ses = sessions.NewSession(c.store, c.sessionName)
+		ses = sessions.NewSession(store, c.SessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
 			MaxAge:   -1,
@@ -121,11 +122,11 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	// add random value to help curb login loops
 	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
 	h := hex.EncodeToString(sha[:])
-	location := fmt.Sprintf("%s?r=%s", me, h)
+	location := fmt.Sprintf("%s?r=%s", c.MeURL, h)
 	log.Infow("legacy login", "GID", m.Gid, "name", name, "message", name+" legacy login")
 	if ses.Values["loginReq"] != nil {
 		rr := ses.Values["loginReq"].(string)
-		if rr[:len(me)] == me || rr[:len(login)] == login {
+		if rr[:len(c.MeURL)] == c.MeURL || rr[:len(c.LoginURL)] == c.LoginURL {
 			// -- need to invert this logic now
 		} else {
 			location = rr
@@ -140,6 +141,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 func calculateNonce(gid model.GoogleID) (string, string) {
 	t := time.Now()
 	y := t.Add(0 - 24*time.Hour)
+	c := config.Get().HTTP
+
 	now := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())  // t.Round(time.Hour).String()
 	prev := fmt.Sprintf("%d-%02d-%02d", y.Year(), y.Month(), y.Day()) // t.Add(0 - time.Hour).Round(time.Hour).String()
 	// something specific to the agent, something secret, something short-term
@@ -150,13 +153,14 @@ func calculateNonce(gid model.GoogleID) (string, string) {
 
 // read the result from provider at end of oauth session
 func getAgentInfo(rctx context.Context, state string, code string) ([]byte, error) {
-	if state != c.oauthStateString {
+	if state != oauthStateString {
 		return nil, fmt.Errorf("invalid oauth state")
 	}
 
 	ctx, cancel := context.WithTimeout(rctx, (5 * time.Second))
 	defer cancel()
-	token, err := c.OauthConfig.Exchange(ctx, code)
+
+	token, err := config.GetOauthConfig().Exchange(ctx, code)
 	if err != nil {
 		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
@@ -172,7 +176,7 @@ func getAgentInfo(rctx context.Context, state string, code string) ([]byte, erro
 
 // used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info
 func getOauthUserInfo(accessToken string) ([]byte, error) {
-	req, err := http.NewRequest("GET", c.OauthUserInfoURL, nil)
+	req, err := http.NewRequest("GET", config.Get().HTTP.OauthUserInfoURL, nil)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -271,11 +275,12 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// session cookie
-	ses, err := c.store.Get(req, c.sessionName)
+	c := config.Get().HTTP
+	ses, err := store.Get(req, c.SessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
 		log.Errorw("aptok cookie error", "error", err.Error())
-		ses = sessions.NewSession(c.store, c.sessionName)
+		ses = sessions.NewSession(store, c.SessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
 			MaxAge:   -1,
@@ -373,7 +378,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 	}
 
 	// XXX use last, rather than first?
-	key, ok := config.Get().JWSigningKeys.Get(0)
+	key, ok := config.JWSigningKeys().Get(0)
 	if !ok {
 		return "", fmt.Errorf("encryption jwk not set")
 	}
@@ -395,7 +400,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 
 	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
-	_ = hdrs.Set(jws.JWKSetURLKey, config.JKU())
+	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
 	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
 	if err != nil {
@@ -437,11 +442,12 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// session cookie
-	ses, err := c.store.Get(req, c.sessionName)
+	c := config.Get().HTTP
+	ses, err := store.Get(req, config.Get().HTTP.SessionName)
 	if err != nil {
 		// cookie is borked, maybe sessionName or key changed
 		log.Error("Cookie error: " + err.Error())
-		ses = sessions.NewSession(c.store, c.sessionName)
+		ses = sessions.NewSession(store, c.SessionName)
 		ses.Options = &sessions.Options{
 			Path:     "/",
 			MaxAge:   -1,

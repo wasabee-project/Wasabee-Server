@@ -605,7 +605,6 @@ func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func jsonOKUpdateID(uid string) string {
-	log.Debugw("sending OK", "updateID", uid)
 	return fmt.Sprintf("{\"status\":\"ok\", \"updateID\": \"%s\"}", uid)
 }
 

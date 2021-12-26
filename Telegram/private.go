@@ -10,6 +10,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
+	"github.com/wasabee-project/Wasabee-Server/templates"
 	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
@@ -21,7 +22,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		return err
 	}
 
-	/* defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
+	/* defaultReply, err := templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -37,7 +38,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 			// firstlogin found something at Rocks (or V lol), use that
 			msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 			msg.ParseMode = "HTML"
-			tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
+			tmp, _ := templates.ExecuteLang("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
 			if _, err = bot.Send(msg); err != nil {
 				log.Error(err)
@@ -98,17 +99,17 @@ func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
 		switch inMsg.Message.Command() {
 		// add commands here
 		case "start":
-			tmp, _ := templateExecute("help", inMsg.Message.From.LanguageCode, nil)
+			tmp, _ := templates.ExecuteLang("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-			msg.ReplyMarkup = c.baseKbd
+			msg.ReplyMarkup = baseKbd
 		case "help":
-			tmp, _ := templateExecute("help", inMsg.Message.From.LanguageCode, nil)
+			tmp, _ := templates.ExecuteLang("help", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-			msg.ReplyMarkup = c.baseKbd
+			msg.ReplyMarkup = baseKbd
 		default:
-			tmp, _ := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
+			tmp, _ := templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-			msg.ReplyMarkup = c.baseKbd
+			msg.ReplyMarkup = baseKbd
 		}
 	} else if inMsg.Message.Text != "" {
 		switch inMsg.Message.Text {
@@ -116,7 +117,7 @@ func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
 		case "wasabee":
 			msg.Text = "wasabee rocks"
 		default:
-			msg.ReplyMarkup = c.baseKbd
+			msg.ReplyMarkup = baseKbd
 		}
 	}
 
@@ -209,10 +210,10 @@ func newUserInit(inMsg *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
 	err := tid.InitAgent(inMsg.Message.From.UserName, ott)
 	if err != nil {
 		log.Error(err)
-		tmp, _ := templateExecute("InitOneFail", inMsg.Message.From.LanguageCode, nil)
+		tmp, _ := templates.ExecuteLang("InitOneFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
-		tmp, _ := templateExecute("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
+		tmp, _ := templates.ExecuteLang("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	}
 	return &msg, err
@@ -236,10 +237,10 @@ func newUserVerify(inMsg *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
 	err := tid.VerifyAgent(authtoken)
 	if err != nil {
 		log.Error(err)
-		tmp, _ := templateExecute("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
+		tmp, _ := templates.ExecuteLang("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	} else {
-		tmp, _ := templateExecute("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
+		tmp, _ := templates.ExecuteLang("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 		msg.Text = tmp
 	}
 	return &msg, err

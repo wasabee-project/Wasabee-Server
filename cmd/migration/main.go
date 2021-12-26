@@ -67,7 +67,7 @@ func run(c *cli.Context) error {
 	if c.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	log.SetupLogging(logconf)
+	log.SetupLogging(&logconf)
 
 	var err error
 	old, err = connect(c.String("old"))

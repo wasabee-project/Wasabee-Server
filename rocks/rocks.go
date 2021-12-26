@@ -11,13 +11,11 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
-
-var communityEndpointURL = "https://enlightened.rocks/comm/api/membership"
-var statusEndpointURL = "https://enlightened.rocks/api/user/status"
 
 // communityNotice is sent from a community when an agent is added or removed
 // consumed by RocksCommunitySync function below
@@ -55,54 +53,45 @@ type rocksPushResponse struct {
 	Success bool   `json:"success"`
 }
 
-// Config contains configuration for interacting with the enl.rocks APIs.
-var c struct {
-	// APIKey is the API Key for enl.rocks.
-	APIKey string
-	// CommunityEndpoint is the API endpoint for viewing community membership
-	CommunityEndpoint string
-	// StatusEndpoint is the API endpoint for getting user status
-	StatusEndpoint string
-	limiter        *rate.Limiter
-}
+var limiter *rate.Limiter
 
 // Start is called from main() to initialize the config
-func Start(apikey string) {
-	// log.Debugw("startup", "enl.rocks API Key", apikey)
-	c.APIKey = apikey
+func Start() {
+	if key := config.Get().Rocks.APIKey; key == "" {
+		log.Debug("Rocks not configured, not starting")
+	}
 
-	c.CommunityEndpoint = communityEndpointURL
-	c.StatusEndpoint = statusEndpointURL
-	c.limiter = rate.NewLimiter(rate.Limit(0.5), 60)
+	limiter = rate.NewLimiter(rate.Limit(0.5), 60)
 
 	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Rocks", messaging.Bus{
 		AddToRemote:      addToRemote,
 		RemoveFromRemote: removeFromRemote,
 	})
+	config.SetRocksRunning(true)
 }
 
 // Search checks a agent at enl.rocks and returns an Agent
 func Search(id string) (*model.RocksAgent, error) {
-	var agent model.RocksAgent
-	if c.APIKey == "" {
-		return &agent, nil
+	if !config.IsRocksRunning() {
+		return &model.RocksAgent{}, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
 	defer cancel()
-	if err := c.limiter.Wait(ctx); err != nil {
+	if err := limiter.Wait(ctx); err != nil {
 		log.Warn(err)
 		// just keep going
 	}
 
+	c := config.Get().Rocks
 	apiurl := fmt.Sprintf("%s/%s?apikey=%s", c.StatusEndpoint, id, c.APIKey)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
 		// do not leak API key to logs
 		err := fmt.Errorf("error establishing .rocks request")
 		log.Errorw(err.Error(), "search", id)
-		return &agent, err
+		return &model.RocksAgent{}, err
 	}
 	client := &http.Client{
 		Timeout: (3 * time.Second),
@@ -112,15 +101,16 @@ func Search(id string) (*model.RocksAgent, error) {
 		// do not leak API key to logs
 		err := fmt.Errorf("error executing .rocks request")
 		log.Errorw(err.Error(), "search", id)
-		return &agent, err
+		return &model.RocksAgent{}, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
-		return &agent, err
+		return &model.RocksAgent{}, err
 	}
 
+	var agent model.RocksAgent
 	err = json.Unmarshal(body, &agent)
 	if err != nil {
 		log.Error(err)
@@ -195,11 +185,12 @@ func CommunityMemberPull(teamID model.TeamID) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
 	defer cancel()
-	if err := c.limiter.Wait(ctx); err != nil {
+	if err := limiter.Wait(ctx); err != nil {
 		log.Warn(err)
 		// just keep going
 	}
 
+	c := config.Get().Rocks
 	apiurl := fmt.Sprintf("%s?key=%s", c.CommunityEndpoint, cid)
 	req, err := http.NewRequest("GET", apiurl, nil)
 	if err != nil {
@@ -267,10 +258,11 @@ func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
 	defer cancel()
-	if err := c.limiter.Wait(ctx); err != nil {
+	if err := limiter.Wait(ctx); err != nil {
 		log.Infow("timeout waiting on .rocks rate limiter", "GID", gid)
 	}
 
+	c := config.Get().Rocks
 	client := &http.Client{
 		Timeout: (3 * time.Second),
 	}
@@ -321,11 +313,12 @@ func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if err := c.limiter.Wait(ctx); err != nil {
+	if err := limiter.Wait(ctx); err != nil {
 		log.Info(err)
 		// just keep going
 	}
 
+	c := config.Get().Rocks
 	apiurl := fmt.Sprintf("%s/%s?key=%s", c.CommunityEndpoint, gid, cid)
 	req, err := http.NewRequest("DELETE", apiurl, nil)
 	if err != nil {

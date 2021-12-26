@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
+	// "golang.org/x/oauth2"
 	//"golang.org/x/oauth2/google"
 	// "github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
@@ -27,106 +27,55 @@ import (
 	"github.com/unrolled/logger"
 )
 
-// Configuration is the main configuration data for the https server
-// an initial config is sent from main() and that is updated with defaults
-// in the initializeConfig function
-type Configuration struct {
-	ListenHTTPS      string
-	FrontendPath     string
-	Root             string
-	path             string
-	oauthStateString string
-	CertDir          string
-	OauthConfig      *oauth2.Config
-	OauthUserInfoURL string
-	store            *sessions.CookieStore
-	sessionName      string
-	CookieSessionKey string
-	WebUIurl         string
-	Logfile          string
-	srv              *http.Server
-	logfileHandle    *os.File
-	unrolled         *logger.Logger
-	scanners         map[string]int64
-}
+var srv *http.Server
 
-var c Configuration
+// var logfileHandle    *os.File
+var unrolled *logger.Logger
+var scanners map[string]int64
+var oauthStateString string
+var store *sessions.CookieStore
 
 const jsonType = "application/json; charset=UTF-8"
 const jsonTypeShort = "application/json"
 const jsonStatusOK = `{"status":"ok"}`
 const jsonStatusEmpty = `{"status":"error","error":"Empty JSON"}`
-const me = "/me"
-const login = "/login"
-const callback = "/callback"
-const aptoken = "/aptok"
-const apipath = "/api/v1"
-const oneTimeToken = "/oneTimeToken"
 
-func initializeConfig(initialConfig Configuration) {
-	c = initialConfig
+// Start launches the HTTP server which is responsible for the frontend and the HTTP API.
+func Start() {
+	c := config.Get()
+	c.HTTP.Webroot = strings.TrimSuffix(c.HTTP.Webroot, "/")
 
-	c.Root = strings.TrimSuffix(c.Root, "/")
-
-	// Extract "path" fron "root"
-	rootParts := strings.SplitAfterN(c.Root, "/", 4) // https://example.org/[grab this part]
-	c.path = ""
-	if len(rootParts) > 3 { // Otherwise: application in root folder
-		c.path = rootParts[3]
-	}
-	c.path = strings.TrimSuffix("/"+strings.TrimPrefix(c.path, "/"), "/")
-
-	config.SetWebroot(c.Root)
-	config.SetWebAPIPath(apipath)
-	config.SetWebUIurl(c.WebUIurl)
-
-	if c.OauthConfig.ClientID == "" {
-		log.Fatal("OAUTH_CLIENT_ID unset: logins will fail")
-	}
-	if c.OauthConfig.ClientSecret == "" {
-		log.Fatal("OAUTH_SECRET unset: logins will fail")
+	oc := config.GetOauthConfig()
+	if oc.ClientID == "" || oc.ClientSecret == "" {
+		log.Errorw("startup", "Oauth ClientID", oc.ClientID, "Oauth ClientSecret", oc.ClientSecret)
+		log.Fatal("Oauth Client not configured: logins will fail")
 	}
 
-	log.Debugw("startup", "ClientID", c.OauthConfig.ClientID)
-	log.Debugw("startup", "ClientSecret", c.OauthConfig.ClientSecret)
-	c.oauthStateString = generatename.GenerateName()
-	log.Debugw("startup", "oauthStateString", c.oauthStateString)
+	oauthStateString = generatename.GenerateName()
+	log.Debugw("startup", "oauthStateString", oauthStateString)
 
-	if c.CookieSessionKey == "" {
-		log.Error("SESSION_KEY unset: logins will fail")
+	if c.HTTP.CookieSessionKey == "" {
+		log.Error("SessionKey unset: logins will fail")
 	} else {
-		key := c.CookieSessionKey
+		key := c.HTTP.CookieSessionKey
 		log.Debugw("startup", "Session Key", key)
-		c.store = sessions.NewCookieStore([]byte(key))
-		c.sessionName = "wasabee"
+		store = sessions.NewCookieStore([]byte(key))
 	}
 
-	// certificate directory cleanup
-	if c.CertDir == "" {
-		log.Warn("CERTDIR unset: defaulting to 'certs'")
-		c.CertDir = "certs"
-	}
-	certdir, err := filepath.Abs(c.CertDir)
-	c.CertDir = certdir
-	if err != nil {
-		log.Fatal("certificate path could not be resolved.")
-		// panic(err)
-	}
-	log.Debugw("startup", "Certificate Directory", c.CertDir)
-
-	if c.Logfile == "" {
+	if c.HTTP.Logfile == "" {
 		log.Debug("https logfile unset: defaulting to 'wasabee-https.log'")
-		c.Logfile = "wasabee-https.log"
+		c.HTTP.Logfile = "wasabee-https.log"
 	}
-	log.Debugw("startup", "https logfile", c.Logfile)
+	log.Debugw("startup", "https logfile", c.HTTP.Logfile)
+
 	// #nosec
-	c.logfileHandle, err = os.OpenFile(c.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	logfileHandle, err := os.OpenFile(c.HTTP.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
-	c.unrolled = logger.New(logger.Options{
+	unrolled = logger.New(logger.Options{
 		Prefix: "wasabee",
-		Out:    c.logfileHandle,
+		Out:    logfileHandle,
 		IgnoredRequestURIs: []string{
 			"/favicon.ico",
 			"/apple-touch-icon-precomposed.png",
@@ -134,21 +83,15 @@ func initializeConfig(initialConfig Configuration) {
 			"/apple-touch-icon-120x120.png",
 			"/apple-touch-icon.png"},
 	})
-	c.scanners = make(map[string]int64)
-}
-
-// StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.
-func StartHTTP(initialConfig Configuration) {
-	// take the incoming c, add defaults
-	initializeConfig(initialConfig)
+	scanners = make(map[string]int64)
 
 	// setup the main router an built-in subrouters
 	router := setupRouter()
 
 	// serve
-	c.srv = &http.Server{
+	srv = &http.Server{
 		Handler:           router,
-		Addr:              c.ListenHTTPS,
+		Addr:              c.HTTP.ListenHTTPS,
 		WriteTimeout:      (15 * time.Second),
 		ReadTimeout:       (15 * time.Second),
 		ReadHeaderTimeout: (2 * time.Second),
@@ -167,8 +110,11 @@ func StartHTTP(initialConfig Configuration) {
 		},
 	}
 
-	log.Infow("startup", "port", c.ListenHTTPS, "url", c.Root, "message", "online at "+c.Root)
-	if err := c.srv.ListenAndServeTLS(c.CertDir+"/wasabee.fullchain.pem", c.CertDir+"/wasabee.key"); err != nil {
+	// XXX the cert file names need to be in the config
+	fc := path.Join(c.Certs, "wasabee.fullchain.pem")
+	k := path.Join(c.Certs, "wasabee.key")
+	log.Infow("startup", "port", c.HTTP.ListenHTTPS, "url", c.HTTP.Webroot, "message", "online at "+c.HTTP.Webroot)
+	if err := srv.ListenAndServeTLS(fc, k); err != nil {
 		log.Info(err)
 	}
 }
@@ -176,7 +122,7 @@ func StartHTTP(initialConfig Configuration) {
 // Shutdown forces a graceful shutdown of the https server
 func Shutdown() error {
 	log.Infow("shutdown", "message", "shutting down HTTPS server")
-	if err := c.srv.Shutdown(context.Background()); err != nil {
+	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -225,10 +171,12 @@ func logRequestMW(next http.Handler) http.Handler {
 
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		sessionName := config.Get().HTTP.SessionName
+
 		req.Header.Del("X-Wasabee-GID") // don't allow spoofing
 
 		if h := req.Header.Get("Authorization"); h != "" {
-			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.Get().JWParsingKeys))
+			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
 			if err != nil {
 				log.Info(err)
 				http.Error(res, err.Error(), http.StatusUnauthorized)
@@ -237,7 +185,7 @@ func authMW(next http.Handler) http.Handler {
 
 			// expiration validation is implicit
 			// XXX make sure JwtID is not on the "revoked" list -- in a way that doesn't hit the database too hard
-			if err := jwt.Validate(token, jwt.WithAudience("wasabee")); err != nil {
+			if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
 				sub, _ := token.Get("sub")
 				log.Infow("JWT validate failed", "error", err, "sub", sub)
 				http.Error(res, err.Error(), http.StatusUnauthorized)
@@ -262,7 +210,7 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		// no JWT, use legacy cookie
-		ses, err := c.store.Get(req, c.sessionName)
+		ses, err := store.Get(req, sessionName)
 		if err != nil {
 			log.Error(err)
 			delete(ses.Values, "nonce")
@@ -336,12 +284,14 @@ func authMW(next http.Handler) http.Handler {
 }
 
 func redirectOrError(res http.ResponseWriter, req *http.Request) {
+	c := config.Get().HTTP
+
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 	} else {
-		var redirectURL = login
-		if req.URL.String()[:len(me)] != me {
-			redirectURL = login + "?returnto=" + req.URL.String()
+		var redirectURL = c.LoginURL
+		if req.URL.String()[:len(c.MeURL)] != c.MeURL {
+			redirectURL = c.LoginURL + "?returnto=" + req.URL.String()
 		}
 
 		http.Redirect(res, req, redirectURL, http.StatusFound)
@@ -350,8 +300,9 @@ func redirectOrError(res http.ResponseWriter, req *http.Request) {
 
 func googleRoute(res http.ResponseWriter, req *http.Request) {
 	ret := req.FormValue("returnto")
+	c := config.Get().HTTP
 
-	ses, err := c.store.Get(req, c.sessionName)
+	ses, err := store.Get(req, c.SessionName)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -360,7 +311,7 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 	if ret != "" {
 		ses.Values["loginReq"] = ret
 	} else {
-		ses.Values["loginReq"] = me
+		ses.Values["loginReq"] = c.MeURL
 	}
 	ses.Options = &sessions.Options{
 		Path:     "/",
@@ -368,12 +319,14 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	}
-	_ = ses.Save(req, res)
+	if err := ses.Save(req, res); err != nil {
+		log.Debug(err)
+	}
 
 	// the server may have several names/ports ; redirect back to the one the user called
-	oc := c.OauthConfig
-	oc.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
-	url := oc.AuthCodeURL(c.oauthStateString)
+	oc := config.GetOauthConfig()
+	oc.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, c.CallbackURL)
+	url := oc.AuthCodeURL(oauthStateString)
 	http.Redirect(res, req, url, http.StatusSeeOther)
 }
 

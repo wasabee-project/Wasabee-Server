@@ -566,11 +566,11 @@ func (gid GoogleID) GetPicture() string {
 
 	err := db.QueryRow("SELECT picurl FROM agent WHERE gid = ?", gid).Scan(&url)
 	if err == sql.ErrNoRows || !url.Valid || url.String == "" {
-		return config.PictureURL()
+		return config.Get().DefaultPictureURL
 	}
 	if err != nil {
 		log.Error(err)
-		return config.PictureURL()
+		return config.Get().DefaultPictureURL
 	}
 
 	return url.String
