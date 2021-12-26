@@ -60,6 +60,7 @@ func (opID OperationID) insertMarker(m Marker) error {
 		return err
 	}
 
+	// len() == 0 could be empty, or could be old client; do not clear them (yet)
 	if len(m.DependsOn) > 0 {
 		err = m.SetDepends(m.DependsOn, nil)
 		if err != nil {
@@ -109,6 +110,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		messaging.SendAssignment(messaging.GoogleID(g), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 
+	// do not clear them if someone is using an old client (yet)
 	if len(m.DependsOn) > 0 {
 		err = m.SetDepends(m.DependsOn, tx)
 		if err != nil {

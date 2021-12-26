@@ -79,6 +79,7 @@ func (opID OperationID) insertLink(l Link) error {
 		return err
 	}
 
+	// do not clear if old client (yet)
 	if len(l.DependsOn) > 0 {
 		err = l.SetDepends(l.DependsOn, nil)
 		if err != nil {
@@ -156,6 +157,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		}
 	}
 
+	// do not clear if they used an old client
 	if len(l.DependsOn) > 0 {
 		if err := l.SetDepends(l.DependsOn, tx); err != nil {
 			log.Error(err)
