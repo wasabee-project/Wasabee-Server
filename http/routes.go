@@ -28,10 +28,11 @@ func setupRouter() *mux.Router {
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff (constants defined in server.go)
-	router.HandleFunc(c.LoginURL, googleRoute).Methods("GET")               // deprecated -- belongs in clients now
-	router.HandleFunc(c.CallbackURL, callbackRoute).Methods("GET")          // deprecated cookie mode
-	router.HandleFunc(c.ApTokenURL, apTokenRoute).Methods("POST")           // all clients should use this
-	router.HandleFunc(c.OneTimeTokenURL, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
+	router.HandleFunc(c.LoginURL, googleRoute).Methods("GET")                    // deprecated -- belongs in clients now
+	router.HandleFunc(c.CallbackURL, callbackRoute).Methods("GET")               // deprecated cookie mode
+	router.HandleFunc(c.ApTokenURL, apTokenRoute).Methods("POST")                // all clients should use this
+	router.HandleFunc(c.OneTimeTokenURL, oneTimeTokenRoute).Methods("POST")      // provided for cases where aptok does not work
+	router.HandleFunc("/jlt/{teamID}/{token}", teamJoinLinkRoute).Methods("GET") // step 1 of the join link process
 
 	// common files that live under /static
 	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
@@ -177,7 +178,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")
 	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE")
 	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}")
-	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET")
+	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET") // step 3 of the join link process - jlt
 	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET")
 	// (re)import the team from rocks

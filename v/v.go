@@ -1,6 +1,7 @@
 package v
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -8,6 +9,8 @@ import (
 	// "strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -211,7 +214,7 @@ func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 }
 
 // Sync pulls a team (and role) from V to sync with a Wasabee team
-func Sync(teamID model.TeamID, key string) error {
+func Sync(ctx context.Context, teamID model.TeamID, key string) error {
 	x, role, err := teamID.VTeam()
 	if err != nil {
 		return err
@@ -244,7 +247,24 @@ func Sync(teamID model.TeamID, key string) error {
 	// a map to track added agents
 	atv := make(map[model.GoogleID]bool)
 
+	// fast if no Telegram, slow if Telegram...
+	burst := 1
+	speed := rate.Every(1 * time.Nanosecond)
+	if c, _ := teamID.TelegramChat(); c != 0 {
+		burst = 17
+		speed = rate.Every(4 * time.Second)
+	}
+	limiter := rate.NewLimiter(speed, burst)
+
 	for _, agent := range vt.Agents {
+		select {
+		case <-ctx.Done():
+			log.Infow("context done, stopping sync", "err", ctx.Err())
+			return ctx.Err()
+		default:
+			// do the next one
+		}
+
 		if !agent.Gid.Valid() {
 			log.Infow("Importing previously unknown agent", "GID", agent.Gid)
 			if err := agent.Gid.FirstLogin(); err != nil {
@@ -278,6 +298,11 @@ func Sync(teamID model.TeamID, key string) error {
 			// log.Debugw("ignoring agent already on team", "GID", agent.Gid, "team", teamID)
 			continue
 		}
+
+		if err := limiter.Wait(ctx); err != nil {
+			log.Error(err)
+			return err
+		}
 		if _, ok := atv[agent.Gid]; ok {
 			log.Infow("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
 			if err := teamID.AddAgent(agent.Gid); err != nil {
@@ -300,8 +325,13 @@ func Sync(teamID model.TeamID, key string) error {
 		if !atv[a.Gid] {
 			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
 			log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
-			err = teamID.RemoveAgent(a.Gid)
-			if err != nil {
+
+			if err := limiter.Wait(ctx); err != nil {
+				log.Error(err)
+				return err
+			}
+
+			if err = teamID.RemoveAgent(a.Gid); err != nil {
 				log.Error(err)
 			}
 		}
@@ -397,7 +427,7 @@ func Authorize(gid model.GoogleID) bool {
 // role = one Wasabee Team per V team/role pair
 // team data is populated from V at creation
 func BulkImport(gid model.GoogleID, mode string) error {
-	log.Debug("v BulkImport")
+	log.Infow("v BulkImport", "gid", gid, "mode", mode)
 
 	key, err := gid.GetVAPIkey()
 	if err != nil {
@@ -410,7 +440,7 @@ func BulkImport(gid model.GoogleID, mode string) error {
 		log.Error(err)
 		return err
 	}
-	log.Debugw("bulk import", "teams", teamsfromv)
+	// log.Debugw("bulk import", "teams", teamsfromv)
 
 	// this might take a while, let the client get on their way
 	go bulkImportWorker(gid, key, mode, teamsfromv)
@@ -488,7 +518,7 @@ func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *m
 			log.Error(err)
 			return err
 		}
-		err = Sync(teamID, key)
+		err = Sync(context.Background(), teamID, key)
 		if err != nil {
 			log.Error(err)
 			return err

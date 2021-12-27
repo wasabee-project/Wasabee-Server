@@ -63,8 +63,7 @@ func vTeamRoute(res http.ResponseWriter, req *http.Request) {
 			keys[gid] = key
 		}
 
-		err = v.Sync(teamID, key)
-		if err != nil {
+		if err := v.Sync(req.Context(), teamID, key); err != nil {
 			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
@@ -112,7 +111,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := v.Sync(team, vkey); err != nil {
+	if err := v.Sync(req.Context(), team, vkey); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

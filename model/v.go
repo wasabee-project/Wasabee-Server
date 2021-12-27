@@ -212,7 +212,7 @@ func (gid GoogleID) GetVAPIkey() (string, error) {
 
 // SetVAPIkey stores an agent's V API key (this should be unusual)
 func (gid GoogleID) SetVAPIkey(key string) error {
-	if _, err := db.Exec("UPDATE v SET VAPIkey = ? WHERE gid  = ? ", key, gid); err != nil {
+	if _, err := db.Exec("UPDATE v SET vapikey=? WHERE gid =? ", key, gid); err != nil {
 		log.Error(err)
 		return err
 	}
