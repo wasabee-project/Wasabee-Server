@@ -108,7 +108,7 @@ func run(cargs *cli.Context) error {
 		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, shutdown := context.WithCancel(context.Background())
 
 	// load the config file
 	conf, err := config.LoadFile(cargs.String("config"))
@@ -132,12 +132,12 @@ func run(cargs *cli.Context) error {
 	}
 
 	// start V
-	v.Start()
+	go v.Start(ctx)
 
 	// start Rocks
-	rocks.Start()
+	go rocks.Start(ctx)
 
-	// start firebase -- does this still need to be a go process?
+	// start firebase
 	go wfb.Start(ctx)
 
 	// Serve HTTPS
@@ -157,17 +157,13 @@ func run(cargs *cli.Context) error {
 
 	// loop until signal sent
 	sig := <-sigch
-
-	// shutdown RISC and Firebase
-	cancel()
-
 	log.Infow("shutdown", "requested by signal", sig)
+
+	// shutdown RISC, Telegram, V, Rocks, and Firebase by canceling the context
+	shutdown()
 
 	// the cancel above should take care of this, but for now leave it in place
 	risc.DisableWebhook()
-
-	// stop telegram
-	wtg.Shutdown()
 
 	// shutdown the http server
 	if err = wasabeehttps.Shutdown(); err != nil {

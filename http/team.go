@@ -11,7 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/wasabee-project/Wasabee-Server/config"
+	// "github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -558,19 +558,4 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		log.Warn(err)
 	}
 	fmt.Fprint(res, string(data))
-}
-
-func teamJoinLinkRoute(res http.ResponseWriter, req *http.Request) {
-	c := config.Get()
-
-	chunks := strings.SplitN(c.HTTP.Webroot, "/", 3)
-	server := chunks[2]
-
-	vars := mux.Vars(req)
-	teamID := vars["teamID"]
-	token := vars["token"]
-
-	url := fmt.Sprintf("%s?server=%s#/jlt/%s/%s", c.WebUIURL, server, teamID, token)
-	// log.Debugw("join link redirect to WebUI", "url", url)
-	http.Redirect(res, req, url, http.StatusFound)
 }

@@ -3,8 +3,11 @@ package wtg
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"golang.org/x/time/rate"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
@@ -16,9 +19,11 @@ import (
 
 var baseKbd tgbotapi.ReplyKeyboardMarkup
 var upChan chan tgbotapi.Update
+var sendQueue chan tgbotapi.Chattable
 var hook string
 
 var bot *tgbotapi.BotAPI
+var limiter *rate.Limiter
 
 // Start is called from main() to start the bot.
 func Start(ctx context.Context) {
@@ -35,17 +40,21 @@ func Start(ctx context.Context) {
 	subrouter := config.Subrouter(c.HookPath)
 	subrouter.HandleFunc("/{hook}", webhook).Methods("POST")
 
+	sendQueue = make(chan tgbotapi.Chattable, 30)
+
 	var err error
 	bot, err = tgbotapi.NewBotAPI(c.APIKey)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	defer Shutdown()
+	defer shutdown()
 
 	// bot.Debug = true
 	log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
 	config.TGSetBot(bot.Self.UserName, int(bot.Self.ID))
+
+	limiter = rate.NewLimiter(rate.Limit(3*time.Second), 19)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -66,33 +75,45 @@ func Start(ctx context.Context) {
 		RemoveFromRemote: removeFromChat,
 	})
 
-	// XXX await <-ctx.Done and bail
-
 	i := 1
-	for update := range upChan {
-		// log.Debugf("running update: %s", update)
-		if err = runUpdate(update); err != nil {
-			log.Error(err)
-			continue
-		}
-		if (i % 100) == 0 { // every 100 requests, change the endpoint
-			i = 1
-			hook = generatename.GenerateName()
-			whurl = fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
-			wh, _ := tgbotapi.NewWebhook(whurl)
-			_, err = bot.Request(wh)
-			if err != nil {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg := <-sendQueue:
+			// log.Debug("sending", "msg", msg)
+			if err := limiter.Wait(ctx); err != nil {
+				log.Warn(err)
+			}
+			if _, err = bot.Send(msg); err != nil && err.Error() != "Bad Request: chat not found" {
 				log.Error(err)
 			}
+		case update := <-upChan:
+			// log.Debugw("running update", "update", update)
+			if err := runUpdate(update); err != nil {
+				log.Error(err)
+			}
+			if (i % 100) == 0 { // every 100 requests, change the endpoint
+				i = 1
+				hook = generatename.GenerateName()
+				whurl = fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
+				wh, _ := tgbotapi.NewWebhook(whurl)
+				_, err = bot.Request(wh)
+				if err != nil {
+					log.Error(err)
+				}
+			}
+			i++
 		}
-		i++
 	}
 }
 
-// Shutdown closes all the Telegram connections
-func Shutdown() {
+// shutdown closes all the Telegram connections
+func shutdown() {
 	log.Infow("shutdown", "subsystem", "Telegram", "message", "shutdown telegram")
 	bot.StopReceivingUpdates()
+	close(upChan)
+	close(sendQueue)
 }
 
 func runUpdate(update tgbotapi.Update) error {
@@ -103,10 +124,7 @@ func runUpdate(update tgbotapi.Update) error {
 			log.Error(err)
 			return err
 		}
-		if _, err = bot.Send(msg); err != nil {
-			log.Error(err)
-			return err
-		}
+		sendQueue <- msg
 		/* if _, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)); err != nil {
 			log.Error(err)
 			return err
@@ -161,17 +179,8 @@ func sendMessage(g messaging.GoogleID, message string) (bool, error) {
 	msg.Text = message
 	msg.ParseMode = "HTML"
 
-	_, err = bot.Send(msg)
-	if err != nil && err.Error() != "Bad Request: chat not found" {
-		log.Error(err)
-		return false, err
-	}
-	if err != nil && err.Error() == "Bad Request: chat not found" {
-		log.Debugw(err.Error(), "gid", gid, "tgid", tgid)
-		return false, nil
-	}
-
-	log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
+	sendQueue <- msg
+	// log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
 	return true, nil
 }
 
@@ -214,16 +223,7 @@ func sendTarget(g messaging.GoogleID, target messaging.Target) error {
 		msg.Text = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
 	}
 
-	_, err = bot.Send(msg)
-	if err != nil && err.Error() != "Bad Request: chat not found" {
-		log.Error(err)
-		return err
-	}
-	if err != nil && err.Error() == "Bad Request: chat not found" {
-		log.Debugw(err.Error(), "gid", gid, "tgid", tgid)
-		return err
-	}
-
 	log.Debugw("sent target", "subsystem", "Telegram", "GID", gid, "target", target)
+	sendQueue <- msg
 	return nil
 }

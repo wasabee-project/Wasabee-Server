@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
@@ -57,16 +55,27 @@ type myTeam struct {
 }
 
 // Start is called start V integration
-func Start() {
+func Start(ctx context.Context) {
 	if config.Get().V.APIKey == "" {
+		log.Debug("V not configured, not starting")
 		return
 	}
-	config.SetVRunning(true)
 
 	messaging.RegisterMessageBus("v.enl.one", messaging.Bus{
 		AddToRemote:      addToRemote,
 		RemoveFromRemote: removeFromRemote,
 	})
+
+	config.SetVRunning(true)
+
+	// there is no reason to stay running now -- this costs nothing
+	select {
+	case <-ctx.Done():
+		break
+	}
+
+	log.Infow("Shutdown", "message", "v shutting down")
+	config.SetVRunning(false)
 }
 
 // trustCheck checks a agent at V and populates a trustResult
@@ -247,24 +256,7 @@ func Sync(ctx context.Context, teamID model.TeamID, key string) error {
 	// a map to track added agents
 	atv := make(map[model.GoogleID]bool)
 
-	// fast if no Telegram, slow if Telegram...
-	burst := 1
-	speed := rate.Every(1 * time.Nanosecond)
-	if c, _ := teamID.TelegramChat(); c != 0 {
-		burst = 17
-		speed = rate.Every(4 * time.Second)
-	}
-	limiter := rate.NewLimiter(speed, burst)
-
 	for _, agent := range vt.Agents {
-		select {
-		case <-ctx.Done():
-			log.Infow("context done, stopping sync", "err", ctx.Err())
-			return ctx.Err()
-		default:
-			// do the next one
-		}
-
 		if !agent.Gid.Valid() {
 			log.Infow("Importing previously unknown agent", "GID", agent.Gid)
 			if err := agent.Gid.FirstLogin(); err != nil {
@@ -299,10 +291,6 @@ func Sync(ctx context.Context, teamID model.TeamID, key string) error {
 			continue
 		}
 
-		if err := limiter.Wait(ctx); err != nil {
-			log.Error(err)
-			return err
-		}
 		if _, ok := atv[agent.Gid]; ok {
 			log.Infow("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
 			if err := teamID.AddAgent(agent.Gid); err != nil {
@@ -325,11 +313,6 @@ func Sync(ctx context.Context, teamID model.TeamID, key string) error {
 		if !atv[a.Gid] {
 			err := fmt.Errorf("agent in wasabee team but not in V team/role, removing")
 			log.Infow(err.Error(), "GID", a.Gid, "wteam", teamID, "vteam", vteamID, "role", role)
-
-			if err := limiter.Wait(ctx); err != nil {
-				log.Error(err)
-				return err
-			}
 
 			if err = teamID.RemoveAgent(a.Gid); err != nil {
 				log.Error(err)

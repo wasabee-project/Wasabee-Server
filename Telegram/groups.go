@@ -57,6 +57,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		if err := teamID.UnlinkFromTelegramChat(model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
 			log.Error(err)
 			msg.Text = err.Error()
+			// do not use the queue
 			if _, err := bot.Send(msg); err != nil {
 				log.Error(err)
 			}
@@ -64,10 +65,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		}
 
 		msg.Text = "Successfully unlinked"
-		if _, err := bot.Send(msg); err != nil {
-			log.Error(err)
-			return err
-		}
+		sendQueue <- msg
 	case "link":
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) > 1 {
@@ -86,40 +84,30 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			if !owns {
 				err = fmt.Errorf("only team owner can set telegram link")
 				log.Error(err)
+				msg.Text = err.Error()
+				sendQueue <- msg
 				return err
 			}
 
 			if err := team.LinkToTelegramChat(model.TelegramID(inMsg.Message.Chat.ID), opID); err != nil {
 				log.Error(err)
 				msg.Text = err.Error()
-				if _, err := bot.Send(msg); err != nil {
-					log.Error(err)
-					return err
-				}
+				sendQueue <- msg
 				return err
 			}
 		} else {
 			msg.Text = "specify a single teamID"
-			if _, err := bot.Send(msg); err != nil {
-				log.Error(err)
-				return err
-			}
+			sendQueue <- msg
 			return nil
 		}
 		msg.Text = "Successfully linked"
-		if _, err := bot.Send(msg); err != nil {
-			log.Error(err)
-			return err
-		}
+		sendQueue <- msg
 	case "status":
 		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
 			// log.Debug(err) // not linked is not an error
 			msg.Text = err.Error()
-			if _, err := bot.Send(msg); err != nil {
-				log.Error(err)
-				return err
-			}
+			sendQueue <- msg
 			return nil
 		}
 		name, _ := teamID.Name()
@@ -134,10 +122,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 				msg.Text = fmt.Sprintf("%s \nLinked to Operation <b>%s</b> (%s)", msg.Text, opstat.Name, opID)
 			}
 		}
-		if _, err := bot.Send(msg); err != nil {
-			log.Error(err)
-			return err
-		}
+		sendQueue <- msg
 	case "assignments":
 		var filterGid model.GoogleID
 		msg.ParseMode = "HTML"
@@ -155,19 +140,22 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
 			log.Error(err)
-			if _, err := bot.Send(msg); err != nil {
-				log.Error(err)
-			}
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
 		if opID == "" {
 			err := fmt.Errorf("team must be linked to operation to view assignments")
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
 		o := model.Operation{}
 		o.ID = opID
 		if err := o.Populate(gid); err != nil {
 			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
 		var b bytes.Buffer
@@ -197,27 +185,27 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			}
 			msg.Text = b.String()
 		}
-		if _, err := bot.Send(msg); err != nil {
-			log.Error(err)
-		}
+		sendQueue <- msg
 	case "unassigned":
 		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
 			log.Error(err)
-			if _, err := bot.Send(msg); err != nil {
-				log.Error(err)
-				return err
-			}
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
 		if opID == "" {
 			err := fmt.Errorf("team must be linked to operation to view assignments")
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
 		o := model.Operation{}
 		o.ID = opID
 		if err := o.Populate(gid); err != nil {
 			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
 		var b bytes.Buffer
@@ -231,9 +219,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			}
 			msg.Text = b.String()
 		}
-		if _, err := bot.Send(msg); err != nil {
-			log.Error(err)
-		}
+		sendQueue <- msg
 	default:
 		log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 	}
@@ -326,10 +312,7 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	if _, err := bot.Send(msg); err != nil {
-		log.Error(err)
-		return err
-	}
+	sendQueue <- msg
 	return nil
 }
 
@@ -368,10 +351,7 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 
 	text := fmt.Sprintf("%s joined the linked team (%s): Please add them to this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
-	if _, err := bot.Send(msg); err != nil {
-		log.Errorw(err.Error(), "gid", g, "team", t, "chat", chatID)
-		return err
-	}
+	sendQueue <- msg
 
 	// XXX create a join link for this agent
 	return nil
@@ -417,9 +397,7 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 
 	text := fmt.Sprintf("%s left the linked team (%s). Attempting to remove them from this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
-	if _, err := bot.Send(msg); err != nil {
-		log.Error(err)
-	}
+	sendQueue <- msg
 
 	// XXX determine if bot is admin, don't bother with this if not
 	bcmc := tgbotapi.BanChatMemberConfig{
@@ -433,9 +411,7 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	if _, err = bot.Request(bcmc); err != nil {
 		log.Error(err)
 		msg := tgbotapi.NewMessage(chat.ID, err.Error())
-		if _, err = bot.Send(msg); err != nil {
-			log.Error(err)
-		}
+		sendQueue <- msg
 	}
 	return nil
 }

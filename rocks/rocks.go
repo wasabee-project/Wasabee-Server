@@ -56,12 +56,13 @@ type rocksPushResponse struct {
 var limiter *rate.Limiter
 
 // Start is called from main() to initialize the config
-func Start() {
-	if key := config.Get().Rocks.APIKey; key == "" {
+func Start(ctx context.Context) {
+	if config.Get().Rocks.APIKey == "" {
 		log.Debug("Rocks not configured, not starting")
+		return
 	}
 
-	limiter = rate.NewLimiter(rate.Limit(0.5), 60)
+	limiter = rate.NewLimiter(rate.Limit(0.5), 10)
 
 	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Rocks", messaging.Bus{
@@ -69,6 +70,15 @@ func Start() {
 		RemoveFromRemote: removeFromRemote,
 	})
 	config.SetRocksRunning(true)
+
+	// there is no reason to stay running now -- this costs nothing
+	select {
+	case <-ctx.Done():
+		break
+	}
+
+	log.Infow("Shutdown", "message", "rocks shutting down")
+	config.SetRocksRunning(false)
 }
 
 // Search checks a agent at enl.rocks and returns an Agent
@@ -225,38 +235,15 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		return err
 	}
 	// log.Debugw("rocks sync", "response", rr)
-	if c, _ := teamID.TelegramChat(); c == 0 {
-		// team not linked to telegram, we can go at full-speed
-		for _, gid := range rr.Members {
-			if inteam, _ := gid.AgentInTeam(teamID); inteam {
-				continue
-			}
-			log.Debugw("rocks sync", "adding", gid)
-			if err := teamID.AddAgent(gid); err != nil {
-				log.Info(err)
-			}
-		}
-	} else {
-		// process in the background, telegram rate-limits adds, we need to go slow, let the client get on with life
-		go func() {
-			limiter := rate.NewLimiter(rate.Every(5*time.Second), 19) // 3/20 would be fine, but this leave space for other chats
-			ctx, cancel := context.WithCancel(context.Background())
 
-			for _, gid := range rr.Members {
-				if inteam, _ := gid.AgentInTeam(teamID); inteam {
-					continue
-				}
-				if err := limiter.Wait(ctx); err != nil {
-					log.Error(err)
-					cancel()
-					return
-				}
-				log.Debugw("rocks sync", "adding", gid)
-				if err := teamID.AddAgent(gid); err != nil {
-					log.Info(err)
-				}
-			}
-		}()
+	for _, gid := range rr.Members {
+		if inteam, _ := gid.AgentInTeam(teamID); inteam {
+			continue
+		}
+		log.Debugw("rocks sync", "adding", gid)
+		if err := teamID.AddAgent(gid); err != nil {
+			log.Info(err)
+		}
 	}
 	return nil
 }

@@ -25,6 +25,7 @@ var defaults *WasabeeConf = &WasabeeConf{
 		TeamEndpoint:   "https://v.enl.one/api/v2/teams",
 	},
 	RISC: wrisc{
+		Cert:      "risc.json",
 		Webhook:   "/GoogleRISC",
 		Discovery: "https://accounts.google.com/.well-known/risc-configuration",
 	},

@@ -40,10 +40,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 			msg.ParseMode = "HTML"
 			tmp, _ := templates.ExecuteLang("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
 			msg.Text = tmp
-			if _, err = bot.Send(msg); err != nil {
-				log.Error(err)
-				return err
-			}
+			sendQueue <- msg
 			return nil
 		}
 
@@ -52,10 +49,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		if err != nil {
 			log.Error(err)
 		}
-		if _, err = bot.Send(msg); err != nil {
-			log.Error(err)
-			return err
-		}
+		sendQueue <- msg
 		return nil
 	}
 
@@ -67,10 +61,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		if err != nil {
 			log.Error(err)
 		}
-		if _, err = bot.Send(msg); err != nil {
-			log.Error(err)
-			return err
-		}
+		sendQueue <- msg
 		return nil
 	}
 
@@ -128,11 +119,7 @@ func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
 		_ = gid.SetLocation(lat, lon)
 	}
 
-	if _, err := bot.Send(msg); err != nil {
-		log.Error(err)
-		return err
-	}
-
+	sendQueue <- msg
 	return nil
 }
 
