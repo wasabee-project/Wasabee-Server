@@ -20,7 +20,6 @@ func setupRouter() *mux.Router {
 
 	// apply to all
 	router.Use(headersMW)
-	// router.Use(logRequestMW)
 	// router.Use(debugMW)
 	router.Use(unrolled.Handler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
@@ -43,9 +42,6 @@ func setupRouter() *mux.Router {
 	router.HandleFunc("/firebase-messaging-sw.js", fbmswRoute).Methods("GET")
 	router.HandleFunc("/", frontRoute).Methods("GET")
 
-	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
-	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
-
 	// /api/v1/... route
 	api := config.Subrouter(c.APIPathURL)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
@@ -64,12 +60,20 @@ func setupRouter() *mux.Router {
 	meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
-	// /rocks route -- why a subrouter? for JSON error messages -- no longer necessary
+	// V and Rocks need to be moved to the respective system's Start()
 	rocks := config.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
+
+	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
+	v := config.Subrouter("/v")
+	v.Use(debugMW)
+	v.HandleFunc("/{teamID}", vTeamRoute).Methods("POST")
+	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
+	rocks.PathPrefix("/v").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
 	static := config.Subrouter("/static")

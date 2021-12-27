@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	// "net/http/httputil"
+	"net/http/httputil"
 	"os"
 	"path"
 	"strings"
@@ -326,13 +326,13 @@ func jsonError(e error) string {
 	return fmt.Sprintf(`{"status":"error","error":"%s"}`, e.Error())
 }
 
-/* func debugMW(next http.Handler) http.Handler {
+func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		dump, _ := httputil.DumpRequest(req, false)
 		log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
-} */
+}
 
 func contentTypeIs(req *http.Request, check string) bool {
 	contentType := strings.Split(strings.Replace(req.Header.Get("Content-Type"), " ", "", -1), ";")[0]
