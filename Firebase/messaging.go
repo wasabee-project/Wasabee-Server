@@ -1,257 +1,50 @@
-package wasabeefirebase
+package wfb
 
 import (
-	"context"
+	"encoding/json"
+
 	"firebase.google.com/go/messaging"
-	"fmt"
-	"github.com/wasabee-project/Wasabee-Server"
+
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	wm "github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// SendMessage is registered with Wasabee for sending messages
-func SendMessage(gid wasabee.GoogleID, message string) (bool, error) {
-	gid.FirebaseGenericMessage(message)
-	wasabee.Log.Debugw("generic message", "subsystem", "Firebase", "GID", gid)
-	return false, nil
-}
-
-func genericMessage(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.Gid == "" {
+// AgentLocation alerts a team to refresh agent location data
+// we do not send the agent's location via firebase since it is possible to subscribe to topics (teams) via a client
+// the clients must pull the server to get the updates
+func AgentLocation(teamID model.TeamID) error {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
-
-	tokens, err := fb.Gid.FirebaseTokens()
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
 	data := map[string]string{
-		"msg": fb.Msg,
-		"cmd": fb.Cmd.String(),
-	}
-	genericMulticast(ctx, c, data, tokens)
-	return nil
-}
-
-func target(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	data := map[string]string{
-		"msg": fb.Msg,
-		"cmd": fb.Cmd.String(),
+		"msg": string(teamID),
+		"cmd": "Agent Location Change",
+		"srv": config.Get().HTTP.Webroot,
+		// we could send gid here for a single agent location change...
 	}
 
-	// send to single agent
-	if fb.Gid != "" {
-		tokens, err := fb.Gid.FirebaseTokens()
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
-		genericMulticast(ctx, c, data, tokens)
-	}
-
-	// send to team
-	if fb.TeamID != "" {
-		msg := messaging.Message{
-			Topic: string(fb.TeamID),
-			Data:  data,
-		}
-
-		_, err := c.Send(ctx, &msg)
-		if err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
-	}
-	wasabee.Log.Debugw("target", "subsystem", "Firebase", "msg", fb.Msg)
-	return nil
-}
-
-func agentLocationChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.TeamID == "" {
-		err := fmt.Errorf("only send location changes to teams")
-		wasabee.Log.Error(err)
-		return err
-	}
-
-	data := map[string]string{
-		// "gid": string(fb.Gid),
-		"msg": fb.Msg,
-		"cmd": fb.Cmd.String(),
-	}
-
-	if fb.Gid != "" {
-		data["gid"] = string(fb.Gid)
-	}
-
-	msg := messaging.Message{
-		Topic: string(fb.TeamID),
+	m := messaging.Message{
+		Topic: string(teamID),
 		Data:  data,
 	}
 
-	_, err := c.Send(ctx, &msg)
-	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "fbcmd", fb)
+	if _, err := msg.Send(fbctx, &m); err != nil {
+		log.Errorw(err.Error(), "Command", m)
 		return err
 	}
 	return nil
 }
 
-func markerStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.TeamID == "" {
-		err := fmt.Errorf("only send status changes to teams")
-		wasabee.Log.Error(err)
-		return err
-	}
-
-	data := map[string]string{
-		"opID":     string(fb.OpID),
-		"markerID": fb.ObjID,
-		"msg":      fb.Msg,
-		"cmd":      fb.Cmd.String(),
-		"updateID": fb.UpdateID,
-	}
-	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
-	}
-
-	_, err := c.Send(ctx, &msg)
-	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "fbcmd", fb)
-		return err
-	}
-	wasabee.Log.Debugw("marker status", "subsystem", "Firebase", "msg", data)
-	return nil
-}
-
-func markerAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.Gid == "" {
+// AssignLink lets an agent know they have a new assignment on a given operation
+func AssignLink(gid model.GoogleID, linkID model.TaskID, opID model.OperationID, updateID string) error {
+	if !config.IsFirebaseRunning() {
 		return nil
 	}
-
-	tokens, err := fb.Gid.FirebaseTokens()
+	tokens, err := gid.GetFirebaseTokens()
 	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	data := map[string]string{
-		"opID":     string(fb.OpID),
-		"markerID": fb.ObjID,
-		"msg":      fb.Msg,
-		"cmd":      fb.Cmd.String(),
-		"updateID": fb.UpdateID,
-	}
-	genericMulticast(ctx, c, data, tokens)
-	wasabee.Log.Debugw("marker assignment", "subsystem", "Firebase", "msg", data)
-	return nil
-}
-
-func mapChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.TeamID == "" {
-		err := fmt.Errorf("only send status changes to teams")
-		wasabee.Log.Error(err)
-		return err
-	}
-
-	data := map[string]string{
-		"opID":     string(fb.OpID),
-		"msg":      fb.Msg,
-		"updateID": fb.UpdateID,
-		"cmd":      fb.Cmd.String(),
-	}
-
-	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
-	}
-
-	_, err := c.Send(ctx, &msg)
-	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "fbcmd", fb)
-		return err
-	}
-	return nil
-}
-
-func linkStatusChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.TeamID == "" {
-		err := fmt.Errorf("only send status changes to teams")
-		wasabee.Log.Error(err)
-		return err
-	}
-
-	data := map[string]string{
-		"opID":     string(fb.OpID),
-		"linkID":   fb.ObjID,
-		"msg":      fb.Msg,
-		"cmd":      fb.Cmd.String(),
-		"updateID": fb.UpdateID,
-	}
-	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
-	}
-
-	_, err := c.Send(ctx, &msg)
-	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "fbcmd", fb)
-		return err
-	}
-	wasabee.Log.Debugw("link status", "subsystem", "Firebase", "msg", data)
-	return nil
-}
-
-func linkAssignmentChange(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.Gid == "" {
-		return nil
-	}
-
-	tokens, err := fb.Gid.FirebaseTokens()
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-
-	data := map[string]string{
-		"opID":     string(fb.OpID),
-		"linkID":   fb.ObjID,
-		"msg":      fb.Msg,
-		"cmd":      fb.Cmd.String(),
-		"updateID": fb.UpdateID,
-	}
-	genericMulticast(ctx, c, data, tokens)
-	wasabee.Log.Debugw("link assignment", "subsystem", "Firebase", "msg", data)
-	return nil
-}
-
-func agentLogin(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.TeamID == "" {
-		err := fmt.Errorf("only send status changes to teams")
-		wasabee.Log.Error(err)
-		return err
-	}
-
-	data := map[string]string{
-		"gid": string(fb.Gid),
-		"msg": fb.Msg,
-		"cmd": fb.Cmd.String(),
-	}
-	msg := messaging.Message{
-		Topic: string(fb.TeamID),
-		Data:  data,
-	}
-
-	_, err := c.Send(ctx, &msg)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	return nil
-}
-
-func broadcastDelete(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	tokens, err := wasabee.FirebaseBroadcastList()
-	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 	if len(tokens) == 0 {
@@ -259,15 +52,370 @@ func broadcastDelete(ctx context.Context, c *messaging.Client, fb wasabee.Fireba
 	}
 
 	data := map[string]string{
-		"msg":  fb.Msg,
-		"cmd":  fb.Cmd.String(),
-		"opID": string(fb.OpID),
+		"opID":     string(opID),
+		"linkID":   string(linkID),
+		"cmd":      "Link Assignment Change",
+		"updateID": updateID,
 	}
-	genericMulticast(ctx, c, data, tokens)
+	genericMulticast(data, tokens)
 	return nil
 }
 
-func genericMulticast(ctx context.Context, c *messaging.Client, data map[string]string, tokens []string) {
+// AssignMarker lets an gent know they have a new assignment on a given operation
+func AssignMarker(gid model.GoogleID, markerID model.TaskID, opID model.OperationID, updateID string) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	data := map[string]string{
+		"opID":     string(opID),
+		"markerID": string(markerID),
+		"cmd":      "Marker Assignment Change",
+		"updateID": updateID,
+	}
+	genericMulticast(data, tokens)
+	return nil
+}
+
+// AssignTask lets an gent know they have a new assignment on a given operation
+func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID, updateID string) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	data := map[string]string{
+		"opID":     string(opID),
+		"taskID":   string(taskID),
+		"cmd":      "Task Assignment Change",
+		"updateID": updateID,
+	}
+	genericMulticast(data, tokens)
+	return nil
+}
+
+// MarkerStatus reports a marker update to a team/topic
+func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	data := map[string]string{
+		"opID":     string(opID),
+		"markerID": string(markerID),
+		"msg":      status,
+		"cmd":      "Marker Status Change",
+		"srv":      config.Get().HTTP.Webroot,
+		"updateID": updateID,
+	}
+	m := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	if _, err := msg.Send(fbctx, &m); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// LinkStatus reports a link update to a team/topic
+func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	data := map[string]string{
+		"opID":     string(opID),
+		"linkID":   string(linkID),
+		"msg":      status,
+		"cmd":      "Link Status Change",
+		"srv":      config.Get().HTTP.Webroot,
+		"updateID": updateID,
+	}
+	m := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	if _, err := msg.Send(fbctx, &m); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// TaskStatus reports a task update to a team/topic
+func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	data := map[string]string{
+		"opID":     string(opID),
+		"taskID":   string(taskID),
+		"msg":      status,
+		"cmd":      "Task Status Change",
+		"srv":      config.Get().HTTP.Webroot,
+		"updateID": updateID,
+	}
+	m := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	if _, err := msg.Send(fbctx, &m); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// AddToRemote subscribes all tokens for a given agent to a team/topic
+func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+
+	gid := model.GoogleID(g)
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	tmr, err := msg.SubscribeToTopic(fbctx, tokens, string(teamID))
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if tmr != nil && tmr.FailureCount > 0 {
+		for _, f := range tmr.Errors {
+			_ = model.RemoveFirebaseToken(tokens[f.Index])
+		}
+	}
+	return nil
+}
+
+// RemoveFromRemote removes an agent's subscriptions to a given topic/team
+func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+
+	gid := model.GoogleID(g)
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	tmr, err := msg.UnsubscribeFromTopic(fbctx, tokens, string(teamID))
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if tmr != nil && tmr.FailureCount > 0 {
+		for _, f := range tmr.Errors {
+			_ = model.RemoveFirebaseToken(tokens[f.Index])
+		}
+	}
+	return nil
+}
+
+// SendMessage is registered with Wasabee for sending messages
+func SendMessage(g wm.GoogleID, message string) (bool, error) {
+	if !config.IsFirebaseRunning() {
+		return false, nil
+	}
+
+	gid := model.GoogleID(g)
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return false, err
+	}
+	if len(tokens) == 0 {
+		return false, nil
+	}
+
+	data := map[string]string{
+		"msg": message,
+		"cmd": "Generic Message",
+	}
+	genericMulticast(data, tokens)
+	return true, nil
+}
+
+// SendTarget sends a portal name/guid to an agent
+func SendTarget(g wm.GoogleID, t wm.Target) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+
+	gid := model.GoogleID(g)
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	m, err := json.Marshal(t)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	data := map[string]string{
+		"msg": string(m),
+		"cmd": "Target",
+	}
+
+	genericMulticast(data, tokens)
+	return nil
+}
+
+// MapChange alerts a team of the need to need to refresh map data
+func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	data := map[string]string{
+		"opID":     string(opID),
+		"updateID": updateID,
+		"cmd":      "Map Change",
+		"srv":      config.Get().HTTP.Webroot,
+	}
+
+	m := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	if _, err := msg.Send(fbctx, &m); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// AgentLogin alerts a team of an agent on that team logging in
+func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	data := map[string]string{
+		"gid": string(gid),
+		"cmd": "Login",
+		"srv": config.Get().HTTP.Webroot,
+	}
+	m := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	if _, err := msg.Send(fbctx, &m); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// SendAnnounce sends a generic message to a team
+func SendAnnounce(teamID wm.TeamID, message string) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	data := map[string]string{
+		"msg": message,
+		"cmd": "Generic Message",
+		"srv": config.Get().HTTP.Webroot,
+	}
+	m := messaging.Message{
+		Topic: string(teamID),
+		Data:  data,
+	}
+
+	if _, err := msg.Send(fbctx, &m); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// DeleteOperation tells everyone (on this server) to remove a specific op
+func DeleteOperation(opID wm.OperationID) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	tokens, err := model.FirebaseBroadcastList()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	data := map[string]string{
+		"cmd":  "Delete",
+		"opID": string(opID),
+	}
+
+	// do this in its own worker since it might take a while
+	go genericMulticast(data, tokens)
+	return nil
+}
+
+// AgentDeleteOperation notifies a single agent of the need to delete an operation (e.g. when removed from a team)
+func AgentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+
+	gid := model.GoogleID(g)
+	tokens, err := gid.GetFirebaseTokens()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	data := map[string]string{
+		"cmd":  "Delete",
+		"opID": string(opID),
+	}
+
+	genericMulticast(data, tokens)
+	return nil
+}
+
+// genericMulticast sends multicast messages directly to agents, taking care of breaking into proper segments and cleaning up invalid tokens
+func genericMulticast(data map[string]string, tokens []string) {
 	if len(tokens) == 0 {
 		return
 	}
@@ -276,95 +424,41 @@ func genericMulticast(ctx context.Context, c *messaging.Client, data map[string]
 	for len(tokens) > 500 {
 		subset := tokens[:500]
 		tokens = tokens[500:]
-		msg := messaging.MulticastMessage{
+		m := messaging.MulticastMessage{
 			Data:   data,
 			Tokens: subset,
 		}
-		br, err := c.SendMulticast(ctx, &msg)
+		br, err := msg.SendMulticast(fbctx, &m)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			// carry on
 		}
-		// wasabee.Log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+		// log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 		processBatchResponse(br, subset)
 	}
 
-	msg := messaging.MulticastMessage{
+	data["srv"] = config.Get().HTTP.Webroot
+
+	m := messaging.MulticastMessage{
 		Data:   data,
 		Tokens: tokens,
 	}
-	br, err := c.SendMulticast(ctx, &msg)
+	br, err := msg.SendMulticast(fbctx, &m)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		// carry on
 	}
-	// wasabee.Log.Debugw("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+	// log.Debugw("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 	processBatchResponse(br, tokens)
 }
 
+// processBatchResponse looks for invalid tokens responses and removes the offending tokens
 func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 	for pos, resp := range br.Responses {
 		if !resp.Success {
-			// wasabee.Log.Infow("multicast error response", "token", tokens[pos], "messageID", resp.MessageID, "error", resp.Error.Error())
-			// XXX switch to IsUnregistered when that becomes available
 			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
-				wasabee.FirebaseRemoveToken(tokens[pos])
+				_ = model.RemoveFirebaseToken(tokens[pos])
 			}
 		}
 	}
-}
-
-// deleteOp instructs a single agent (all devices) to remove an op
-func deleteOp(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	data := map[string]string{
-		"gid": string(fb.Gid),
-		"msg": fb.Msg,
-		"cmd": fb.Cmd.String(),
-	}
-
-	tokens, err := fb.Gid.FirebaseTokens()
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	genericMulticast(ctx, c, data, tokens)
-	return nil
-}
-
-func subscribeToTeam(ctx context.Context, c *messaging.Client, fb wasabee.FirebaseCmd) error {
-	if fb.Gid == "" {
-		return nil
-	}
-	if fb.TeamID == "" {
-		return nil
-	}
-
-	tokens, err := fb.Gid.FirebaseTokens()
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	if len(tokens) == 0 {
-		return nil
-	}
-
-	var tmr *messaging.TopicManagementResponse
-	if fb.Msg == "subscribe" {
-		tmr, err = c.SubscribeToTopic(ctx, tokens, string(fb.TeamID))
-		// wasabee.Log.Debugf("subscribed %s to %s (%s)", fb.Gid, fb.TeamID, tokens)
-	} else {
-		tmr, err = c.UnsubscribeFromTopic(ctx, tokens, string(fb.TeamID))
-		// wasabee.Log.Debugf("unsubscribed %s from %s (%s)", fb.Gid, fb.TeamID, tokens)
-	}
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	if tmr != nil && tmr.FailureCount > 0 {
-		for _, f := range tmr.Errors {
-			// wasabee.Log.Debugw("[un]subscribe failed; deleting token", "subsystem", "Firebase", "token", tokens[f.Index], "reason", f.Reason)
-			fb.Gid.FirebaseRemoveToken(tokens[f.Index])
-		}
-	}
-	return nil
 }

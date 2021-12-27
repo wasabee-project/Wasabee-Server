@@ -1,39 +1,50 @@
 package risc
 
 import (
-	// "bytes"
 	"context"
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
-	// "github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
-	"github.com/wasabee-project/Wasabee-Server"
+
+	"github.com/wasabee-project/Wasabee-Server/auth"
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-type riscConfig struct {
+// internal channel
+var riscchan chan event
+
+// the top-level configuration, populated by googleRiscDiscover()
+var googleConfig struct {
 	Issuer      string   `json:"issuer"`
 	JWKURI      string   `json:"jwks_uri"`
 	Methods     []string `json:"delivery_methods_supported"`
 	AddEndpoint string   `json:"add_subject_endpoint"`
 	RemEndpoint string   `json:"remove_subject_endpoint"`
-	running     bool
-	clientemail string
-	keys        jwk.Set
-	authdata    []byte
 }
+
+// the flag to indicate if we are running or not
+var running bool
+
+// our credentials to Google
+var authdata []byte
+
+// the key set to validate/verify messages from Google
+var keys jwk.Set
 
 // the token's event
 // {"subject":{"email":"whoever@gmail.com","iss":"https://accounts.google.com","sub":"...gid...","subject_type":"id_token_claims"}, "reason": ""}
 type event struct {
 	Type    string `json:"subject_type"`
-	Reason  string `json:"reason"` // wasabee change
+	Reason  string `json:"reason"` // wasabee addition
 	Issuer  string `json:"iss"`
 	Subject string `json:"sub"`
 	Email   string `json:"email"`
@@ -44,144 +55,115 @@ type riscmsg struct {
 	Reason  string `json:"reason"`
 }
 
-// Google probably has a type for this somewhere, maybe x/oauth/Google
-type serviceCreds struct {
-	Type            string `json:"type"`
-	ProjectID       string `json:"project_id"`
-	ProjectKeyID    string `json:"private_key_id"`
-	PrivateKey      string `json:"private_key"`
-	ClientEmail     string `json:"client_email"`
-	ClientID        string `json:"client_id"`
-	AuthURI         string `json:"auth_uri"`
-	TokenURI        string `json:"token_uri"`
-	ProviderCertURL string `json:"auth_provider_x509_cert_url"`
-	ClientCertURL   string `json:"client_x509_cert_url"`
-}
+// Start sets up the data structures and starts the processing threads
+func Start(ctx context.Context) {
+	c := config.Get()
+	if c.RISC.Cert == "" {
+		log.Debugw("startup", "message", "RISC not configured")
+		return
+	}
+	full := path.Join(c.Certs, c.RISC.Cert)
 
-var riscchan chan event
-var config riscConfig
+	if _, err := os.Stat(full); err != nil {
+		log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", full)
+	}
+	tmp, err := ioutil.ReadFile(full)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	authdata = tmp
 
-const riscHook = "/GoogleRISC"
-const googleDiscoveryURL = "https://accounts.google.com/.well-known/risc-configuration"
-
-// RISC sets up the data structures and starts the processing threads
-func RISC(configfile string) {
 	// load config from google
 	if err := googleRiscDiscovery(); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return
 	}
-
-	// load service-account info from JSON file
-	// #nosec
-	data, err := ioutil.ReadFile(configfile)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return
-	}
-	var sc serviceCreds
-	err = json.Unmarshal(data, &sc)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return
-	}
-	config.clientemail = sc.ClientEmail
-	config.authdata = data // Yeah, the consumers need the whole thing as bytes
 
 	// make a channel to read for events
 	riscchan = make(chan event, 1)
 
-	risc := wasabee.Subrouter(riscHook)
+	risc := config.Subrouter(config.Get().RISC.Webhook)
 	risc.HandleFunc("", Webhook).Methods("POST")
-	risc.HandleFunc("", WebhookStatus).Methods("GET")
 
 	// start a thread for keeping the connection to Google fresh
-	go riscRegisterWebhook()
+	go registerWebhook(ctx)
 
 	// this loops on the channel messsages
 	for e := range riscchan {
-		gid := wasabee.GoogleID(e.Subject)
+		gid := model.GoogleID(e.Subject)
 		switch e.Type {
 		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
-			wasabee.Log.Errorw("locking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
+			log.Errorw("locking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			_ = gid.Lock(e.Reason)
-			gid.FirebaseRemoveAllTokens()
-			gid.Logout(e.Reason)
+			_ = gid.RemoveAllFirebaseTokens()
+			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
-			wasabee.Log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
+			log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
 			_ = gid.Unlock(e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
-			wasabee.Log.Errorw("deleting account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
-			gid.Logout(e.Reason)
+			log.Errorw("deleting account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
+			auth.Logout(gid, e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
-			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
-			gid.Logout(e.Reason)
+			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			_ = gid.RemoveAllFirebaseTokens()
+			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
-			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
-			gid.Logout(e.Reason)
+			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			_ = gid.RemoveAllFirebaseTokens()
+			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
-			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
-			gid.Logout(e.Reason)
+			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			_ = gid.RemoveAllFirebaseTokens()
+			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
-			// wasabee.Log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			// log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			// no need to do anything
 		case "https://accounts.google.com/risc/event/sessions-revoked":
-			wasabee.Log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			gid.FirebaseRemoveAllTokens()
-			gid.Logout(e.Reason)
+			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			_ = gid.RemoveAllFirebaseTokens()
+			auth.Logout(gid, e.Reason)
 		default:
-			wasabee.Log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
+			log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
 		}
 	}
 }
 
 // This is called from the webhook
 func validateToken(rawjwt []byte) error {
-	var token jwt.Token
-	for iter := config.keys.Iterate(context.TODO()); iter.Next(context.TODO()); {
-		pair := iter.Pair()
-		key := pair.Value.(jwk.RSAPublicKey)
-		var pk rsa.PublicKey
-		if err := key.Raw(&pk); err != nil {
-			wasabee.Log.Errorw("unable to get public key from set", "error", err, "subsystem", "RISC", "message", "unable to get public key from set")
-			continue
-		}
-
-		var err error
-		token, err = jwt.Parse(rawjwt,
-			jwt.WithValidate(true),
-			jwt.WithVerify(jwa.RS256, &pk),
-			jwt.WithIssuer("https://accounts.google.com"),
-		)
-		if err == nil {
-			// found a good key, we are done
-			break
-		}
-
-		// wasabee.Log.Debugw(err.Error(), "subsystem", "RISC", "message", err.Error(), "token", string(rawjwt), "pair", pair, "note", "this is probably harmless unless you see an error following")
-		token = nil
-		// try the next key if one exists
+	// log.Debugw("RISC token", "raw", rawjwt)
+	token, err := jwt.Parse(rawjwt,
+		jwt.WithValidate(true),
+		jwt.WithIssuer("https://accounts.google.com"),
+		jwt.InferAlgorithmFromKey(true),
+		jwt.UseDefaultKey(true),
+		jwt.WithKeySet(keys))
+	if err != nil {
+		log.Errorw("RISC", "error", err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
+		return err
 	}
-
 	if token == nil {
 		err := fmt.Errorf("unable to verify RISC event")
-		wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
+		log.Errorw(err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
 		return err
 	}
 
-	tmp, ok := token.Get("events")
+	// jwt.WithValidate(true) makes this redundant
+	if err := jwt.Validate(token); err != nil {
+		log.Infow("RISC jwt validate failed", "error", err)
+		return err
+	}
+
+	events, ok := token.Get("events")
 	if !ok {
 		err := fmt.Errorf("unable to get events from token")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 
 	// multiple events per message are possible
-	for k, v := range tmp.(map[string]interface{}) {
+	for k, v := range events.(map[string]interface{}) {
 		var r riscmsg
 		r.Subject.Type = k
 
@@ -192,13 +174,13 @@ func validateToken(rawjwt []byte) error {
 			continue
 		}
 
-		wasabee.Log.Infow("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
+		log.Infow("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
 
 		// XXX this is ugly and brittle - it is JSON, just unmarshal it.
 		x := v.(map[string]interface{})
 
 		/* if err := json.Unmarshal(x, &r); err != nil {
-			wasabee.Log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), "data", x)
+			log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), "data", x)
 			continue
 		} */
 
@@ -210,47 +192,35 @@ func validateToken(rawjwt []byte) error {
 		r.Subject.Subject = y["sub"].(string)
 		r.Subject.Email = y["email"].(string)
 
-		// r.Subject.Reason = r.Reason
 		riscchan <- r.Subject
 	}
 	return nil
 }
 
 func googleRiscDiscovery() error {
-	req, err := http.NewRequest("GET", googleDiscoveryURL, nil)
+	req, err := http.NewRequest("GET", config.Get().RISC.Discovery, nil)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 	client := &http.Client{
-		Timeout: wasabee.GetTimeout(3 * time.Second),
+		Timeout: (3 * time.Second),
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
-	err = json.Unmarshal(body, &config)
+	err = json.Unmarshal(body, &googleConfig)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
-	return nil
-}
-
-// called hourly to keep the key cache up-to-date
-func googleLoadKeys() error {
-	keys, err := jwk.Fetch(context.Background(), config.JWKURI)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	config.keys = keys
 	return nil
 }

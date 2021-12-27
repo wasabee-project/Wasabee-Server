@@ -1,33 +1,35 @@
-package wasabeetelegram
+package wtg
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/gorilla/mux"
+
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// TGWebHook is the http route for receiving Telegram updates
-func TGWebHook(res http.ResponseWriter, req *http.Request) {
+// webhook is the http route for receiving Telegram updates
+func webhook(res http.ResponseWriter, req *http.Request) {
 	var err error
 
-	if config.APIKey == "" || config.hook == "" {
-		err = fmt.Errorf("the Telegram API is not configured")
-		wasabee.Log.Info(err)
+	if hook == "" {
+		err := fmt.Errorf("the Telegram API is not configured")
+		log.Info(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	hook := vars["hook"]
+	h := vars["hook"]
 
-	if hook != config.hook {
-		err = fmt.Errorf("%s is not a valid hook", hook)
-		wasabee.Log.Error(err)
+	if h != hook {
+		err = fmt.Errorf("%s is not a valid hook", h)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -35,19 +37,19 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/json" {
 		err = fmt.Errorf("invalid request (needs to be application/json)")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if string(jBlob) == "" {
 		err = fmt.Errorf("empty JSON")
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
@@ -56,14 +58,14 @@ func TGWebHook(res http.ResponseWriter, req *http.Request) {
 	var update tgbotapi.Update
 	err = json.Unmarshal(jRaw, &update)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// put the update into the subsystem update channel for processing by the bot logic
-	config.upChan <- update
+	upChan <- update
 
 	res.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(res, "{Status: 'OK'}")
+	fmt.Fprint(res, `{"status":"ok"}`)
 }

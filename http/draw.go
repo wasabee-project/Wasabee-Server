@@ -9,7 +9,11 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/wasabee-project/Wasabee-Server"
+
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
@@ -17,48 +21,48 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
-		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", "new operation")
+		log.Infow(err.Error(), "GID", gid, "resource", "new operation")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
 		err := fmt.Errorf("empty JSON on operation upload")
-		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", "new operation")
+		log.Infow(err.Error(), "GID", gid, "resource", "new operation")
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
-	if err = wasabee.DrawInsert(jRaw, gid); err != nil {
-		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", "new operation")
+	if err = model.DrawInsert(jRaw, gid); err != nil {
+		log.Infow(err.Error(), "GID", gid, "resource", "new operation")
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// the IITC plugin wants the full /me data on draw POST so it can update its list of ops
-	var ad wasabee.AgentData
-	if err = gid.GetAgentData(&ad); err != nil {
-		wasabee.Log.Error(err)
+	agent, err := gid.GetAgent()
+	if err != nil {
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	data, _ := json.Marshal(ad)
+	data, _ := json.Marshal(agent)
 	res.Header().Set("Cache-Control", "no-store")
 	fmt.Fprint(res, string(data))
 }
@@ -66,21 +70,21 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	vars := mux.Vars(req)
-	id := vars["document"]
+	id := vars["opID"]
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	var o wasabee.Operation
-	o.ID = wasabee.OperationID(id)
+	var o model.Operation
+	o.ID = model.OperationID(id)
 
 	if o.ID.IsDeletedOp() {
 		err := fmt.Errorf("requested deleted op")
-		wasabee.Log.Infow(err.Error(), "GID", gid, "resource", o.ID)
+		log.Infow(err.Error(), "GID", gid, "resource", o.ID)
 		http.Error(res, jsonError(err), http.StatusGone)
 		return
 	}
@@ -89,30 +93,31 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	assignOnly := o.AssignedOnlyAccess(gid)
 	if !read && !assignOnly {
 		err := fmt.Errorf("forbidden")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", o.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", o.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	// o.Populate determines all, zone, or assigned-only
-	if err = o.Populate(gid); err != nil {
-		wasabee.Log.Error(err)
+	// don't do full populate (slow) just yet
+	stat, err := o.ID.Stat()
+	if err != nil {
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// basically the same as If-Modified-Since
 	im := req.Header.Get("If-None-Match")
-	if im != "" && im == o.LastEditID {
+	if im != "" && im == stat.LastEditID {
 		err := fmt.Errorf("local copy matches server copy")
-		// wasabee.Log.Debugw(err.Error(), "GID", gid, "resource", o.ID, "If-None-Match", im, "LastEditID", o.LastEditID)
+		// log.Debugw(err.Error(), "GID", gid, "resource", o.ID, "If-None-Match", im, "LastEditID", stat.LastEditID)
 		http.Error(res, jsonError(err), http.StatusNotModified)
 		return
 	}
 
-	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", o.Modified, time.UTC)
+	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", stat.Modified, time.UTC)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -121,7 +126,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	if ims != "" && ims != "null" { // yes, the string "null", seen in the wild
 		modifiedSince, err := time.ParseInLocation(time.RFC1123, ims, time.UTC)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -132,9 +137,16 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	// o.Populate determines all, zone, or assigned-only
+	if err = o.Populate(gid); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
 	s, err := json.Marshal(o)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -149,7 +161,7 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -157,87 +169,89 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
 	// only the ID needs to be set for this
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	// op.Delete checks ownership, do we need this check? -- yes for good status codes
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("forbidden: only the owner can delete an operation")
-		wasabee.Log.Warnw(err.Error(), "resource", op.ID, "GID", gid)
+		log.Warnw(err.Error(), "resource", op.ID, "GID", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	if err := op.Delete(gid); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	wasabee.Log.Infow("deleted operation", "resource", op.ID, "GID", gid, "message", "deleted operation")
+	messaging.DeleteOperation(messaging.OperationID(op.ID)) // announces to EVERYONE to delete it
+	log.Infow("deleted operation", "resource", op.ID, "GID", gid, "message", "deleted operation")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	jBlob, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if string(jBlob) == "" {
 		err := fmt.Errorf("empty JSON on operation upload")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("forbidden: write access required to update an operation")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	s, err := op.ID.Stat()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	im := req.Header.Get("If-Match")
 	if im != "" && im != s.LastEditID {
 		err := fmt.Errorf("local copy out-of-date")
-		wasabee.Log.Debugw(err.Error(), "GID", gid, "resource", s.ID, "If-Match", im, "LastEditID", s.LastEditID)
+		log.Debugw(err.Error(), "GID", gid, "resource", s.ID, "If-Match", im, "LastEditID", s.LastEditID)
 		http.Error(res, jsonError(err), http.StatusPreconditionFailed)
 		return
 	}
 
-	uid, err := wasabee.DrawUpdate(wasabee.OperationID(op.ID), json.RawMessage(jBlob), gid)
+	err = model.DrawUpdate(op.ID, json.RawMessage(jBlob), gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -249,47 +263,48 @@ func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("forbidden: only the owner can set operation ownership ")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	err = op.ID.Chown(gid, to)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
+	// no notification
 	fmt.Fprint(res, jsonStatusOK)
 }
 
+/*
 func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	id := vars["document"]
+	id := vars["opID"]
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var o wasabee.Operation
-	o.ID = wasabee.OperationID(id)
+	var o model.Operation
+	o.ID = model.OperationID(id)
 	if err = o.Populate(gid); err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -301,7 +316,7 @@ func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 		lon string
 	}
 
-	var portals = make(map[wasabee.PortalID]latlon)
+	var portals = make(map[model.PortalID]latlon)
 
 	for _, p := range o.OpPortals {
 		var l latlon
@@ -328,39 +343,40 @@ func drawStockRoute(res http.ResponseWriter, req *http.Request) {
 			break
 		}
 	}
-	http.Redirect(res, req, url, http.StatusFound)
-}
+	http.Redirect(res, req, url, http.StatusFound) // commented out
+} */
 
 func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set portal comments")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	portalID := wasabee.PortalID(vars["portal"])
+	portalID := model.PortalID(vars["portal"])
 	comment := req.FormValue("comment")
-	uid, err := op.PortalComment(portalID, comment)
+	err = op.ID.PortalComment(portalID, comment)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -369,30 +385,31 @@ func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	// only the ID needs to be set for this
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set portal hardness")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	portalID := wasabee.PortalID(vars["portal"])
+	portalID := model.PortalID(vars["portal"])
 	hardness := req.FormValue("hardness")
-	uid, err := op.PortalHardness(portalID, hardness)
+	err = op.ID.PortalHardness(portalID, hardness)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -400,35 +417,36 @@ func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set operation order")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
 	order := req.FormValue("order")
-	_, err = op.LinkOrder(order, gid)
+	err = op.LinkOrder(order)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.MarkerOrder(order, gid)
+	err = op.MarkerOrder(order)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -436,28 +454,29 @@ func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.WriteAccess(gid) {
 		err = fmt.Errorf("write access required to set operation info")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	info := req.FormValue("info")
-	uid, err := op.SetInfo(info, gid)
+	err = op.SetInfo(info, gid)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -465,15 +484,15 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
-	portalID := wasabee.PortalID(vars["portal"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
+	portalID := model.PortalID(vars["portal"])
 
 	onhand, err := strconv.ParseInt(req.FormValue("count"), 10, 32)
 	if err != nil { // user supplied non-numeric value
@@ -489,13 +508,14 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	capsule := req.FormValue("capsule")
 
-	uid, err := op.KeyOnHand(gid, portalID, int32(onhand), capsule)
+	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -504,40 +524,41 @@ func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("permission to edit permissions denied")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	teamID := wasabee.TeamID(req.FormValue("team"))
+	teamID := model.TeamID(req.FormValue("team"))
 	role := req.FormValue("role") // AddPerm verifies this is good
 	if teamID == "" || role == "" {
 		err = fmt.Errorf("required value not set to add permission to op")
-		wasabee.Log.Warn(err)
+		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	// Pass in "Zeta" and get a zone back... defaults to "All"
-	zone := wasabee.ZoneFromString(req.FormValue("zone"))
+	zone := model.ZoneFromString(req.FormValue("zone"))
 
-	uid, err := op.AddPerm(gid, teamID, role, zone)
+	err = op.ID.AddPerm(gid, teamID, role, zone)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -546,42 +567,73 @@ func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	vars := mux.Vars(req)
-	var op wasabee.Operation
-	op.ID = wasabee.OperationID(vars["document"])
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if !op.ID.IsOwner(gid) {
 		err = fmt.Errorf("permission to edit permissions denied")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	teamID := wasabee.TeamID(req.FormValue("team"))
-	role := wasabee.OpPermRole(req.FormValue("role"))
-	zone := wasabee.ZoneFromString(req.FormValue("zone"))
+	teamID := model.TeamID(req.FormValue("team"))
+	role := model.OpPermRole(req.FormValue("role"))
+	zone := model.ZoneFromString(req.FormValue("zone"))
 	if teamID == "" || role == "" {
 		err = fmt.Errorf("required value not set to remove permission from op")
-		wasabee.Log.Warnw(err.Error(), "GID", gid, "role", role, "zone", zone, "teamID", teamID, "resource", op.ID)
+		log.Warnw(err.Error(), "GID", gid, "role", role, "zone", zone, "teamID", teamID, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
-	uid, err := op.DelPerm(gid, teamID, role, zone)
+	err = op.ID.DelPerm(gid, teamID, role, zone)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
+	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func jsonOKUpdateID(uid string) string {
 	return fmt.Sprintf("{\"status\":\"ok\", \"updateID\": \"%s\"}", uid)
+}
+
+func touch(op model.Operation) string {
+	// update the timestamp and updateID
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+
+	// announce to all relevant teams
+	var teams []model.TeamID
+	for _, t := range op.Teams {
+		teams = append(teams, t.TeamID)
+	}
+	if len(teams) == 0 {
+		// not populated?
+		teams, err = op.ID.Teams()
+		if err != nil {
+			log.Error(err)
+			return uid
+		}
+	}
+
+	for _, t := range teams {
+		if err := wfb.MapChange(t, op.ID, uid); err != nil {
+			log.Error(err)
+		}
+	}
+	return uid
 }

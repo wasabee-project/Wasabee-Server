@@ -4,125 +4,71 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"html/template"
 	"net/http"
-	"net/http/httputil"
+	// "net/http/httputil"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
+	// "golang.org/x/oauth2"
 	//"golang.org/x/oauth2/google"
+	// "github.com/lestrrat-go/jwx/jws"
+	"github.com/lestrrat-go/jwx/jwt"
 
 	"github.com/gorilla/sessions"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/wasabee-project/Wasabee-Server/auth"
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/generatename"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 
 	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
 )
 
-// Configuration is the main configuration data for the https server
-// an initial config is sent from main() and that is updated with defaults
-// in the initializeConfig function
-type Configuration struct {
-	ListenHTTPS      string
-	FrontendPath     string
-	Root             string
-	path             string
-	oauthStateString string
-	CertDir          string
-	OauthConfig      *oauth2.Config
-	OauthUserInfoURL string
-	store            *sessions.CookieStore
-	sessionName      string
-	CookieSessionKey string
-	TemplateSet      map[string]*template.Template // allow multiple translations
-	Logfile          string
-	srv              *http.Server
-	logfileHandle    *os.File
-	unrolled         *logger.Logger
-	scanners         map[string]int64
-}
+var srv *http.Server
 
-var config Configuration
+// var logfileHandle    *os.File
+var unrolled *logger.Logger
+var scanners map[string]int64
+var oauthStateString string
+var store *sessions.CookieStore
 
 const jsonType = "application/json; charset=UTF-8"
 const jsonTypeShort = "application/json"
 const jsonStatusOK = `{"status":"ok"}`
 const jsonStatusEmpty = `{"status":"error","error":"Empty JSON"}`
-const me = "/me"
-const login = "/login"
-const callback = "/callback"
-const aptoken = "/aptok"
-const apipath = "/api/v1"
-const oneTimeToken = "/oneTimeToken"
 
-// initializeConfig will normalize the options and create the "config" object.
-func initializeConfig(initialConfig Configuration) {
-	config = initialConfig
+// Start launches the HTTP server which is responsible for the frontend and the HTTP API.
+func Start() {
+	c := config.Get()
+	c.HTTP.Webroot = strings.TrimSuffix(c.HTTP.Webroot, "/")
 
-	config.Root = strings.TrimSuffix(config.Root, "/")
-
-	// Extract "path" fron "root"
-	rootParts := strings.SplitAfterN(config.Root, "/", 4) // https://example.org/[grab this part]
-	config.path = ""
-	if len(rootParts) > 3 { // Otherwise: application in root folder
-		config.path = rootParts[3]
-	}
-	config.path = strings.TrimSuffix("/"+strings.TrimPrefix(config.path, "/"), "/")
-
-	// used for templates
-	wasabee.SetWebroot(config.Root)
-	wasabee.SetWebAPIPath(apipath)
-
-	if config.OauthConfig.ClientID == "" {
-		wasabee.Log.Fatal("OAUTH_CLIENT_ID unset: logins will fail")
-	}
-	if config.OauthConfig.ClientSecret == "" {
-		wasabee.Log.Fatal("OAUTH_SECRET unset: logins will fail")
+	oc := config.GetOauthConfig()
+	if oc.ClientID == "" || oc.ClientSecret == "" {
+		log.Errorw("startup", "Oauth ClientID", oc.ClientID, "Oauth ClientSecret", oc.ClientSecret)
+		log.Fatal("Oauth Client not configured: logins will fail")
 	}
 
-	wasabee.Log.Debugw("startup", "ClientID", config.OauthConfig.ClientID)
-	wasabee.Log.Debugw("startup", "ClientSecret", config.OauthConfig.ClientSecret)
-	config.oauthStateString = wasabee.GenerateName()
-	wasabee.Log.Debugw("startup", "oauthStateString", config.oauthStateString)
+	oauthStateString = generatename.GenerateName()
+	// log.Debugw("startup", "oauthStateString", oauthStateString)
 
-	if config.CookieSessionKey == "" {
-		wasabee.Log.Error("SESSION_KEY unset: logins will fail")
-	} else {
-		key := config.CookieSessionKey
-		wasabee.Log.Debugw("startup", "Session Key", key)
-		config.store = sessions.NewCookieStore([]byte(key))
-		config.sessionName = "wasabee"
+	key := c.HTTP.CookieSessionKey
+	if len(key) != 32 {
+		log.Error("SessionKey not 32 characters long: logins will fail")
 	}
+	store = sessions.NewCookieStore([]byte(key))
 
-	// certificate directory cleanup
-	if config.CertDir == "" {
-		wasabee.Log.Warn("CERTDIR unset: defaulting to 'certs'")
-		config.CertDir = "certs"
-	}
-	certdir, err := filepath.Abs(config.CertDir)
-	config.CertDir = certdir
-	if err != nil {
-		wasabee.Log.Fatal("certificate path could not be resolved.")
-		// panic(err)
-	}
-	wasabee.Log.Debugw("startup", "Certificate Directory", config.CertDir)
-
-	if config.Logfile == "" {
-		// wasabee.Log.Warn("https logfile unset: defaulting to 'wasabee-https.log'")
-		config.Logfile = "wasabee-https.log"
-	}
-	wasabee.Log.Debugw("startup", "https logfile", config.Logfile)
+	log.Debugw("startup", "https logfile", c.HTTP.Logfile)
 	// #nosec
-	config.logfileHandle, err = os.OpenFile(config.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	logfileHandle, err := os.OpenFile(c.HTTP.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		wasabee.Log.Fatal(err)
+		log.Fatal(err)
 	}
-	config.unrolled = logger.New(logger.Options{
+	unrolled = logger.New(logger.Options{
 		Prefix: "wasabee",
-		Out:    config.logfileHandle,
+		Out:    logfileHandle,
 		IgnoredRequestURIs: []string{
 			"/favicon.ico",
 			"/apple-touch-icon-precomposed.png",
@@ -130,45 +76,18 @@ func initializeConfig(initialConfig Configuration) {
 			"/apple-touch-icon-120x120.png",
 			"/apple-touch-icon.png"},
 	})
-	config.scanners = make(map[string]int64)
-}
-
-// templateExecute outputs directly to the ResponseWriter
-func templateExecute(res http.ResponseWriter, req *http.Request, name string, data interface{}) error {
-	var lang string
-	tmp := req.Header.Get("Accept-Language")
-	if tmp == "" || len(tmp) < 2 {
-		lang = "en"
-	} else {
-		lang = strings.ToLower(tmp)[:2]
-	}
-	_, ok := config.TemplateSet[lang]
-	if !ok {
-		lang = "en" // default to english if the map doesn't exist
-	}
-
-	if err := config.TemplateSet[lang].ExecuteTemplate(res, name, data); err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
-	return nil
-}
-
-// StartHTTP launches the HTTP server which is responsible for the frontend and the HTTP API.
-func StartHTTP(initialConfig Configuration) {
-	// take the incoming config, add defaults
-	initializeConfig(initialConfig)
+	scanners = make(map[string]int64)
 
 	// setup the main router an built-in subrouters
 	router := setupRouter()
 
 	// serve
-	config.srv = &http.Server{
+	srv = &http.Server{
 		Handler:           router,
-		Addr:              config.ListenHTTPS,
-		WriteTimeout:      wasabee.GetTimeout(15 * time.Second),
-		ReadTimeout:       wasabee.GetTimeout(15 * time.Second),
-		ReadHeaderTimeout: wasabee.GetTimeout(2 * time.Second),
+		Addr:              c.HTTP.ListenHTTPS,
+		WriteTimeout:      (15 * time.Second),
+		ReadTimeout:       (15 * time.Second),
+		ReadHeaderTimeout: (2 * time.Second),
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -184,34 +103,19 @@ func StartHTTP(initialConfig Configuration) {
 		},
 	}
 
-	wasabee.Log.Infow("startup", "port", config.ListenHTTPS, "url", config.Root, "message", "online at "+config.Root)
-	if err := config.srv.ListenAndServeTLS(config.CertDir+"/wasabee.fullchain.pem", config.CertDir+"/wasabee.key"); err != nil {
-		wasabee.Log.Fatal(err)
-		// panic(err)
-	}
-}
-
-// StartAppEngine is used in Google App Engine in place of StartHTTP
-func StartAppEngine(ic Configuration) {
-	initializeConfig(ic)
-
-	router := setupRouter()
-	config.srv = &http.Server{
-		Handler: router,
-		Addr:    config.ListenHTTPS,
-	}
-
-	if err := config.srv.ListenAndServe(); err != nil {
-		wasabee.Log.Fatal(err)
-		// panic(err)
+	fc := path.Join(c.Certs, c.CertFile)
+	k := path.Join(c.Certs, c.CertKey)
+	log.Infow("startup", "port", c.HTTP.ListenHTTPS, "url", c.HTTP.Webroot, "message", "online at "+c.HTTP.Webroot)
+	if err := srv.ListenAndServeTLS(fc, k); err != http.ErrServerClosed {
+		log.Error(err)
 	}
 }
 
 // Shutdown forces a graceful shutdown of the https server
 func Shutdown() error {
-	wasabee.Log.Infow("shutdown", "message", "shutting down HTTPS server")
-	if err := config.srv.Shutdown(context.Background()); err != nil {
-		wasabee.Log.Error(err)
+	log.Infow("shutdown", "message", "shutting down HTTPS server")
+	if err := srv.Shutdown(context.Background()); err != nil {
+		log.Error(err)
 		return err
 	}
 	return nil
@@ -226,8 +130,13 @@ func headersMW(next http.Handler) http.Handler {
 		for p, v := range permitted {
 			if origin == v {
 				ref = permitted[p]
-				// wasabee.Log.Debugw("access-control-allow-origin", "Origin", origin, "Ref", ref)
 			}
+		}
+
+		if isScanner(req) {
+			log.Warnw("scanner detected", "ip", req.RemoteAddr)
+			http.Error(res, "permission denied", http.StatusForbidden)
+			return
 		}
 
 		res.Header().Add("Server", "Wasabee-Server")
@@ -236,46 +145,66 @@ func headersMW(next http.Handler) http.Handler {
 		res.Header().Add("Access-Control-Allow-Origin", ref)
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
-		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match")
+		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match, Authorization")
 		next.ServeHTTP(res, req)
 	})
 }
 
-func scannerMW(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		i, ok := config.scanners[req.RemoteAddr]
-		if ok && i > 30 {
-			http.Error(res, "scanner detected", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(res, req)
-	})
-}
-
-type statusRecorder struct {
-	http.ResponseWriter
-	status int
-}
-
-func (rec *statusRecorder) WriteHeader(code int) {
-	rec.status = code
-	rec.ResponseWriter.WriteHeader(code)
-}
-
+/*
 func logRequestMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		wasabee.Log.Debug("REQ", req.Method, req.RequestURI)
+		log.Debug("REQ", req.Method, req.RequestURI)
 		rec := statusRecorder{res, 200}
 		next.ServeHTTP(&rec, req)
-		wasabee.Log.Debug("RESP", rec.status, req.RequestURI)
+		log.Debug("RESP", rec.status, req.RequestURI)
 	})
 }
+*/
 
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		ses, err := config.store.Get(req, config.sessionName)
+		sessionName := config.Get().HTTP.SessionName
+
+		req.Header.Del("X-Wasabee-GID") // don't allow spoofing
+
+		if h := req.Header.Get("Authorization"); h != "" {
+			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
+			if err != nil {
+				log.Info(err)
+				http.Error(res, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			// expiration validation is implicit
+			// XXX make sure JwtID is not on the "revoked" list -- in a way that doesn't hit the database too hard
+			if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
+				sub, _ := token.Get("sub")
+				log.Infow("JWT validate failed", "error", err, "sub", sub)
+				http.Error(res, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			gid := model.GoogleID(token.Subject())
+			// too db intensive? -- cache it?
+			if !gid.Valid() {
+				// token minted on another server, never logged in to this server
+				if err := gid.FirstLogin(); err != nil {
+					log.Info(err)
+					http.Error(res, err.Error(), http.StatusUnauthorized)
+					return
+				}
+			}
+
+			// pass the GoogleID around so subsequent functions can easily access it
+			req.Header.Set("X-Wasabee-GID", string(gid))
+			next.ServeHTTP(res, req)
+			return
+		}
+
+		// no JWT, use legacy cookie
+		ses, err := store.Get(req, sessionName)
 		if err != nil {
-			wasabee.Log.Error(err)
+			log.Error(err)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			delete(ses.Values, "loginReq")
@@ -297,14 +226,14 @@ func authMW(next http.Handler) http.Handler {
 			ses.Values["loginReq"] = req.URL.String()
 			res.Header().Set("Connection", "close")
 			_ = ses.Save(req, res)
-			// wasabee.Log.Debug("not logged in")
+			// log.Debug("not logged in")
 			redirectOrError(res, req)
 			return
 		}
 
-		gid := wasabee.GoogleID(id.(string))
-		if gid.CheckLogout() {
-			/* wasabee.Log.Debugw("honoring previously requested logout", "GID", gid.String())
+		gid := model.GoogleID(id.(string))
+		if auth.CheckLogout(gid) {
+			log.Debugw("honoring previously requested logout", "gid", gid)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
 			ses.Options = &sessions.Options{
@@ -313,13 +242,13 @@ func authMW(next http.Handler) http.Handler {
 				SameSite: http.SameSiteNoneMode,
 				Secure:   true,
 			}
-			http.Redirect(res, req, "/", http.StatusFound) */
+			http.Redirect(res, req, "/", http.StatusFound)
 			return
 		}
 
 		in, ok := ses.Values["nonce"]
 		if !ok || in == nil {
-			wasabee.Log.Errorw("gid set, but no nonce", "GID", gid.String())
+			log.Errorw("gid set, but no nonce", "GID", gid)
 			redirectOrError(res, req)
 			return
 		}
@@ -328,7 +257,7 @@ func authMW(next http.Handler) http.Handler {
 		if in.(string) != nonce {
 			res.Header().Set("Connection", "close")
 			if in.(string) != pNonce {
-				// wasabee.Log.Debugw("session timed out", "GID", gid.String())
+				// log.Debugw("session timed out", "gid", gid)
 				ses.Values["nonce"] = "unset"
 			} else {
 				ses.Values["nonce"] = nonce
@@ -340,17 +269,21 @@ func authMW(next http.Handler) http.Handler {
 			redirectOrError(res, req)
 			return
 		}
+
+		req.Header.Set("X-Wasabee-GID", gid.String())
 		next.ServeHTTP(res, req)
 	})
 }
 
 func redirectOrError(res http.ResponseWriter, req *http.Request) {
+	c := config.Get().HTTP
+
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 	} else {
-		var redirectURL = login
-		if req.URL.String()[:len(me)] != me {
-			redirectURL = login + "?returnto=" + req.URL.String()
+		var redirectURL = c.LoginURL
+		if req.URL.String()[:len(c.MeURL)] != c.MeURL {
+			redirectURL = c.LoginURL + "?returnto=" + req.URL.String()
 		}
 
 		http.Redirect(res, req, redirectURL, http.StatusFound)
@@ -359,17 +292,18 @@ func redirectOrError(res http.ResponseWriter, req *http.Request) {
 
 func googleRoute(res http.ResponseWriter, req *http.Request) {
 	ret := req.FormValue("returnto")
+	c := config.Get().HTTP
 
-	ses, err := config.store.Get(req, config.sessionName)
+	ses, err := store.Get(req, c.SessionName)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if ret != "" {
 		ses.Values["loginReq"] = ret
 	} else {
-		ses.Values["loginReq"] = me
+		ses.Values["loginReq"] = c.MeURL
 	}
 	ses.Options = &sessions.Options{
 		Path:     "/",
@@ -377,12 +311,14 @@ func googleRoute(res http.ResponseWriter, req *http.Request) {
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	}
-	_ = ses.Save(req, res)
+	if err := ses.Save(req, res); err != nil {
+		log.Debug(err)
+	}
 
 	// the server may have several names/ports ; redirect back to the one the user called
-	oc := config.OauthConfig
-	oc.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, callback)
-	url := oc.AuthCodeURL(config.oauthStateString)
+	oc := config.GetOauthConfig()
+	oc.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, c.CallbackURL)
+	url := oc.AuthCodeURL(oauthStateString)
 	http.Redirect(res, req, url, http.StatusSeeOther)
 }
 
@@ -390,13 +326,13 @@ func jsonError(e error) string {
 	return fmt.Sprintf(`{"status":"error","error":"%s"}`, e.Error())
 }
 
-func debugMW(next http.Handler) http.Handler {
+/* func debugMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		dump, _ := httputil.DumpRequest(req, false)
-		wasabee.Log.Debug(string(dump))
+		log.Debug(string(dump))
 		next.ServeHTTP(res, req)
 	})
-}
+} */
 
 func contentTypeIs(req *http.Request, check string) bool {
 	contentType := strings.Split(strings.Replace(req.Header.Get("Content-Type"), " ", "", -1), ";")[0]

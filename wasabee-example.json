@@ -1,0 +1,19 @@
+{
+  "DB": "username:password@unix(/var/www/var/run/mysql/mysql.sock)/wasabee",
+  "V": {
+    "APIKey": "..."
+  },
+  "Rocks": {
+    "APIKey": "..."
+  },
+  "Telegram": {
+    "APIKey": "..."
+  },
+  "HTTP": {
+    "Webroot": "https://iceland.wasabee.rocks",
+    "ListenHTTPS": ":443",
+    "CookieSessionKey": "^-rand0m-32-_char-sTring-blah-xz",
+    "OauthClientID": "...",
+    "OauthSecret": "..."
+  }
+}

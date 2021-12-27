@@ -1,117 +1,60 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
-	"path"
 	"strings"
 	"syscall"
 
-	// "cloud.google.com/go/profiler"
-	// "google.golang.org/api/option"
+	"cloud.google.com/go/profiler"
+	"google.golang.org/api/option"
 
 	"github.com/urfave/cli"
-	"github.com/wasabee-project/Wasabee-Server"
+
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
-	// "github.com/wasabee-project/Wasabee-Server/PubSub"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/http"
-
-	"golang.org/x/oauth2"
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/rocks"
+	"github.com/wasabee-project/Wasabee-Server/templates"
+	"github.com/wasabee-project/Wasabee-Server/v"
 
 	"go.uber.org/zap"
-	"golang.org/x/oauth2/google"
+	// "golang.org/x/oauth2/google"
 )
+
+const version = "0.99.1"
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "database, d", EnvVar: "DATABASE", Value: "wasabee:GoodPassword@tcp(localhost)/wasabee",
-		Usage: "MySQL/MariaDB connection string. It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "certs", EnvVar: "CERTDIR", Value: "./certs/",
-		Usage: "Directory where HTTPS certificates are stored"},
-	cli.StringFlag{
-		Name: "root, r", EnvVar: "ROOT_URL", Value: "https://wasabee.phtiv.com",
-		Usage: "The path under which the application will be reachable from the internet"},
-	cli.StringFlag{
-		Name: "wordlist", EnvVar: "WORD_LIST", Value: "eff_large_wordlist.txt",
-		Usage: "Word list used for random slug generation"},
-	cli.StringFlag{
-		Name: "log", EnvVar: "LOGFILE", Value: "logs/wasabee.log",
-		Usage: "output log file"},
-	cli.StringFlag{
-		Name: "https", EnvVar: "HTTPS_LISTEN", Value: ":443",
-		Usage: "HTTPS listen address"},
-	cli.StringFlag{
-		Name: "httpslog", EnvVar: "HTTPS_LOGFILE", Value: "logs/wasabee-https.log",
-		Usage: "HTTPS log file."},
-	cli.StringFlag{
-		Name: "frontend-path, p", EnvVar: "FRONTEND_PATH", Value: "./frontend",
-		Usage: "Location of the frontend files."},
-	cli.StringFlag{
-		Name: "oauth-clientid", EnvVar: "OAUTH_CLIENT_ID", Value: "UNSET",
-		Usage: "OAuth ClientID. It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "oauth-secret", EnvVar: "OAUTH_CLIENT_SECRET", Value: "UNSET",
-		Usage: "OAuth Client Secret. It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "oauth-authurl", EnvVar: "OAUTH_AUTH_URL", Value: google.Endpoint.AuthURL,
-		Usage: "OAuth Auth URL. Defaults to Google's well-known auth url"},
-	cli.StringFlag{
-		Name: "oauth-tokenurl", EnvVar: "OAUTH_TOKEN_URL", Value: google.Endpoint.TokenURL,
-		Usage: "OAuth Token URL. Defaults to Google's well-known token url"},
-	cli.StringFlag{
-		Name: "oauth-userinfo", EnvVar: "OAUTH_USERINFO_URL", Value: "https://www.googleapis.com/oauth2/v2/userinfo",
-		Usage: "OAuth userinfo URL. Defaults to Google's well-known userinfo url"},
-	cli.StringFlag{
-		Name: "sessionkey", EnvVar: "SESSION_KEY", Value: "",
-		Usage: "Session Key (32 char, random). It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "tgkey", EnvVar: "TELEGRAM_API_KEY", Value: "",
-		Usage: "Telegram API Key. It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "venlonekey", EnvVar: "VENLONE_API_KEY", Value: "",
-		Usage: "V.enl.one API Key. It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "venloneapiurl", EnvVar: "VENLONE_API_URL", Value: "",
-		Usage: "V.enl.one API URL. Defaults to v.enl.one well-known URL"},
-	cli.StringFlag{
-		Name: "venlonestatusurl", EnvVar: "VENLONE_STATUS_URL", Value: "",
-		Usage: "V.enl.one Status URL. Defaults to status.enl.one well-known URL"},
-	cli.BoolFlag{
-		Name: "venlonepoller", EnvVar: "VENLONE_POLLER",
-		Usage: "Poll status.enl.one for RAID/JEAH location data"},
-	cli.StringFlag{
-		Name: "enlrockskey", EnvVar: "ENLROCKS_API_KEY", Value: "",
-		Usage: "enl.rocks API Key. It is recommended to pass this parameter as an environment variable"},
-	cli.StringFlag{
-		Name: "enlrockscommurl", EnvVar: "ENLROCKS_COMM_URL", Value: "",
-		Usage: "enl.rocks Community API URL. Defaults to the enl.rocks well-known URL"},
-	cli.StringFlag{
-		Name: "enlrocksstatusurl", EnvVar: "ENLROCKS_STATUS_URL", Value: "",
-		Usage: "enl.rocks Status API URL. Defaults to the enl.rocks well-known URL"},
-	cli.BoolFlag{
-		Name: "debug", EnvVar: "DEBUG",
-		Usage: "Show (a lot) more output"},
-	cli.BoolFlag{
-		Name: "longtimeouts", EnvVar: "LONG_TIMEOUTS",
-		Usage: "Increase timeouts to 1 hour. (should only be used while debugging)"},
+		Name: "config, f", EnvVar: "CONFIG", Value: "wasabee.json",
+		Usage: "Path to the config JSON file"},
 	cli.BoolFlag{
 		Name:  "help, h",
 		Usage: "Shows this help, then exits"},
+	cli.StringFlag{
+		Name: "log", EnvVar: "LOGFILE", Value: "logs/wasabee.log",
+		Usage: "Output log file"},
+	cli.BoolFlag{
+		Name: "debug, d", EnvVar: "DEBUG",
+		Usage: "Log more details"},
 }
 
 func main() {
 	app := cli.NewApp()
 
 	app.Name = "wasabee-server"
-	app.Version = "0.7.0"
+	app.Version = version
 	app.Usage = "Wasabee Server"
 	app.Authors = []cli.Author{
 		{
 			Name:  "Scot C. Bontrager",
-			Email: "scot@indievisible.org",
+			Email: "scot@wasabee.rocks",
 		},
 	}
 	app.Copyright = "© Scot C. Bontrager"
@@ -122,146 +65,91 @@ func main() {
 
 	app.Action = run
 
-	// f, _ := os.Create("logs/profile")
-	// pprof.StartCPUProfile(f)
-	// defer pprof.StopCPUProfile()
-
 	_ = app.Run(os.Args)
 }
 
-func run(c *cli.Context) error {
-	project := os.Getenv("GCP_PROJECT")
-	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-
-	if c.Bool("help") {
-		_ = cli.ShowAppHelp(c)
+func run(cargs *cli.Context) error {
+	if cargs.Bool("help") {
+		_ = cli.ShowAppHelp(cargs)
 		return nil
 	}
 
-	logconf := wasabee.LogConfiguration{
+	project := os.Getenv("GCP_PROJECT")
+	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
+	// config depends on log, so do this the hard way
+	logconf := log.Configuration{
 		Console:            true,
 		ConsoleLevel:       zap.InfoLevel,
-		FilePath:           c.String("log"),
+		FilePath:           cargs.String("log"),
 		FileLevel:          zap.InfoLevel,
 		GoogleCloudProject: project,
 		GoogleCloudCreds:   creds,
 	}
-	if c.Bool("debug") {
+	if cargs.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	wasabee.SetupLogging(logconf)
+	log.SetupLogging(&logconf)
 
-	wasabee.SetupDebug(c.Bool("longtimeouts"))
-
-	/*
-		if creds != "" {
-			if _, err := os.Stat(creds); err == nil {
-				opts := option.WithCredentialsFile(creds)
-				cfg := profiler.Config{
-					Service:        "wasabee",
-					ServiceVersion: "0.7.0",
-					ProjectID:      "phdevbin",
-				}
-				if err := profiler.Start(cfg, opts); err != nil {
-					wasabee.Log.Errorw("startup", "message", "unable to start profiler", "error", err)
-				} else {
-					wasabee.Log.Infow("startup", "message", "starting gcloud profiling")
-				}
+	// cloud profile
+	if creds != "" && project != "" && cargs.Bool("debug") {
+		if _, err := os.Stat(creds); err == nil {
+			opts := option.WithCredentialsFile(creds)
+			cfg := profiler.Config{
+				Service:        "wasabee",
+				ServiceVersion: version,
+				ProjectID:      project,
 			}
-		} */
-
-	// Load words
-	err := wasabee.LoadWordsFile(c.String("wordlist"))
-	if err != nil {
-		wasabee.Log.Fatalw("startup", "message", "Error loading word list", "wordlist", c.String("wordlist"), "error", err.Error())
-		// panic(err)
-	}
-
-	// load the UI templates
-	ts, err := wasabee.TemplateConfig(c.String("frontend-path"))
-	if err != nil {
-		wasabee.Log.Fatalw("startup", "message", "unable to load frontend templates; shutting down", "path", c.String("frontend-path"), "error", err.Error())
-		// panic(err)
-	}
-
-	// Connect to database
-	err = wasabee.Connect(c.String("database"))
-	if err != nil {
-		wasabee.Log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
-		// panic(err)
-	}
-
-	// setup V
-	if c.String("venlonekey") != "" {
-		wasabee.SetVEnlOne(wasabee.Vconfig{
-			APIKey:         c.String("venlonekey"),
-			APIEndpoint:    c.String("venloneapiurl"),
-			StatusEndpoint: c.String("venlonestatusurl"),
-		})
-		if c.Bool("venlonepoller") {
-			go wasabee.StatusServerPoller()
+			if err := profiler.Start(cfg, opts); err != nil {
+				log.Errorw("startup", "message", "unable to start profiler", "error", err)
+			} else {
+				log.Infow("startup", "message", "starting gcloud profiling")
+			}
 		}
 	}
 
-	// setup Rocks
-	if c.String("enlrockskey") != "" {
-		wasabee.SetEnlRocks(wasabee.Rocksconfig{
-			APIKey:            c.String("enlrockskey"),
-			CommunityEndpoint: c.String("enlrockscommurl"),
-			StatusEndpoint:    c.String("enlrocksstatusurl"),
-		})
+	ctx, shutdown := context.WithCancel(context.Background())
+
+	// load the config file
+	conf, err := config.LoadFile(cargs.String("config"))
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	// Load words
+	if err := generatename.LoadWordsFile(conf.WordListFile); err != nil {
+		log.Fatalw("startup", "message", "Error loading word list", "wordlist", conf.WordListFile, "error", err.Error())
+	}
+
+	// load the UI templates
+	if err := templates.Start(conf.FrontendPath); err != nil {
+		log.Fatalw("startup", "message", "unable to load frontend templates; shutting down", "path", conf.FrontendPath, "error", err.Error())
+	}
+
+	// Connect to database
+	if err = model.Connect(conf.DB); err != nil {
+		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
+	}
+
+	// start V
+	go v.Start(ctx)
+
+	// start Rocks
+	go rocks.Start(ctx)
+
+	// start firebase
+	go wfb.Start(ctx)
 
 	// Serve HTTPS
-	if c.String("https") != "none" {
-		go wasabeehttps.StartHTTP(wasabeehttps.Configuration{
-			ListenHTTPS:  c.String("https"),
-			FrontendPath: c.String("frontend-path"),
-			Root:         c.String("root"),
-			CertDir:      c.String("certs"),
-			OauthConfig: &oauth2.Config{
-				ClientID:     c.String("oauth-clientid"),
-				ClientSecret: c.String("oauth-secret"),
-				Scopes:       []string{"profile email"},
-				Endpoint: oauth2.Endpoint{
-					AuthURL:   c.String("oauth-authurl"),
-					TokenURL:  c.String("oauth-tokenurl"),
-					AuthStyle: oauth2.AuthStyleInParams,
-				},
-			},
-			OauthUserInfoURL: c.String("oauth-userinfo"),
-			CookieSessionKey: c.String("sessionkey"),
-			Logfile:          c.String("httpslog"),
-			TemplateSet:      ts,
-		})
-	}
+	go wasabeehttps.Start()
 
-	// this one should not use GOOGLE_APPLICATION_CREDENTIALS because it requires odd privs
-	riscPath := path.Join(c.String("certs"), "risc.json")
-	if _, err := os.Stat(riscPath); err != nil {
-		wasabee.Log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", riscPath)
-	} else {
-		go risc.RISC(riscPath)
-	}
-
-	// requires Firebase SDK and PubSub publisher & subscriber access
-	// XXX should have CLI/env args for these
-	if creds != "" {
-		go wasabeefirebase.ServeFirebase(creds)
-		/* go wasabeepubsub.StartPubSub(wasabeepubsub.Configuration{
-			Cert:    creds,
-			Project: project,
-		}) */
-	}
+	// RISC and Telegram should start after https
+	go risc.Start(ctx)
 
 	// Serve Telegram
-	if c.String("tgkey") != "" {
-		go wasabeetelegram.WasabeeBot(wasabeetelegram.TGConfiguration{
-			APIKey:      c.String("tgkey"),
-			HookPath:    "/tg",
-			TemplateSet: ts,
-		})
-	}
+	go wtg.Start(ctx)
+
+	// everything is running. Wait for the OS to signal time to stop
 
 	// wait for signal to shut down
 	sigch := make(chan os.Signal, 3)
@@ -269,27 +157,22 @@ func run(c *cli.Context) error {
 
 	// loop until signal sent
 	sig := <-sigch
+	log.Infow("shutdown", "requested by signal", sig)
 
-	wasabee.Log.Infow("shutdown", "requested by signal", sig)
-	if creds == "" {
-		wasabee.FirebaseClose()
-		// wasabee.PubSubClose()
-	}
-	if _, err := os.Stat(riscPath); err == nil {
-		risc.DisableWebhook()
-	}
-	if r, _ := wasabee.TGRunning(); r {
-		wasabeetelegram.Shutdown()
-	}
+	// shutdown RISC, Telegram, V, Rocks, and Firebase by canceling the context
+	shutdown()
 
-	_ = wasabee.Log.Sync()
+	// the cancel above should take care of this, but for now leave it in place
+	risc.DisableWebhook()
+
+	// shutdown the http server
+	if err = wasabeehttps.Shutdown(); err != nil {
+		log.Error(err)
+	}
 
 	// close database connection
-	wasabee.Disconnect()
+	model.Disconnect()
 
-	if c.String("https") != "none" {
-		_ = wasabeehttps.Shutdown()
-	}
-
+	// _ = log.Sync()
 	return nil
 }

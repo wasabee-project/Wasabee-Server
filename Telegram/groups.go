@@ -1,13 +1,18 @@
-package wasabeetelegram
+package wtg
 
 import (
 	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/wasabee-project/Wasabee-Server"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
 func processChatMessage(inMsg *tgbotapi.Update) error {
@@ -18,232 +23,254 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 }
 
 func processChatCommand(inMsg *tgbotapi.Update) error {
-	tgid := wasabee.TelegramID(inMsg.Message.From.ID)
-	gid, _, err := tgid.GidV()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 
-	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
-	defaultReply, err := templateExecute("default", inMsg.Message.From.LanguageCode, nil)
+	defaultReply, err := templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, defaultReply)
 	msg.ParseMode = "HTML"
-	msg.Text = defaultReply
+	msg.DisableWebPagePreview = true
 
 	switch inMsg.Message.Command() {
+	case "unlink":
+		teamID, _, _ := model.ChatToTeam(inMsg.Message.Chat.ID)
+		log.Debugw("unlinking team from chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", teamID)
+
+		owns, err := gid.OwnsTeam(teamID)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		if !owns {
+			err = fmt.Errorf("only team owner can unlink the team")
+			log.Error(err)
+			return err
+		}
+
+		if err := teamID.UnlinkFromTelegramChat(model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			// do not use the queue
+			if _, err := bot.Send(msg); err != nil {
+				log.Error(err)
+			}
+			return err
+		}
+
+		msg.Text = "Successfully unlinked"
+		sendQueue <- msg
 	case "link":
 		tokens := strings.Split(inMsg.Message.Text, " ")
-		if len(tokens) == 2 {
-			team := wasabee.TeamID(strings.TrimSpace(tokens[1]))
-			wasabee.Log.Debugw("linking team and chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", team)
-			if err := team.LinkToTelegramChat(inMsg.Message.Chat.ID, gid); err != nil {
-				wasabee.Log.Error(err)
+		if len(tokens) > 1 {
+			team := model.TeamID(strings.TrimSpace(tokens[1]))
+			var opID model.OperationID
+			if len(tokens) == 3 {
+				opID = model.OperationID(strings.TrimSpace(tokens[2]))
+			}
+			log.Debugw("linking team and chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", team, "opID", opID)
+
+			owns, err := gid.OwnsTeam(team)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+			if !owns {
+				err = fmt.Errorf("only team owner can set telegram link")
+				log.Error(err)
 				msg.Text = err.Error()
-				if _, err := bot.Send(msg); err != nil {
-					wasabee.Log.Error(err)
-					return err
-				}
+				sendQueue <- msg
+				return err
+			}
+
+			if err := team.LinkToTelegramChat(model.TelegramID(inMsg.Message.Chat.ID), opID); err != nil {
+				log.Error(err)
+				msg.Text = err.Error()
+				sendQueue <- msg
 				return err
 			}
 		} else {
 			msg.Text = "specify a single teamID"
-			if _, err := bot.Send(msg); err != nil {
-				wasabee.Log.Error(err)
-				return err
-			}
+			sendQueue <- msg
 			return nil
 		}
 		msg.Text = "Successfully linked"
-		if _, err := bot.Send(msg); err != nil {
-			wasabee.Log.Error(err)
-			return err
-		}
+		sendQueue <- msg
 	case "status":
-		msg.ParseMode = "HTML"
-		teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
-			wasabee.Log.Error(err)
+			// log.Debug(err) // not linked is not an error
 			msg.Text = err.Error()
-			if _, err := bot.Send(msg); err != nil {
-				wasabee.Log.Error(err)
-				return err
-			}
-			return err
+			sendQueue <- msg
+			return nil
 		}
 		name, _ := teamID.Name()
+
 		msg.Text = fmt.Sprintf("Linked to team: <b>%s</b> (%s)", name, teamID.String())
-		if _, err := bot.Send(msg); err != nil {
-			wasabee.Log.Error(err)
-			return err
+
+		if opID != "" {
+			opstat, err := opID.Stat()
+			if err != nil {
+				log.Error(err)
+			} else {
+				msg.Text = fmt.Sprintf("%s \nLinked to Operation <b>%s</b> (%s)", msg.Text, opstat.Name, opID)
+			}
 		}
+		sendQueue <- msg
 	case "assignments":
-		var filterGid wasabee.GoogleID
+		var filterGid model.GoogleID
 		msg.ParseMode = "HTML"
+		msg.DisableWebPagePreview = true
 		tokens := strings.Split(inMsg.Message.Text, " ")
 		if len(tokens) > 1 {
-			agent := strings.TrimSpace(tokens[1])
-			filterGid, err = wasabee.SearchAgentName(agent)
+			filterGid, err = model.SearchAgentName(strings.TrimSpace(tokens[1]))
 			if err != nil {
-				wasabee.Log.Error(err)
-				filterGid = "0"
-			}
-			if filterGid == "" {
+				log.Error(err)
 				filterGid = "0"
 			}
 		} else {
 			filterGid = ""
 		}
-		teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
-			wasabee.Log.Error(err)
-			if _, err := bot.Send(msg); err != nil {
-				wasabee.Log.Error(err)
-				return err
-			}
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
-		ops, err := teamID.Operations()
-		if err != nil {
-			wasabee.Log.Error(err)
+		if opID == "" {
+			err := fmt.Errorf("team must be linked to operation to view assignments")
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
-		for _, p := range ops {
-			var o wasabee.Operation
-			o.ID = p.OpID
-			err := o.Populate(gid)
-			if err != nil {
-				wasabee.Log.Error(err)
+		o := model.Operation{}
+		o.ID = opID
+		if err := o.Populate(gid); err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
+		var b bytes.Buffer
+		name, _ := teamID.Name()
+		b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
+		b.WriteString("<b>Order / Portal / Action / Agent / State</b>\n")
+		for _, m := range o.Markers {
+			// if the caller requested the results to be filtered...
+			if filterGid != "" && m.IsAssignedTo(filterGid) {
 				continue
 			}
-			var b bytes.Buffer
-			name, _ := teamID.Name()
-			b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
-			b.WriteString("<b>Order / Portal / Action / Agent / State</b>\n")
-			for _, m := range o.Markers {
-				// if the caller requested the results to be filtered...
-				if filterGid != "" && m.AssignedTo != filterGid {
-					continue
+			if m.State != "pending" {
+				p, _ := o.PortalDetails(m.PortalID, gid)
+				a, _ := m.AssignedTo.IngressName()
+				tg, _ := m.AssignedTo.TelegramName()
+				if tg != "" {
+					a = fmt.Sprintf("@%s", tg)
 				}
-				if m.State != "pending" && m.AssignedTo != "" {
-					p, _ := o.PortalDetails(m.PortalID, gid)
-					a, _ := m.AssignedTo.IngressName()
-					tg, _ := m.AssignedTo.TelegramName()
-					if tg != "" {
-						a = fmt.Sprintf("@%s", tg)
-					}
-					stateIndicatorStart := ""
-					stateIndicatorEnd := ""
-					if m.State == "completed" {
-						stateIndicatorStart = "<strike>"
-						stateIndicatorEnd = "</strike>"
-					}
-					b.WriteString(fmt.Sprintf("%d / %s<a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s / %s / %s%s\n",
-						m.Order, stateIndicatorStart, p.Lat, p.Lon, p.Name, wasabee.NewMarkerType(m.Type), a, m.State, stateIndicatorEnd))
+				stateIndicatorStart := ""
+				stateIndicatorEnd := ""
+				if m.State == "completed" {
+					stateIndicatorStart = "<strike>"
+					stateIndicatorEnd = "</strike>"
 				}
+				b.WriteString(fmt.Sprintf("%d / %s<a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s / %s / %s%s\n",
+					m.Order, stateIndicatorStart, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type), a, m.State, stateIndicatorEnd))
 			}
 			msg.Text = b.String()
-			if _, err := bot.Send(msg); err != nil {
-				wasabee.Log.Error(err)
-				msg.Text = err.Error()
-				if _, err := bot.Send(msg); err != nil {
-					wasabee.Log.Error(err)
-				}
-				continue
-			}
 		}
+		sendQueue <- msg
 	case "unassigned":
-		msg.ParseMode = "HTML"
-		teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+		teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 		if err != nil {
-			wasabee.Log.Error(err)
-			if _, err := bot.Send(msg); err != nil {
-				wasabee.Log.Error(err)
-				return err
-			}
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
-		ops, err := teamID.Operations()
-		if err != nil {
-			wasabee.Log.Error(err)
+		if opID == "" {
+			err := fmt.Errorf("team must be linked to operation to view assignments")
+			msg.Text = err.Error()
+			sendQueue <- msg
 			return err
 		}
-		for _, p := range ops {
-			var o wasabee.Operation
-			o.ID = p.OpID
-			err := o.Populate(gid)
-			if err != nil {
-				wasabee.Log.Error(err)
-				continue
-			}
-			var b bytes.Buffer
-			name, _ := teamID.Name()
-			b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
-			b.WriteString("<b>Order / Portal / Action</b>\n")
-			for _, m := range o.Markers {
-				if m.State == "pending" {
-					p, _ := o.PortalDetails(m.PortalID, gid)
-					b.WriteString(fmt.Sprintf("<b>%d</b> / <a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s\n", m.Order, p.Lat, p.Lon, p.Name, wasabee.NewMarkerType(m.Type)))
-				}
+		o := model.Operation{}
+		o.ID = opID
+		if err := o.Populate(gid); err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
+		var b bytes.Buffer
+		name, _ := teamID.Name()
+		b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
+		b.WriteString("<b>Order / Portal / Action</b>\n")
+		for _, m := range o.Markers {
+			if m.State == "pending" {
+				p, _ := o.PortalDetails(m.PortalID, gid)
+				b.WriteString(fmt.Sprintf("<b>%d</b> / <a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s\n", m.Order, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type)))
 			}
 			msg.Text = b.String()
-			if _, err := bot.Send(msg); err != nil {
-				wasabee.Log.Error(err)
-				continue
-			}
 		}
+		sendQueue <- msg
 	default:
-		wasabee.Log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
+		log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 	}
 	return nil
 }
 
 func chatResponses(inMsg *tgbotapi.Update) error {
-	// wasabee.Log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID)
-	teamID, err := wasabee.ChatToTeam(inMsg.Message.Chat.ID)
+	teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 	if err != nil {
 		// no need to log these, just non-linked chats
-		// wasabee.Log.Error(err)
+		log.Debugw("unknown chat", "err", err.Error(), "chatID", inMsg.Message.Chat.ID)
 		return nil
 	}
 
+	// we see messages if the bot is admin
+	// log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "team", teamID, "op", opID)
+
+	// if the bot is removed from the chat, unlink the team from the chat
 	if inMsg.Message.LeftChatMember != nil && inMsg.Message.LeftChatMember.ID == bot.Self.ID {
-		if err := teamID.UnlinkFromTelegramChat(inMsg.Message.Chat.ID); err != nil {
-			wasabee.Log.Error(err)
+		if err := teamID.UnlinkFromTelegramChat(model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
+			log.Error(err)
 			return err
 		}
 	}
 
+	// when new people are added to the chat, attempt to add them to the team
 	if inMsg.Message.NewChatMembers != nil {
-		// var ncm []tgbotapi.User
-		// ncm = *inMsg.Message.NewChatMembers
-		// for _, new := range ncm {
-		for _, new := range *inMsg.Message.NewChatMembers {
-			wasabee.Log.Debugw("new chat member", "tgid", new.ID, "tg", new.UserName)
-			tgid := wasabee.TelegramID(new.ID)
+		for _, new := range inMsg.Message.NewChatMembers {
+			log.Debugw("new chat member", "tgid", new.ID, "tg", new.UserName)
+			tgid := model.TelegramID(new.ID)
 			gid, err := tgid.Gid()
 			if err != nil {
 				continue
 			}
+			_ = tgid.SetName(new.UserName)
 			if err = teamID.AddAgent(gid); err != nil {
-				wasabee.Log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid)
+				log.Errorw(err.Error(), "tgid", new.ID, "tg", new.UserName, "resource", teamID, "GID", gid, "opID", opID)
 			}
 		}
 	}
 
 	if inMsg.Message.LeftChatMember != nil {
 		left := inMsg.Message.LeftChatMember
-		wasabee.Log.Debugw("left chat member", "tgid", left.ID, "tg", left.UserName)
-		tgid := wasabee.TelegramID(left.ID)
+		log.Debugw("chat member left", "tgid", left.ID, "tg", left.UserName)
+		tgid := model.TelegramID(left.ID)
 		gid, err := tgid.Gid()
 		if err != nil {
-			wasabee.Log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID)
+			log.Debugw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "opID", opID)
 		} else {
 			if err := teamID.RemoveAgent(gid); err != nil {
-				wasabee.Log.Errorw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "GID", gid)
+				log.Errorw(err.Error(), "tgid", left.ID, "tg", left.UserName, "resource", teamID, "GID", gid, "opID", opID)
 			}
 		}
 	}
@@ -251,97 +278,140 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 }
 
 func liveLocationUpdate(inMsg *tgbotapi.Update) error {
-	tgid := wasabee.TelegramID(inMsg.EditedMessage.From.ID)
+	tgid := model.TelegramID(inMsg.EditedMessage.From.ID)
 	gid, verified, err := tgid.GidV()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 	if !verified || gid == "" {
-		// wasabee.Log.Debugw("user not initialized/verified, ignoring location", "GID", gid, "tgid", tgid)
 		return nil
 	}
-	// wasabee.Log.Debugw("live location inMsg", "GID", gid, "message", "live location update")
 
 	lat := strconv.FormatFloat(inMsg.EditedMessage.Location.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(inMsg.EditedMessage.Location.Longitude, 'f', -1, 64)
-	_ = gid.AgentLocation(lat, lon)
-	gid.PSLocation(lat, lon)
+	_ = gid.SetLocation(lat, lon)
 	return nil
 }
 
 // SendToTeamChannel sends a message to chat linked to a team
-func SendToTeamChannel(teamID wasabee.TeamID, gid wasabee.GoogleID, message string) error {
+func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) error {
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
-		wasabee.Log.Error(err)
+		log.Error(err)
 		return err
 	}
 
-	// XXX make sure sender is on the team
+	if inteam, _ := gid.AgentInTeam(teamID); !inteam {
+		err := fmt.Errorf("attempt to send to team without being a member")
+		log.Errorw(err.Error(), "gid", gid, "teamID", teamID, "message", message)
+		return err
+	}
 
-	msg := tgbotapi.NewMessage(chatID, "")
-
-	msg.Text = message
+	msg := tgbotapi.NewMessage(chatID, message)
 	msg.ParseMode = "HTML"
-	if _, err := bot.Send(msg); err != nil {
-		wasabee.Log.Error(err)
-		return err
-	}
+	msg.DisableWebPagePreview = true
 
+	sendQueue <- msg
 	return nil
 }
 
-func AddToChat(gid wasabee.GoogleID, t string) (bool, error) {
-	// wasabee.Log.Debugw("AddToChat called", "GID", gid, "resource", t)
-	teamID := wasabee.TeamID(t)
+func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
+	gid := model.GoogleID(g)
+	teamID := model.TeamID(t)
+	// log.Debugw("AddToChat called", "GID", gid, "resource", teamID)
+
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
-		wasabee.Log.Error(err)
-		return false, err
+		log.Error(err)
+		return err
 	}
 	if chatID == 0 {
-		// wasabee.Log.Debug("no chat linked to team")
-		return false, nil
+		// log.Debug("no chat linked to team")
+		return nil
 	}
-	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
+
+	// can't clean this up since cic.ChatID is included type
+	cic := tgbotapi.ChatInfoConfig{}
+	cic.ChatID = chatID
+	chat, err := bot.GetChat(cic)
 	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
-		return false, err
+		log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
+		if err.Error() == "Bad Request: chat not found" {
+			_ = teamID.UnlinkFromTelegramChat(model.TelegramID(chatID))
+		}
+		return err
 	}
 
 	name, _ := gid.IngressName()
-	text := fmt.Sprintf("%s joined the linked team (%s)", name, teamID)
-	msg := tgbotapi.NewMessage(chat.ID, text)
-	if _, err := bot.Send(msg); err != nil {
-		wasabee.Log.Error(err)
-		return false, err
+	tmp, _ := gid.TelegramName()
+	if tmp != "" {
+		name = fmt.Sprint("@", tmp)
 	}
-	return true, nil
+
+	text := fmt.Sprintf("%s joined the linked team (%s): Please add them to this chat", name, teamID)
+	msg := tgbotapi.NewMessage(chat.ID, text)
+	sendQueue <- msg
+
+	// XXX create a join link for this agent
+	return nil
 }
 
-func RemoveFromChat(gid wasabee.GoogleID, t string) (bool, error) {
-	wasabee.Log.Debugw("RemoveFromChat called", "GID", gid, "chatID", t)
-	teamID := wasabee.TeamID(t)
+func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
+	gid := model.GoogleID(g)
+	teamID := model.TeamID(t)
+
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
-		wasabee.Log.Error(err)
-		return false, err
+		log.Error(err)
+		return err
 	}
 	if chatID == 0 {
-		return false, nil
+		return nil
 	}
-	chat, err := bot.GetChat(tgbotapi.ChatConfig{ChatID: chatID})
+	log.Debugw("RemoveFromChat called", "GID", gid, "teamID", teamID, "chatID", chatID)
+
+	tgid, err := gid.TelegramID()
 	if err != nil {
-		wasabee.Log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
-		return false, err
+		log.Error(err)
+		return err
+	}
+	if tgid == 0 {
+		log.Debug("agent does not have telegram", "gid", gid)
+		return nil
+	}
+
+	cic := tgbotapi.ChatInfoConfig{}
+	cic.ChatID = chatID
+
+	chat, err := bot.GetChat(cic)
+	if err != nil {
+		log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
+		return err
 	}
 	name, _ := gid.IngressName()
-	text := fmt.Sprintf("%s left the linked team (%s)", name, teamID)
-	msg := tgbotapi.NewMessage(chat.ID, text)
-	if _, err := bot.Send(msg); err != nil {
-		wasabee.Log.Error(err)
-		return false, err
+	tmp, _ := gid.TelegramName()
+	if tmp != "" {
+		name = fmt.Sprint("@", tmp)
 	}
-	return true, nil
+
+	text := fmt.Sprintf("%s left the linked team (%s). Attempting to remove them from this chat", name, teamID)
+	msg := tgbotapi.NewMessage(chat.ID, text)
+	sendQueue <- msg
+
+	// XXX determine if bot is admin, don't bother with this if not
+	bcmc := tgbotapi.BanChatMemberConfig{
+		ChatMemberConfig: tgbotapi.ChatMemberConfig{
+			ChatID: chatID,
+			UserID: int64(tgid),
+		},
+		UntilDate:      time.Now().Add(30 * time.Second).Unix(),
+		RevokeMessages: false,
+	}
+	if _, err = bot.Request(bcmc); err != nil {
+		log.Error(err)
+		msg := tgbotapi.NewMessage(chat.ID, err.Error())
+		sendQueue <- msg
+	}
+	return nil
 }

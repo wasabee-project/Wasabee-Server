@@ -1,59 +1,53 @@
 package wasabeehttps
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
-	"github.com/wasabee-project/Wasabee-Server"
-	"io/ioutil"
 	"net/http"
 	// "net/http/httputil"
 	"sync"
-	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
 var scannerMux sync.Mutex
 
 func setupRouter() *mux.Router {
 	// Main Router
-	router := wasabee.NewRouter()
+	router := config.NewRouter()
+	c := config.Get().HTTP
 
 	// apply to all
 	router.Use(headersMW)
-	router.Use(scannerMW)
 	// router.Use(logRequestMW)
 	// router.Use(debugMW)
-	router.Use(config.unrolled.Handler)
+	router.Use(unrolled.Handler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 	router.MethodNotAllowedHandler = http.HandlerFunc(notFoundRoute)
 	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
 
 	// Google Oauth2 stuff (constants defined in server.go)
-	router.HandleFunc(login, googleRoute).Methods("GET")
-	router.HandleFunc(callback, callbackRoute).Methods("GET")
-	router.HandleFunc(aptoken, apTokenRoute).Methods("POST")
-	router.HandleFunc(oneTimeToken, oneTimeTokenRoute).Methods("POST")
+	router.HandleFunc(c.LoginURL, googleRoute).Methods("GET")               // deprecated -- belongs in clients now
+	router.HandleFunc(c.CallbackURL, callbackRoute).Methods("GET")          // deprecated cookie mode
+	router.HandleFunc(c.ApTokenURL, apTokenRoute).Methods("POST")           // all clients should use this
+	router.HandleFunc(c.OneTimeTokenURL, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
 
 	// common files that live under /static
 	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 	router.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
 	router.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
 	router.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
+
 	// this cannot be a redirect -- sent it raw
 	router.HandleFunc("/firebase-messaging-sw.js", fbmswRoute).Methods("GET")
-	// do not make these static -- they should be translated via the templates system
-	router.HandleFunc("/privacy", privacyRoute).Methods("GET")
 	router.HandleFunc("/", frontRoute).Methods("GET")
+
 	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
 	router.HandleFunc("/v/{teamID}", vTeamRoute).Methods("POST")
 
 	// /api/v1/... route
-	api := wasabee.Subrouter(apipath)
+	api := config.Subrouter(c.APIPathURL)
 	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
 	setupAuthRoutes(api)
 	api.Use(authMW)
@@ -62,24 +56,24 @@ func setupRouter() *mux.Router {
 	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
 
 	// /me route
-	meRouter := wasabee.Subrouter(me)
+	meRouter := config.Subrouter(c.MeURL)
 	meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
-	meRouter.HandleFunc("", meShowRoute).Methods("GET", "POST", "HEAD")
+	meRouter.HandleFunc("", meRoute).Methods("GET", "POST", "HEAD")
 	meRouter.Use(authMW)
 	meRouter.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 	meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
 	// /rocks route -- why a subrouter? for JSON error messages -- no longer necessary
-	rocks := wasabee.Subrouter("/rocks")
+	rocks := config.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
-	static := wasabee.Subrouter("/static")
-	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.FrontendPath)))
+	static := config.Subrouter("/static")
+	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.Get().FrontendPath)))
 	// static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
 
 	// catch all others -- jacks up later subrouters (e.g. Telegram and GoogleRISC)
@@ -92,70 +86,78 @@ func setupRouter() *mux.Router {
 func setupAuthRoutes(r *mux.Router) {
 	// This block requires authentication
 	r.HandleFunc("/draw", drawUploadRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}", drawGetRoute).Methods("GET", "HEAD")
-	r.HandleFunc("/draw/{document}", drawDeleteRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{document}", drawUpdateRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/delete", drawDeleteRoute).Methods("GET", "DELETE")
-	r.HandleFunc("/draw/{document}/chown", drawChownRoute).Methods("GET").Queries("to", "{to}")
-	r.HandleFunc("/draw/{document}/stock", drawStockRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/order", drawOrderRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/info", drawInfoRoute).Methods("POST")
-	// r.HandleFunc("/draw/{document}/perms", drawPermsRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/perms", drawPermsAddRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/perms", drawPermsDeleteRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{document}/delperm", drawPermsDeleteRoute).Methods("GET") // .Queries("team", "{team}", "role", "{role}")
-	r.HandleFunc("/draw/{document}/link/{link}", drawLinkFetch).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/assign", drawLinkAssignRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/color", drawLinkColorRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/desc", drawLinkDescRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/complete", drawLinkCompleteRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/reject", drawLinkRejectRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/claim", drawLinkClaimRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/swap", drawLinkSwapRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependAddRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/link/{link}/depend/{task}", drawLinkDependDelRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{document}/marker/{marker}", drawMarkerFetch).Methods("GET")
-	r.HandleFunc("/draw/{document}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")
-	// agent acknowledge the assignment
-	r.HandleFunc("/draw/{document}/marker/{marker}/acknowledge", drawMarkerAcknowledgeRoute).Methods("GET")
-	// agent mark as complete
-	r.HandleFunc("/draw/{document}/marker/{marker}/complete", drawMarkerCompleteRoute).Methods("GET")
-	// agent undo complete mark
-	r.HandleFunc("/draw/{document}/marker/{marker}/incomplete", drawMarkerIncompleteRoute).Methods("GET")
-	// operator verify completing
-	r.HandleFunc("/draw/{document}/marker/{marker}/reject", drawMarkerRejectRoute).Methods("GET")
-	r.HandleFunc("/draw/{document}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependAddRoute).Methods("PUT")
-	r.HandleFunc("/draw/{document}/marker/{marker}/depend/{task}", drawMarkerDependDelRoute).Methods("DELETE")
+	r.HandleFunc("/draw/{opID}", drawGetRoute).Methods("GET", "HEAD")
+	r.HandleFunc("/draw/{opID}", drawDeleteRoute).Methods("DELETE")
+	r.HandleFunc("/draw/{opID}", drawUpdateRoute).Methods("PUT")
+	r.HandleFunc("/draw/{opID}/delete", drawDeleteRoute).Methods("GET", "DELETE")
+	r.HandleFunc("/draw/{opID}/chown", drawChownRoute).Methods("GET").Queries("to", "{to}")
+	r.HandleFunc("/draw/{opID}/order", drawOrderRoute).Methods("POST")
+	r.HandleFunc("/draw/{opID}/info", drawInfoRoute).Methods("POST")
+	r.HandleFunc("/draw/{opID}/perms", drawPermsAddRoute).Methods("POST")
+	r.HandleFunc("/draw/{opID}/perms", drawPermsDeleteRoute).Methods("DELETE")
+	r.HandleFunc("/draw/{opID}/delperm", drawPermsDeleteRoute).Methods("GET") // .Queries("team", "{team}", "role", "{role}")
 
-	r.HandleFunc("/draw/{document}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST")
-	r.HandleFunc("/draw/{document}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST")
+	// links
+	r.HandleFunc("/draw/{opID}/link/{link}", drawLinkFetch).Methods("GET")
+	r.HandleFunc("/draw/{opID}/link/{link}/color", drawLinkColorRoute).Methods("POST")
+	r.HandleFunc("/draw/{opID}/link/{link}/swap", drawLinkSwapRoute).Methods("GET")
+	r.HandleFunc("/draw/{opID}/link/{link}/assign", drawLinkAssignRoute).Methods("POST")        // deprecated, use task
+	r.HandleFunc("/draw/{opID}/link/{link}/desc", drawLinkDescRoute).Methods("POST")            // deprecated, use task
+	r.HandleFunc("/draw/{opID}/link/{link}/complete", drawLinkCompleteRoute).Methods("GET")     // deprecated, use task
+	r.HandleFunc("/draw/{opID}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET") // deprecated, use task
+	r.HandleFunc("/draw/{opID}/link/{link}/reject", drawLinkRejectRoute).Methods("POST")        // deprecated, use task
+	r.HandleFunc("/draw/{opID}/link/{link}/claim", drawLinkClaimRoute).Methods("POST")          // deprecated, use task
+	r.HandleFunc("/draw/{opID}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")            // deprecated, use task
+	r.HandleFunc("/draw/{opID}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")          // deprecated, use task
 
-	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET").Queries("lat", "{lat}", "lon", "{lon}")
-	// -- do not use, just here for safety
-	r.HandleFunc("/me", meShowRouteJSON).Methods("GET", "POST", "HEAD")
-	r.HandleFunc("/me/delete", meDeleteRoute).Methods("GET") // purge all info for a agent
-	// r.HandleFunc("/me/settings", meSettingsRoute).Methods("GET")
-	// r.HandleFunc("/me/operations", meOperationsRoute).Methods("GET")
-	// toggle RAID/JEAH polling
-	r.HandleFunc("/me/statuslocation", meStatusLocationRoute).Methods("GET").Queries("sl", "{sl}")
-	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET").Queries("state", "{state}")
+	// markers
+	r.HandleFunc("/draw/{opID}/marker/{marker}", drawMarkerFetch).Methods("GET")
+	r.HandleFunc("/draw/{opID}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")          // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")        // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/acknowledge", drawMarkerAcknowledgeRoute).Methods("GET") // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/complete", drawMarkerCompleteRoute).Methods("GET")       // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/incomplete", drawMarkerIncompleteRoute).Methods("GET")   // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/reject", drawMarkerRejectRoute).Methods("GET")           // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")            // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")              // deprecated, use task
+	r.HandleFunc("/draw/{opID}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")            // deprecated, use task
+
+	// portals
+	r.HandleFunc("/draw/{opID}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST", "PUT")   // prefer PUT
+	r.HandleFunc("/draw/{opID}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST", "PUT") // prefer PUT
+	r.HandleFunc("/draw/{opID}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST", "PUT")    // prefer PUT
+
+	// tasks -- TODO unify between markers, links and generic tasks -- note changes from POST/GET to PUT
+	r.HandleFunc("/draw/{opID}/task/{taskID}", drawTaskFetch).Methods("GET")                                // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/order", drawTaskOrderRoute).Methods("PUT")                     // order int16
+	r.HandleFunc("/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute).Methods("PUT")                   // assign []GoogleID
+	r.HandleFunc("/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute).Methods("DELETE")                // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/comment", drawTaskCommentRoute).Methods("PUT")                 // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/complete", drawTaskCompleteRoute).Methods("PUT")               // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/acknowledge", drawTaskAcknowledgeRoute).Methods("PUT")         // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/incomplete", drawTaskIncompleteRoute).Methods("PUT")           // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/reject", drawTaskRejectRoute).Methods("PUT")                   // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/claim", drawTaskClaimRoute).Methods("PUT")                     // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/zone", drawTaskZoneRoute).Methods("PUT")                       // zone uint8
+	r.HandleFunc("/draw/{opID}/task/{taskID}/delta", drawTaskDeltaRoute).Methods("PUT")                     // delta int64
+	r.HandleFunc("/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependAddRoute).Methods("PUT")    // none
+	r.HandleFunc("/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependDelRoute).Methods("DELETE") // none
+
+	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET", "PUT").Queries("lat", "{lat}", "lon", "{lon}") // prefer PUT
+	r.HandleFunc("/me", meRoute).Methods("GET", "POST", "HEAD")
+	r.HandleFunc("/me/delete", meDeleteRoute).Methods("DELETE")                                     // purge all info for a agent, requires query token
+	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET", "PUT").Queries("state", "{state}") // prefer PUT
 	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
-	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")
-	r.HandleFunc("/me/{team}/wdshare", meToggleTeamWDShareRoute).Methods("GET").Queries("state", "{state}")
-	r.HandleFunc("/me/{team}/wdload", meToggleTeamWDLoadRoute).Methods("GET").Queries("state", "{state}")
-	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")
-	r.HandleFunc("/me/firebase", meFirebaseRoute).Methods("POST")        // post a token generated by google
-	r.HandleFunc("/me/firebase", meFirebaseGenTokenRoute).Methods("GET") // generate a custom token
-	r.HandleFunc("/me/intelid", meIntelIDRoute).Methods("PUT", "POST")   // get ID from intel (not trusted)
-	r.HandleFunc("/me/VAPIkey", meVAPIkeyRoute).Methods("POST")          // send an V API key for team sync
+	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                            // deprecated, use DELETE /me/{team}
+	r.HandleFunc("/me/{team}/wdshare", meToggleTeamWDShareRoute).Methods("GET", "PUT").Queries("state", "{state}") // prefer PUT
+	r.HandleFunc("/me/{team}/wdload", meToggleTeamWDLoadRoute).Methods("GET", "PUT").Queries("state", "{state}")   // prefer PUT
+	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")                                                       // deprecated, no need with JWT
+	r.HandleFunc("/me/firebase", meFirebaseRoute).Methods("POST")                                                  // post a firebase token generated by google
+	r.HandleFunc("/me/intelid", meIntelIDRoute).Methods("PUT", "POST")                                             // get ID from intel (not trusted)
+	r.HandleFunc("/me/VAPIkey", meVAPIkeyRoute).Methods("POST")                                                    // send an V API key for team sync
+	r.HandleFunc("/me/jwtrefresh", meJwtRefreshRoute).Methods("GET")                                               // returns a new JWT with the current token ID
+	r.HandleFunc("/me/commproof", meCommProofRoute).Methods("GET").Queries("name", "{name}")                       // generate a JWT to post on niantic's community to prove identity
+	r.HandleFunc("/me/commverify", meCommVerifyRoute).Methods("GET").Queries("name", "{name}")                     // fetch and verify the JWT posted on niantic's community
 
 	// other agents
 	// "profile" page, such as it is
@@ -163,8 +165,8 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/agent/{id}/image", agentPictureRoute).Methods("GET")
 	// send a message to a agent
 	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")
-	r.HandleFunc("/agent/{id}/fbMessage", agentFBMessageRoute).Methods("POST")
-	r.HandleFunc("/agent/{id}/target", agentTargetRoute).Methods("POST")
+	// r.HandleFunc("/agent/{id}/fbMessage", agentFBMessageRoute).Methods("POST") // deprecated, /agent/x/message will send it via firebase
+	r.HandleFunc("/agent/{id}/target", agentTargetRoute).Methods("POST") // send a target-formatted message
 
 	// teams
 	// create a new team
@@ -178,8 +180,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET")
-	// GUI to do basic edit (owner)
-	// r.HandleFunc("/team/{team}/edit", editTeamRoute).Methods("GET")
 	// (re)import the team from rocks
 	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")
 	// configure team link to enl.rocks community
@@ -187,14 +187,11 @@ func setupAuthRoutes(r *mux.Router) {
 	// V routes
 	r.HandleFunc("/team/{team}/v", vPullTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/v", vConfigureTeamRoute).Methods("POST")
-	// broadcast a message to the team
-	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")
-	// r.HandleFunc("/team/{team}/fbAnnounce", fbAnnounceTeamRoute).Methods("POST")
-	// r.HandleFunc("/team/{team}/fbTarget", fbTargetTeamRoute).Methods("POST") // Firebase side done: teamID.FirebaseTarget()
+	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST") // broadcast a message to the team
 	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT")
 	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")
-	r.HandleFunc("/team/{team}/{gid}/squad", setAgentTeamSquadRoute).Methods("POST")
-	r.HandleFunc("/team/{team}/{gid}/displayname", setAgentTeamDisplaynameRoute).Methods("POST")
+	r.HandleFunc("/team/{team}/{gid}/squad", setAgentTeamCommentRoute).Methods("POST") // remove this
+	r.HandleFunc("/team/{team}/{gid}/comment", setAgentTeamCommentRoute).Methods("POST")
 	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")
 
@@ -206,10 +203,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/d/bulk", setDefensiveKeyBulk).Methods("POST")
 	r.HandleFunc("/loc", getAgentsLocation).Methods("GET")
 
-	// server control functions
-	// trigger the server refresh of the template files
-	r.HandleFunc("/templates/refresh", templateUpdateRoute).Methods("GET")
-
 	r.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 }
 
@@ -220,491 +213,49 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	err := templateExecute(res, req, "index", nil)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// display the privacy policy
-func privacyRoute(res http.ResponseWriter, req *http.Request) {
-	err := templateExecute(res, req, "privacy", nil)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// this just reloads the templates on disk ; if someone makes a change we don't need to restart the server
-func templateUpdateRoute(res http.ResponseWriter, req *http.Request) {
-	var err error
-	config.TemplateSet, err = wasabee.TemplateConfig(config.FrontendPath) // XXX KLUDGE FOR NOW -- this does not update the other protocols
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(res, "Templates reloaded")
+	c := config.Get()
+	url := fmt.Sprintf("%s?server=%s", c.WebUIURL, c.HTTP.Webroot)
+	http.Redirect(res, req, url, http.StatusMovedPermanently)
 }
 
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
-	// wasabee.Log.Debugf("404: %s", req.URL)
-	http.Error(res, "404: no light here.", http.StatusNotFound)
+	log.Debugw("404", "req", req.URL)
+	http.Error(res, "404: file not found", http.StatusNotFound)
 }
 
 // called when a resource/endpoint is not found
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
-	err := fmt.Errorf("404 not found")
-	// wasabee.Log.Debugw(err.Error(), "URL", req.URL)
 	incrementScanner(req)
+	err := fmt.Errorf("file not found")
+	log.Debugw(err.Error(), "URL", req.URL)
 	http.Error(res, jsonError(err), http.StatusNotFound)
 }
 
 func incrementScanner(req *http.Request) {
 	scannerMux.Lock()
-	defer scannerMux.Unlock()
-	i, ok := config.scanners[req.RemoteAddr]
+	i, ok := scanners[req.RemoteAddr]
 	if ok {
-		config.scanners[req.RemoteAddr] = i + 1
+		scanners[req.RemoteAddr] = i + 1
 	} else {
-		config.scanners[req.RemoteAddr] = 1
+		scanners[req.RemoteAddr] = 1
 	}
+	scannerMux.Unlock()
+}
+
+// true == block, false == permit
+func isScanner(req *http.Request) bool {
+	scannerMux.Lock()
+	i, ok := scanners[req.RemoteAddr]
+	scannerMux.Unlock()
+
+	if !ok || i < 20 {
+		return false
+	}
+	return true
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {
-	prefix := http.Dir(config.FrontendPath)
-	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", prefix))
-}
-
-// final step of the oauth cycle
-func callbackRoute(res http.ResponseWriter, req *http.Request) {
-	type googleData struct {
-		Gid   wasabee.GoogleID `json:"id"`
-		Name  string           `json:"name"`
-		Email string           `json:"email"`
-		Pic   string           `json:"picture"`
-	}
-
-	content, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
-	if err != nil {
-		wasabee.Log.Error(err)
-		return
-	}
-
-	var m googleData
-	if err = json.Unmarshal(content, &m); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// session cookie
-	ses, err := config.store.Get(req, config.sessionName)
-	if err != nil {
-		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Error("Cookie error: ", err)
-		ses = sessions.NewSession(config.store, config.sessionName)
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   -1,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
-		// := creates a new err, not overwriting
-		if err := ses.Save(req, res); err != nil {
-			wasabee.Log.Error(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
-	if !authorized {
-		wasabee.Log.Errorw("smurf detected", "GID", m.Gid)
-		http.Error(res, "Internal Error", http.StatusForbidden)
-		return
-	}
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = m.Gid.UpdatePicture(m.Pic)
-	if err != nil {
-		wasabee.Log.Info(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	ses.Values["id"] = m.Gid.String()
-	nonce, _ := calculateNonce(m.Gid)
-	ses.Values["nonce"] = nonce
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-
-	_ = ses.Save(req, res)
-	name, err := m.Gid.IngressName()
-	if err != nil {
-		wasabee.Log.Errorw("no name at end of login?", "GID", m.Gid)
-	}
-	m.Gid.FirebaseAgentLogin()
-
-	// add random value to help curb login loops
-	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
-	h := hex.EncodeToString(sha[:])
-	location := fmt.Sprintf("%s?r=%s", me, h)
-	wasabee.Log.Infow("WebUI login", "GID", m.Gid, "name", name, "message", name+" WebUI login")
-	if ses.Values["loginReq"] != nil {
-		rr := ses.Values["loginReq"].(string)
-		if rr[:len(me)] == me || rr[:len(login)] == login {
-			// -- need to invert this logic now
-		} else {
-			location = rr
-		}
-		delete(ses.Values, "loginReq")
-	}
-	http.Redirect(res, req, location, http.StatusFound) // http.StatusSeeOther
-}
-
-// the secret value exchanged / verified each request
-// not really a nonce, but it started life as one
-func calculateNonce(gid wasabee.GoogleID) (string, string) {
-	t := time.Now()
-	y := t.Add(0 - 24*time.Hour)
-	now := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())  // t.Round(time.Hour).String()
-	prev := fmt.Sprintf("%d-%02d-%02d", y.Year(), y.Month(), y.Day()) // t.Add(0 - time.Hour).Round(time.Hour).String()
-	// something specific to the agent, something secret, something short-term
-	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, now)))
-	previous := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, config.CookieSessionKey, prev)))
-	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:])
-}
-
-// read the result from provider at end of oauth session
-func getAgentInfo(rctx context.Context, state string, code string) ([]byte, error) {
-	if state != config.oauthStateString {
-		return nil, fmt.Errorf("invalid oauth state")
-	}
-
-	ctx, cancel := context.WithTimeout(rctx, wasabee.GetTimeout(5*time.Second))
-	defer cancel()
-	token, err := config.OauthConfig.Exchange(ctx, code)
-	if err != nil {
-		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
-	}
-	cancel()
-
-	contents, err := getOauthUserInfo(token.AccessToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed getting agent info: %s", err.Error())
-	}
-
-	return contents, nil
-}
-
-// used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info
-func getOauthUserInfo(accessToken string) ([]byte, error) {
-	url := config.OauthUserInfoURL
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return nil, err
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-	client := &http.Client{
-		Timeout: wasabee.GetTimeout(3 * time.Second),
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		wasabee.Log.Error(err)
-		return nil, err
-	}
-	return body, nil
-}
-
-// read the gid from the session cookie and return it
-// this is the primary way to ensure a agent is authenticated
-func getAgentID(req *http.Request) (wasabee.GoogleID, error) {
-	ses, err := config.store.Get(req, config.sessionName)
-	if err != nil {
-		return "", err
-	}
-
-	// XXX I think this is impossible to trigger now
-	if ses.Values["id"] == nil {
-		err := errors.New("getAgentID called for unauthenticated agent")
-		wasabee.Log.Error(err)
-		return "", err
-	}
-
-	var agentID = wasabee.GoogleID(ses.Values["id"].(string))
-	return agentID, nil
-}
-
-// apTokenRoute receives a Google Oauth2 token from the Android/iOS app and sets the authentication cookie
-func apTokenRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-	// fetched from google
-	type googleData struct {
-		Gid   wasabee.GoogleID `json:"id"`
-		Name  string           `json:"name"`
-		Email string           `json:"email"`
-		Pic   string           `json:"picture"`
-	}
-	var m googleData
-
-	// passed in from Android/iOS app
-	type token struct {
-		AccessToken string `json:"accessToken"`
-		BadAT       string `json:"access_token"` // some APIs use this name, have it here for logging
-	}
-	var t token
-
-	if !contentTypeIs(req, jsonTypeShort) {
-		err := fmt.Errorf("invalid aptok send (needs to be application/json)")
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		wasabee.Log.Warn(err)
-		return
-	}
-
-	jBlob, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	if string(jBlob) == "" {
-		err = fmt.Errorf("empty JSON in aptok route")
-		wasabee.Log.Warn(err)
-		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
-		return
-	}
-	jRaw := json.RawMessage(jBlob)
-	if err = json.Unmarshal(jRaw, &t); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	contents, err := getOauthUserInfo(t.AccessToken)
-	if err != nil {
-		err = fmt.Errorf("aptok failed getting agent info from Google")
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	if err = json.Unmarshal(contents, &m); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// yes, we've seen this with a bad accessToken
-	if m.Gid == "" {
-		wasabee.Log.Errorw("bad aptok", "from client", t, "from google", m)
-		err = fmt.Errorf("no GoogleID set")
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// session cookie
-	ses, err := config.store.Get(req, config.sessionName)
-	if err != nil {
-		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Errorw("aptok cookie error", "error", err.Error())
-		ses = sessions.NewSession(config.store, config.sessionName)
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   -1,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
-		_ = ses.Save(req, res)
-		res.Header().Set("Connection", "close")
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	authorized, err := m.Gid.InitAgent() // V & .rocks authorization takes place here
-	if !authorized {
-		err = fmt.Errorf("access denied: %s", err.Error())
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	ses.Values["id"] = m.Gid.String()
-	nonce, _ := calculateNonce(m.Gid)
-	ses.Values["nonce"] = nonce
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-	err = ses.Save(req, res)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	name, err := m.Gid.IngressName()
-	if err != nil {
-		wasabee.Log.Error(err)
-	}
-
-	var ud wasabee.AgentData
-	if err = m.Gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	ud.QueryToken = formValidationToken(req)
-	data, err := json.Marshal(ud)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	wasabee.Log.Infow("iitc/app login",
-		"GID", m.Gid,
-		"name", name,
-		"message", name+" login",
-		"client", req.Header.Get("User-Agent"),
-	)
-	m.Gid.FirebaseAgentLogin()
-
-	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
-	res.Header().Set("Cache-Control", "no-store")
-
-	fmt.Fprint(res, string(data))
-}
-
-// the user must first log in to the web interface -- satisfying the google pull for InitAgent to get this token
-// which they use to log in via Wasabee-IITC
-func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
-	if !contentTypeIs(req, "multipart/form-data") {
-		err := fmt.Errorf("invalid content-type (needs to be multipart/form-data)")
-		wasabee.Log.Warn(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	token := wasabee.OneTimeToken(req.FormValue("token"))
-	if token == "" {
-		err := fmt.Errorf("token not set")
-		wasabee.Log.Warn(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	gid, err := token.Increment()
-	if err != nil {
-		incrementScanner(req)
-		err := fmt.Errorf("invalid one-time token")
-		wasabee.Log.Warn(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	// session cookie
-	ses, err := config.store.Get(req, config.sessionName)
-	if err != nil {
-		// cookie is borked, maybe sessionName or key changed
-		wasabee.Log.Errorf("Cookie error: %s", err)
-		ses = sessions.NewSession(config.store, config.sessionName)
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   -1,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
-		_ = ses.Save(req, res)
-		res.Header().Set("Connection", "close")
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	authorized, err := gid.InitAgent() // V & .rocks authorization takes place here
-	if !authorized {
-		err = fmt.Errorf("access denied: %s", err)
-		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	ses.Values["id"] = gid.String()
-	nonce, _ := calculateNonce(gid)
-	ses.Values["nonce"] = nonce
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-	err = ses.Save(req, res)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	name, err := gid.IngressName()
-	if err != nil {
-		wasabee.Log.Error(err)
-	}
-
-	var ud wasabee.AgentData
-	if err = gid.GetAgentData(&ud); err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	ud.QueryToken = formValidationToken(req)
-	data, err := json.Marshal(ud)
-	if err != nil {
-		wasabee.Log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	wasabee.Log.Infow("oneTimeToken login",
-		"GID", gid,
-		"name", name,
-		"message", name+" oneTimeToken login",
-		"client", req.Header.Get("User-Agent"))
-	gid.FirebaseAgentLogin()
-
-	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
-	res.Header().Set("Cache-Control", "no-store")
-
-	fmt.Fprint(res, string(data))
+	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", http.Dir(config.Get().FrontendPath)))
 }
