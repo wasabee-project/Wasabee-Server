@@ -7,7 +7,7 @@ import (
 )
 
 func doAgents() {
-	rows, err := old.Query("select agent.gid, level, VVerified, Vblacklisted, Vid, RocksVerified, RISC, OneTimeToken, intelname, intelfaction, Vname, rocksname, telegramID, telegramName, verified, picurl, VAPIkey FROM agent LEFT JOIN agentextras ON agent.gid = agentextras.gid LEFT JOIN telegram ON agent.gid = telegram.gid ORDER BY agent.gid")
+	rows, err := old.Query("select agent.gid, level, VVerified, Vblacklisted, Vid, RocksVerified, RISC, OneTimeToken, intelname, intelfaction, LEFT(Vname, 16), LEFT(rocksname, 16), telegramID, telegramName, verified, picurl, VAPIkey FROM agent LEFT JOIN agentextras ON agent.gid = agentextras.gid LEFT JOIN telegram ON agent.gid = telegram.gid ORDER BY agent.gid")
 	if err != nil {
 		log.Panic(err)
 	}
