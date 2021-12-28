@@ -506,6 +506,8 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	agent.JWT, _ = mintjwt(gid)
+
 	log.Infow("oneTimeToken login",
 		"GID", gid,
 		"name", name,
