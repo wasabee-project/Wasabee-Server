@@ -41,10 +41,14 @@ func VToDB(a *VAgent) error {
 		return nil
 	}
 
+	if len(a.Agent) > 15 {
+		log.Infow("bad agent name from V", "gid", a.Gid, "name", a.Agent)
+	}
+
 	// telegram, startlat, startlon, distance, fetched are not set on the "trust" API call.
-	// use ON DUPLICATE so as to not overwrite apikey & telegram from other sources
+	// use ON DUPLICATE so as to not overwrite apikey or telegram
 	// TODO: prune fields we will never use or that V never sends
-	_, err := db.Exec("INSERT INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, startlat, startlon, distance, fetched) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE agent=?, quarantine=?, blacklisted=?, verified=?, flagged=?, banned=?, fetched=UTC_TIMESTAMP()",
+	_, err := db.Exec("INSERT INTO v (enlid, gid, vlevel, vpoints, agent, level, quarantine, active, blacklisted, verified, flagged, banned, cellid, startlat, startlon, distance, fetched) VALUES (?,?,?,?,LEFT(?,15),?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE agent=LEFT(?, 15), quarantine=?, blacklisted=?, verified=?, flagged=?, banned=?, fetched=UTC_TIMESTAMP()",
 		a.EnlID, a.Gid, a.Vlevel, a.Vpoints, a.Agent, a.Level, a.Quarantine, a.Active, a.Blacklisted, a.Verified, a.Flagged, a.Banned, a.CellID, a.StartLat, a.StartLon, a.Distance,
 		a.Agent, a.Quarantine, a.Blacklisted, a.Verified, a.Flagged, a.Banned)
 	if err != nil {

@@ -609,9 +609,13 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 		return nil
 	}
 
+	if len(name) > 15 {
+		log.Infow("intel name too long", "gid", gid, "name", name)
+	}
+
 	ifac := FactionFromString(faction)
 
-	_, err := db.Exec("UPDATE agent SET intelname = ?, intelfaction = ? WHERE GID = ?", name, ifac, gid)
+	_, err := db.Exec("UPDATE agent SET intelname = LEFT(?, 15), intelfaction = ? WHERE GID = ?", name, ifac, gid)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -735,7 +739,11 @@ func (gid GoogleID) GetAgentLocations() (string, error) {
 
 // SetCommunityName sets the name the agent is known as on the Niantic Community -- this is the most trustworthy source of agent identity
 func (gid GoogleID) SetCommunityName(name string) error {
-	if _, err := db.Exec("UPDATE agent SET communityname = ? WHERE gid = ?", name, gid); err != nil {
+	if len(name) > 15 {
+		log.Infow("community name too long", "gid", gid, "name", name)
+	}
+
+	if _, err := db.Exec("UPDATE agent SET communityname = LEFT(?,15) WHERE gid = ?", name, gid); err != nil {
 		log.Error(err)
 		return err
 	}
