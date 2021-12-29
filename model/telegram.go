@@ -110,6 +110,13 @@ func (gid GoogleID) SetTelegramID(tgid TelegramID, name string) error {
 	return nil
 }
 
+func (gid GoogleID) RemoveTelegramID() error {
+	if _, err := db.Exec("DELETE FROM telegram WHERE gid = ?", gid); err != nil {
+		return err
+	}
+	return nil
+}
+
 // VerifyAgent is the second stage of the verication process
 func (tgid TelegramID) VerifyAgent(authtoken string) error {
 	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", tgid, authtoken)

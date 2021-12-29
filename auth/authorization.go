@@ -2,7 +2,7 @@ package auth
 
 import (
 	"fmt"
-	"sync"
+	// "sync"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -57,7 +57,7 @@ func Authorize(gid model.GoogleID) (bool, error) {
 }
 
 // The logout stuff goes away when we fully migrate to JWT
-type logoutList struct {
+/* type logoutList struct {
 	logoutlist map[model.GoogleID]bool
 	mux        sync.Mutex
 }
@@ -66,20 +66,22 @@ var ll logoutList
 
 func init() {
 	ll.logoutlist = make(map[model.GoogleID]bool)
-}
+} */
 
 // Logout sets a temporary logout token - not stored in DB since logout cases are not critical
 // and sessions are refreshed with google hourly
 func Logout(gid model.GoogleID, reason string) {
-	log.Infow("logout", "GID", gid, "reason", reason, "message", gid+" logout")
+	/* log.Infow("logout", "GID", gid, "reason", reason, "message", gid+" logout")
 	ll.mux.Lock()
 	defer ll.mux.Unlock()
-	ll.logoutlist[gid] = true
+	ll.logoutlist[gid] = true */
 }
 
 // CheckLogout looks to see if the user is on the force logout list
 func CheckLogout(gid model.GoogleID) bool {
-	ll.mux.Lock()
+	return false
+
+	/* ll.mux.Lock()
 	defer ll.mux.Unlock()
 	logout, ok := ll.logoutlist[gid]
 	if !ok { // not in the list
@@ -90,5 +92,5 @@ func CheckLogout(gid model.GoogleID) bool {
 		// log.Debugw("clearing from logoutlist", "GID", gid)
 		delete(ll.logoutlist, gid)
 	}
-	return logout
+	return logout */
 }

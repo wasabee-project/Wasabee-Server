@@ -117,15 +117,15 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		}
 
 		if vblacklisted.Valid {
-			agent.Verified = vblacklisted.Bool
+			agent.Blacklisted = vblacklisted.Bool
 		}
 
 		if rocksverified.Valid {
-			agent.Verified = rocksverified.Bool
+			agent.RocksVerified = rocksverified.Bool
 		}
 
 		if rockssmurf.Valid {
-			agent.Verified = rockssmurf.Bool
+			agent.RocksSmurf = rockssmurf.Bool
 		}
 
 		if agent.ShareLocation {

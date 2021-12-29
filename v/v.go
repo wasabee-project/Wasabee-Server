@@ -292,7 +292,7 @@ func Sync(ctx context.Context, teamID model.TeamID, key string) error {
 		}
 
 		if _, ok := atv[agent.Gid]; ok {
-			log.Infow("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
+			// log.Infow("adding agent to team via V pull", "GID", agent.Gid, "team", teamID)
 			if err := teamID.AddAgent(agent.Gid); err != nil {
 				log.Info(err)
 				continue

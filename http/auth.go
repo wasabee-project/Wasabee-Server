@@ -499,14 +499,20 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	agent.QueryToken = formValidationToken(req)
-	data, err := json.Marshal(agent)
+
+	agent.JWT, err = mintjwt(gid)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	agent.JWT, _ = mintjwt(gid)
+	data, err := json.Marshal(agent)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	log.Infow("oneTimeToken login",
 		"GID", gid,
