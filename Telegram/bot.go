@@ -3,11 +3,8 @@ package wtg
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-
-	"golang.org/x/time/rate"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
@@ -23,7 +20,6 @@ var sendQueue chan tgbotapi.Chattable
 var hook string
 
 var bot *tgbotapi.BotAPI
-var limiter *rate.Limiter
 
 // Start is called from main() to start the bot.
 func Start(ctx context.Context) {
@@ -40,7 +36,7 @@ func Start(ctx context.Context) {
 	subrouter := config.Subrouter(c.HookPath)
 	subrouter.HandleFunc("/{hook}", webhook).Methods("POST")
 
-	sendQueue = make(chan tgbotapi.Chattable, 30)
+	sendQueue = make(chan tgbotapi.Chattable, sendQchanSize)
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(c.APIKey)
@@ -53,8 +49,6 @@ func Start(ctx context.Context) {
 	// bot.Debug = true
 	log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
 	config.TGSetBot(bot.Self.UserName, int(bot.Self.ID))
-
-	limiter = rate.NewLimiter(rate.Limit(3*time.Second), 19)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -75,19 +69,14 @@ func Start(ctx context.Context) {
 		RemoveFromRemote: removeFromChat,
 	})
 
+	// process outgoing messages in a distinct go process
+	go sendqueueRunner(ctx)
+
 	i := 1
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case msg := <-sendQueue:
-			// log.Debug("sending", "msg", msg)
-			if err := limiter.Wait(ctx); err != nil {
-				log.Warn(err)
-			}
-			if _, err = bot.Send(msg); err != nil && err.Error() != "Bad Request: chat not found" {
-				log.Error(err)
-			}
 		case update := <-upChan:
 			// log.Debugw("running update", "update", update)
 			if err := runUpdate(update); err != nil {

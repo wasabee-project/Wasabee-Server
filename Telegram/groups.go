@@ -57,10 +57,7 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		if err := teamID.UnlinkFromTelegramChat(model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
 			log.Error(err)
 			msg.Text = err.Error()
-			// do not use the queue
-			if _, err := bot.Send(msg); err != nil {
-				log.Error(err)
-			}
+			sendQueue <- msg
 			return err
 		}
 
@@ -230,12 +227,13 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 	teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 	if err != nil {
 		// no need to log these, just non-linked chats
-		log.Debugw("unknown chat", "err", err.Error(), "chatID", inMsg.Message.Chat.ID)
+		// log.Debugw("unknown chat", "err", err.Error(), "chatID", inMsg.Message.Chat.ID)
 		return nil
 	}
 
 	// we see messages if the bot is admin
 	// log.Debugw("message in chat", "chatID", inMsg.Message.Chat.ID, "team", teamID, "op", opID)
+	// if we see a message in a chat from someone not on the team, add them?
 
 	// if the bot is removed from the chat, unlink the team from the chat
 	if inMsg.Message.LeftChatMember != nil && inMsg.Message.LeftChatMember.ID == bot.Self.ID {
@@ -344,8 +342,7 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	}
 
 	name, _ := gid.IngressName()
-	tmp, _ := gid.TelegramName()
-	if tmp != "" {
+	if tmp, _ := gid.TelegramName(); tmp != "" {
 		name = fmt.Sprint("@", tmp)
 	}
 
@@ -369,7 +366,6 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	if chatID == 0 {
 		return nil
 	}
-	log.Debugw("RemoveFromChat called", "GID", gid, "teamID", teamID, "chatID", chatID)
 
 	tgid, err := gid.TelegramID()
 	if err != nil {
@@ -377,9 +373,9 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		return err
 	}
 	if tgid == 0 {
-		log.Debug("agent does not have telegram", "gid", gid)
 		return nil
 	}
+	// log.Debugw("RemoveFromChat called", "GID", gid, "teamID", teamID, "chatID", chatID, "tgid", tgid)
 
 	cic := tgbotapi.ChatInfoConfig{}
 	cic.ChatID = chatID
@@ -390,8 +386,7 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		return err
 	}
 	name, _ := gid.IngressName()
-	tmp, _ := gid.TelegramName()
-	if tmp != "" {
+	if tmp, _ := gid.TelegramName(); tmp != "" {
 		name = fmt.Sprint("@", tmp)
 	}
 
@@ -409,9 +404,18 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		RevokeMessages: false,
 	}
 	if _, err = bot.Request(bcmc); err != nil {
-		log.Error(err)
-		msg := tgbotapi.NewMessage(chat.ID, err.Error())
-		sendQueue <- msg
+		errstr := err.Error()
+		switch errstr {
+		case "Bad Request: USER_ID_INVALID":
+			log.Infow("invalid telegram ID, clearing from agent", "gid", gid, "tgid", tgid)
+			gid.RemoveTelegramID()
+		case "Bad Request: USER_NOT_PARTICIPANT":
+			// nothing
+		default:
+			log.Error(err)
+			msg := tgbotapi.NewMessage(chat.ID, err.Error())
+			sendQueue <- msg
+		}
 	}
 	return nil
 }
