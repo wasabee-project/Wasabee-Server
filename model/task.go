@@ -376,3 +376,18 @@ func (o *Operation) GetTask(taskID TaskID) (*Task, error) {
 
 	return &Task{}, fmt.Errorf("task not found")
 }
+
+func (o *Operation) GetTaskByStepNumber(step int16) (*Task, error) {
+	for _, m := range o.Markers {
+		if m.Order == step {
+			return &m.Task, nil
+		}
+	}
+
+	for _, l := range o.Links {
+		if l.Order == step {
+			return &l.Task, nil
+		}
+	}
+	return &Task{}, fmt.Errorf("task not found")
+}
