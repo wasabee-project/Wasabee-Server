@@ -14,14 +14,14 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// time.Minute/15, 10 yeilds 16 second pauses at high load
-// testing 15/8 is slow
+// 15/10 with chanSize 30  yeilds 16 second pauses at high load 
+// testing 15/8 with chanSize 15 is slow
 // ideal would be 20/x
 const sendQMessagesPerMinutes = 20
 const sendQBurst = 8
 
 // size of 15 is just a "gut feel" value, need to test to determine optimum
-const sendQchanSize = 15
+const sendQchanSize = 30
 
 // Reverse the logic, channel puts it in the queue, and the queue runner is time-limited...
 // The goal is to not have the callers block, but all the blocking to happen on this goprocess

@@ -16,7 +16,7 @@ import (
 
 var baseKbd tgbotapi.ReplyKeyboardMarkup
 var upChan chan tgbotapi.Update
-var sendQueue chan tgbotapi.Chattable
+var sendQueue chan tgbotapi.Chattable // parameters in sendq.go
 var hook string
 
 var bot *tgbotapi.BotAPI
