@@ -217,6 +217,49 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			msg.Text = b.String()
 		}
 		sendQueue <- msg
+	case "claim":
+		_, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+		if err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
+		if opID == "" {
+			err := fmt.Errorf("team must be linked to operation to view assignments")
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
+		o := model.Operation{}
+		o.ID = opID
+		if err := o.Populate(gid); err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
+		tokens := strings.Split(inMsg.Message.Text, " ")
+		step, err := strconv.Atoi(strings.TrimSpace(tokens[1]))
+		if err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
+		task, err := o.GetTaskByStepNumber(int16(step))
+		if err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
+		if err := task.Claim(gid); err != nil {
+			log.Error(err)
+			msg.Text = err.Error()
+			sendQueue <- msg
+			return err
+		}
 	default:
 		log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 	}
