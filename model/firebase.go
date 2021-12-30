@@ -60,6 +60,7 @@ func (gid GoogleID) StoreFirebaseToken(token string) error {
 	}
 
 	// Subscribe this token to all team topics
+	// This isn't right -- each token sub now triggers messages in Telegram teams...
 	tl := g.teamList()
 	for _, teamID := range tl {
 		messaging.AddToRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))

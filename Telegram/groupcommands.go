@@ -198,7 +198,7 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
 		// if the caller requested the results to be filtered...
-		if filterGid != "" && m.IsAssignedTo(filterGid) {
+		if filterGid != "" && !m.IsAssignedTo(filterGid) {
 			continue
 		}
 		if m.State != "pending" {
@@ -327,6 +327,11 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
+	m := task.(model.Marker)
+	p, _ := o.PortalDetails(m.PortalID, gid)
+	msg.Text = fmt.Sprintf("Task Claimed: %d - %s - %s", task.GetOrder(), model.NewMarkerType(m.Type), p.Name)
+	// b.WriteString(fmt.Sprintf("<b>%d</b> / <a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s\n", m.Order, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type)))
+	sendQueue <- msg
 }
 
 func gcAcknowledge(inMsg *tgbotapi.Update) {
@@ -394,6 +399,10 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
+	m := task.(model.Marker)
+	p, _ := o.PortalDetails(m.PortalID, gid)
+	msg.Text = fmt.Sprintf("Task Acknowledged: %d - %s - %s", task.GetOrder(), model.NewMarkerType(m.Type), p.Name)
+	sendQueue <- msg
 }
 
 func gcReject(inMsg *tgbotapi.Update) {
@@ -452,4 +461,8 @@ func gcReject(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
+	m := task.(model.Marker)
+	p, _ := o.PortalDetails(m.PortalID, gid)
+	msg.Text = fmt.Sprintf("Task Rejected: %d - %s - %s", task.GetOrder(), model.NewMarkerType(m.Type), p.Name)
+	sendQueue <- msg
 }

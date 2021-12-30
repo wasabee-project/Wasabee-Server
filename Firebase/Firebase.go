@@ -55,14 +55,14 @@ func Start(ctx context.Context) error {
 	} */
 
 	wm.RegisterMessageBus("firebase", wm.Bus{
-		SendMessage:      SendMessage,
-		SendTarget:       SendTarget,
-		SendAnnounce:     SendAnnounce,
-		AddToRemote:      AddToRemote,
-		RemoveFromRemote: RemoveFromRemote,
-		// SendAssignment: SendAssignment,
-		AgentDeleteOperation: AgentDeleteOperation,
-		DeleteOperation:      DeleteOperation,
+		SendMessage:      sendMessage,
+		SendTarget:       sendTarget,
+		SendAnnounce:     sendAnnounce,
+		AddToRemote:      addToRemote,
+		RemoveFromRemote: removeFromRemote,
+		// SendAssignment: sendAssignment,
+		AgentDeleteOperation: agentDeleteOperation,
+		DeleteOperation:      deleteOperation,
 	})
 
 	fbctx = ctx

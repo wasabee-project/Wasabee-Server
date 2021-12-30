@@ -68,6 +68,11 @@ func Execute(name string, data interface{}) (string, error) {
 // ExecuteLang runs a given template in a specified langauge
 func ExecuteLang(name, lang string, data interface{}) (string, error) {
 	var tpBuffer bytes.Buffer
+
+	if _, ok := ts[lang]; !ok {
+		lang = "en"
+	}
+
 	if err := ts[lang].ExecuteTemplate(&tpBuffer, name, data); err != nil {
 		log.Info(err)
 		return "", err

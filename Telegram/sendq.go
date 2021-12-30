@@ -20,11 +20,12 @@ import (
 const sendQMessagesPerMinutes = 20
 const sendQBurst = 8
 
-// size of 15 is just a "gut feel" value, need to test to determine optimum
-const sendQchanSize = 30
+// just a "gut feel" value, need to test to determine optimum
+const sendQchanSize = sendQBurst * 2
 
 // Reverse the logic, channel puts it in the queue, and the queue runner is time-limited...
 // The goal is to not have the callers block, but all the blocking to happen on this goprocess
+// if this is really the goal, then stuff them in the holdQ as fast as possible and run that queue at the target rate
 func sendqueueRunner(ctx context.Context) {
 	blocked := false
 	holdQ := list.New()
@@ -39,6 +40,36 @@ func sendqueueRunner(ctx context.Context) {
 		case <-unblocker:
 			log.Infow("restarting message sender", "holdQ len", holdQ.Len())
 			blocked = false
+			if holdQ.Len() > 0 {
+				log.Debugw("running holdQ", "len", holdQ.Len())
+				i := 0
+
+			HQ:
+				for e := holdQ.Front(); e != nil; {
+					n := e.Next()
+					msg := holdQ.Remove(e).(tgbotapi.Chattable)
+					e = n
+
+					// do not completely fill the sendQueue channel and deadlock this goprocess
+					select {
+					case sendQueue <- msg: // if channel not full,  send a few, trigger again to send some more
+						i++
+						if i >= sendQBurst/2 { // send half-a-burst
+							log.Debug("pausing after sending half-a-burst")
+							unblocker = time.After((time.Minute / sendQMessagesPerMinutes) * (sendQBurst / 2)) // time it would take to process this block if no congestion
+							break HQ
+						}
+					default: // if the channel is full, just try again later
+						log.Debugw("sendQueue full while running holdQ, draining sendQueue into holdQ", "len", holdQ.Len())
+						holdQ.PushFront(msg)
+						blocked = true                                                      // drain the sendQueue into holdQ
+						unblocker = time.After((time.Minute / sendQMessagesPerMinutes) * 2) // restart quickly
+						// unblocker = time.After((time.Minute / sendQMessagesPerMinutes) * sendQBurst) // time it would take to process entire sendQueue if no congestion
+						break HQ
+					}
+				}
+				log.Debug("outside holdQ for loop")
+			}
 		case msg := <-sendQueue:
 			if blocked {
 				holdQ.PushBack(msg)
@@ -72,39 +103,6 @@ func sendqueueRunner(ctx context.Context) {
 					continue
 				}
 			}
-		}
-
-		// process the holdQ when unblocked or after every message if needed
-		// this can probably be moved back into case <-unblocker
-		if holdQ.Len() > 0 {
-			log.Debugw("running holdQ", "len", holdQ.Len())
-			i := 0
-
-			// e := holdQ.Front()
-		HQ:
-			for e := holdQ.Front(); e != nil; {
-				n := e.Next()
-				msg := holdQ.Remove(e).(tgbotapi.Chattable)
-				e = n
-
-				// do not completely fill the sendQueue channel and deadlock this goprocess
-				select {
-				case sendQueue <- msg: // if channel not full send it
-					i++
-					if i >= sendQchanSize {
-						log.Debug("hit sendQchanSize, backing off")
-						unblocker = time.After(30 * time.Second)
-						break HQ
-					}
-				default: // if the channel is full, just bail, and try again in a minute
-					log.Debugw("channel full, pausing holdQ until channel has room", "len", holdQ.Len())
-					holdQ.PushBack(msg)
-					unblocker = time.After(2 * time.Minute)
-					e = nil
-					break HQ
-				}
-			}
-			log.Debug("outside holdQ for loop")
 		}
 	}
 }

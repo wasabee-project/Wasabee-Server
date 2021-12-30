@@ -63,6 +63,7 @@ func Start(ctx context.Context) {
 
 	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Telegram", messaging.Bus{
+		SendAnnounce:     sendAnnounce,
 		SendMessage:      sendMessage,
 		SendTarget:       sendTarget,
 		AddToRemote:      addToChat,

@@ -30,12 +30,20 @@ type Target struct {
 	Sender string
 }
 
+// Announce is the type used for the SendAnnounce call
+type Announce struct {
+	Text   string
+	Sender GoogleID
+	OpID   OperationID
+	TeamID TeamID
+}
+
 // Bus is the type that services use to register with the messaging framework
 type Bus struct {
 	SendMessage          func(GoogleID, string) (bool, error)              // send a message to an individual agent
 	SendTarget           func(GoogleID, Target) error                      // send a formatted target to an individual agent
 	CanSendTo            func(fromGID GoogleID, toGID GoogleID) bool       // determine if one agent can send to another
-	SendAnnounce         func(TeamID, string) error                        // send a messaage to a team
+	SendAnnounce         func(TeamID, Announce) error                      // send a messaage to a team
 	AddToRemote          func(GoogleID, TeamID) error                      // add an agent to a services chat/community/team/channel/whatever
 	RemoveFromRemote     func(GoogleID, TeamID) error                      // remove an agent from a service's X
 	SendAssignment       func(GoogleID, TaskID, OperationID, string) error // Send a formatted assignment to an individual agent
@@ -94,10 +102,11 @@ func SendMessage(toGID GoogleID, message string) (bool, error) {
 }
 
 // SendAnnounce sends a generic message to a team
-func SendAnnounce(teamID TeamID, message string) {
+// if opID is nil, it is not used
+func SendAnnounce(teamID TeamID, a Announce) {
 	for _, bus := range busses {
 		if bus.SendAnnounce != nil {
-			if err := bus.SendAnnounce(teamID, message); err != nil {
+			if err := bus.SendAnnounce(teamID, a); err != nil {
 				log.Error(err)
 			}
 		}

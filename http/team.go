@@ -292,7 +292,11 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	messaging.SendAnnounce(messaging.TeamID(team), message)
+	messaging.SendAnnounce(messaging.TeamID(team), messaging.Announce{
+		Text:   message,
+		Sender: messaging.GoogleID(gid),
+		TeamID: messaging.TeamID(team),
+	})
 	fmt.Fprint(res, jsonStatusOK)
 }
 

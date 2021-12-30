@@ -184,8 +184,8 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 	return nil
 }
 
-// AddToRemote subscribes all tokens for a given agent to a team/topic
-func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
+// addToRemote subscribes all tokens for a given agent to a team/topic
+func addToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
@@ -213,8 +213,8 @@ func AddToRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	return nil
 }
 
-// RemoveFromRemote removes an agent's subscriptions to a given topic/team
-func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
+// removeFromRemote removes an agent's subscriptions to a given topic/team
+func removeFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
@@ -242,8 +242,8 @@ func RemoveFromRemote(g wm.GoogleID, teamID wm.TeamID) error {
 	return nil
 }
 
-// SendMessage is registered with Wasabee for sending messages
-func SendMessage(g wm.GoogleID, message string) (bool, error) {
+// sendMessage is registered with Wasabee for sending messages
+func sendMessage(g wm.GoogleID, message string) (bool, error) {
 	if !config.IsFirebaseRunning() {
 		return false, nil
 	}
@@ -266,8 +266,8 @@ func SendMessage(g wm.GoogleID, message string) (bool, error) {
 	return true, nil
 }
 
-// SendTarget sends a portal name/guid to an agent
-func SendTarget(g wm.GoogleID, t wm.Target) error {
+// sendTarget sends a portal name/guid to an agent
+func sendTarget(g wm.GoogleID, t wm.Target) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
@@ -343,15 +343,17 @@ func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
 	return nil
 }
 
-// SendAnnounce sends a generic message to a team
-func SendAnnounce(teamID wm.TeamID, message string) error {
+// sendAnnounce sends a generic message to a team
+func sendAnnounce(teamID wm.TeamID, a wm.Announce) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
 	data := map[string]string{
-		"msg": message,
-		"cmd": "Generic Message",
-		"srv": config.Get().HTTP.Webroot,
+		"msg":    a.Text,
+		"cmd":    "Generic Message",
+		"opID":   string(a.OpID),
+		"sender": string(a.Sender),
+		"srv":    config.Get().HTTP.Webroot,
 	}
 	m := messaging.Message{
 		Topic: string(teamID),
@@ -365,8 +367,8 @@ func SendAnnounce(teamID wm.TeamID, message string) error {
 	return nil
 }
 
-// DeleteOperation tells everyone (on this server) to remove a specific op
-func DeleteOperation(opID wm.OperationID) error {
+// deleteOperation tells everyone (on this server) to remove a specific op
+func deleteOperation(opID wm.OperationID) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
@@ -389,8 +391,8 @@ func DeleteOperation(opID wm.OperationID) error {
 	return nil
 }
 
-// AgentDeleteOperation notifies a single agent of the need to delete an operation (e.g. when removed from a team)
-func AgentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
+// agentDeleteOperation notifies a single agent of the need to delete an operation (e.g. when removed from a team)
+func agentDeleteOperation(g wm.GoogleID, opID wm.OperationID) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
