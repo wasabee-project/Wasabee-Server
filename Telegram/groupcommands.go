@@ -3,6 +3,7 @@ package wtg
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -194,6 +195,7 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	name, _ := teamID.Name()
 	b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
 	b.WriteString("<b>Order / Portal / Action / Agent / State</b>\n")
+	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
 		// if the caller requested the results to be filtered...
 		if filterGid != "" && m.IsAssignedTo(filterGid) {
@@ -258,6 +260,7 @@ func gcUnassigned(inMsg *tgbotapi.Update) {
 	name, _ := teamID.Name()
 	b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
 	b.WriteString("<b>Order / Portal / Action</b>\n")
+	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
 		if m.State == "pending" {
 			p, _ := o.PortalDetails(m.PortalID, gid)
@@ -289,7 +292,7 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		return
 	}
 	if opID == "" {
-		err := fmt.Errorf("team must be linked to operation to view assignments")
+		err := fmt.Errorf("team must be linked to operation to claim assignments")
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
@@ -319,6 +322,131 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		return
 	}
 	if err := task.Claim(gid); err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+}
+
+func gcAcknowledge(inMsg *tgbotapi.Update) {
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	msg.ParseMode = "HTML"
+	msg.DisableWebPagePreview = true
+
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	_, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+	if opID == "" {
+		err := fmt.Errorf("team must be linked to operation to claim assignments")
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+	o := model.Operation{}
+	o.ID = opID
+	if err := o.Populate(gid); err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	tokens := strings.Split(inMsg.Message.Text, " ")
+	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+	task, err := o.GetTaskByStepNumber(int16(step))
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	if !task.IsAssignedTo(gid) {
+		err := fmt.Errorf("Task must be assigned to you to acknowledge")
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	if err := task.Acknowledge(); err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+}
+
+func gcReject(inMsg *tgbotapi.Update) {
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	msg.ParseMode = "HTML"
+	msg.DisableWebPagePreview = true
+
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	_, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+	if opID == "" {
+		err := fmt.Errorf("team must be linked to operation to claim assignments")
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+	o := model.Operation{}
+	o.ID = opID
+	if err := o.Populate(gid); err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	tokens := strings.Split(inMsg.Message.Text, " ")
+	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+	task, err := o.GetTaskByStepNumber(int16(step))
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+	if err := task.Reject(gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg

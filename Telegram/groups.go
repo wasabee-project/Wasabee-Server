@@ -34,6 +34,10 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 		gcUnassigned(inMsg)
 	case "claim":
 		gcClaim(inMsg)
+	case "Reject":
+		gcReject(inMsg)
+	case "acknowledge":
+		gcAcknowledge(inMsg)
 	default:
 		msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 		msg.ParseMode = "HTML"
