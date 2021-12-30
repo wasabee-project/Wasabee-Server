@@ -69,10 +69,7 @@ func Start(ctx context.Context) error {
 	config.SetFirebaseRunning(true)
 
 	// there is no reason to stay running now -- this costs nothing
-	select {
-	case <-ctx.Done():
-		break
-	}
+	<-ctx.Done()
 
 	log.Infow("Shutdown", "message", "Firebase Shutting down")
 	config.SetFirebaseRunning(false)

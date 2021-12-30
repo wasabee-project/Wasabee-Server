@@ -302,8 +302,9 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
+
 	tokens := strings.Split(inMsg.Message.Text, " ")
-	step, err := strconv.Atoi(strings.TrimSpace(tokens[1]))
+	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()

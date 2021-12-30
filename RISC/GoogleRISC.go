@@ -67,6 +67,7 @@ func Start(ctx context.Context) {
 	if _, err := os.Stat(full); err != nil {
 		log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", full)
 	}
+	// #nosec
 	tmp, err := ioutil.ReadFile(full)
 	if err != nil {
 		log.Error(err)

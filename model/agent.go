@@ -761,3 +761,12 @@ func CommunityNameToGID(name string) (GoogleID, error) {
 	}
 	return gid, nil
 }
+
+// ClearCommunityName removes an agent's community name verification
+func (gid GoogleID) ClearCommunityName() error {
+	if _, err := db.Exec("UPDATE agent SET communityname = NULL WHERE gid = ?", gid); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}

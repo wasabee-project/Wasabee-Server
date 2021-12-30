@@ -69,10 +69,7 @@ func Start(ctx context.Context) {
 	config.SetVRunning(true)
 
 	// there is no reason to stay running now -- this costs nothing
-	select {
-	case <-ctx.Done():
-		break
-	}
+	<-ctx.Done()
 
 	log.Infow("Shutdown", "message", "v shutting down")
 	config.SetVRunning(false)
@@ -263,6 +260,7 @@ func Sync(ctx context.Context, teamID model.TeamID, key string) error {
 				log.Error(err)
 				continue
 			}
+			// #nosec -- model.VToDB isn't async, aliasing doesn't matter here
 			if err := model.VToDB(&agent); err != nil {
 				log.Error(err)
 				continue

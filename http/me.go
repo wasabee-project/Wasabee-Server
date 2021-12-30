@@ -496,3 +496,21 @@ func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
 
 	fmt.Fprint(res, jsonStatusOK)
 }
+
+func meCommClearRoute(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Content-Type", jsonType)
+	gid, err := getAgentID(req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if err := gid.ClearCommunityName(); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(res, jsonStatusOK)
+}

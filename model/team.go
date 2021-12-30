@@ -427,11 +427,11 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	}
 
 	if vblacklisted.Valid {
-		tm.Verified = vblacklisted.Bool
+		tm.Blacklisted = vblacklisted.Bool
 	}
 
 	if rocksverified.Valid {
-		tm.Verified = rocksverified.Bool
+		tm.RocksVerified = rocksverified.Bool
 	}
 
 	if rockssmurf.Valid {

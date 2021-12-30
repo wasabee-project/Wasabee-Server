@@ -162,6 +162,7 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/jwtrefresh", meJwtRefreshRoute).Methods("GET")                                               // returns a new JWT with the current token ID
 	r.HandleFunc("/me/commproof", meCommProofRoute).Methods("GET").Queries("name", "{name}")                       // generate a JWT to post on niantic's community to prove identity
 	r.HandleFunc("/me/commverify", meCommVerifyRoute).Methods("GET").Queries("name", "{name}")                     // fetch and verify the JWT posted on niantic's community
+	r.HandleFunc("/me/commverify", meCommClearRoute).Methods("DELETE")                                             // clear it
 
 	// other agents
 	// "profile" page, such as it is

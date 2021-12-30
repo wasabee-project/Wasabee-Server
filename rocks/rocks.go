@@ -72,10 +72,7 @@ func Start(ctx context.Context) {
 	config.SetRocksRunning(true)
 
 	// there is no reason to stay running now -- this costs nothing
-	select {
-	case <-ctx.Done():
-		break
-	}
+	<-ctx.Done()
 
 	log.Infow("Shutdown", "message", "rocks shutting down")
 	config.SetRocksRunning(false)

@@ -245,7 +245,11 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		switch errstr {
 		case "Bad Request: USER_ID_INVALID":
 			log.Infow("invalid telegram ID, clearing from agent", "gid", gid, "tgid", tgid)
-			gid.RemoveTelegramID()
+			if err := gid.RemoveTelegramID(); err != nil {
+				log.Error(err)
+				msg := tgbotapi.NewMessage(chat.ID, err.Error())
+				sendQueue <- msg
+			}
 		case "Bad Request: USER_NOT_PARTICIPANT":
 			// nothing
 		default:

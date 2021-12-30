@@ -110,6 +110,7 @@ func (gid GoogleID) SetTelegramID(tgid TelegramID, name string) error {
 	return nil
 }
 
+// RemoveTelegramID clears any telegram configuration for a given agent
 func (gid GoogleID) RemoveTelegramID() error {
 	if _, err := db.Exec("DELETE FROM telegram WHERE gid = ?", gid); err != nil {
 		return err

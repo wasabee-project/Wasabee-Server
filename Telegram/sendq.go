@@ -14,7 +14,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// 15/10 with chanSize 30  yeilds 16 second pauses at high load 
+// 15/10 with chanSize 30  yeilds 16 second pauses at high load
 // testing 15/8 with chanSize 15 is slow
 // ideal would be 20/x
 const sendQMessagesPerMinutes = 20
@@ -80,8 +80,9 @@ func sendqueueRunner(ctx context.Context) {
 			log.Debugw("running holdQ", "len", holdQ.Len())
 			i := 0
 
-			e := holdQ.Front()
-			for e != nil {
+			// e := holdQ.Front()
+		HQ:
+			for e := holdQ.Front(); e != nil; {
 				n := e.Next()
 				msg := holdQ.Remove(e).(tgbotapi.Chattable)
 				e = n
@@ -93,14 +94,14 @@ func sendqueueRunner(ctx context.Context) {
 					if i >= sendQchanSize {
 						log.Debug("hit sendQchanSize, backing off")
 						unblocker = time.After(30 * time.Second)
-						break
+						break HQ
 					}
 				default: // if the channel is full, just bail, and try again in a minute
 					log.Debugw("channel full, pausing holdQ until channel has room", "len", holdQ.Len())
 					holdQ.PushBack(msg)
 					unblocker = time.After(2 * time.Minute)
 					e = nil
-					break
+					break HQ
 				}
 			}
 			log.Debug("outside holdQ for loop")

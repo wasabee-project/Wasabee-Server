@@ -103,8 +103,10 @@ type whttp struct {
 var once sync.Once
 var c WasabeeConf
 
-func LoadFile(f string) (*WasabeeConf, error) {
-	raw, err := os.ReadFile(f)
+// LoadFile is the primary method for loading the Wasabee config file, setting the defaults
+func LoadFile(filename string) (*WasabeeConf, error) {
+	// #nosec
+	raw, err := os.ReadFile(filename)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -131,7 +133,6 @@ func LoadFile(f string) (*WasabeeConf, error) {
 	certdir, err := filepath.Abs(in.Certs)
 	if err != nil {
 		log.Fatal("certificate path could not be resolved.")
-		// panic(err)
 	}
 	in.Certs = certdir
 	log.Debugw("startup", "Certificate Directory", in.Certs)
@@ -140,7 +141,9 @@ func LoadFile(f string) (*WasabeeConf, error) {
 	c = *in
 
 	// finish setup
-	setupJWK(certdir, c.JWKpriv, c.JWKpub)
+	if err := setupJWK(certdir, c.JWKpriv, c.JWKpub); err != nil {
+		log.Fatal(err)
+	}
 
 	c.HTTP.oauthConfig = &oauth2.Config{
 		ClientID:     c.HTTP.OauthClientID,
@@ -157,7 +160,8 @@ func LoadFile(f string) (*WasabeeConf, error) {
 	return &c, nil
 }
 
-// Get the global configuration -- probably should not return a pointer so the callers can't overwrite
+// Get returns the global configuration
+// XXX it probably should not return a pointer so the callers can't overwrite the config
 func Get() *WasabeeConf {
 	return &c
 }
@@ -182,18 +186,19 @@ func Subrouter(prefix string) *mux.Router {
 }
 
 // TGSetBot sets the bot name and ID for use in templates
+// currently there are no templates that use these values
 func TGSetBot(name string, id int) {
 	c.Telegram.name = name
 	c.Telegram.id = id
 	c.Telegram.running = true
 }
 
-// TGRunning reports if telegram is running; used for templates
+// IsTelegramRunning reports if telegram is running; used for templates
 func IsTelegramRunning() bool {
 	return c.Telegram.running
 }
 
-// SetupJWK loads the keys used for the JWK signing and verification, set the file paths
+// setupJWK loads the keys used for the JWK signing and verification, set the file paths
 func setupJWK(certdir, signers, parsers string) error {
 	var err error
 	c.jwSigningKeys, err = jwk.ReadFile(path.Join(certdir, signers))
@@ -218,26 +223,32 @@ func setupJWK(certdir, signers, parsers string) error {
 	return nil
 }
 
+// SetVRunning sets the current running state of V integration
 func SetVRunning(v bool) {
 	c.V.running = v
 }
 
+// IsVRunning reports the current running state of V integration
 func IsVRunning() bool {
 	return c.V.running
 }
 
+// SetRocksRunning sets the current running state of Rocks integration
 func SetRocksRunning(r bool) {
 	c.Rocks.running = r
 }
 
+// IsRocksRunning reports the current running state of Rocks integration
 func IsRocksRunning() bool {
 	return c.Rocks.running
 }
 
+// JWParsingKeys returns the public keys uses to verify the JWT
 func JWParsingKeys() jwk.Set {
 	return c.jwParsingKeys
 }
 
+// JWSigningKeys returns the private keys used to sign the JWT
 func JWSigningKeys() jwk.Set {
 	return c.jwSigningKeys
 }
@@ -252,14 +263,17 @@ func GetWebAPIPath() string {
 	return c.HTTP.APIPathURL
 }
 
+// GetOauthConfig returns the Oauth config for Google
 func GetOauthConfig() *oauth2.Config {
 	return c.HTTP.oauthConfig
 }
 
+// IsFirebaseRunning repors the running state of the Firebase integration
 func IsFirebaseRunning() bool {
 	return c.fbRunning
 }
 
+// SetFirebaseRunning sets the running state of the Firebase integration
 func SetFirebaseRunning(r bool) {
 	c.fbRunning = r
 }

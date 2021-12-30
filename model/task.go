@@ -377,6 +377,8 @@ func (o *Operation) GetTask(taskID TaskID) (*Task, error) {
 	return &Task{}, fmt.Errorf("task not found")
 }
 
+// GetTaskByStepNumber returns a task based on it's operation position
+// if multiple tasks share one step number, the results are non-deterministic
 func (o *Operation) GetTaskByStepNumber(step int16) (*Task, error) {
 	for _, m := range o.Markers {
 		if m.Order == step {
