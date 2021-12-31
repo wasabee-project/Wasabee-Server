@@ -1,13 +1,12 @@
 package wtg
 
 import (
-	"fmt"
-
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
 func sendAnnounce(t messaging.TeamID, a messaging.Announce) error {
@@ -23,12 +22,14 @@ func sendAnnounce(t messaging.TeamID, a messaging.Announce) error {
 		return nil
 	}
 
-	agent, err := model.GoogleID(a.Sender).IngressName()
+	text, err := templates.ExecuteLang("announcement", "en", a)
 	if err != nil {
 		log.Error(err)
+		// send it raw
 	}
-
-	text := fmt.Sprint(a.Text, " - ", agent)
+	if text == "" {
+		text = a.Text
+	}
 
 	msg := tgbotapi.NewMessage(tgchat, text)
 	msg.ParseMode = "HTML"

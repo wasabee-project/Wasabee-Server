@@ -78,7 +78,7 @@ func chatResponses(inMsg *tgbotapi.Update) error {
 
 	// if the bot is removed from the chat, unlink the team from the chat
 	if inMsg.Message.LeftChatMember != nil && inMsg.Message.LeftChatMember.ID == bot.Self.ID {
-		if err := teamID.UnlinkFromTelegramChat(model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
+		if err := teamID.UnlinkFromTelegramChat(); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -133,7 +133,7 @@ func liveLocationUpdate(inMsg *tgbotapi.Update) error {
 	return nil
 }
 
-// SendToTeamChannel sends a message to chat linked to a team
+// SendToTeamChannel sends a message to the primary (not linked to an op) chat linked to a team
 func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) error {
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
@@ -165,19 +165,14 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		log.Error(err)
 		return err
 	}
-	if chatID == 0 {
-		// log.Debug("no chat linked to team")
-		return nil
-	}
 
-	// can't clean this up since cic.ChatID is included type
 	cic := tgbotapi.ChatInfoConfig{}
 	cic.ChatID = chatID
 	chat, err := bot.GetChat(cic)
 	if err != nil {
 		log.Errorw(err.Error(), "chatID", chatID, "GID", gid)
 		if err.Error() == "Bad Request: chat not found" {
-			_ = teamID.UnlinkFromTelegramChat(model.TelegramID(chatID))
+			_ = teamID.UnlinkFromTelegramChat()
 		}
 		return err
 	}
@@ -190,8 +185,8 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	text := fmt.Sprintf("%s joined the linked team (%s): Please add them to this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	sendQueue <- msg
-
 	// XXX create a join link for this agent
+
 	return nil
 }
 
@@ -203,9 +198,6 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	if err != nil {
 		log.Error(err)
 		return err
-	}
-	if chatID == 0 {
-		return nil
 	}
 
 	tgid, err := gid.TelegramID()
@@ -262,5 +254,6 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 			sendQueue <- msg
 		}
 	}
+
 	return nil
 }

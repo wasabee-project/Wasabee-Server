@@ -9,14 +9,17 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
 var ts map[string]*template.Template
 var funcMap = template.FuncMap{
 	// "TGGetBotName": wasabeetelegram.TGGetBotName,
 	// "TGGetBotID":   wasabeetelegram.TGGetBotID,
-	"Webroot":    config.GetWebroot,
-	"WebAPIPath": config.GetWebAPIPath,
+	"Webroot":     config.GetWebroot,
+	"WebAPIPath":  config.GetWebAPIPath,
+	"WebUI":       config.GetWebUI,
+	"IngressName": model.IngressName,
 }
 
 // Start should be called once from main to establish the templates.

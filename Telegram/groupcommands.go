@@ -11,7 +11,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
-	// "github.com/wasabee-project/Wasabee-Server/templates"
+	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
 func gcUnlink(inMsg *tgbotapi.Update) {
@@ -46,14 +46,14 @@ func gcUnlink(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	if err := teamID.UnlinkFromTelegramChat(model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
+	if err := teamID.UnlinkFromTelegramChat(); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
 	}
 
-	msg.Text = "Successfully unlinked"
+	msg.Text, err = templates.ExecuteLang("Unlinked", inMsg.Message.From.LanguageCode, nil)
 	sendQueue <- msg
 }
 
@@ -101,11 +101,11 @@ func gcLink(inMsg *tgbotapi.Update) {
 			return
 		}
 	} else {
-		msg.Text = "specify a single teamID"
+		msg.Text, _ = templates.ExecuteLang("SingleTeam", inMsg.Message.From.LanguageCode, nil)
 		sendQueue <- msg
 		return
 	}
-	msg.Text = "Successfully linked"
+	msg.Text, err = templates.ExecuteLang("Linked", inMsg.Message.From.LanguageCode, nil)
 	sendQueue <- msg
 }
 
@@ -113,14 +113,6 @@ func gcStatus(inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
-
-	/* gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
-	if err != nil {
-		log.Error(err)
-		msg.Text = err.Error()
-		sendQueue <- msg
-		return
-	} */
 
 	teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
 	if err != nil {
@@ -131,8 +123,9 @@ func gcStatus(inMsg *tgbotapi.Update) {
 	}
 	name, _ := teamID.Name()
 
-	msg.Text = fmt.Sprintf("Linked to team: <b>%s</b> (%s)", name, teamID.String())
+	//	msg.Text, _= templates.ExecuteLang("LinkStatus", inMsg.Message.From.LanguageCode, nil)
 
+	msg.Text = fmt.Sprintf("Linked to team: <b>%s</b> (%s)", name, teamID.String())
 	if opID != "" {
 		opstat, err := opID.Stat()
 		if err != nil {
@@ -329,8 +322,9 @@ func gcClaim(inMsg *tgbotapi.Update) {
 	}
 	m := task.(model.Marker)
 	p, _ := o.PortalDetails(m.PortalID, gid)
+
+	// msg.Text, _= templates.ExecuteLang("Claim", inMsg.Message.From.LanguageCode, task)
 	msg.Text = fmt.Sprintf("Task Claimed: %d - %s - %s", task.GetOrder(), model.NewMarkerType(m.Type), p.Name)
-	// b.WriteString(fmt.Sprintf("<b>%d</b> / <a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s\n", m.Order, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type)))
 	sendQueue <- msg
 }
 

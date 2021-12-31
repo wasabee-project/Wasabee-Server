@@ -277,3 +277,8 @@ func IsFirebaseRunning() bool {
 func SetFirebaseRunning(r bool) {
 	c.fbRunning = r
 }
+
+// GetWebUI is used in templates
+func GetWebUI() string {
+	return c.WebUIURL
+}

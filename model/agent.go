@@ -8,6 +8,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
 // GoogleID is the primary location for interfacing with the agent type
@@ -336,6 +337,12 @@ func (gid GoogleID) IngressName() (string, error) {
 	}
 
 	return gid.bestname(intelname, vname, rocksname, communityname), nil
+}
+
+// IngressName is used for templates
+func IngressName(g messaging.GoogleID) string {
+	name, _ := GoogleID(string(g)).IngressName()
+	return name
 }
 
 func (gid GoogleID) bestname(intel, v, rocks, communityname sql.NullString) string {

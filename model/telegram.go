@@ -146,6 +146,8 @@ func (tgid TelegramID) String() string {
 }
 
 // LinkToTelegramChat associates a telegram chat ID with the team, performs authorization
+// a chat can be linked to a single team
+// a team can be linked to a single chat (irrespective of opID)
 func (teamID TeamID) LinkToTelegramChat(chat TelegramID, opID OperationID) error {
 	log.Debugw("linking team to chat", "chat", chat, "teamID", teamID, "opID", opID)
 
@@ -158,14 +160,14 @@ func (teamID TeamID) LinkToTelegramChat(chat TelegramID, opID OperationID) error
 }
 
 // UnlinkFromTelegramChat disassociates a telegram chat ID from the team -- not authenticated since bot removal from chat is enough
-func (teamID TeamID) UnlinkFromTelegramChat(chat TelegramID) error {
-	_, err := db.Exec("DELETE FROM telegramteam WHERE teamID = ? AND telegram = ?", teamID, chat)
+func (teamID TeamID) UnlinkFromTelegramChat() error {
+	_, err := db.Exec("DELETE FROM telegramteam WHERE teamID = ?", teamID)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	log.Debugw("unlinked team from telegram", "teamID", teamID, "chat", chat)
+	log.Debugw("unlinked team from telegram", "teamID", teamID)
 	return nil
 }
 
@@ -177,9 +179,6 @@ func (teamID TeamID) TelegramChat() (int64, error) {
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return chatID, err
-	}
-	if err == sql.ErrNoRows {
-		return chatID, nil
 	}
 	return chatID, nil
 }
