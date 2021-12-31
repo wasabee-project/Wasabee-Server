@@ -158,12 +158,15 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
-	// log.Debugw("AddToChat called", "GID", gid, "resource", teamID)
 
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
 		log.Error(err)
 		return err
+	}
+
+	if chatID == 0 {
+		return nil
 	}
 
 	cic := tgbotapi.ChatInfoConfig{}
