@@ -48,6 +48,7 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	return gid, &op, task, nil
 }
 
+// needs to be updated to take an array of assignments
 func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {

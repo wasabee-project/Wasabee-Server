@@ -95,13 +95,11 @@ func run(cargs *cli.Context) error {
 	// cloud profile
 	if creds != "" && project != "" && cargs.Bool("debug") {
 		if _, err := os.Stat(creds); err == nil {
-			opts := option.WithCredentialsFile(creds)
-			cfg := profiler.Config{
+			if err := profiler.Start(profiler.Config{
 				Service:        "wasabee",
 				ServiceVersion: version,
 				ProjectID:      project,
-			}
-			if err := profiler.Start(cfg, opts); err != nil {
+			}, option.WithCredentialsFile(creds)); err != nil {
 				log.Errorw("startup", "message", "unable to start profiler", "error", err)
 			} else {
 				log.Infow("startup", "message", "starting gcloud profiling")
@@ -109,6 +107,7 @@ func run(cargs *cli.Context) error {
 		}
 	}
 
+	// the main context used for all sub-services, when this is canceled, everything shuts down
 	ctx, shutdown := context.WithCancel(context.Background())
 
 	// load the config file
@@ -133,7 +132,7 @@ func run(cargs *cli.Context) error {
 	}
 
 	// start background tasks
-	background.Start(ctx)
+	go background.Start(ctx)
 
 	// start V
 	go v.Start(ctx)
@@ -144,7 +143,7 @@ func run(cargs *cli.Context) error {
 	// start firebase
 	go wfb.Start(ctx)
 
-	// Serve HTTPS
+	// Serve HTTPS -- does not use the context
 	go wasabeehttps.Start()
 
 	// RISC and Telegram should start after https
