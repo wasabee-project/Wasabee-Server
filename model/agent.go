@@ -88,7 +88,7 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 	var vverified, vblacklisted, rocksverified sql.NullBool
 	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.communityname, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &a.IntelName, &level, &a.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &a.RISC, &ifac, &communityname, &pic, &vapi)
+	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.communityname, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &intelname, &level, &a.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &a.RISC, &ifac, &communityname, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("unknown GoogleID: %s", gid)
 		return &a, err
