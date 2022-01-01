@@ -15,6 +15,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
+	"github.com/wasabee-project/Wasabee-Server/background"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/http"
@@ -130,6 +131,9 @@ func run(cargs *cli.Context) error {
 	if err = model.Connect(conf.DB); err != nil {
 		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
 	}
+
+	// start background tasks
+	background.Start(ctx)
 
 	// start V
 	go v.Start(ctx)

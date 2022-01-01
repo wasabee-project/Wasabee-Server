@@ -1,15 +1,15 @@
 package background
 
 import (
-	"os"
+	"context"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// Run runs the database cleaning tasks such as expiring stale user locations
-func Run(c chan os.Signal) {
+// Start runs the database cleaning tasks such as expiring stale user locations
+func Start(ctx context.Context) {
 	log.Infow("startup", "message", "running initial background tasks")
 	model.LocationClean()
 
@@ -18,8 +18,8 @@ func Run(c chan os.Signal) {
 
 	for {
 		select {
-		case x := <-c:
-			log.Infow("shutdown", "message", "background tasks shutting down", "signal", x)
+		case <-ctx.Done():
+			log.Infow("shutdown", "message", "background tasks shutting down")
 			return
 		case <-ticker.C:
 			model.LocationClean()

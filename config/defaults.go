@@ -37,7 +37,7 @@ var defaults *WasabeeConf = &WasabeeConf{
 		Webroot:          "https://locallhost/",
 		ListenHTTPS:      ":443",
 		CookieSessionKey: "soontobeunused",
-		Logfile:          "logs/wasabee.log",
+		Logfile:          "logs/wasabee-https.log",
 		SessionName:      "wasabee",
 		MeURL:            "/me",
 		LoginURL:         "/login",
