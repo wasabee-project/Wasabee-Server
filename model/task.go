@@ -7,6 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
+// UnsepcifiedTask is the type for tasks which could be either markers or links
 type UnspecifiedTask interface {
 	Claim(GoogleID) error
 	Reject(GoogleID) error
@@ -369,6 +370,7 @@ func (t Task) SetOrder(order int16) error {
 	return nil
 }
 
+// GetOrder returns a tasks order
 func (t Task) GetOrder() int16 {
 	return t.Order
 }
