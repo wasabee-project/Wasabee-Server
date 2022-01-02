@@ -147,7 +147,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 
 	// only update assignments if Changed bit is set -- don't flood messages if nothing changed
 	if l.Changed {
-		// emtpy assignments clears them
+		// empty assignments clears them
 		if err := l.Assign(tx); err != nil {
 			log.Error(err)
 			return err

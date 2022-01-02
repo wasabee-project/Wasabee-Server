@@ -44,7 +44,7 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 			return nil
 		}
 
-		// start manual assocation process
+		// start manual association process
 		msg, err := newUserInit(inMsg)
 		if err != nil {
 			log.Error(err)

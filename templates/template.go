@@ -68,7 +68,7 @@ func Execute(name string, data interface{}) (string, error) {
 	return ExecuteLang(name, "en", data)
 }
 
-// ExecuteLang runs a given template in a specified langauge
+// ExecuteLang runs a given template in a specified language
 func ExecuteLang(name, lang string, data interface{}) (string, error) {
 	var tpBuffer bytes.Buffer
 
