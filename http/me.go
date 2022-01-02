@@ -60,7 +60,7 @@ func formValidationToken(req *http.Request) string {
 	ip := req.RemoteAddr[0:idx]
 	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("User-Agent"), ip, config.GetOauthConfig().ClientSecret)
 	hasher := sha256.New()
-	_ := hasher.Write([]byte(toHash))
+	_, _ = hasher.Write([]byte(toHash))
 	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 }
 
