@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	// "net/http/httputil"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -88,6 +89,9 @@ func setupRouter() *mux.Router {
 
 // implied /api/v1
 func setupAuthRoutes(r *mux.Router) {
+	// TEMP
+	r.HandleFunc("/ios", iosRoute).Methods("GET")
+	
 	// This block requires authentication
 	r.HandleFunc("/draw", drawUploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{opID}", drawGetRoute).Methods("GET", "HEAD")
@@ -218,9 +222,19 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
+	// for old iOS plugins -- TEMPORARY
+	if strings.Contains(req.Referer(), "intel.ingress.com") {
+		http.Redirect(res, req, "/api/v1/ios", http.StatusMovedPermanently)
+	}
+
 	c := config.Get()
 	url := fmt.Sprintf("%s?server=%s", c.WebUIURL, c.HTTP.Webroot)
 	http.Redirect(res, req, url, http.StatusMovedPermanently)
+}
+
+func iosRoute(res http.ResponseWriter, req *http.Request) {
+	log.Debug("iOS webview");
+	fmt.Fprint(res, "Logged in; click done above and verify webview")
 }
 
 // called when a resource/endpoint is not found
