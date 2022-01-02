@@ -122,6 +122,11 @@ func BuildToken(gid model.GoogleID, name string) (string, error) {
 		log.Error(err)
 		return "", err
 	}
+	if t == gid {
+		err := fmt.Errorf("This wasabee account is already linked to this community name (%s) (%s)", name, t)
+		log.Errorw(err.Error(), "gid", gid, "name", name, "owner", t)
+		return "", err
+	}
 	if t != "" {
 		err := fmt.Errorf("name '%s' already claimed by GID '%s'", name, t)
 		log.Errorw(err.Error(), "gid", gid, "name", name, "owner", t)
