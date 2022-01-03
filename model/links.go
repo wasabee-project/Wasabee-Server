@@ -206,6 +206,10 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID, assignments map[
 			tmpLink.DependsOn = d
 		}
 
+		if tmpLink.State == "completed" {
+			tmpLink.Completed = true
+		}
+
 		// this isn't in a zone with which we are concerned AND not assigned to me, skip
 		if !tmpLink.Zone.inZones(zones) && !tmpLink.IsAssignedTo(inGid) {
 			continue
