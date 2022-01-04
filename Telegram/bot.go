@@ -204,7 +204,7 @@ func sendTarget(g messaging.GoogleID, target messaging.Target) error {
 		Lat:    target.Lat,
 		Lon:    target.Lng,
 		Type:   target.Type,
-		Sender: target.Name,
+		Sender: target.Sender,
 	}
 
 	msg.Text, err = templates.Execute("target", templateData)
