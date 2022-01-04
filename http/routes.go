@@ -89,9 +89,8 @@ func setupRouter() *mux.Router {
 
 // implied /api/v1
 func setupAuthRoutes(r *mux.Router) {
-	// TEMP
-	r.HandleFunc("/ios", iosRoute).Methods("GET")
-	
+	r.HandleFunc("/ios", iosRoute).Methods("GET", "PUT", "POST", "HEAD")
+
 	// This block requires authentication
 	r.HandleFunc("/draw", drawUploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{opID}", drawGetRoute).Methods("GET", "HEAD")
@@ -222,19 +221,30 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 
 // display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
-	// for old iOS plugins -- TEMPORARY
+	c := config.Get()
+
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		http.Redirect(res, req, "/api/v1/ios", http.StatusMovedPermanently)
+		log.Debug("iOS legacy triggered")
+		url := c.HTTP.LoginURL + "?returnto=" + c.HTTP.Webroot + "/api/v1/ios"
+		http.Redirect(res, req, url, http.StatusMovedPermanently)
 	}
 
-	c := config.Get()
 	url := fmt.Sprintf("%s?server=%s", c.WebUIURL, c.HTTP.Webroot)
 	http.Redirect(res, req, url, http.StatusMovedPermanently)
 }
 
 func iosRoute(res http.ResponseWriter, req *http.Request) {
-	log.Debug("iOS webview");
-	fmt.Fprint(res, "Logged in; click done above and verify webview")
+	gid, err := getAgentID(req)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	name, _ := gid.IngressName()
+	log.Debugw("ios login", "message", "ios login", "gid", gid, "name", name)
+	msg := "ios Webview login successful for " + name 
+	fmt.Fprint(res, msg)
 }
 
 // called when a resource/endpoint is not found
