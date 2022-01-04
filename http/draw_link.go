@@ -224,10 +224,18 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 		return
 	}
 
-	if err = link.Complete(); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
+	if complete {
+		if err = link.Complete(); err != nil {
+			log.Error(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if err = link.Incomplete(); err != nil {
+			log.Error(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	uid := linkStatusTouch(op, link.ID, "complete")
