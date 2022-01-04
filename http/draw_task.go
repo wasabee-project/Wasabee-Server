@@ -63,7 +63,6 @@ func taskStatusAnnounce(op *model.Operation, taskID model.TaskID, status string,
 	}
 }
 
-// needs to be updated to take an array of assignments
 func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
@@ -77,9 +76,15 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	agent := model.GoogleID(req.FormValue("agent"))
-	task.Assignments = []model.GoogleID{agent}
-	if err = task.Assign(nil); err != nil {
+	assignments := []model.GoogleID{}
+
+	req.ParseMultipartForm(1024) // 1k should be more than enough for this -- famous last words
+	// log.Debugw("MultipartForm", "data", req.MultipartForm.Value)
+	for _, v := range req.MultipartForm.Value["agent"] {
+		assignments = append(assignments, model.GoogleID(v))
+	}
+
+	if err = task.SetAssignments(assignments, nil); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -403,7 +408,7 @@ func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	dependsOn := vars["dependsOn"]
+	dependsOn := model.TaskID(vars["dependsOn"])
 	if dependsOn == "" {
 		err = fmt.Errorf("empty dependency ID on depend delete")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)

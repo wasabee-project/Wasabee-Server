@@ -67,8 +67,7 @@ func drawLinkAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	agent := model.GoogleID(req.FormValue("agent"))
-	link.Assignments = []model.GoogleID{agent}
-	if err = link.Assign(nil); err != nil {
+	if err = link.SetAssignments([]model.GoogleID{agent}, nil); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -225,10 +224,18 @@ func drawLinkCompRoute(res http.ResponseWriter, req *http.Request, complete bool
 		return
 	}
 
-	if err = link.Complete(); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
+	if complete {
+		if err = link.Complete(); err != nil {
+			log.Error(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if err = link.Incomplete(); err != nil {
+			log.Error(err)
+			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	uid := linkStatusTouch(op, link.ID, "complete")

@@ -55,7 +55,7 @@ func (opID OperationID) insertMarker(m Marker) error {
 	}
 
 	// empty m.Assignments clears any
-	if err := m.Assign(nil); err != nil {
+	if err := m.SetAssignments(m.Assignments, nil); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -100,7 +100,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	}
 
 	// empty m.Assignments clears any
-	if err = m.Assign(tx); err != nil {
+	if err = m.SetAssignments(m.Assignments, tx); err != nil {
 		log.Error(err)
 		return err
 	}
