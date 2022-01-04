@@ -1,7 +1,6 @@
 package wasabeehttps
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
+// setup common to all these calls
 func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *model.Operation, *model.Task, error) {
 	res.Header().Set("Content-Type", jsonType)
 
@@ -47,6 +47,20 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 		return gid, &op, task, err
 	}
 	return gid, &op, task, nil
+}
+
+// firebase announce change to all relevant teams
+func taskStatusAnnounce(op *model.Operation, taskID model.TaskID, status string, updateID string) {
+	var teams []model.TeamID
+	for _, t := range op.Teams {
+		teams = append(teams, t.TeamID)
+	}
+
+	for _, t := range teams {
+		if err := wfb.TaskStatus(taskID, op.ID, t, status, updateID); err != nil {
+			log.Error(err)
+		}
+	}
 }
 
 // needs to be updated to take an array of assignments
@@ -104,7 +118,7 @@ func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "claimed", uid)
+	go taskStatusAnnounce(op, task.ID, "claimed", uid)
 }
 
 func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
@@ -131,7 +145,7 @@ func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "comment", uid)
+	go taskStatusAnnounce(op, task.ID, "comment", uid)
 }
 
 func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
@@ -158,7 +172,7 @@ func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "zone", uid)
+	go taskStatusAnnounce(op, task.ID, "zone", uid)
 }
 
 func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
@@ -191,7 +205,7 @@ func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "delta", uid)
+	go taskStatusAnnounce(op, task.ID, "delta", uid)
 }
 
 func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
@@ -251,7 +265,7 @@ func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "completed", uid)
+	go taskStatusAnnounce(op, task.ID, "completed", uid)
 }
 
 func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -279,7 +293,7 @@ func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "incomplete", uid)
+	go taskStatusAnnounce(op, task.ID, "incomplete", uid)
 }
 
 func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
@@ -307,7 +321,7 @@ func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "reject", uid)
+	go taskStatusAnnounce(op, task.ID, "reject", uid)
 }
 
 func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
@@ -335,21 +349,7 @@ func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "acknowledge", uid)
-}
-
-func taskStatusAnnounce(ctx context.Context, op *model.Operation, taskID model.TaskID, status string, updateID string) {
-	// announce to all relevant teams
-	var teams []model.TeamID
-	for _, t := range op.Teams {
-		teams = append(teams, t.TeamID)
-	}
-
-	for _, t := range teams {
-		if err := wfb.TaskStatus(ctx, taskID, op.ID, t, status, updateID); err != nil {
-			log.Error(err)
-		}
-	}
+	go taskStatusAnnounce(op, task.ID, "acknowledge", uid)
 }
 
 func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
@@ -386,7 +386,7 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "depends", uid)
+	go taskStatusAnnounce(op, task.ID, "depends", uid)
 }
 
 func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
@@ -423,7 +423,7 @@ func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "depends", uid)
+	go taskStatusAnnounce(op, task.ID, "depends", uid)
 }
 
 func drawTaskOrderRoute(res http.ResponseWriter, req *http.Request) {
@@ -465,5 +465,5 @@ func drawTaskOrderRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go taskStatusAnnounce(req.Context(), op, task.ID, "order", uid)
+	go taskStatusAnnounce(op, task.ID, "order", uid)
 }

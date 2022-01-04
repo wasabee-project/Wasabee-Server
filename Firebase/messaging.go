@@ -1,7 +1,6 @@
 package wfb
 
 import (
-	"context"
 	"encoding/json"
 
 	"firebase.google.com/go/messaging"
@@ -161,7 +160,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 }
 
 // TaskStatus reports a task update to a team/topic
-func TaskStatus(ctx context.Context, taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
+func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
@@ -178,7 +177,7 @@ func TaskStatus(ctx context.Context, taskID model.TaskID, opID model.OperationID
 		Data:  data,
 	}
 
-	if _, err := msg.Send(ctx, &m); err != nil {
+	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
 		return err
 	}
