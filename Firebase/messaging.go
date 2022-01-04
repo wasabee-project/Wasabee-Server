@@ -18,6 +18,10 @@ func AgentLocation(teamID model.TeamID) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
+	if !ratelimitTeam(teamID) {
+		return nil
+	}
+
 	data := map[string]string{
 		"msg": string(teamID),
 		"cmd": "Agent Location Change",
@@ -114,6 +118,10 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
+	if !ratelimitOp(teamID, opID) {
+		return nil
+	}
+
 	data := map[string]string{
 		"opID":     string(opID),
 		"markerID": string(markerID),
@@ -139,6 +147,10 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
+	if !ratelimitOp(teamID, opID) {
+		return nil
+	}
+
 	data := map[string]string{
 		"opID":     string(opID),
 		"linkID":   string(linkID),
@@ -164,6 +176,10 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
+	if !ratelimitOp(teamID, opID) {
+		return nil
+	}
+
 	data := map[string]string{
 		"opID":     string(opID),
 		"taskID":   string(taskID),
@@ -302,6 +318,10 @@ func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) err
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
+	if !ratelimitOp(teamID, opID) {
+		return nil
+	}
+
 	data := map[string]string{
 		"opID":     string(opID),
 		"updateID": updateID,
