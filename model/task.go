@@ -83,9 +83,7 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 }
 
 // DelDepend deletes all dependencies for a task
-func (t *Task) DelDepend(task string) error {
-	// sanity checks
-
+func (t *Task) DelDepend(task TaskID) error {
 	_, err := db.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ? AND dependsOn = ?", t.opID, t.ID, task)
 	if err != nil {
 		log.Error(err)
@@ -203,9 +201,8 @@ func (o OperationID) assignmentPrecache() (map[TaskID][]GoogleID, error) {
 	return buf, nil
 }
 
-// Assign assigns a task to an agent using a given transaction, if the transaction is nil, one is created for this block
-// func (t *Task) Assign(gs []GoogleID, tx *sql.Tx) error {
-func (t *Task) Assign(tx *sql.Tx) error {
+// SetAssignments assigns a task to an agent using a given transaction, if the transaction is nil, one is created for this block
+func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 	needtx := false
 	if tx == nil {
 		needtx = true
@@ -225,8 +222,8 @@ func (t *Task) Assign(tx *sql.Tx) error {
 		return err
 	}
 
-	if len(t.Assignments) > 0 {
-		for _, gid := range t.Assignments {
+	if len(gs) > 0 {
+		for _, gid := range gs {
 			if gid == "" {
 				continue
 			}

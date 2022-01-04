@@ -67,8 +67,7 @@ func drawMarkerAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	agent := model.GoogleID(req.FormValue("agent"))
-	marker.Assignments = []model.GoogleID{agent}
-	if err = marker.Assign(nil); err != nil {
+	if err = marker.SetAssignments([]model.GoogleID{agent}, nil); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

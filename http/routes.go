@@ -91,7 +91,7 @@ func setupRouter() *mux.Router {
 func setupAuthRoutes(r *mux.Router) {
 	// TEMP
 	r.HandleFunc("/ios", iosRoute).Methods("GET")
-	
+
 	// This block requires authentication
 	r.HandleFunc("/draw", drawUploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{opID}", drawGetRoute).Methods("GET", "HEAD")
@@ -233,7 +233,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func iosRoute(res http.ResponseWriter, req *http.Request) {
-	log.Debug("iOS webview");
+	log.Debug("iOS webview")
 	fmt.Fprint(res, "Logged in; click done above and verify webview")
 }
 

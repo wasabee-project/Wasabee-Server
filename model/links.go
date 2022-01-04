@@ -74,7 +74,7 @@ func (opID OperationID) insertLink(l Link) error {
 	}
 
 	// clears if none set
-	if err := l.Assign(nil); err != nil {
+	if err := l.SetAssignments(l.Assignments, nil); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -148,7 +148,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 	// only update assignments if Changed bit is set -- don't flood messages if nothing changed
 	if l.Changed {
 		// empty assignments clears them
-		if err := l.Assign(tx); err != nil {
+		if err := l.SetAssignments(l.Assignments, tx); err != nil {
 			log.Error(err)
 			return err
 		}
