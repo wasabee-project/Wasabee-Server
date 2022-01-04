@@ -1,6 +1,7 @@
 package wasabeehttps
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -70,8 +71,12 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskAssignTouch(gid, task.ID, op)
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go wfb.AssignTask(gid, task.ID, op.ID, uid)
 }
 
 func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
@@ -94,8 +99,12 @@ func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "claimed")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "claimed", uid)
 }
 
 func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
@@ -117,8 +126,12 @@ func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := taskStatusTouch(op, task.ID, "comment")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "comment", uid)
 }
 
 func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
@@ -140,8 +153,12 @@ func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := taskStatusTouch(op, task.ID, "zone")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "zone", uid)
 }
 
 func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
@@ -169,8 +186,12 @@ func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := taskStatusTouch(op, task.ID, "delta")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "delta", uid)
 }
 
 func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
@@ -225,8 +246,12 @@ func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "completed")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "completed", uid)
 }
 
 func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -249,8 +274,12 @@ func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "incomplete")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "incomplete", uid)
 }
 
 func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
@@ -273,8 +302,12 @@ func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "reject")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "reject", uid)
 }
 
 func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
@@ -297,29 +330,15 @@ func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "acknowledge")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "acknowledge", uid)
 }
 
-func taskAssignTouch(gid model.GoogleID, markerID model.TaskID, op *model.Operation) string {
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-	}
-
-	if err := wfb.AssignTask(gid, model.TaskID(markerID), op.ID, uid); err != nil {
-		log.Error(err)
-	}
-	return uid
-}
-
-func taskStatusTouch(op *model.Operation, taskID model.TaskID, status string) string {
-	uid, err := op.Touch()
-	if err != nil {
-		log.Error(err)
-		return ""
-	}
-
+func taskStatusAnnounce(ctx context.Context, op *model.Operation, taskID model.TaskID, status string, updateID string) {
 	// announce to all relevant teams
 	var teams []model.TeamID
 	for _, t := range op.Teams {
@@ -327,11 +346,10 @@ func taskStatusTouch(op *model.Operation, taskID model.TaskID, status string) st
 	}
 
 	for _, t := range teams {
-		if err := wfb.TaskStatus(taskID, op.ID, t, status, uid); err != nil {
+		if err := wfb.TaskStatus(ctx, taskID, op.ID, t, status, updateID); err != nil {
 			log.Error(err)
 		}
 	}
-	return uid
 }
 
 func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
@@ -363,8 +381,12 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "depends")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "depends", uid)
 }
 
 func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
@@ -396,8 +418,12 @@ func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "depends")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "depends", uid)
 }
 
 func drawTaskOrderRoute(res http.ResponseWriter, req *http.Request) {
@@ -434,6 +460,10 @@ func drawTaskOrderRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uid := taskStatusTouch(op, task.ID, "order")
+	uid, err := op.Touch()
+	if err != nil {
+		log.Error(err)
+	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+	go taskStatusAnnounce(req.Context(), op, task.ID, "order", uid)
 }
