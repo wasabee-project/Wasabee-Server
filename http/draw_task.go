@@ -83,9 +83,12 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	// log.Debugw("MultipartForm", "data", req.MultipartForm.Value)
-	for _, v := range req.MultipartForm.Value["agent"] {
-		assignments = append(assignments, model.GoogleID(v))
+
+	agents, ok := req.MultipartForm.Value["agent"]
+	if ok {
+		for _, v := range agents {
+			assignments = append(assignments, model.GoogleID(v))
+		}
 	}
 
 	if err = task.SetAssignments(assignments, nil); err != nil {
@@ -99,7 +102,10 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
-	go wfb.AssignTask(gid, task.ID, op.ID, uid)
+
+	for _, agent := range assignments {
+		go wfb.AssignTask(agent, task.ID, op.ID, uid)
+	}
 }
 
 func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {

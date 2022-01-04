@@ -243,7 +243,7 @@ func iosRoute(res http.ResponseWriter, req *http.Request) {
 
 	name, _ := gid.IngressName()
 	log.Debugw("ios login", "message", "ios login", "gid", gid, "name", name)
-	msg := "ios Webview login successful for " + name 
+	msg := "ios Webview login successful for " + name
 	fmt.Fprint(res, msg)
 }
 
