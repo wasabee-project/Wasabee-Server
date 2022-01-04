@@ -78,7 +78,11 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 
 	assignments := []model.GoogleID{}
 
-	req.ParseMultipartForm(1024) // 1k should be more than enough for this -- famous last words
+	if err := req.ParseMultipartForm(1024); err != nil {
+		log.Errorw(err.Error(), "GID", gid, "resource", op.ID, "message", "failed to parse multipart form")
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 	// log.Debugw("MultipartForm", "data", req.MultipartForm.Value)
 	for _, v := range req.MultipartForm.Value["agent"] {
 		assignments = append(assignments, model.GoogleID(v))
