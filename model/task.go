@@ -35,8 +35,6 @@ type Task struct {
 
 // AddDepend add a single task dependency
 func (t *Task) AddDepend(task TaskID) error {
-	log.Debugw("adding depends", "task", t, "dependsOn", task)
-
 	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, task)
 	if err != nil {
 		log.Error(err)
@@ -57,23 +55,20 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 		tx, _ = db.Begin()
 
 		defer func() {
-			err := tx.Rollback()
-			if err != nil && err != sql.ErrTxDone {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
 				log.Error(err)
 			}
 		}()
 	}
 
-	_, err := tx.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID)
-	if err != nil {
+	if _, err := tx.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID); err != nil {
 		log.Error(err)
 		return err
 	}
 
 	// we could just blit them all at once
 	for _, depend := range d {
-		_, err := tx.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, depend)
-		if err != nil {
+		if _, err := tx.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, depend); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -215,8 +210,7 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 		tx, _ = db.Begin()
 
 		defer func() {
-			err := tx.Rollback()
-			if err != nil && err != sql.ErrTxDone {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
 				log.Error(err)
 			}
 		}()

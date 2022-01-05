@@ -77,6 +77,10 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		m.State = "pending"
 	}
 
+	// copy these values down
+	m.Task.ID = TaskID(m.ID)
+	m.opID = opID
+
 	if !m.Zone.Valid() || m.Zone == ZoneAll {
 		m.Zone = zonePrimary
 	}

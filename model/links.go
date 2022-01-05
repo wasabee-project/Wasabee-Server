@@ -106,10 +106,9 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		return nil
 	}
 
-	if l.opID != opID {
-		log.Debugw("link opID does not match", "link.opID", l.opID, "opID", opID, "link", l)
-		l.opID = opID
-	}
+	// copy these values down
+	l.Task.ID = TaskID(l.ID)
+	l.opID = opID
 
 	if !l.Zone.Valid() || l.Zone == ZoneAll {
 		l.Zone = zonePrimary
