@@ -14,6 +14,11 @@ import (
 )
 
 func processChatMessage(inMsg *tgbotapi.Update) error {
+	if !model.IsChatMember(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID)) {
+		log.Infow("adding agent to chat list", "agent", inMsg.Message.From.ID, "chat", inMsg.Message.Chat.ID)
+		model.AddToChatMemberList(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID))
+	}
+
 	if inMsg.Message.IsCommand() {
 		return processChatCommand(inMsg)
 	}
@@ -178,6 +183,17 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 			_ = teamID.UnlinkFromTelegramChat()
 		}
 		return err
+	}
+
+	tgid, err := gid.TelegramID()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if model.IsChatMember(tgid, model.TelegramID(chatID)) {
+		log.Debug("not adding agent to chat since already a member")
+		return nil
 	}
 
 	name, _ := gid.IngressName()

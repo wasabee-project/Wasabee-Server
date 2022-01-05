@@ -203,3 +203,23 @@ func ChatToTeam(chat int64) (TeamID, OperationID, error) {
 	}
 	return t, o, nil
 }
+
+// AddToChatMemberList notes a telegramID has been seen in a given telegram chat
+func AddToChatMemberList(agent TelegramID, chat TelegramID) error {
+	if _, err := db.Exec("REPLACE INTO telegramchatmembers (agent, chat) VALUES (?, ?)", agent, chat); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// IsChatMember reports if a given telegramID has been seen in a given telegram chat
+func IsChatMember(agent TelegramID, chat TelegramID) bool {
+	var i bool
+
+	err := db.QueryRow("SELECT COUNT(*) FROM telegramchatmembers WHERE agent = ? AND chat = ?", agent, chat).Scan(&i)
+	if err != nil {
+		return false
+	}
+	return i
+}
