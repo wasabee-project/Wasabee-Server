@@ -207,7 +207,7 @@ func ChatToTeam(chat int64) (TeamID, OperationID, error) {
 // AddToChatMemberList notes a telegramID has been seen in a given telegram chat
 func AddToChatMemberList(agent TelegramID, chat TelegramID) error {
 	if _, err := db.Exec("REPLACE INTO telegramchatmembers (agent, chat) VALUES (?, ?)", agent, chat); err != nil {
-		log.Error(err)
+		log.Debug(err) // foreign key errors due to chat not being linked can be ignored
 		return err
 	}
 	return nil
@@ -222,4 +222,13 @@ func IsChatMember(agent TelegramID, chat TelegramID) bool {
 		return false
 	}
 	return i
+}
+
+// RemoveFromChatMemberList removes the agent from the list for the telegram chat
+func RemoveFromChatMemberList(agent TelegramID, chat TelegramID) error {
+	if _, err := db.Exec("DELETE FROM telegramchatmembers WHERE agent=? AND chat=?", agent, chat); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
 }

@@ -15,7 +15,7 @@ import (
 
 func processChatMessage(inMsg *tgbotapi.Update) error {
 	if !model.IsChatMember(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID)) {
-		log.Infow("adding agent to chat list", "agent", inMsg.Message.From.ID, "chat", inMsg.Message.Chat.ID)
+		// log.Debugw("adding agent to chat list", "agent", inMsg.Message.From.ID, "chat", inMsg.Message.Chat.ID)
 		model.AddToChatMemberList(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID))
 	}
 
@@ -206,6 +206,8 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	sendQueue <- msg
 	// XXX create a join link for this agent
 
+	_ = model.AddToChatMemberList(tgid, model.TelegramID(chatID))
+
 	return nil
 }
 
@@ -245,6 +247,8 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	text := fmt.Sprintf("%s left the linked team (%s). Attempting to remove them from this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	sendQueue <- msg
+
+	_ = model.RemoveFromChatMemberList(tgid, model.TelegramID(chatID))
 
 	// XXX determine if bot is admin, don't bother with this if not
 	bcmc := tgbotapi.BanChatMemberConfig{
