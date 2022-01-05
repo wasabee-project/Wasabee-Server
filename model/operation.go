@@ -203,7 +203,6 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 }
 
 func drawOpUpdateWorker(o *Operation) error {
-	// log.Debug("op update locking")
 	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
 		log.Error(err)
 		return err
@@ -212,7 +211,6 @@ func drawOpUpdateWorker(o *Operation) error {
 		if _, err := db.Exec("SELECT RELEASE_LOCK(?)", o.ID); err != nil {
 			log.Error(err)
 		}
-		// log.Debug("op update unlocking")
 	}()
 
 	tx, err := db.Begin()
@@ -248,13 +246,6 @@ func drawOpUpdateWorker(o *Operation) error {
 	}
 
 	agentMap, err := allOpAgents(o.Teams, tx)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	// clear here, add back in individual tasks
-	_, err = tx.Exec("DELETE FROM depends WHERE opID = ?", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -335,8 +326,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 
 	for markerRows.Next() {
 		var mid MarkerID
-		err := markerRows.Scan(&mid)
-		if err != nil {
+		if err := markerRows.Scan(&mid); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -351,21 +341,19 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 			log.Warnw("portal missing from portal list", "marker", m.PortalID, "resource", o.ID)
 			continue
 		}
-		_, ok = agentMap[GoogleID(m.AssignedTo)]
-		if !ok {
-			// log.Debugw("marker assigned to agent not on any current team", "marker", m.PortalID, "resource", o.ID)
-			m.AssignedTo = ""
-		}
-		if err = o.ID.updateMarker(m, tx); err != nil {
+
+		m.checkAssignments(agentMap)
+
+		if err := o.ID.updateMarker(m, tx); err != nil {
 			log.Error(err)
 			continue
 		}
 		delete(curMarkers, m.ID)
 	}
+
 	// remove all markers not sent in this update
 	for k := range curMarkers {
-		err = o.ID.deleteMarker(k, tx)
-		if err != nil {
+		if err := o.ID.deleteMarker(k, tx); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -404,11 +392,9 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 			log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
 			continue
 		}
-		_, ok = agentMap[GoogleID(l.AssignedTo)]
-		if !ok {
-			// log.Debugw("link assigned to agent not on any current team", "link", l.ID, "resource", o.ID)
-			l.AssignedTo = ""
-		}
+
+		l.checkAssignments(agentMap)
+
 		if err = o.ID.updateLink(l, tx); err != nil {
 			log.Error(err)
 			continue

@@ -35,6 +35,8 @@ type Task struct {
 
 // AddDepend add a single task dependency
 func (t *Task) AddDepend(task TaskID) error {
+	log.Debugw("adding depends", "task", t, "dependsOn", task)
+
 	_, err := db.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, task)
 	if err != nil {
 		log.Error(err)
@@ -45,6 +47,10 @@ func (t *Task) AddDepend(task TaskID) error {
 
 // SetDepends overwrites a task's dependencies, if tx is null, one is created
 func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
+	if len(d) < 1 {
+		return nil
+	}
+
 	needtx := false
 	if tx == nil {
 		needtx = true
@@ -57,6 +63,7 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 			}
 		}()
 	}
+
 	_, err := tx.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID)
 	if err != nil {
 		log.Error(err)
@@ -78,7 +85,6 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -404,4 +410,19 @@ func (o *Operation) GetTaskByStepNumber(step int16) (UnspecifiedTask, error) {
 		}
 	}
 	return Task{}, fmt.Errorf("task not found")
+}
+
+// checkAssignments validates that assignments are made to agents on teams -- uses the precache
+func (t *Task) checkAssignments(agentMap map[GoogleID]bool) {
+	var new []GoogleID
+
+	for _, gid := range t.Assignments {
+		if _, ok := agentMap[gid]; ok {
+			new = append(new, gid)
+		} else {
+			log.Warnw("removing assignment to agent no on any teams", "task", t.ID, "op", t.opID, "gid", gid)
+		}
+	}
+
+	t.Assignments = new
 }

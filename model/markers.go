@@ -93,27 +93,25 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		return err
 	}
 
-	_, err = tx.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type)
-	if err != nil {
+	if _, err := tx.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type); err != nil {
 		log.Error(err)
 		return err
 	}
 
 	// empty m.Assignments clears any
-	if err = m.SetAssignments(m.Assignments, tx); err != nil {
+	if err := m.SetAssignments(m.Assignments, tx); err != nil {
 		log.Error(err)
 		return err
 	}
 
 	// TBD: not spam assignments on updates if nothing has changed
 	for _, g := range m.Assignments {
-		messaging.SendAssignment(messaging.GoogleID(g), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
+		go messaging.SendAssignment(messaging.GoogleID(g), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 
 	// do not clear them if someone is using an old client (yet)
 	if len(m.DependsOn) > 0 {
-		err = m.SetDepends(m.DependsOn, tx)
-		if err != nil {
+		if err := m.SetDepends(m.DependsOn, tx); err != nil {
 			log.Error(err)
 			return err
 		}
