@@ -34,6 +34,7 @@ type Agent struct {
 	Ops           []AdOperation
 	Telegram      struct {
 		ID        int64  `json:"ID,omitempty"`
+		Name      string `json:"name,omitempty"`
 		Verified  bool   `json:"Verified,omitempty"`
 		Authtoken string `json:"Authtoken,omitempty"`
 	}
@@ -227,9 +228,10 @@ func adTeams(ad *Agent) error {
 
 func adTelegram(ad *Agent) error {
 	var authtoken sql.NullString
-	err := db.QueryRow("SELECT telegramID, verified, authtoken FROM telegram WHERE gid = ?", ad.GoogleID).Scan(&ad.Telegram.ID, &ad.Telegram.Verified, &authtoken)
+	err := db.QueryRow("SELECT telegramID, telegramName, verified, authtoken FROM telegram WHERE gid = ?", ad.GoogleID).Scan(&ad.Telegram.ID, &ad.Telegram.Name, &ad.Telegram.Verified, &authtoken)
 	if err != nil && err == sql.ErrNoRows {
 		ad.Telegram.ID = 0
+		ad.Telegram.Name = ""
 		ad.Telegram.Verified = false
 		ad.Telegram.Authtoken = ""
 	} else if err != nil {
