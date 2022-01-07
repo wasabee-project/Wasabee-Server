@@ -153,7 +153,7 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 		return tmp, nil
 	}
 
-	rows, err := db.Query("SELECT gid FROM assignments WHERE opID = ? AND taskID = ?", t.opID, t.ID)
+	rows, err := db.Query("SELECT DISTINCT gid FROM assignments WHERE opID = ? AND taskID = ?", t.opID, t.ID)
 	if err != nil {
 		log.Error(err)
 		return tmp, err
@@ -176,7 +176,7 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 func (o OperationID) assignmentPrecache() (map[TaskID][]GoogleID, error) {
 	buf := make(map[TaskID][]GoogleID)
 
-	rows, err := db.Query("SELECT taskID, gid FROM assignments WHERE opID = ?", o)
+	rows, err := db.Query("SELECT DISTINCT taskID, gid FROM assignments WHERE opID = ?", o)
 	if err != nil {
 		log.Error(err)
 		return buf, err
@@ -223,11 +223,17 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 	}
 
 	if len(gs) > 0 {
+		// remove any duplicates
+		deduped := make(map[GoogleID]bool)
 		for _, gid := range gs {
+			deduped[gid] = true
+		}
+
+		for gid := range deduped {
 			if gid == "" {
 				continue
 			}
-			_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES  (?, ?, ?)", t.opID, t.ID, gid)
+			_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES (?, ?, ?)", t.opID, t.ID, gid)
 			if err != nil {
 				log.Error(err)
 				return err
