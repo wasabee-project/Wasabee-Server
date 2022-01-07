@@ -42,7 +42,7 @@ func cleanup(ctx context.Context) error {
 			}
 
 			if chat.Type != "private" {
-				log.Debugw("not private chat", "chat", chat, "chatID", v)
+				// log.Debugw("not private chat", "chat", chat, "chatID", v)
 				// v.Delete()
 				// v.UnverifyAgent()
 				continue
