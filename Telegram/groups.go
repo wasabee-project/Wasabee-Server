@@ -15,8 +15,9 @@ import (
 
 func processChatMessage(inMsg *tgbotapi.Update) error {
 	if !model.IsChatMember(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID)) {
-		// log.Debugw("adding agent to chat list", "agent", inMsg.Message.From.ID, "chat", inMsg.Message.Chat.ID)
+		log.Debugw("adding agent to chat list", "agent", inMsg.Message.From.ID, "chat", inMsg.Message.Chat.ID)
 		if err := model.AddToChatMemberList(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
+			log.Debug(err)
 			text := fmt.Sprintf("%s (%d) is not known to this bot, please run the /start command", inMsg.Message.From.UserName, inMsg.Message.From.ID)
 			msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, text)
 			sendQueue <- msg
@@ -194,6 +195,12 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		log.Error(err)
 		return err
 	}
+	if tgid == 0 {
+		text := fmt.Sprintf("[%s] is not known to this bot, please have them run the /start command", gid)
+		msg := tgbotapi.NewMessage(chat.ID, text)
+		sendQueue <- msg
+		return nil
+	}
 
 	if model.IsChatMember(tgid, model.TelegramID(chatID)) {
 		log.Debug("not adding agent to chat since already a member")
@@ -205,15 +212,58 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		name = fmt.Sprint("@", tmp)
 	}
 
-	text := fmt.Sprintf("%s joined the linked team (%s): Please add them to this chat", name, teamID)
-	msg := tgbotapi.NewMessage(chat.ID, text)
-	sendQueue <- msg
+	text := fmt.Sprintf("%s joined the linked team (%s): sending invite link", name, teamID)
+	sendQueue <- tgbotapi.NewMessage(chat.ID, text)
 
 	if err := model.AddToChatMemberList(tgid, model.TelegramID(chatID)); err != nil {
-		text := fmt.Sprintf("%s is not known to this bot, please have them run the /start command", name)
-		msg := tgbotapi.NewMessage(chat.ID, text)
-		sendQueue <- msg
+		log.Error(err)
 	}
+	if err := sendInviteLink(tgid, chatID); err != nil {
+		log.Error(err)
+	}
+	return nil
+}
+
+func sendInviteLink(tgid model.TelegramID, chatID int64) error {
+	cilc := tgbotapi.ChatInviteLinkConfig{}
+	cilc.ChatID = chatID
+
+	link, err := bot.GetInviteLink(cilc)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if link != "" {
+		log.Debugw("got invite link", "link", link)
+		msg := tgbotapi.NewMessage(int64(tgid), link)
+		sendQueue <- msg
+		return nil
+	}
+
+	// all this seems redundant?
+	/* ccilc := tgbotapi.CreateChatInviteLinkConfig{}
+	ccilc.ChatID = chatID
+	ccilc.MemberLimit = 1
+	res, err := bot.Request(ccilc)
+	if err != nil {
+		log.Error(err)
+	}
+	log.Debugw("created chat invite", "res", res)
+
+	// try again
+	link, err = bot.GetInviteLink(cilc)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if link == "" {
+		err := fmt.Errorf("unable to create invite link")
+		log.Error(err)
+		return err
+	}
+
+	log.Debugw("got chat invite link on the second try", "link", link)
+	sendQueue <- tgbotapi.NewMessage(int64(tgid), link) */
 
 	return nil
 }
