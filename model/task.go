@@ -7,7 +7,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// UnsepcifiedTask is the type for tasks which could be either markers or links
+// UnspecifiedTask is the type for tasks which could be either markers or links
 type UnspecifiedTask interface {
 	Claim(GoogleID) error
 	Reject(GoogleID) error

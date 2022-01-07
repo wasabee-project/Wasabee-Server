@@ -101,6 +101,15 @@ func (tgid TelegramID) SetName(name string) error {
 	return nil
 }
 
+// Delete is used to remove a TelegramID
+func (tgid TelegramID) Delete() error {
+	if _, err := db.Exec("DELETE FROM telegram WHERE telegramID = ?", tgid); err != nil {
+		log.Info(err)
+		return err
+	}
+	return nil
+}
+
 // SetTelegramID adds a verified agent's telegram ID
 func (gid GoogleID) SetTelegramID(tgid TelegramID, name string) error {
 	if _, err := db.Exec("INSERT INTO telegram (gid, telegramID, telegramName, verified) VALUES (?, ?, ?, 1)", gid, tgid, name); err != nil {
@@ -137,6 +146,16 @@ func (tgid TelegramID) VerifyAgent(authtoken string) error {
 		return err
 	} // trust the primary key prevents i > 1
 
+	return nil
+}
+
+// UnverifyAgent marks an ID as unverified (if the agent blocks the bot)
+func (tgid TelegramID) UnverifyAgent() error {
+	_, err := db.Exec("UPDATE telegram SET verified = 0 WHERE telegramID = ?", tgid)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
@@ -207,7 +226,7 @@ func ChatToTeam(chat int64) (TeamID, OperationID, error) {
 // AddToChatMemberList notes a telegramID has been seen in a given telegram chat
 func AddToChatMemberList(agent TelegramID, chat TelegramID) error {
 	if _, err := db.Exec("REPLACE INTO telegramchatmembers (agent, chat) VALUES (?, ?)", agent, chat); err != nil {
-		log.Debug(err) // foreign key errors due to chat not being linked can be ignored
+		// log.Debug(err) // foreign key errors due to chat not being linked can be ignored
 		return err
 	}
 	return nil
@@ -231,4 +250,27 @@ func RemoveFromChatMemberList(agent TelegramID, chat TelegramID) error {
 		return err
 	}
 	return nil
+}
+
+// GetAllTelegramIDs is used by the telegram cleanup function
+func GetAllTelegramIDs() ([]TelegramID, error) {
+	var tgs []TelegramID
+
+	rows, err := db.Query("SELECT telegramID FROM telegram")
+	if err != nil {
+		log.Error(err)
+		return tgs, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var tg TelegramID
+		if err := rows.Scan(&tg); err != nil {
+			log.Error(err)
+			continue
+		}
+		tgs = append(tgs, tg)
+	}
+
+	return tgs, nil
 }

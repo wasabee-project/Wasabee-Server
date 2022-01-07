@@ -16,7 +16,11 @@ import (
 func processChatMessage(inMsg *tgbotapi.Update) error {
 	if !model.IsChatMember(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID)) {
 		// log.Debugw("adding agent to chat list", "agent", inMsg.Message.From.ID, "chat", inMsg.Message.Chat.ID)
-		model.AddToChatMemberList(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID))
+		if err := model.AddToChatMemberList(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
+			text := fmt.Sprintf("%s (%d) is not known to this bot, please run the /start command", inMsg.Message.From.UserName, inMsg.Message.From.ID)
+			msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, text)
+			sendQueue <- msg
+		}
 	}
 
 	if inMsg.Message.IsCommand() {
@@ -204,9 +208,12 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	text := fmt.Sprintf("%s joined the linked team (%s): Please add them to this chat", name, teamID)
 	msg := tgbotapi.NewMessage(chat.ID, text)
 	sendQueue <- msg
-	// XXX create a join link for this agent
 
-	_ = model.AddToChatMemberList(tgid, model.TelegramID(chatID))
+	if err := model.AddToChatMemberList(tgid, model.TelegramID(chatID)); err != nil {
+		text := fmt.Sprintf("%s is not known to this bot, please have them run the /start command", name)
+		msg := tgbotapi.NewMessage(chat.ID, text)
+		sendQueue <- msg
+	}
 
 	return nil
 }

@@ -73,6 +73,10 @@ func Start(ctx context.Context) {
 	// process outgoing messages in a distinct go process
 	go sendqueueRunner(ctx)
 
+	if c.CleanOnStartup {
+		go cleanup(ctx)
+	}
+
 	i := 1
 	for {
 		select {

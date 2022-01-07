@@ -54,11 +54,12 @@ type wv struct {
 }
 
 type wtg struct {
-	APIKey   string // defined by Telegram
-	HookPath string // use default
-	name     string
-	id       int
-	running  bool
+	APIKey         string // defined by Telegram
+	HookPath       string // use default
+	CleanOnStartup bool   // almost certainly not needed
+	name           string
+	id             int
+	running        bool
 }
 
 type wrisc struct {

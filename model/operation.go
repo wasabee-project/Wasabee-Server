@@ -473,7 +473,7 @@ func (o *Operation) Delete(gid GoogleID) error {
 	}
 
 	// the foreign key constraints should take care of these, but just in case...
-	tables := []string{"marker", "link", "portal", "anchor", "opkeys", "permissions"}
+	tables := []string{"marker", "link", "portal", "opkeys", "permissions"}
 	for _, v := range tables {
 		// #nosec
 		q := fmt.Sprintf("DELETE FROM %s WHERE opID = ?", v)

@@ -54,6 +54,10 @@ func gcUnlink(inMsg *tgbotapi.Update) {
 	}
 
 	msg.Text, err = templates.ExecuteLang("Unlinked", inMsg.Message.From.LanguageCode, nil)
+	if err != nil {
+		log.Error(err)
+		// do something?
+	}
 	sendQueue <- msg
 }
 
@@ -105,7 +109,7 @@ func gcLink(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
-	msg.Text, err = templates.ExecuteLang("Linked", inMsg.Message.From.LanguageCode, nil)
+	msg.Text, _ = templates.ExecuteLang("Linked", inMsg.Message.From.LanguageCode, nil)
 	sendQueue <- msg
 }
 
