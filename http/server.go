@@ -123,7 +123,7 @@ func Shutdown() error {
 
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		permitted := []string{"https://intel.ingress.com", "https://wasabee-project.github.io", "https://cdn2.wasabee.rocks"}
+		permitted := []string{"https://intel.ingress.com", "https://wasabee-project.github.io", "https://cdn2.wasabee.rocks", "https://webui.wasabee.rocks"}
 
 		ref := permitted[0]
 		origin := req.Header.Get("Origin")
