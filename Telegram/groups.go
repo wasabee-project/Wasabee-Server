@@ -19,7 +19,7 @@ func processChatMessage(inMsg *tgbotapi.Update) error {
 		log.Debugw("adding agent to chat list", "agent", inMsg.Message.From.ID, "chat", inMsg.Message.Chat.ID)
 		if err := model.AddToChatMemberList(model.TelegramID(inMsg.Message.From.ID), model.TelegramID(inMsg.Message.Chat.ID)); err != nil {
 			log.Debug(err)
-			text := fmt.Sprintf("%s (%d) is not known to this bot, please run the /start command", inMsg.Message.From.UserName, inMsg.Message.From.ID)
+			text, _ := templates.ExecuteLang("agentUnknown", inMsg.Message.From.LanguageCode, inMsg.Message.From.UserName)
 			msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, text)
 			sendQueue <- msg
 		}
