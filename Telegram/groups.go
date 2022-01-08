@@ -61,14 +61,11 @@ func processChatCommand(inMsg *tgbotapi.Update) error {
 			sendQueue <- msg
 			return err
 		}
-		defaultReply, err := templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, nil)
+		msg.Text, err = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, commands)
 		if err != nil {
 			log.Error(err)
 			msg.Text = err.Error()
-			sendQueue <- msg
-			return err
 		}
-		msg.Text = defaultReply
 		log.Debugw("unknown command in chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "cmd", inMsg.Message.Command())
 		sendQueue <- msg
 	}
@@ -242,7 +239,6 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		d.SentLink = false
 	}
 
-	// text := fmt.Sprintf("%s joined the linked team "%s" (%s): sending invite link", name, teamname, teamID)
 	text, _ := templates.ExecuteLang("joinedTeam", lang, d)
 	sendQueue <- tgbotapi.NewMessage(chat.ID, text)
 
@@ -273,10 +269,14 @@ func sendInviteLink(tgid model.TelegramID, chatID int64, team string) error {
 		return err
 	}
 
-	message := fmt.Sprintf("You are invited to the telegram chat for '%s': %s", team, r.Link)
-	log.Debugw("join link created", "link", r.Link, "message", message)
-
-	sendQueue <- tgbotapi.NewMessage(int64(tgid), message)
+	type data struct {
+		TeamName string
+		Link     string
+	}
+	message, _ := templates.ExecuteLang("invitedToTeam", "en", data{TeamName: team, Link: r.Link})
+	msg := tgbotapi.NewMessage(int64(tgid), message)
+	msg.ParseMode = "HTML"
+	sendQueue <- msg
 	return nil
 }
 
@@ -298,7 +298,6 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 	if tgid == 0 {
 		return nil
 	}
-	// log.Debugw("RemoveFromChat called", "GID", gid, "teamID", teamID, "chatID", chatID, "tgid", tgid)
 
 	cic := tgbotapi.ChatInfoConfig{}
 	cic.ChatID = chatID
@@ -313,13 +312,35 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		name = fmt.Sprint("@", tmp)
 	}
 
-	text := fmt.Sprintf("%s left the linked team (%s). Attempting to remove them from this chat", name, teamID)
-	msg := tgbotapi.NewMessage(chat.ID, text)
+	// determine if bot is admin, don't bother with this if not
+	// bot.GetChatAdministrator doesn't list admin bots...
+	cmc := tgbotapi.GetChatMemberConfig{}
+	cmc.ChatID = chatID
+	cmc.UserID = bot.Self.ID
+	cm, err := bot.GetChatMember(cmc)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	type data struct {
+		Agent  string
+		TeamID model.TeamID
+		Admin  bool
+	}
+	message, _ := templates.ExecuteLang("leftTeam", "en", data{Agent: name, TeamID: teamID, Admin: cm.IsAdministrator()})
+	msg := tgbotapi.NewMessage(chat.ID, message)
+	msg.ParseMode = "HTML"
 	sendQueue <- msg
 
 	_ = model.RemoveFromChatMemberList(tgid, model.TelegramID(chatID))
 
-	// XXX determine if bot is admin, don't bother with this if not
+	if !cm.IsAdministrator() {
+		log.Debug("I am not admin... trying anyways")
+	} else {
+		log.Debug("I AM admin!")
+	}
+
 	bcmc := tgbotapi.BanChatMemberConfig{
 		ChatMemberConfig: tgbotapi.ChatMemberConfig{
 			ChatID: chatID,
