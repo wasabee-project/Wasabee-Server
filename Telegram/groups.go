@@ -1,6 +1,7 @@
 package wtg
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -218,53 +219,45 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	if err := model.AddToChatMemberList(tgid, model.TelegramID(chatID)); err != nil {
 		log.Error(err)
 	}
-	if err := sendInviteLink(tgid, chatID); err != nil {
+
+	teamname, err := teamID.Name()
+	if err != nil {
+		log.Error(err)
+		teamname = string(teamID)
+	}
+	if err := sendInviteLink(tgid, chatID, teamname); err != nil {
 		log.Error(err)
 	}
 	return nil
 }
 
-func sendInviteLink(tgid model.TelegramID, chatID int64) error {
-	cilc := tgbotapi.ChatInviteLinkConfig{}
-	cilc.ChatID = chatID
-
-	link, err := bot.GetInviteLink(cilc)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if link != "" {
-		log.Debugw("got invite link", "link", link)
-		msg := tgbotapi.NewMessage(int64(tgid), link)
-		sendQueue <- msg
-		return nil
-	}
-
-	// all this seems redundant?
-	/* ccilc := tgbotapi.CreateChatInviteLinkConfig{}
+func sendInviteLink(tgid model.TelegramID, chatID int64, team string) error {
+	ccilc := tgbotapi.CreateChatInviteLinkConfig{}
 	ccilc.ChatID = chatID
 	ccilc.MemberLimit = 1
 	res, err := bot.Request(ccilc)
 	if err != nil {
 		log.Error(err)
 	}
-	log.Debugw("created chat invite", "res", res)
 
-	// try again
-	link, err = bot.GetInviteLink(cilc)
-	if err != nil {
+	var r struct {
+		Link    string `json:"invite_link"`
+		Revoked bool   `json:"is_revoked"`
+	}
+	if err := json.Unmarshal(res.Result, &r); err != nil {
 		log.Error(err)
 		return err
 	}
-	if link == "" {
-		err := fmt.Errorf("unable to create invite link")
+	if r.Revoked { // has this ever been triggered?
+		err := fmt.Errorf("join linked already revoked?!")
 		log.Error(err)
 		return err
 	}
 
-	log.Debugw("got chat invite link on the second try", "link", link)
-	sendQueue <- tgbotapi.NewMessage(int64(tgid), link) */
+	message := fmt.Sprintf("You are invited to the telegram chat for '%s': %s", team, r.Link)
+	log.Debugw("join link created", "link", r.Link, "message", message)
 
+	sendQueue <- tgbotapi.NewMessage(int64(tgid), message)
 	return nil
 }
 
