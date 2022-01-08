@@ -15,33 +15,33 @@ import (
 
 // need to update tgbotapi to allow ADDDING, not just setting commands for these...
 type command struct {
-	command     string
-	aliases     []string // future use
-	description string
-	private     bool // future use
-	group       bool // future use
-	admin       bool // future use
+	Command     string
+	Aliases     []string // future use
+	Description string
+	Private     bool // templates and future use
+	Group       bool // templates and future use
+	Admin       bool // future use
 }
 
 var commands []command
 
 func setupCommands() {
 	commands = []command{
-		{command: "unlink", description: "unlink this team from the team/op", group: true, admin: true},
-		{command: "link", description: "link this team to the team/op", group: true, admin: true},
-		{command: "status", description: "show the status of any link to a team/op", group: true},
-		{command: "assignments", description: "show tasks with assignments", group: true},
-		{command: "unassigned", description: "show tasks without assignments", group: true},
-		{command: "claim", description: "claim a task (assign to self)", group: true},
-		{command: "reject", description: "reject a task (remove assignment)", group: true},
-		{command: "acknowledge", description: "acknowledge an assignment", group: true},
-		{command: "start", description: "inital setup and grant bot permission to communicate", private: true},
-		{command: "help", description: "show help info", group: true, private: true},
+		{Command: "unlink", Description: "unlink this team from the team/op", Group: true, Admin: true},
+		{Command: "link", Description: "link this team to the team/op", Group: true, Admin: true},
+		{Command: "status", Description: "show the status of any link to a team/op", Group: true},
+		{Command: "assignments", Description: "show tasks with assignments", Group: true},
+		{Command: "unassigned", Description: "show tasks without assignments", Group: true},
+		{Command: "claim", Description: "claim a task (assign to self)", Group: true},
+		{Command: "reject", Description: "reject a task (remove assignment)", Group: true},
+		{Command: "acknowledge", Description: "acknowledge an assignment", Group: true},
+		{Command: "start", Description: "inital setup and grant bot permission to communicate", Private: true},
+		{Command: "help", Description: "show help info", Group: true, Private: true},
 	}
 
 	desired := []tgbotapi.BotCommand{}
 	for _, c := range commands {
-		newcmd := tgbotapi.BotCommand{Command: c.command, Description: c.description}
+		newcmd := tgbotapi.BotCommand{Command: c.Command, Description: c.Description}
 		desired = append(desired, newcmd)
 	}
 
@@ -75,15 +75,15 @@ func broken() {
 		newcmd := tgbotapi.BotCommand{ Command: c.command, Description: c.description}
 		setmy := tgbotapi.NewSetMyCommands(newcmd)
 
-		if c.private && !c.group {
+		if c.Private && !c.Group {
 			bsc := tgbotapi.NewBotCommandScopeAllPrivateChats()
 			setmy = tgbotapi.NewSetMyCommandsWithScope(bsc, newcmd)
 		}
-		if c.group && !c.private && !c.admin {
+		if c.Group && !c.Private && !c.Admin {
 			bsc := tgbotapi.NewBotCommandScopeAllGroupChats()
 			setmy = tgbotapi.NewSetMyCommandsWithScope(bsc, newcmd)
 		}
-		if c.group && !c.private && c.admin {
+		if c.Group && !c.Private && c.Admin {
 			bsc := tgbotapi.NewBotCommandScopeAllChatAdministrators()
 			setmy = tgbotapi.NewSetMyCommandsWithScope(bsc, newcmd)
 		}

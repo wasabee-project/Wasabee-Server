@@ -22,12 +22,6 @@ func processDirectMessage(inMsg *tgbotapi.Update) error {
 		return err
 	}
 
-	/* defaultReply, err := templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, nil)
-	if err != nil {
-		log.Error(err)
-		return err
-	} */
-
 	// telegram ID is unknown to this server
 	if gid == "" {
 		log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
@@ -90,16 +84,13 @@ func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
 		switch inMsg.Message.Command() {
 		// add commands here
 		case "start":
-			tmp, _ := templates.ExecuteLang("help", inMsg.Message.From.LanguageCode, nil)
-			msg.Text = tmp
+			msg.Text, _ = templates.ExecuteLang("start", inMsg.Message.From.LanguageCode, nil)
 			msg.ReplyMarkup = baseKbd
 		case "help":
-			tmp, _ := templates.ExecuteLang("help", inMsg.Message.From.LanguageCode, nil)
-			msg.Text = tmp
+			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, commands)
 			msg.ReplyMarkup = baseKbd
 		default:
-			tmp, _ := templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, nil)
-			msg.Text = tmp
+			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, commands)
 			msg.ReplyMarkup = baseKbd
 		}
 	} else if inMsg.Message.Text != "" {
@@ -116,7 +107,9 @@ func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
 		log.Debugw("processing location", "subsystem", "Telegram", "GID", gid)
 		lat := strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64)
-		_ = gid.SetLocation(lat, lon)
+		if err := gid.SetLocation(lat, lon); err != nil {
+			log.Error(err)
+		}
 	}
 
 	sendQueue <- msg
