@@ -8,7 +8,7 @@ var defaults *WasabeeConf = &WasabeeConf{
 	DB:                "wasabee:test@unix(/var/www/var/run/mysql/mysql.sock)/wasabee",
 	WordListFile:      "eff_large_wordlist.txt",
 	FrontendPath:      "Wasabee-Frontend",
-	WebUIURL:          "https://wasabee-project.github.io/Wasabee-WebUI/",
+	WebUIURL:          "https://webui.wasabee.rocks/",
 	JKU:               "https://cdn2.wasabee.rocks/.well-known/jwks.json",
 	DefaultPictureURL: "https://cdn2.wasabee.rocks/android-chrome-512x512.png",
 
