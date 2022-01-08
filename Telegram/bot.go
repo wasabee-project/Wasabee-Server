@@ -77,6 +77,8 @@ func Start(ctx context.Context) {
 		go cleanup(ctx)
 	}
 
+	setupCommands()
+
 	i := 1
 	for {
 		select {
