@@ -167,6 +167,7 @@ func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) 
 }
 
 func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
+	lang := "en"
 	gid := model.GoogleID(g)
 	teamID := model.TeamID(t)
 
@@ -197,7 +198,7 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		return err
 	}
 	if tgid == 0 {
-		text := fmt.Sprintf("[%s] is not known to this bot, please have them run the /start command", gid)
+		text, _ := templates.ExecuteLang("agentUnknown", lang, gid)
 		msg := tgbotapi.NewMessage(chat.ID, text)
 		sendQueue <- msg
 		return nil
@@ -213,21 +214,38 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 		name = fmt.Sprint("@", tmp)
 	}
 
-	text := fmt.Sprintf("%s joined the linked team (%s): sending invite link", name, teamID)
-	sendQueue <- tgbotapi.NewMessage(chat.ID, text)
-
-	if err := model.AddToChatMemberList(tgid, model.TelegramID(chatID)); err != nil {
-		log.Error(err)
-	}
-
 	teamname, err := teamID.Name()
 	if err != nil {
 		log.Error(err)
 		teamname = string(teamID)
 	}
-	if err := sendInviteLink(tgid, chatID, teamname); err != nil {
+
+	if err := model.AddToChatMemberList(tgid, model.TelegramID(chatID)); err != nil {
 		log.Error(err)
 	}
+
+	type data struct {
+		Name     string
+		TeamName string
+		TeamID   model.TeamID
+		SentLink bool
+	}
+	d := data{
+		Name:     name,
+		TeamName: teamname,
+		TeamID:   teamID,
+		SentLink: true,
+	}
+
+	if err := sendInviteLink(tgid, chatID, teamname); err != nil {
+		log.Error(err)
+		d.SentLink = false
+	}
+
+	// text := fmt.Sprintf("%s joined the linked team "%s" (%s): sending invite link", name, teamname, teamID)
+	text, _ := templates.ExecuteLang("joinedTeam", lang, d)
+	sendQueue <- tgbotapi.NewMessage(chat.ID, text)
+
 	return nil
 }
 
@@ -238,6 +256,7 @@ func sendInviteLink(tgid model.TelegramID, chatID int64, team string) error {
 	res, err := bot.Request(ccilc)
 	if err != nil {
 		log.Error(err)
+		return err
 	}
 
 	var r struct {
