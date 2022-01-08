@@ -97,6 +97,8 @@ type whttp struct {
 	CallbackURL     string // deprecated
 	OneTimeTokenURL string // probably deprecated
 
+	CORS            []string // list of sites for which browsers will make API request
+
 	oauthConfig *oauth2.Config
 	router      *mux.Router
 }
@@ -197,6 +199,16 @@ func TGSetBot(name string, id int) {
 // IsTelegramRunning reports if telegram is running; used for templates
 func IsTelegramRunning() bool {
 	return c.Telegram.running
+}
+
+// TelegramBotName returns the name of the running telegram bot
+func TelegramBotName() string {
+	return c.Telegram.name
+}
+
+// TelegramBotID returns the ID of the running telegram bot
+func TelegramBotID() int {
+	return c.Telegram.id
 }
 
 // setupJWK loads the keys used for the JWK signing and verification, set the file paths

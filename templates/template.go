@@ -14,8 +14,8 @@ import (
 
 var ts map[string]*template.Template
 var funcMap = template.FuncMap{
-	// "TGGetBotName": wasabeetelegram.TGGetBotName,
-	// "TGGetBotID":   wasabeetelegram.TGGetBotID,
+	"TelegramBotName": config.TelegramBotName,
+	"TelegramBotID":   config.TelegramBotID,
 	"Webroot":     config.GetWebroot,
 	"WebAPIPath":  config.GetWebAPIPath,
 	"WebUI":       config.GetWebUI,

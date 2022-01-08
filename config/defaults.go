@@ -48,6 +48,7 @@ var defaults *WasabeeConf = &WasabeeConf{
 		OauthUserInfoURL: "https://www.googleapis.com/oauth2/v2/userinfo",
 		OauthAuthURL:     google.Endpoint.AuthURL,
 		OauthTokenURL:    google.Endpoint.TokenURL,
+		CORS:             []string{"https://intel.ingress.com", "https://wasabee-project.github.io", "https://cdn2.wasabee.rocks", "https://webui.wasabee.rocks"},
 	},
 	Telegram: wtg{
 		HookPath: "/tg",

@@ -123,8 +123,13 @@ func Shutdown() error {
 
 func headersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		permitted := []string{"https://intel.ingress.com", "https://wasabee-project.github.io", "https://cdn2.wasabee.rocks", "https://webui.wasabee.rocks"}
+		if isScanner(req) {
+			log.Warnw("scanner detected", "ip", req.RemoteAddr)
+			http.Error(res, "permission denied", http.StatusForbidden)
+			return
+		}
 
+		permitted := config.Get().HTTP.CORS
 		ref := permitted[0]
 		origin := req.Header.Get("Origin")
 		for p, v := range permitted {
@@ -133,17 +138,11 @@ func headersMW(next http.Handler) http.Handler {
 			}
 		}
 
-		if isScanner(req) {
-			log.Warnw("scanner detected", "ip", req.RemoteAddr)
-			http.Error(res, "permission denied", http.StatusForbidden)
-			return
-		}
-
 		res.Header().Add("Server", "Wasabee-Server")
 		res.Header().Add("Content-Security-Policy", fmt.Sprintf("frame-ancestors %s", ref))
 		res.Header().Add("X-Frame-Options", fmt.Sprintf("allow-from %s", ref)) // deprecated
 		res.Header().Add("Access-Control-Allow-Origin", ref)
-		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE")
+		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE, PATCH")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
 		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match, Authorization")
 		next.ServeHTTP(res, req)
