@@ -217,7 +217,7 @@ func sendTarget(g messaging.GoogleID, target messaging.Target) error {
 		msg.Text = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
 	}
 
-	log.Debugw("sent target", "subsystem", "Telegram", "GID", gid, "target", target)
+	// log.Debugw("sent target", "subsystem", "Telegram", "GID", gid, "target", target)
 	sendQueue <- msg
 	return nil
 }

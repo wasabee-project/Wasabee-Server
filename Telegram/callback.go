@@ -16,7 +16,6 @@ func callback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	log.Debug("callback", "query", update.CallbackQuery)
 
 	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
-
 	gid, err := model.TelegramID(update.CallbackQuery.From.ID).Gid()
 	if err != nil {
 		log.Error(err)

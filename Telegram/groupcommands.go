@@ -127,16 +127,26 @@ func gcStatus(inMsg *tgbotapi.Update) {
 	}
 	name, _ := teamID.Name()
 
-	//	msg.Text, _= templates.ExecuteLang("LinkStatus", inMsg.Message.From.LanguageCode, nil)
+	type data struct {
+		TeamName string
+		TeamID   model.TeamID
+		OPStat   *model.OpStat
+	}
+	d := data{
+		TeamName: name,
+		TeamID:   teamID,
+	}
 
-	msg.Text = fmt.Sprintf("Linked to team: <b>%s</b> (%s)", name, teamID.String())
 	if opID != "" {
-		opstat, err := opID.Stat()
+		d.OPStat, err = opID.Stat()
 		if err != nil {
 			log.Error(err)
-		} else {
-			msg.Text = fmt.Sprintf("%s \nLinked to Operation <b>%s</b> (%s)", msg.Text, opstat.Name, opID)
 		}
+	}
+
+	msg.Text, err = templates.ExecuteLang("ChatLinkStatus", inMsg.Message.From.LanguageCode, d)
+	if err != nil {
+		log.Error(err)
 	}
 	sendQueue <- msg
 }
@@ -324,11 +334,30 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
-	m := task.(model.Marker)
-	p, _ := o.PortalDetails(m.PortalID, gid)
 
-	// msg.Text, _= templates.ExecuteLang("Claim", inMsg.Message.From.LanguageCode, task)
-	msg.Text = fmt.Sprintf("Task Claimed: %d - %s - %s", task.GetOrder(), model.NewMarkerType(m.Type), p.Name)
+	type data struct {
+		Type  string
+		Name  string
+		Order int16
+	}
+	d := data{
+		Order: task.GetOrder(),
+	}
+
+	switch task.(type) {
+	case model.Marker:
+		m := task.(model.Marker)
+		p, _ := o.PortalDetails(m.PortalID, gid)
+		d.Name = p.Name
+		d.Type = model.NewMarkerType(m.Type)
+	case model.Link:
+		l := task.(model.Link)
+		p, _ := o.PortalDetails(l.From, gid)
+		d.Name = p.Name
+		d.Type = "link"
+	}
+
+	msg.Text, _ = templates.ExecuteLang("Claim", inMsg.Message.From.LanguageCode, d)
 	sendQueue <- msg
 }
 
@@ -399,7 +428,19 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 	}
 	m := task.(model.Marker)
 	p, _ := o.PortalDetails(m.PortalID, gid)
-	msg.Text = fmt.Sprintf("Task Acknowledged: %d - %s - %s", task.GetOrder(), model.NewMarkerType(m.Type), p.Name)
+
+	type data struct {
+		Type  string
+		Name  string
+		Order int16
+	}
+	d := data{
+		Type:  model.NewMarkerType(m.Type),
+		Name:  p.Name,
+		Order: task.GetOrder(),
+	}
+
+	msg.Text, _ = templates.ExecuteLang("Acknowledged", inMsg.Message.From.LanguageCode, d)
 	sendQueue <- msg
 }
 
@@ -461,6 +502,18 @@ func gcReject(inMsg *tgbotapi.Update) {
 	}
 	m := task.(model.Marker)
 	p, _ := o.PortalDetails(m.PortalID, gid)
-	msg.Text = fmt.Sprintf("Task Rejected: %d - %s - %s", task.GetOrder(), model.NewMarkerType(m.Type), p.Name)
+
+	type data struct {
+		Type  string
+		Name  string
+		Order int16
+	}
+	d := data{
+		Type:  model.NewMarkerType(m.Type),
+		Name:  p.Name,
+		Order: task.GetOrder(),
+	}
+
+	msg.Text, _ = templates.ExecuteLang("Rejected", inMsg.Message.From.LanguageCode, d)
 	sendQueue <- msg
 }
