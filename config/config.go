@@ -97,7 +97,7 @@ type whttp struct {
 	CallbackURL     string // deprecated
 	OneTimeTokenURL string // probably deprecated
 
-	CORS            []string // list of sites for which browsers will make API request
+	CORS []string // list of sites for which browsers will make API request
 
 	oauthConfig *oauth2.Config
 	router      *mux.Router

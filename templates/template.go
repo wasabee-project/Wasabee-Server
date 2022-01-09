@@ -16,10 +16,10 @@ var ts map[string]*template.Template
 var funcMap = template.FuncMap{
 	"TelegramBotName": config.TelegramBotName,
 	"TelegramBotID":   config.TelegramBotID,
-	"Webroot":     config.GetWebroot,
-	"WebAPIPath":  config.GetWebAPIPath,
-	"WebUI":       config.GetWebUI,
-	"IngressName": model.IngressName,
+	"Webroot":         config.GetWebroot,
+	"WebAPIPath":      config.GetWebAPIPath,
+	"WebUI":           config.GetWebUI,
+	"IngressName":     model.IngressName,
 }
 
 // Start should be called once from main to establish the templates.

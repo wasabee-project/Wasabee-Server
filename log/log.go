@@ -177,3 +177,16 @@ func Warn(args ...interface{}) {
 func Warnw(msg string, args ...interface{}) {
 	sugared.Warnw(msg, args...)
 }
+
+// Printer is a type to satisfy tgbotapi's logger
+type Printer bool
+
+// Println logs a simple message
+func (p Printer) Println(args ...interface{}) {
+	sugared.Info(args...)
+}
+
+// Printf logs a formatted message
+func (p Printer) Printf(v string, args ...interface{}) {
+	sugared.Info(fmt.Sprintf(v, args...))
+}

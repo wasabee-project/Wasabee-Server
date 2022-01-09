@@ -27,8 +27,13 @@ func gcUnlink(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	teamID, _, _ := model.ChatToTeam(inMsg.Message.Chat.ID)
-	// log.Debugw("unlinking team from chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", teamID)
+	teamID, _, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
 
 	owns, err := gid.OwnsTeam(teamID)
 	if err != nil {
@@ -91,9 +96,8 @@ func gcLink(inMsg *tgbotapi.Update) {
 			return
 		}
 		if !owns {
-			err = fmt.Errorf("only team owner can set telegram link")
-			log.Error(err)
-			msg.Text = err.Error()
+			msg.Text, _ = templates.ExecuteLang("onlyOwners", inMsg.Message.From.LanguageCode, nil)
+			log.Error(msg.Text)
 			sendQueue <- msg
 			return
 		}
@@ -200,8 +204,17 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	}
 	var b bytes.Buffer
 	name, _ := teamID.Name()
-	b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
-	b.WriteString("<b>Order / Portal / Action / Agent / State</b>\n")
+
+	type data struct {
+		OpName           string
+		TeamName         string
+		MarkersFormatted []string
+	}
+	d := data{
+		OpName:   o.Name,
+		TeamName: name,
+	}
+
 	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
 		// if the caller requested the results to be filtered...
@@ -224,8 +237,10 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 			b.WriteString(fmt.Sprintf("%d / %s<a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s / %s / %s%s\n",
 				m.Order, stateIndicatorStart, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type), a, m.State, stateIndicatorEnd))
 		}
-		msg.Text = b.String()
+		d.MarkersFormatted = append(d.MarkersFormatted, b.String())
 	}
+
+	msg.Text, _ = templates.ExecuteLang("assignments", inMsg.Message.From.LanguageCode, d)
 	sendQueue <- msg
 }
 
@@ -265,16 +280,27 @@ func gcUnassigned(inMsg *tgbotapi.Update) {
 	}
 	var b bytes.Buffer
 	name, _ := teamID.Name()
-	b.WriteString(fmt.Sprintf("<b>Operation: %s</b> (team: %s)\n", o.Name, name))
-	b.WriteString("<b>Order / Portal / Action</b>\n")
+
+	type data struct {
+		OpName           string
+		TeamName         string
+		MarkersFormatted []string
+	}
+	d := data{
+		OpName:   o.Name,
+		TeamName: name,
+	}
+
 	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
 		if m.State == "pending" {
 			p, _ := o.PortalDetails(m.PortalID, gid)
 			b.WriteString(fmt.Sprintf("<b>%d</b> / <a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s\n", m.Order, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type)))
 		}
-		msg.Text = b.String()
+		d.MarkersFormatted = append(d.MarkersFormatted, b.String())
 	}
+
+	msg.Text, _ = templates.ExecuteLang("assignments", inMsg.Message.From.LanguageCode, d)
 	sendQueue <- msg
 }
 
