@@ -235,7 +235,6 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	}
 
 	if err := sendInviteLink(tgid, chatID, teamname); err != nil {
-		log.Error(err)
 		d.SentLink = false
 	}
 
@@ -251,7 +250,9 @@ func sendInviteLink(tgid model.TelegramID, chatID int64, team string) error {
 	ccilc.MemberLimit = 1
 	res, err := bot.Request(ccilc)
 	if err != nil {
-		log.Error(err)
+		if err.Error() != "Bad Request: not enough rights to manage chat invite link" {
+			log.Error(err)
+		}
 		return err
 	}
 

@@ -89,6 +89,8 @@ func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
 		case "help":
 			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, commands)
 			msg.ReplyMarkup = baseKbd
+		// case "whois":
+		//	whois(inMsg)
 		default:
 			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, commands)
 			msg.ReplyMarkup = baseKbd
@@ -225,3 +227,37 @@ func newUserVerify(inMsg *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
 	}
 	return &msg, err
 }
+
+/* discussion concerning implmenting this - @areyougreenbot does already do this
+func whois(inMsg *tgbotapi.Update) error {
+	var query string
+	tokens := strings.Split(inMsg.Message.Text, " ")
+	if len(tokens) != 2 {
+		msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "requires an @telegramname")
+		msg.ParseMode = "HTML"
+
+		sendq <- msg
+	}
+	query = strings.TrimSpace(tokens[1])
+
+	tid := model.TelegramID(inMsg.Message.From.ID)
+	_, verified, err := tid.GidV()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if !verified {
+		err := fmt.Errorf("unverified accounts cannot use this command")
+		log.Errorw(err, "msg", inMsg)
+		return err
+	}
+
+	gid, err := SearchAgentName(agent string)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	....
+
+	return nil
+} */
