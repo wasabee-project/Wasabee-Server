@@ -95,7 +95,7 @@ paths:
           in: query
           schema:
              type: string
-			 enum: [ENLIGHTENED,RESISTANCE]
+             enum: [ENLIGHTENED,RESISTANCE]
       responses:
         '200':
           description: data stored
@@ -569,7 +569,7 @@ paths:
                   $ref:  "#/components/schemas/TeamID"
                 role:
                   type: string
-                  enum: [write,read, assignonly]
+                  enum: [write,read,assignonly]
                 zone:
                   $ref:  "#/components/schemas/Zone"
       responses:
@@ -604,7 +604,7 @@ paths:
                   $ref:  "#/components/schemas/TeamID"
                 role:
                   type: string
-                  enum: [write,read, assignonly]
+                  enum: [write,read,assignonly]
                 zone:
                   $ref:  "#/components/schemas/Zone"
       responses:
@@ -1069,20 +1069,32 @@ components:
       type: string
     GoogleID:
       type: string
+      minLength: 20
+      maxLength: 20
     LinkID:
       type: string
+      minLength: 40
+      maxLength: 40
     MarkerID:
       type: string
+      minLength: 40
+      maxLength: 40
     MarkerType:
       type: string
     OperationID:
       type: string
+      minLength: 40
+      maxLength: 40
     PortalID:
       type: string
+      minLength: 40
+      maxLength: 40
     TeamID:
       type: string
     Zone:
       type: integer
+      minimum: 1
+      maximum: 16
     AgentData:
       type: object
       required:
