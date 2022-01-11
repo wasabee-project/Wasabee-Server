@@ -77,15 +77,24 @@ paths:
       tags:
         - "User Info"
       parameters:
-        - name: string
+        - name: name
           description: the name to store
           required: true
-        - qt: string
+          in: query
+          schema:
+            type: string
+        - name: qt
           description: the querytoken from the /me data
           required: true
-        - faction: string
+          in: query
+          schema:
+            type: string
+        - name: faction
           description: ENLIGHTENED or RESISTANCE
           required: true
+          in: query
+          schema:
+             type: string
       responses:
         '200':
           description: data stored
