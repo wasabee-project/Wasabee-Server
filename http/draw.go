@@ -50,7 +50,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	jRaw := json.RawMessage(jBlob)
 	if err = model.DrawInsert(jRaw, gid); err != nil {
 		log.Infow(err.Error(), "GID", gid, "resource", "new operation")
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
@@ -102,7 +102,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	stat, err := o.ID.Stat()
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
@@ -118,7 +118,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", stat.Modified, time.UTC)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
@@ -127,7 +127,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		modifiedSince, err := time.ParseInLocation(time.RFC1123, ims, time.UTC)
 		if err != nil {
 			log.Error(err)
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
 			return
 		}
 		if !lastModified.After(modifiedSince) {
@@ -140,7 +140,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	// o.Populate determines all, zone, or assigned-only
 	if err = o.Populate(gid); err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
@@ -511,7 +511,7 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 

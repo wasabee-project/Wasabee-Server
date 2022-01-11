@@ -182,7 +182,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	// do the work
 	if err = gid.SetLocation(lat, lon); err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
@@ -208,7 +208,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	if qt != qtTest {
 		err := fmt.Errorf("invalid form validation token")
 		log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
@@ -301,7 +301,7 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 
 	if err := req.ParseMultipartForm(1024); err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	qt := req.FormValue("qt")
@@ -312,13 +312,13 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	if qt != qtTest {
 		err := fmt.Errorf("invalid form validation token")
 		log.Errorw(err.Error(), "got", qt, "wanted", qtTest)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	if err := gid.SetIntelData(name, faction); err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -338,7 +338,7 @@ func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
 	log.Infow("agent submitted V API token", "GID", gid.String())
 	if err = gid.SetVAPIkey(v); err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
