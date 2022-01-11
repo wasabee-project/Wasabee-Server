@@ -605,7 +605,7 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/agent/${gid}:
+  /api/v1/agent/{gid}:
     get:
       summary: Get Agent
       tags:
@@ -631,7 +631,7 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/agent/${agentID}/target:
+  /api/v1/agent/{agentID}/target:
     post:
       summary: Send a terget to an agent
       tags:
