@@ -72,23 +72,23 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/me/intelid
-	put:
-	  tags:
-		- "User Info"
-	  parameters:
-		- name: string
+  /api/v1/me/intelid:
+    put:
+      tags:
+        - "User Info"
+      parameters:
+        - name: string
           description: the name to store
           required: true
-		- qt: string
+        - qt: string
           description: the querytoken from the /me data
           required: true
-		- faction: string
+        - faction: string
           description: ENLIGHTENED or RESISTANCE
           required: true
-	  responses:
-		'200':
-		  description: data stored
+      responses:
+        '200':
+          description: data stored
 
   /api/v1/me/{teamId}:
     delete:
