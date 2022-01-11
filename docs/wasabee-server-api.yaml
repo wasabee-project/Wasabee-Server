@@ -95,6 +95,7 @@ paths:
           in: query
           schema:
              type: string
+			 enum: [ENLIGHTENED,RESISTANCE]
       responses:
         '200':
           description: data stored
