@@ -2,13 +2,15 @@ package auth
 
 import (
 	"fmt"
-	// "sync"
+	"sync"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/v"
 )
+
+var logoutlist sync.Map
 
 // Authorize is called to verify that an agent is permitted to use Wasabee.
 // V and Rocks are updated (if configured).
@@ -56,41 +58,34 @@ func Authorize(gid model.GoogleID) (bool, error) {
 	return true, nil
 }
 
-// The logout stuff goes away when we fully migrate to JWT
-/* type logoutList struct {
-	logoutlist map[model.GoogleID]bool
-	mux        sync.Mutex
-}
-
-var ll logoutList
-
-func init() {
-	ll.logoutlist = make(map[model.GoogleID]bool)
-} */
-
-// Logout sets a temporary logout token - not stored in DB since logout cases are not critical
-// and sessions are refreshed with google hourly
+// Logout adds a GoogleID to the list of logged out agents
 func Logout(gid model.GoogleID, reason string) {
-	/* log.Infow("logout", "GID", gid, "reason", reason, "message", gid+" logout")
-	ll.mux.Lock()
-	defer ll.mux.Unlock()
-	ll.logoutlist[gid] = true */
+	logoutlist.Store(string(gid), true)
 }
 
-// CheckLogout looks to see if the user is on the force logout list
-func CheckLogout(gid model.GoogleID) bool {
-	return false
+// isLoggedOut looks to see if the user is on the force logout list
+func IsLoggedOut(gid model.GoogleID) bool {
+	out, ok := logoutlist.Load(string(gid))
+	if ok && out.(bool) {
+		logoutlist.Delete(string(gid))
+		return true
+	}
 
-	/* ll.mux.Lock()
-	defer ll.mux.Unlock()
-	logout, ok := ll.logoutlist[gid]
-	if !ok { // not in the list
-		return false
+	return false
+}
+
+// RevokeJWT adds a JWT ID to the revoked list
+func RevokeJWT(tokenID string) {
+	log.Infow("revoking JWT", "id", tokenID)
+	logoutlist.Store(tokenID, true)
+}
+
+// IsRevokedJWT checks if a JWT ID is on the revoked list.
+func IsRevokedJWT(tokenID string) bool {
+	out, ok := logoutlist.Load(tokenID)
+	if ok && out.(bool) {
+		log.Infow("revoked JWT", "id", tokenID)
+		return true
 	}
-	if logout {
-		ll.logoutlist[gid] = false
-		// log.Debugw("clearing from logoutlist", "GID", gid)
-		delete(ll.logoutlist, gid)
-	}
-	return logout */
+	return false
 }

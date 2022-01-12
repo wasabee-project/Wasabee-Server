@@ -12,7 +12,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-var scannerMux sync.Mutex
+var scanners sync.Map
 
 func setupRouter() *mux.Router {
 	// Main Router
@@ -247,23 +247,19 @@ func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func incrementScanner(req *http.Request) {
-	scannerMux.Lock()
-	i, ok := scanners[req.RemoteAddr]
+	var old uint64
+	i, ok := scanners.Load(req.RemoteAddr)
 	if ok {
-		scanners[req.RemoteAddr] = i + 1
-	} else {
-		scanners[req.RemoteAddr] = 1
+		old = i.(uint64)
 	}
-	scannerMux.Unlock()
+	scanners.Store(req.RemoteAddr, old+1)
 }
 
 // true == block, false == permit
 func isScanner(req *http.Request) bool {
-	scannerMux.Lock()
-	i, ok := scanners[req.RemoteAddr]
-	scannerMux.Unlock()
+	i, ok := scanners.Load(req.RemoteAddr)
 
-	if !ok || i < 20 {
+	if !ok || i.(uint64) < 20 {
 		return false
 	}
 	return true

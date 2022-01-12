@@ -180,7 +180,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -193,15 +193,17 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// do the work
 	log.Errorw("agent requested delete", "GID", gid.String())
-	if err = gid.Delete(); err != nil {
+	if err := gid.Delete(); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	// XXX delete the session cookie from the browser
+	if tid := req.Header.Get("X-Wasabee-TokenID"); tid != "" {
+		auth.RevokeJWT(tid)
+	}
+
 	fmt.Fprint(res, jsonStatusOK)
 }
 

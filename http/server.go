@@ -31,7 +31,6 @@ var srv *http.Server
 
 // var logfileHandle    *os.File
 var unrolled *logger.Logger
-var scanners map[string]int64
 var oauthStateString string
 var store *sessions.CookieStore
 
@@ -76,7 +75,6 @@ func Start() {
 			"/apple-touch-icon-120x120.png",
 			"/apple-touch-icon.png"},
 	})
-	scanners = make(map[string]int64)
 
 	// setup the main router an built-in subrouters
 	router := setupRouter()
@@ -165,7 +163,8 @@ func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		sessionName := config.Get().HTTP.SessionName
 
-		req.Header.Del("X-Wasabee-GID") // don't allow spoofing
+		req.Header.Del("X-Wasabee-GID")     // don't allow spoofing
+		req.Header.Del("X-Wasabee-TokenID") // don't allow spoofing
 
 		if h := req.Header.Get("Authorization"); h != "" {
 			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
@@ -176,10 +175,14 @@ func authMW(next http.Handler) http.Handler {
 			}
 
 			// expiration validation is implicit
-			// XXX make sure JwtID is not on the "revoked" list -- in a way that doesn't hit the database too hard
 			if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
-				sub, _ := token.Get("sub")
-				log.Infow("JWT validate failed", "error", err, "sub", sub)
+				log.Infow("JWT validate failed", "error", err, "sub", token.Subject())
+				http.Error(res, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			if auth.IsRevokedJWT(token.JwtID()) {
+				log.Infow("JWT revoked", "sub", token.Subject(), "token ID", token.JwtID())
 				http.Error(res, err.Error(), http.StatusUnauthorized)
 				return
 			}
@@ -196,7 +199,9 @@ func authMW(next http.Handler) http.Handler {
 			}
 
 			// pass the GoogleID around so subsequent functions can easily access it
+			// would this be better in req.Context.Values?
 			req.Header.Set("X-Wasabee-GID", string(gid))
+			req.Header.Set("X-Wasabee-TokenID", token.JwtID())
 			next.ServeHTTP(res, req)
 			return
 		}
@@ -232,7 +237,7 @@ func authMW(next http.Handler) http.Handler {
 		}
 
 		gid := model.GoogleID(id.(string))
-		if auth.CheckLogout(gid) {
+		if auth.IsLoggedOut(gid) {
 			log.Debugw("honoring previously requested logout", "gid", gid)
 			delete(ses.Values, "nonce")
 			delete(ses.Values, "id")
