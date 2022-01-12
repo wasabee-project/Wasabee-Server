@@ -67,6 +67,10 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 func registerWebhook(ctx context.Context) {
 	log.Infow("startup", "subsystem", "RISC", "message", "establishing RISC webhook with Google")
 
+	// can these be pushed into registerWebhook?
+	risc := config.Subrouter(config.Get().RISC.Webhook)
+	risc.HandleFunc("", Webhook).Methods("POST")
+
 	ar := jwk.NewAutoRefresh(ctx)
 	ar.Configure(googleConfig.JWKURI, jwk.WithMinRefreshInterval(60*time.Minute))
 	tmp, err := ar.Refresh(ctx, googleConfig.JWKURI)
@@ -80,7 +84,7 @@ func registerWebhook(ctx context.Context) {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
-	defer DisableWebhook()
+	defer disableWebhook() // should never be needed
 
 	running = true
 
@@ -90,21 +94,28 @@ func registerWebhook(ctx context.Context) {
 	}
 
 	ticker := time.NewTicker(time.Hour)
-	for range ticker.C {
-		tmp, err := ar.Fetch(ctx, googleConfig.JWKURI)
-		if err != nil {
-			log.Error(err)
+	for {
+		select {
+		case <-ctx.Done():
+			// log.Debug("context done, shutting down RISC webhook")
+			disableWebhook()
 			return
-		}
-		keys = tmp
+		case <-ticker.C:
+			tmp, err := ar.Fetch(ctx, googleConfig.JWKURI)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			keys = tmp
 
-		if err := updateWebhook(); err != nil {
-			log.Errorw(err.Error(), "subsystem", "RISC")
-			return
-		}
-		if err := ping(); err != nil {
-			log.Errorw(err.Error(), "subsystem", "RISC")
-			return
+			if err := updateWebhook(); err != nil {
+				log.Errorw(err.Error(), "subsystem", "RISC")
+				return
+			}
+			if err := ping(); err != nil {
+				log.Errorw(err.Error(), "subsystem", "RISC")
+				return
+			}
 		}
 	}
 }
@@ -164,8 +175,8 @@ func updateWebhook() error {
 	return nil
 }
 
-// DisableWebhook tells Google to stop sending messages
-func DisableWebhook() {
+// disableWebhook tells Google to stop sending messages
+func disableWebhook() {
 	if !running {
 		log.Infow("shutdown", "message", "RISC not running...not shutting down again")
 		return
@@ -178,6 +189,8 @@ func DisableWebhook() {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
+
+	log.Debugw("shutdown", "subsystem", "RISC", "message", "got token")
 
 	apiurl := apiBase + "stream:update"
 	webroot := config.Get().HTTP.Webroot
@@ -193,6 +206,9 @@ func DisableWebhook() {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
+
+	log.Debugw("shutdown", "subsystem", "RISC", "message", "marshal'd request")
+
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
 	if err != nil {
@@ -201,6 +217,8 @@ func DisableWebhook() {
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	req.Header.Set("Content-Type", jsonType)
+
+	log.Debugw("shutdown", "subsystem", "RISC", "message", "sending shutdown request")
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -211,7 +229,12 @@ func DisableWebhook() {
 		raw, _ = ioutil.ReadAll(response.Body)
 		log.Errorw("not OK status", "subsystem", "RISC", "content", string(raw))
 	}
+
+	log.Debugw("shutdown", "subsystem", "RISC", "message", "got response")
+
+	close(riscchan)
 	running = false
+	log.Infow("shutdown", "subsystem", "RISC", "message", "RISC shutdown complete")
 }
 
 /* func checkWebhook() error {

@@ -84,13 +84,10 @@ func Start(ctx context.Context) {
 	// make a channel to read for events
 	riscchan = make(chan event, 1)
 
-	risc := config.Subrouter(config.Get().RISC.Webhook)
-	risc.HandleFunc("", Webhook).Methods("POST")
-
 	// start a thread for keeping the connection to Google fresh
 	go registerWebhook(ctx)
 
-	// this loops on the channel messsages
+	// no need to wait for ctx.Done() since registerWebhook does and it calls disableWebhook, which closes riscchan...
 	for e := range riscchan {
 		gid := model.GoogleID(e.Subject)
 		switch e.Type {
@@ -107,28 +104,29 @@ func Start(ctx context.Context) {
 			auth.Logout(gid, e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
-			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Warnw("credential change", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
-			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Warnw("sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
-			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Warnw("tokens revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			// no need to do anything
 		case "https://accounts.google.com/risc/event/sessions-revoked":
-			log.Warnw("logout", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Warnw("google sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		default:
 			log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
 		}
 	}
+	log.Debug("RISC.Start() rischan closed")
 }
 
 // This is called from the webhook
@@ -175,7 +173,7 @@ func validateToken(rawjwt []byte) error {
 			continue
 		}
 
-		log.Infow("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
+		// log.Debugw("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
 
 		// XXX this is ugly and brittle - it is JSON, just unmarshal it.
 		x := v.(map[string]interface{})
