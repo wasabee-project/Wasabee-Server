@@ -19,9 +19,6 @@ import (
 var msg *messaging.Client
 var fbctx context.Context
 
-// app     *firebase.App
-// auth    *auth.Client
-
 // Start is the main startup function for the Firebase subsystem
 func Start(ctx context.Context) error {
 	c := config.Get()
@@ -46,13 +43,6 @@ func Start(ctx context.Context) error {
 		log.Error(err)
 		return err
 	}
-
-	// not currently used
-	/* auth, err := app.Auth(ctx)
-	if err != nil {
-		err := fmt.Errorf("error initializing firebase auth: %v", err)
-		log.Error(err)
-	} */
 
 	wm.RegisterMessageBus("firebase", wm.Bus{
 		SendMessage:      sendMessage,

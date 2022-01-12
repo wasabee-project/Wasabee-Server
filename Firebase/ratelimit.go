@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	//"github.com/wasabee-project/Wasabee-Server/config"
-	// "github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
@@ -31,8 +29,6 @@ func ratelimitTeam(teamID model.TeamID) bool {
 		return true
 	}
 
-	// this request is too recent, drop
-	// log.Debug("rate-limiting agent location send")
 	return false
 }
 
@@ -52,6 +48,5 @@ func ratelimitOp(teamID model.TeamID, opID model.OperationID) bool {
 		return true
 	}
 
-	// log.Debug("rate-limiting map change send")
 	return false
 }
