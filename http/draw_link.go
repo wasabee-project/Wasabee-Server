@@ -14,11 +14,9 @@ import (
 
 func linkRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *model.Link, *model.Operation, error) {
 	op := model.Operation{}
-	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return gid, &model.Link{}, &op, err
 	}

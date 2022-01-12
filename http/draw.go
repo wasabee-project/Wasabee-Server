@@ -17,12 +17,9 @@ import (
 )
 
 func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -68,14 +65,12 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawGetRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	vars := mux.Vars(req)
 	id := vars["opID"]
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -157,12 +152,9 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -194,12 +186,10 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	var op model.Operation
 	op.ID = model.OperationID(vars["opID"])
-	res.Header().Set("Content-Type", jsonType)
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -256,15 +246,12 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawChownRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	vars := mux.Vars(req)
 	to := vars["to"]
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -289,70 +276,10 @@ func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
-/*
-func drawStockRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id := vars["opID"]
-
-	gid, err := getAgentID(req)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var o model.Operation
-	o.ID = model.OperationID(id)
-	if err = o.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	url := "https://intel.ingress.com/intel/?z=13&ll="
-
-	type latlon struct {
-		lat string
-		lon string
-	}
-
-	var portals = make(map[model.PortalID]latlon)
-
-	for _, p := range o.OpPortals {
-		var l latlon
-		l.lat = p.Lat
-		l.lon = p.Lon
-		portals[p.ID] = l
-	}
-
-	count := 0
-	var notfirst bool
-	for _, l := range o.Links {
-		x := portals[l.From]
-		if notfirst {
-			url += "_"
-		} else {
-			url += x.lat + "," + x.lon + "&pls="
-			notfirst = true
-		}
-		url += x.lat + "," + x.lon + ","
-		y := portals[l.To]
-		url += y.lat + "," + y.lon
-		count++
-		if count > 59 {
-			break
-		}
-	}
-	http.Redirect(res, req, url, http.StatusFound) // commented out
-} */
-
 func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -381,12 +308,9 @@ func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -414,11 +338,9 @@ func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -437,13 +359,13 @@ func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	err = op.LinkOrder(order)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 	err = op.MarkerOrder(order)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 	uid := touch(op)
@@ -451,11 +373,9 @@ func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -481,11 +401,9 @@ func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -520,12 +438,9 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -563,12 +478,9 @@ func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 

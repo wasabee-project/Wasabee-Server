@@ -41,7 +41,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if err = json.Unmarshal(content, &m); err != nil {
 		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -64,7 +64,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -76,13 +76,13 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if err != nil {
 		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	if err = m.Gid.UpdatePicture(m.Pic); err != nil {
 		log.Info(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -99,7 +99,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	_ = ses.Save(req, res)
 	if !m.Gid.Valid() {
 		log.Errorw("agent not valid at end of login?", "GID", m.Gid)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -115,7 +115,7 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	name, err := m.Gid.IngressName()
 	if err != nil {
 		log.Errorw("no name at end of login?", "GID", m.Gid)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -212,8 +212,6 @@ func getAgentID(req *http.Request) (model.GoogleID, error) {
 
 // apTokenRoute receives a Google Oauth2 token from the Android/iOS app and sets the authentication cookie
 func apTokenRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	var m struct {
 		Gid model.GoogleID `json:"id"`
 		Pic string         `json:"picture"`
@@ -415,8 +413,6 @@ func mintjwt(gid model.GoogleID) (string, error) {
 // which they use to log in via Wasabee-IITC or Wasabee-Mobile
 // in the future can this bee the JWT value?
 func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	if !contentTypeIs(req, "multipart/form-data") {
 		err := fmt.Errorf("invalid content-type (needs to be multipart/form-data)")
 		log.Warn(err)

@@ -13,14 +13,9 @@ import (
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-	res.Header().Add("Cache-Control", "no-store") // location changes frequently
-
-	// must be authenticated
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -41,15 +36,14 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	data, _ := json.Marshal(agent)
+	res.Header().Add("Cache-Control", "no-store") // location changes frequently
 	fmt.Fprint(res, string(data))
 }
 
 func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -83,11 +77,9 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -148,8 +140,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	_, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 

@@ -69,12 +69,11 @@ func setupRouter() *mux.Router {
 	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
 
 	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
-	v := config.Subrouter("/v")
-	v.Use(debugMW)
-	v.HandleFunc("/{teamID}", vTeamRoute).Methods("POST")
-	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-	rocks.PathPrefix("/v").HandlerFunc(notFoundJSONRoute)
+	// v := config.Subrouter("/v")
+	// v.HandleFunc("/{teamID}", vTeamRoute).Methods("POST")
+	// v.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	// v.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
+	// v.PathPrefix("/v").HandlerFunc(notFoundJSONRoute)
 
 	// /static files
 	static := config.Subrouter("/static")
@@ -236,7 +235,6 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 func iosRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

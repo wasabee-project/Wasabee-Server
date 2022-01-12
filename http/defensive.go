@@ -12,11 +12,9 @@ import (
 )
 
 func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Warn(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -34,11 +32,9 @@ func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
 func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
 	var dk model.DefensiveKey
 
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Warn(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -95,11 +91,9 @@ func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
 func setDefensiveKeyBulk(res http.ResponseWriter, req *http.Request) {
 	var dkl []model.DefensiveKey
 
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Warn(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return
 	}
 

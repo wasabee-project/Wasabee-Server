@@ -18,11 +18,8 @@ import (
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -78,10 +75,8 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -106,10 +101,8 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -137,10 +130,8 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -175,10 +166,8 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -221,10 +210,8 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -264,10 +251,8 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -301,11 +286,8 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -331,11 +313,8 @@ func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -366,10 +345,8 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -406,10 +383,8 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -437,7 +412,6 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 	// redirects to the app interface for the user to manage the team
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -456,10 +430,8 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -475,10 +447,8 @@ func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
 }
 
 func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

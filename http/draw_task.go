@@ -14,13 +14,10 @@ import (
 
 // setup common to all these calls
 func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *model.Operation, *model.Task, error) {
-	res.Header().Set("Content-Type", jsonType)
-
 	op := model.Operation{}
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return gid, &op, &model.Task{}, err
 	}

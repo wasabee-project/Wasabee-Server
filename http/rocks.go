@@ -13,8 +13,6 @@ import (
 )
 
 func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	if !contentTypeIs(req, jsonTypeShort) {
 		http.Error(res, "Invalid request (needs to be application/json)", http.StatusNotAcceptable)
 		return
@@ -51,10 +49,8 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -84,11 +80,8 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

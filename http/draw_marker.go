@@ -13,12 +13,10 @@ import (
 )
 
 func markerRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *model.Marker, *model.Operation, error) {
-	res.Header().Set("Content-Type", jsonType)
 	op := model.Operation{}
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return gid, &model.Marker{}, &op, err
 	}

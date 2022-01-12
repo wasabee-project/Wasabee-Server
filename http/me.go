@@ -29,12 +29,10 @@ import (
 
 // get the logged in agent
 func meRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	res.Header().Set("Cache-Control", "no-store")
 
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -65,12 +63,8 @@ func formValidationToken(req *http.Request) string {
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-	// res.Header().Set("Cache-Control", "no-store")
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -93,11 +87,8 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -119,11 +110,8 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -145,11 +133,8 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
-
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -167,10 +152,8 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -195,10 +178,8 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -225,10 +206,8 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -254,15 +233,12 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 	_ = ses.Save(req, res)
 
 	auth.Logout(gid, "user requested")
-	res.Header().Add("Content-Type", jsonType)
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -291,10 +267,8 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -325,10 +299,8 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -346,10 +318,8 @@ func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -432,10 +402,8 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meCommProofRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -462,10 +430,8 @@ func meCommProofRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -498,10 +464,8 @@ func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meCommClearRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Add("Content-Type", jsonType)
 	gid, err := getAgentID(req)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
