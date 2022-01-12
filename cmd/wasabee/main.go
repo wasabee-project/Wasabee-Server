@@ -165,9 +165,6 @@ func run(cargs *cli.Context) error {
 	// shutdown RISC, Telegram, V, Rocks, and Firebase by canceling the context
 	shutdown()
 
-	// the cancel above should take care of this, but for now leave it in place
-	risc.DisableWebhook()
-
 	// shutdown the http server
 	if err = wasabeehttps.Shutdown(); err != nil {
 		log.Error(err)
