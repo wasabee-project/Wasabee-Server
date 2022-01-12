@@ -64,6 +64,13 @@ func Start(ctx context.Context) {
 
 	limiter = rate.NewLimiter(rate.Limit(0.5), 10)
 
+	// V and Rocks need to be moved to the respective system's Start()
+	rocks := config.Subrouter("/rocks")
+	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
+	// rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	// rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
+	// rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
+
 	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Rocks", messaging.Bus{
 		AddToRemote:      addToRemote,

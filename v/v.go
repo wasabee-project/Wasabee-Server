@@ -61,6 +61,13 @@ func Start(ctx context.Context) {
 		return
 	}
 
+	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
+	v := config.Subrouter("/v")
+	v.HandleFunc("/{teamID}", vTeamRoute).Methods("POST")
+	// v.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	// v.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
+	// v.PathPrefix("/v").HandlerFunc(notFoundJSONRoute)
+
 	messaging.RegisterMessageBus("v.enl.one", messaging.Bus{
 		AddToRemote:      addToRemote,
 		RemoveFromRemote: removeFromRemote,

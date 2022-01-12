@@ -26,8 +26,8 @@ type Configuration struct {
 // sugared is the primary log interface for Wasabee-Server
 var sugared *zap.SugaredLogger
 
-// SetupLogging is called very early by the startup routine to configure logging
-func SetupLogging(c *Configuration) {
+// Start is called very early by the startup routine to configure logging
+func Start(ctx context.Context, c *Configuration) {
 	var cores []zapcore.Core
 
 	if c.Console {
@@ -53,7 +53,7 @@ func SetupLogging(c *Configuration) {
 	}
 
 	if c.GoogleCloudProject != "" && c.GoogleCloudCreds != "" {
-		gcCore, err := addGoogleCloud(c.GoogleCloudProject, c.GoogleCloudCreds)
+		gcCore, err := addGoogleCloud(ctx, c.GoogleCloudProject, c.GoogleCloudCreds)
 		if err != nil {
 			fmt.Printf("unable to start cloud logging to project %s with creds %s: %v\n", c.GoogleCloudProject, c.GoogleCloudCreds, err)
 		} else {
@@ -71,8 +71,7 @@ func SetupLogging(c *Configuration) {
 	sugared = sugarfree.Sugar()
 }
 
-func addGoogleCloud(project string, jsonPath string) (zapcore.Core, error) {
-	ctx := context.Background()
+func addGoogleCloud(ctx context.Context, project string, jsonPath string) (zapcore.Core, error) {
 	opt := option.WithCredentialsFile(jsonPath)
 
 	atom := zap.NewAtomicLevel()

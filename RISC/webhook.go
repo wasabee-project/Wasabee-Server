@@ -190,8 +190,6 @@ func disableWebhook() {
 		return
 	}
 
-	log.Debugw("shutdown", "subsystem", "RISC", "message", "got token")
-
 	apiurl := apiBase + "stream:update"
 	webroot := config.Get().HTTP.Webroot
 	jmsg := map[string]interface{}{
@@ -207,8 +205,6 @@ func disableWebhook() {
 		return
 	}
 
-	log.Debugw("shutdown", "subsystem", "RISC", "message", "marshal'd request")
-
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiurl, bytes.NewBuffer(raw))
 	if err != nil {
@@ -217,8 +213,6 @@ func disableWebhook() {
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	req.Header.Set("Content-Type", jsonType)
-
-	log.Debugw("shutdown", "subsystem", "RISC", "message", "sending shutdown request")
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -230,11 +224,8 @@ func disableWebhook() {
 		log.Errorw("not OK status", "subsystem", "RISC", "content", string(raw))
 	}
 
-	log.Debugw("shutdown", "subsystem", "RISC", "message", "got response")
-
 	close(riscchan)
 	running = false
-	log.Infow("shutdown", "subsystem", "RISC", "message", "RISC shutdown complete")
 }
 
 /* func checkWebhook() error {

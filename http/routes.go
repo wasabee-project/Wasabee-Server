@@ -61,20 +61,6 @@ func setupRouter() *mux.Router {
 	meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
 
-	// V and Rocks need to be moved to the respective system's Start()
-	rocks := config.Subrouter("/rocks")
-	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
-	rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-	rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-	rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
-
-	// v.enl.one posting when a team changes -- triggers a pull of all teams linked to the V team #
-	// v := config.Subrouter("/v")
-	// v.HandleFunc("/{teamID}", vTeamRoute).Methods("POST")
-	// v.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-	// v.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-	// v.PathPrefix("/v").HandlerFunc(notFoundJSONRoute)
-
 	// /static files
 	static := config.Subrouter("/static")
 	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.Get().FrontendPath)))

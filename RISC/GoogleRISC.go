@@ -59,7 +59,7 @@ type riscmsg struct {
 func Start(ctx context.Context) {
 	c := config.Get()
 	if c.RISC.Cert == "" {
-		log.Debugw("startup", "message", "RISC not configured")
+		log.Infow("startup", "message", "no configuration, not enabling RISC ")
 		return
 	}
 	full := path.Join(c.Certs, c.RISC.Cert)
@@ -84,7 +84,7 @@ func Start(ctx context.Context) {
 	// make a channel to read for events
 	riscchan = make(chan event, 1)
 
-	// start a thread for keeping the connection to Google fresh
+	// start a goroutine for keeping the connection to Google fresh
 	go registerWebhook(ctx)
 
 	// no need to wait for ctx.Done() since registerWebhook does and it calls disableWebhook, which closes riscchan...
@@ -126,7 +126,6 @@ func Start(ctx context.Context) {
 			log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
 		}
 	}
-	log.Debug("RISC.Start() rischan closed")
 }
 
 // This is called from the webhook
