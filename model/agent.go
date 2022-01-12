@@ -674,7 +674,7 @@ func (gid GoogleID) FirstLogin() error {
 		return err
 	}
 
-	if _, err = db.Exec("INSERT INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID); err != nil {
+	if _, err = db.Exec("REPLACE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID); err != nil {
 		log.Error(err)
 		return err
 	}
