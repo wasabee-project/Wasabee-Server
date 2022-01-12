@@ -113,7 +113,7 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/me/{teamId}:
+  /api/v1/me/{teamID}:
     delete:
       tags:
         - "User info"
@@ -568,7 +568,7 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/draw/{opID}/task/{taskID}/depend/{taskID}:
+  /api/v1/draw/{opID}/task/{taskID}/depend/{deptaskID}:
     put:
       summary: Add a task dependency
       tags:
@@ -577,7 +577,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/opIDParam"
         - $ref: "#/components/parameters/taskIDParam"
-        - $ref: "#/components/parameters/taskIDParam"
+        - $ref: "#/components/parameters/deptaskIDParam"
       responses:
         "200":
           $ref: "#/components/responses/PostSuccess"
@@ -593,7 +593,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/opIDParam"
         - $ref: "#/components/parameters/taskIDParam"
-        - $ref: "#/components/parameters/taskIDParam"
+        - $ref: "#/components/parameters/deptaskIDParam"
       responses:
         "200":
           $ref: "#/components/responses/PostSuccess"
@@ -1516,6 +1516,13 @@ components:
         $ref: "#/components/schemas/OperationID"
     taskIDParam:
       name: taskID
+      in: path
+      required: true
+      description: ID of the task
+      schema:
+        $ref: "#/components/schemas/TaskID"
+    deptaskIDParam:
+      name: deptaskID
       in: path
       required: true
       description: ID of the task
