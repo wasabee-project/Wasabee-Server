@@ -17,6 +17,8 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
+var holdtime = 3 * time.Second
+
 // communityNotice is sent from a community when an agent is added or removed
 // consumed by RocksCommunitySync function below
 type communityNotice struct {
@@ -91,7 +93,7 @@ func Search(id string) (*model.RocksAgent, error) {
 		return &model.RocksAgent{}, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
+	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
 	defer cancel()
 	if err := limiter.Wait(ctx); err != nil {
 		log.Warn(err)
@@ -108,7 +110,7 @@ func Search(id string) (*model.RocksAgent, error) {
 		return &model.RocksAgent{}, err
 	}
 	client := &http.Client{
-		Timeout: (3 * time.Second),
+		Timeout: holdtime,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -197,7 +199,7 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
+	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
 	defer cancel()
 	if err := limiter.Wait(ctx); err != nil {
 		log.Warn(err)
@@ -213,7 +215,7 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		return err
 	}
 	client := &http.Client{
-		Timeout: (3 * time.Second),
+		Timeout: holdtime,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -266,7 +268,7 @@ func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), (3 * time.Second))
+	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
 	defer cancel()
 	if err := limiter.Wait(ctx); err != nil {
 		log.Infow("timeout waiting on .rocks rate limiter", "GID", gid)
@@ -274,7 +276,7 @@ func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 
 	c := config.Get().Rocks
 	client := &http.Client{
-		Timeout: (3 * time.Second),
+		Timeout: holdtime,
 	}
 	apiurl := fmt.Sprintf("%s/%s?key=%s", c.CommunityEndpoint, gid, cid)
 	// #nosec
@@ -321,7 +323,7 @@ func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
 	defer cancel()
 	if err := limiter.Wait(ctx); err != nil {
 		log.Info(err)
@@ -336,7 +338,7 @@ func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 		return err
 	}
 	client := &http.Client{
-		Timeout: (3 * time.Second),
+		Timeout: holdtime,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
