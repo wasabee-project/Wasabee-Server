@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
-	"time"
 
 	"cloud.google.com/go/profiler"
 	"google.golang.org/api/option"
@@ -132,31 +132,57 @@ func run(cargs *cli.Context) error {
 		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
 	}
 
+	// the waitgroup which must be completed before shutting down
+	var wg sync.WaitGroup
+
 	// start background tasks
-	go background.Start(ctx)
+	go func(ctx context.Context) {
+		wg.Add(1)
+		defer wg.Done()
+		background.Start(ctx)
+	}(ctx)
 
 	// start firebase
-	go wfb.Start(ctx)
+	go func(ctx context.Context) {
+		wg.Add(1)
+		defer wg.Done()
+		wfb.Start(ctx)
+	}(ctx)
 
 	// Serve HTTPS -- does not use the context
 	go wasabeehttps.Start()
 
-	// Things which establish webhooks should start after https
-	go risc.Start(ctx)
+	// start risc
+	go func(ctx context.Context) {
+		wg.Add(1)
+		defer wg.Done()
+		risc.Start(ctx)
+	}(ctx)
 
-	// Serve Telegram
-	go wtg.Start(ctx)
+	// start Telegram
+	go func(ctx context.Context) {
+		wg.Add(1)
+		defer wg.Done()
+		wtg.Start(ctx)
+	}(ctx)
 
 	// start V
-	go v.Start(ctx)
+	go func(ctx context.Context) {
+		wg.Add(1)
+		defer wg.Done()
+		v.Start(ctx)
+	}(ctx)
 
 	// start Rocks
-	go rocks.Start(ctx)
+	go func(ctx context.Context) {
+		wg.Add(1)
+		defer wg.Done()
+		rocks.Start(ctx)
+	}(ctx)
 
 	// everything is running. Wait for the OS to signal time to stop
-	sigch := make(chan os.Signal, 3)
+	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
-
 	sig := <-sigch
 	log.Infow("shutdown", "requested by signal", sig)
 
@@ -164,7 +190,7 @@ func run(cargs *cli.Context) error {
 	shutdown()
 
 	// wait for things to complete their cleanup tasks
-	time.Sleep(2 * time.Second)
+	wg.Wait()
 
 	// shutdown the http server
 	if err = wasabeehttps.Shutdown(); err != nil {
@@ -173,7 +199,5 @@ func run(cargs *cli.Context) error {
 
 	// close database connection
 	model.Disconnect()
-
-	// _ = log.Sync()
 	return nil
 }
