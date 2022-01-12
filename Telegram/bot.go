@@ -39,7 +39,7 @@ func Start(ctx context.Context) {
 	sendQueue = make(chan tgbotapi.Chattable, sendQchanSize)
 
 	var logger log.Printer
-	tgbotapi.SetLogger(logger)
+	_ = tgbotapi.SetLogger(logger)
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(c.APIKey)

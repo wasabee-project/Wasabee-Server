@@ -1,11 +1,11 @@
-package rocks 
+package rocks
 
 import (
-	"fmt"
-	"strings"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
@@ -49,6 +49,6 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func contentTypeIs(req *http.Request, check string) bool {
-    contentType := strings.Split(strings.Replace(req.Header.Get("Content-Type"), " ", "", -1), ";")[0]
+	contentType := strings.Split(strings.Replace(req.Header.Get("Content-Type"), " ", "", -1), ";")[0]
 	return strings.EqualFold(contentType, check)
 }

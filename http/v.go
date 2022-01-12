@@ -14,7 +14,7 @@ import (
 func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -24,7 +24,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if !owns {
@@ -37,7 +37,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vkey, err := gid.GetVAPIkey()
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	if vkey == "" {
@@ -59,7 +59,7 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
@@ -69,7 +69,7 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if !owns {
@@ -82,14 +82,14 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vteam, err := strconv.ParseInt(req.FormValue("vteam"), 10, 64) // "0" to disable
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	r, err := strconv.ParseInt(req.FormValue("role"), 10, 8) // "0" for all roles
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 	role := uint8(r)
@@ -106,15 +106,14 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
 	vars := mux.Vars(req)
 	mode := vars["mode"]
 
-	err = v.BulkImport(gid, mode)
-	if err != nil {
+	if err = v.BulkImport(gid, mode); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

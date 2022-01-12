@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"cloud.google.com/go/profiler"
 	"google.golang.org/api/option"
@@ -78,6 +79,9 @@ func run(cargs *cli.Context) error {
 	project := os.Getenv("GCP_PROJECT")
 	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
+	// the main context used for all sub-services, when this is canceled, everything shuts down
+	ctx, shutdown := context.WithCancel(context.Background())
+
 	// config depends on log, so do this the hard way
 	logconf := log.Configuration{
 		Console:            true,
@@ -90,7 +94,7 @@ func run(cargs *cli.Context) error {
 	if cargs.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
 	}
-	log.SetupLogging(&logconf)
+	log.Start(context.Background(), &logconf)
 
 	// cloud profile
 	if creds != "" && project != "" && cargs.Bool("debug") {
@@ -106,9 +110,6 @@ func run(cargs *cli.Context) error {
 			}
 		}
 	}
-
-	// the main context used for all sub-services, when this is canceled, everything shuts down
-	ctx, shutdown := context.WithCancel(context.Background())
 
 	// load the config file
 	conf, err := config.LoadFile(cargs.String("config"))
@@ -134,36 +135,36 @@ func run(cargs *cli.Context) error {
 	// start background tasks
 	go background.Start(ctx)
 
-	// start V
-	go v.Start(ctx)
-
-	// start Rocks
-	go rocks.Start(ctx)
-
 	// start firebase
 	go wfb.Start(ctx)
 
 	// Serve HTTPS -- does not use the context
 	go wasabeehttps.Start()
 
-	// RISC and Telegram should start after https
+	// Things which establish webhooks should start after https
 	go risc.Start(ctx)
 
 	// Serve Telegram
 	go wtg.Start(ctx)
 
-	// everything is running. Wait for the OS to signal time to stop
+	// start V
+	go v.Start(ctx)
 
-	// wait for signal to shut down
+	// start Rocks
+	go rocks.Start(ctx)
+
+	// everything is running. Wait for the OS to signal time to stop
 	sigch := make(chan os.Signal, 3)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
 
-	// loop until signal sent
 	sig := <-sigch
 	log.Infow("shutdown", "requested by signal", sig)
 
 	// shutdown RISC, Telegram, V, Rocks, and Firebase by canceling the context
 	shutdown()
+
+	// wait for things to complete their cleanup tasks
+	time.Sleep(2 * time.Second)
 
 	// shutdown the http server
 	if err = wasabeehttps.Shutdown(); err != nil {

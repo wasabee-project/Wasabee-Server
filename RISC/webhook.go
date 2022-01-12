@@ -65,7 +65,7 @@ func Webhook(res http.ResponseWriter, req *http.Request) {
 }
 
 func registerWebhook(ctx context.Context) {
-	log.Infow("startup", "subsystem", "RISC", "message", "establishing RISC webhook with Google")
+	// log.Infow("startup", "subsystem", "RISC", "message", "establishing RISC webhook with Google")
 
 	// can these be pushed into registerWebhook?
 	risc := config.Subrouter(config.Get().RISC.Webhook)
@@ -84,7 +84,7 @@ func registerWebhook(ctx context.Context) {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
-	defer disableWebhook() // should never be needed
+	defer disableWebhook()
 
 	running = true
 
@@ -97,8 +97,6 @@ func registerWebhook(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			// log.Debug("context done, shutting down RISC webhook")
-			disableWebhook()
 			return
 		case <-ticker.C:
 			tmp, err := ar.Fetch(ctx, googleConfig.JWKURI)

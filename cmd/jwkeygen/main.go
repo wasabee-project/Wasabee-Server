@@ -28,7 +28,7 @@ func main() {
 		return
 	}
 
-	key.Set(jwk.KeyIDKey, generatename.GenerateID(16))
+	_ = key.Set(jwk.KeyIDKey, generatename.GenerateID(16))
 
 	buf, err := json.MarshalIndent(key, "", "  ")
 	if err != nil {

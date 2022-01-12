@@ -228,6 +228,8 @@ func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 
 // Sync pulls a team (and role) from V to sync with a Wasabee team
 func Sync(ctx context.Context, teamID model.TeamID, key string) error {
+	// XXX put ctx.Done() checks in the loops....
+
 	x, role, err := teamID.VTeam()
 	if err != nil {
 		return err
