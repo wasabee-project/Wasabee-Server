@@ -1,6 +1,6 @@
 openapi: "3.0.0"
 info:
-  version: 0.18.0
+  version: 0.2.0
   title: Wasabee Server
   license:
     name: MIT
@@ -24,7 +24,7 @@ paths:
                 accessToken:
                   type: string
       responses:
-        '200':
+        "200":
           description: success
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -39,14 +39,14 @@ paths:
       requestBody:
         required: true
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               properties:
                 token:
                   type: string
       responses:
-        '200':
+        "200":
           description: success
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -59,7 +59,7 @@ paths:
       tags:
         - Auth
       responses:
-        '200':
+        "200":
           description: operation uploaded
 
   /me:
@@ -67,15 +67,15 @@ paths:
       tags:
         - "User info"
       responses:
-        '200':
+        "200":
           description: User data
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AgentData"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -84,28 +84,27 @@ paths:
     put:
       tags:
         - "User Info"
-      parameters:
-        - name: name
-          description: the name to store
-          required: true
-          in: query
-          schema:
-            type: string
-        - name: qt
-          description: the querytoken from the /me data
-          required: true
-          in: query
-          schema:
-            type: string
-        - name: faction
-          description: ENLIGHTENED or RESISTANCE
-          required: true
-          in: query
-          schema:
-             type: string
-             enum: [ENLIGHTENED,RESISTANCE]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - qt
+                - faction
+              properties:
+                name:
+                  description: the name to store
+                  type: string
+                qt:
+                  description: the querytoken from the /me data
+                  type: string
+                faction:
+                  description: ENLIGHTENED or RESISTANCE
+                  type: string
       responses:
-        '200':
+        "200":
           description: data stored
         '401':
           $ref: "#/components/responses/NotLoggedIn"
@@ -119,18 +118,13 @@ paths:
       tags:
         - "User info"
       parameters:
-        - name: teamId
-          in: path
-          required: true
-          description: The id of the team to delete
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -147,7 +141,7 @@ paths:
             schema:
               $ref: "#/components/schemas/Operation"
       responses:
-        '200':
+        "200":
           description: operation uploaded
         '401':
           $ref: "#/components/responses/NotLoggedIn"
@@ -162,26 +156,21 @@ paths:
       tags:
         - Operation
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: The id of the op to fetch
-          schema:
-            $ref: "#/components/schemas/OperationID"
+        - $ref: "#/components/parameters/opIDParam"
       responses:
-        '200':
+        "200":
           description: Server operation
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Operation"
-        '304':
+        "304":
           description: Not modified
-        '410':
+        "410":
           description: Operation has been deleted
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -190,12 +179,7 @@ paths:
       tags:
         - Operation
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: The id of the op to update
-          schema:
-            type: string
+        - $ref: "#/components/parameters/opIDParam"
       requestBody:
         required: true
         content:
@@ -203,7 +187,7 @@ paths:
             schema:
               $ref: "#/components/schemas/Operation"
       responses:
-        '200':
+        "200":
           description: operation updated
         '401':
           $ref: "#/components/responses/NotLoggedIn"
@@ -214,16 +198,11 @@ paths:
     delete:
       summary: Delete operation
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: The id of the op to fetch
-          schema:
-            $ref: "#/components/schemas/OperationID"
+        - $ref: "#/components/parameters/opIDParam"
       tags:
         - Operation
       responses:
-        '200':
+        "200":
           description: operation deleted
         default:
           $ref: "#/components/responses/Unexpected"
@@ -234,14 +213,10 @@ paths:
       tags:
         - Operation
       parameters:
-        - name: opID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/OperationID"
+        - $ref: "#/components/parameters/opIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -250,15 +225,14 @@ paths:
                 info:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
-
 
   /api/v1/draw/{opID}/marker/{markerID}/assign:
     post:
@@ -268,31 +242,21 @@ paths:
         - Assignment
         - Marker
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: Operation ID
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: markerID
-          in: path
-          required: true
-          description: Marker ID
-          schema:
-            $ref:  "#/components/schemas/MarkerID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/markerIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               properties:
                 agent:
                   required: true
-                  $ref:  "#/components/schemas/GoogleID"
+                  $ref: "#/components/schemas/GoogleID"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -307,28 +271,20 @@ paths:
         - Assignment
         - Marker
       parameters:
-        - name: opID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: markerID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/MarkerID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/markerIDParam"
         - name: action
           in: path
           required: true
           schema:
             type: string
-            enum: [incomplete,complete]
+            enum: [incomplete, complete]
       responses:
-        '200':
+        "200":
           description: Success
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -340,19 +296,11 @@ paths:
         - Operation
         - Marker
       parameters:
-        - name: opID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: markerID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/MarkerID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/markerIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -361,9 +309,9 @@ paths:
                 comment:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -377,22 +325,14 @@ paths:
         - Operation
         - Link
       parameters:
-        - name: opID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: linkID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/LinkID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/linkIDParam"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -405,31 +345,21 @@ paths:
         - Assignment
         - Link
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: Operation ID
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: linkID
-          in: path
-          required: true
-          description: Link ID
-          schema:
-            $ref:  "#/components/schemas/LinkID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/linkIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               properties:
                 agent:
                   required: true
-                  $ref:  "#/components/schemas/GoogleID"
+                  $ref: "#/components/schemas/GoogleID"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -444,28 +374,20 @@ paths:
         - Assignment
         - Link
       parameters:
-        - name: opID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: linkID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/LinkID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/linkIDParam"
         - name: action
           in: path
           required: true
           schema:
             type: string
-            enum: [incomplete,complete]
+            enum: [incomplete, complete]
       responses:
-        '200':
+        "200":
           description: Success
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -477,19 +399,11 @@ paths:
         - Operation
         - Link
       parameters:
-        - name: opID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: linkID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/LinkID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/linkIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -498,9 +412,9 @@ paths:
                 desc:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -514,19 +428,11 @@ paths:
         - Operation
         - Link
       parameters:
-        - name: opID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/OperationID"
-        - name: linkID
-          in: path
-          required: true
-          schema:
-            $ref:  "#/components/schemas/LinkID"
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/linkIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -535,12 +441,164 @@ paths:
                 zone:
                   $ref: "#/components/schemas/Zone"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/task/{taskID}:
+    get:
+      summary: Get task
+      tags:
+        - Operation
+        - Task
+      parameters:
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+      responses:
+        "200":
+          description: Task data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/task/{taskID}/{action}:
+    put:
+      summary: Change the state of the Task
+      tags:
+        - Operation
+        - Task
+      parameters:
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+        - name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [complete, incomplete, acknowledge, reject, claim]
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/task/{taskID}/order:
+    put:
+      summary: Set task order
+      tags:
+        - Operation
+        - Task
+      parameters:
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - order
+              properties:
+                order:
+                  type: number
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/task/{taskID}/assign:
+    put:
+      summary: Set task assignments
+      tags:
+        - Operation
+        - Task
+      parameters:
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - agent
+              properties:
+                agent:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/GoogleID"
+            encoding:
+              agent:
+                explode: true
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    delete:
+      summary: Delete task assignments
+      tags:
+        - Operation
+        - Task
+      parameters:
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/draw/{opID}/task/{taskID}/depend/{taskID}:
+    put:
+      summary: Add a task dependency
+      tags:
+        - Operation
+        - Task
+      parameters:
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    delete:
+      summary: Delete a task dependency
+      tags:
+        - Operation
+        - Task
+      parameters:
+        - $ref: "#/components/parameters/opIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+        - $ref: "#/components/parameters/taskIDParam"
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
 
@@ -550,21 +608,16 @@ paths:
       tags:
         - Operation
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: Operation ID
-          schema:
-            $ref:  "#/components/schemas/OperationID"
+        - $ref: "#/components/parameters/opIDParam"
         - name: portalID
           in: path
           required: true
           description: Portal ID
           schema:
-            $ref:  "#/components/schemas/PortalID"
+            $ref: "#/components/schemas/PortalID"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -576,9 +629,9 @@ paths:
                 capsule:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -592,15 +645,10 @@ paths:
         - Operation
         - Permission
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: Operation ID
-          schema:
-            $ref:  "#/components/schemas/OperationID"
+        - $ref: "#/components/parameters/opIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -608,16 +656,16 @@ paths:
                 - role
               properties:
                 team:
-                  $ref:  "#/components/schemas/TeamID"
+                  $ref: "#/components/schemas/TeamID"
                 role:
                   type: string
-                  enum: [write,read,assignonly]
+                  enum: [write, read, assignonly]
                 zone:
-                  $ref:  "#/components/schemas/Zone"
+                  $ref: "#/components/schemas/Zone"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -629,15 +677,10 @@ paths:
         - Operation
         - Permission
       parameters:
-        - name: opID
-          in: path
-          required: true
-          description: Operation ID
-          schema:
-            $ref:  "#/components/schemas/OperationID"
+        - $ref: "#/components/parameters/opIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -645,16 +688,16 @@ paths:
                 - role
               properties:
                 team:
-                  $ref:  "#/components/schemas/TeamID"
+                  $ref: "#/components/schemas/TeamID"
                 role:
                   type: string
-                  enum: [write,read,assignonly]
+                  enum: [write, read, assignonly]
                 zone:
-                  $ref:  "#/components/schemas/Zone"
+                  $ref: "#/components/schemas/Zone"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -672,15 +715,15 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: requested agent
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Agent"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -696,7 +739,7 @@ paths:
           required: true
           description: Agent ID
           schema:
-            $ref:  "#/components/schemas/GoogleID"
+            $ref: "#/components/schemas/GoogleID"
       requestBody:
         content:
           application/json:
@@ -716,13 +759,13 @@ paths:
                 Lng:
                   type: string
                 ID:
-                  $ref:  "#/components/schemas/PortalID"
+                  $ref: "#/components/schemas/PortalID"
                 Type:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -741,11 +784,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: success??
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -755,22 +798,17 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          description: ID of the team to fetch
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       responses:
-        '200':
+        "200":
           description: requested team
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TeamData"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -779,15 +817,11 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -797,22 +831,18 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
         - name: newOwner
           in: query
           required: true
           schema:
             $ref: "#/components/schemas/GoogleID"
       responses:
-        '200':
+        "200":
           description: success
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -822,14 +852,10 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -838,9 +864,9 @@ paths:
                 teamname:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -852,14 +878,10 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -868,9 +890,9 @@ paths:
                 m:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -882,18 +904,13 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       responses:
-        '200':
+        "200":
           description: success
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -905,18 +922,13 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       responses:
-        '200':
+        "200":
           description: joinlink ???
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -926,18 +938,13 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
       responses:
-        '200':
+        "200":
           description: success
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -948,11 +955,7 @@ paths:
         - Team
         - Rocks
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
         - name: community
           in: query
           required: true
@@ -964,11 +967,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: success
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '403':
+        "403":
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -978,20 +981,16 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
         - name: agentID
           in: path
           required: true
           schema:
             $ref: "#/components/schemas/GoogleID"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -1002,20 +1001,16 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
         - name: agentID
           in: path
           required: true
           schema:
             $ref: "#/components/schemas/GoogleID"
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -1025,11 +1020,7 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
         - name: agentID
           in: path
           required: true
@@ -1037,7 +1028,7 @@ paths:
             $ref: "#/components/schemas/GoogleID"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -1046,9 +1037,9 @@ paths:
                 displayname:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
@@ -1060,11 +1051,7 @@ paths:
       tags:
         - Team
       parameters:
-        - name: teamID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/TeamID"
+        - $ref: "#/components/parameters/teamIDParam"
         - name: agentID
           in: path
           required: true
@@ -1072,7 +1059,7 @@ paths:
             $ref: "#/components/schemas/GoogleID"
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
               required:
@@ -1081,17 +1068,21 @@ paths:
                 squad:
                   type: string
       responses:
-        '200':
+        "200":
           $ref: "#/components/responses/PostSuccess"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         '406':
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
 
-
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   responses:
     PostSuccess:
       description: Success
@@ -1108,7 +1099,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     Forbidden:
       description: Forbidden
       content:
@@ -1133,13 +1124,7 @@ components:
       type: string
     GoogleID:
       type: string
-      minLength: 20
-      maxLength: 20
-    LinkID:
-      type: string
-      minLength: 40
-      maxLength: 40
-    MarkerID:
+    TaskID:
       type: string
       minLength: 40
       maxLength: 40
@@ -1151,14 +1136,12 @@ components:
       maxLength: 40
     PortalID:
       type: string
-      minLength: 40
+      minLength: 35
       maxLength: 40
     TeamID:
       type: string
     Zone:
       type: integer
-      minimum: 1
-      maximum: 16
     AgentData:
       type: object
       required:
@@ -1176,7 +1159,6 @@ components:
         - OwnedTeams
         - Teams
         - Ops
-        - Assignments
         - Telegram
       properties:
         GoogleID:
@@ -1213,10 +1195,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdOperation"
-        Assignments:
-          type: array
-          items:
-            $ref: "#/components/schemas/Assignment"
 
     AdTeam:
       type: object
@@ -1262,14 +1240,6 @@ components:
         Color:
           type: string
         TeamID:
-          type: string
-
-    Assignment:
-      type: object
-      properties:
-        OpID:
-          $ref:  "#/components/schemas/OperationID"
-        OperationName:
           type: string
 
     Agent:
@@ -1371,11 +1341,11 @@ components:
         - zones
       properties:
         ID:
-          $ref:  "#/components/schemas/TeamID"
+          $ref: "#/components/schemas/TeamID"
         name:
           type: string
         creator:
-          $ref:  "#/components/schemas/GoogleID"
+          $ref: "#/components/schemas/GoogleID"
         opportals:
           type: array
           items:
@@ -1414,7 +1384,7 @@ components:
       type: object
       properties:
         id:
-          $ref:  "#/components/schemas/PortalID"
+          $ref: "#/components/schemas/PortalID"
         name:
           type: string
         lat:
@@ -1425,63 +1395,76 @@ components:
           type: string
         hardness:
           type: string
-    Link:
+    Task:
       type: object
       properties:
-        ID:
-          $ref:  "#/components/schemas/LinkID"
-        fromPortalId:
-          $ref:  "#/components/schemas/PortalID"
-        toPortalId:
-          $ref:  "#/components/schemas/PortalID"
-        description:
-          type: string
-        assignedTo:
-          type: string
-        assignedToNickname:
-          type: string
-        throwOrderPos:
-          type: integer
-        completed:
-          type: boolean
-        color:
-          type: string
-        zone:
-          $ref:  "#/components/schemas/Zone"
-    Marker:
-      type: object
-      properties:
-        ID:
-          $ref:  "#/components/schemas/MarkerID"
-        portalId:
-          $ref:  "#/components/schemas/PortalID"
-        type:
-          $ref:  "#/components/schemas/MarkerType"
+        task:
+          $ref: "#/components/schemas/TaskID"
         comment:
           type: string
-        assignedTo:
-          $ref:  "#/components/schemas/GoogleID"
-        assignedTeam:
-          $ref:  "#/components/schemas/TeamID"
-        assignedNickname:
-          type: string
-        completedBy:
-          type: string
-        completedID:
-          $ref:  "#/components/schemas/GoogleID"
         state:
           type: string
         order:
           type: integer
         zone:
-          $ref:  "#/components/schemas/Zone"
+          $ref: "#/components/schemas/Zone"
+        assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoogleID"
+        dependsOn:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskID"
+        deltaminutes:
+          type: number
+    Link:
+      allOf:
+        - $ref: "#/components/schemas/Task"
+        - type: object
+          properties:
+            ID:
+              $ref: "#/components/schemas/TaskID"
+            assignedTo:
+              $ref: "#/components/schemas/GoogleID"
+            fromPortalId:
+              $ref: "#/components/schemas/PortalID"
+            toPortalId:
+              $ref: "#/components/schemas/PortalID"
+            description:
+              type: string
+              description: deprecated for "comment"
+            throwOrderPos:
+              type: integer
+              description: deprecated for "order"
+            completed:
+              type: boolean
+            color:
+              type: string
+    Marker:
+      allOf:
+        - $ref: "#/components/schemas/Task"
+        - type: object
+          properties:
+            ID:
+              $ref: "#/components/schemas/TaskID"
+            assignedTo:
+              $ref: "#/components/schemas/GoogleID"
+            portalId:
+              $ref: "#/components/schemas/PortalID"
+            type:
+              $ref: "#/components/schemas/MarkerType"
+            completedBy:
+              type: string
+            completedID:
+              $ref: "#/components/schemas/GoogleID"
     OpPermission:
       type: object
       properties:
         opid:
-          $ref:  "#/components/schemas/OperationID"
+          $ref: "#/components/schemas/OperationID"
         teamid:
-          $ref:  "#/components/schemas/OperationID"
+          $ref: "#/components/schemas/OperationID"
         role:
           type: string
         zone:
@@ -1490,16 +1473,16 @@ components:
       type: object
       properties:
         id:
-          $ref:  "#/components/schemas/Zone"
+          $ref: "#/components/schemas/Zone"
         name:
           type: string
     KeyOnHand:
       type: object
       properties:
         portalId:
-          $ref:  "#/components/schemas/PortalID"
+          $ref: "#/components/schemas/PortalID"
         gid:
-          $ref:  "#/components/schemas/GoogleID"
+          $ref: "#/components/schemas/GoogleID"
         onhand:
           type: integer
         capsule:
@@ -1515,3 +1498,43 @@ components:
           format: int32
         message:
           type: string
+
+  parameters:
+    teamIDParam:
+      name: teamID
+      in: path
+      required: true
+      description: ID of the team
+      schema:
+        $ref: "#/components/schemas/TeamID"
+    opIDParam:
+      name: opID
+      in: path
+      required: true
+      description: ID of the Operation
+      schema:
+        $ref: "#/components/schemas/OperationID"
+    taskIDParam:
+      name: taskID
+      in: path
+      required: true
+      description: ID of the task
+      schema:
+        $ref: "#/components/schemas/TaskID"
+    markerIDParam:
+      name: markerID
+      in: path
+      required: true
+      description: ID of the marker
+      schema:
+        $ref: "#/components/schemas/TaskID"
+    linkIDParam:
+      name: linkID
+      in: path
+      required: true
+      description: ID of the link
+      schema:
+        $ref: "#/components/schemas/TaskID"
+
+security:
+  - bearerAuth: []
