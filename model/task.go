@@ -283,13 +283,11 @@ func (t Task) IsAssignedTo(gid GoogleID) bool {
 
 // Claim assignes a task to the calling agent
 func (t Task) Claim(gid GoogleID) error {
-	_, err := db.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID)
-	if err != nil {
+	if _, err := db.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES (?,?,?)", t.opID, t.ID, gid); err != nil {
 		log.Error(err)
 		return err
 	}
-	_, err = db.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES (?,?,?)", t.opID, t.ID, gid)
-	if err != nil {
+	if _, err := db.Exec("UPDATE task SET state = 'acknowledged' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
 	}
