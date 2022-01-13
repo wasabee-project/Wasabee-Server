@@ -57,7 +57,7 @@ type myTeam struct {
 // Start is called start V integration
 func Start(ctx context.Context) {
 	if config.Get().V.APIKey == "" {
-		log.Debug("V not configured, not starting")
+		log.Debugw("startup", "message", "V not configured, not starting")
 		return
 	}
 
@@ -78,7 +78,7 @@ func Start(ctx context.Context) {
 	// there is no reason to stay running now -- this costs nothing
 	<-ctx.Done()
 
-	log.Infow("Shutdown", "message", "v shutting down")
+	log.Infow("shutdown", "message", "v shutting down")
 	config.SetVRunning(false)
 }
 

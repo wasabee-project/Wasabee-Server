@@ -2,30 +2,36 @@ package wfb
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
-// use sync.Map instead of map[] since we have multiple readers/writers
-var rlTeam sync.Map
-var rlOp sync.Map
+var rlTeam *util.Safemap
+var rlOp *util.Safemap
 
 const agentLocationChangeRate = time.Second * 10
 const mapChangeRate = time.Second * 10
+
+func ratelimitinit() {
+	rlTeam = util.NewSafemap()
+	rlOp = util.NewSafemap()
+}
 
 // control how often teams are notified of agent location change
 func ratelimitTeam(teamID model.TeamID) bool {
 	now := time.Now()
 
-	i, ok := rlTeam.LoadOrStore(teamID, now)
+	i, ok := rlTeam.Get(string(teamID))
 	if !ok { // no entry for this team, must be OK
 		return true
 	}
 
-	if i.(time.Time).After(now.Add(0 - agentLocationChangeRate)) {
-		rlTeam.Store(teamID, now) // update with this this time
+	t := time.Unix(int64(i), 0)
+
+	if t.After(now.Add(0 - agentLocationChangeRate)) {
+		rlTeam.Set(string(teamID), uint64(now.Unix())) // update with this this time
 		return true
 	}
 
@@ -38,13 +44,15 @@ func ratelimitOp(teamID model.TeamID, opID model.OperationID) bool {
 
 	key := fmt.Sprint("%s-%s", string(opID), string(teamID))
 
-	i, ok := rlOp.LoadOrStore(key, now)
+	i, ok := rlOp.Get(key)
 	if !ok {
 		return true
 	}
 
-	if i.(time.Time).After(now.Add(0 - mapChangeRate)) {
-		rlOp.Store(key, now)
+	t := time.Unix(int64(i), 0)
+
+	if t.After(now.Add(0 - mapChangeRate)) {
+		rlOp.Set(key, uint64(now.Unix()))
 		return true
 	}
 

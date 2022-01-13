@@ -3,8 +3,8 @@ package model
 import (
 	"fmt"
 
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // GenerateSafeName generates a slug (like GenerateName()) that doesn't exist in the database yet.
@@ -14,7 +14,7 @@ func GenerateSafeName() (string, error) {
 
 	for rows > 0 {
 		var i, total int
-		name = generatename.GenerateName()
+		name = util.GenerateName()
 		if name == "" {
 			err := fmt.Errorf(ErrNameGenFailed)
 			return "", err

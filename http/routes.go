@@ -2,17 +2,18 @@ package wasabeehttps
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	// "net/http/httputil"
 	"strings"
-	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
-var scanners sync.Map
+var scanners *util.Safemap
 
 func setupRouter() *mux.Router {
 	// Main Router
@@ -247,22 +248,22 @@ func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func incrementScanner(req *http.Request) {
-	var old uint64
-	i, ok := scanners.Load(req.RemoteAddr)
-	if ok {
-		old = i.(uint64)
-	}
-	scanners.Store(req.RemoteAddr, old+1)
+	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
+	scanners.Increment(ip)
 }
 
 // true == block, false == permit
 func isScanner(req *http.Request) bool {
-	i, ok := scanners.Load(req.RemoteAddr)
+	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
 
-	if !ok || i.(uint64) < 20 {
-		return false
+	log.Debugw("scanner", "step", "check", "ip", ip)
+
+	i, ok := scanners.Get(ip)
+	if ok && i > 20 {
+		log.Debugw("scanner", "step", "check", "ip", ip, "count", i)
+		return true
 	}
-	return true
+	return false
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {

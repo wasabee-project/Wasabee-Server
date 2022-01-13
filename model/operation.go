@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // OperationID wrapper to ensure type safety
@@ -617,7 +617,7 @@ func (o *Operation) SetInfo(info string, gid GoogleID) error {
 
 // Touch updates the modified timestamp on an operation
 func (o *Operation) Touch() (string, error) {
-	updateID := generatename.GenerateID(40)
+	updateID := util.GenerateID(40)
 
 	_, err := db.Exec("UPDATE operation SET modified = UTC_TIMESTAMP(), lasteditid = ? WHERE ID = ?", updateID, o.ID)
 	if err != nil {

@@ -56,6 +56,7 @@ func Start(ctx context.Context) error {
 	})
 
 	fbctx = ctx
+	ratelimitinit()
 	config.SetFirebaseRunning(true)
 
 	// there is no reason to stay running now -- this costs nothing

@@ -15,9 +15,9 @@ import (
 	"github.com/lestrrat-go/jwx/jwk"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 const jsonType = "application/json; charset=UTF-8"
@@ -263,7 +263,7 @@ func ping() error {
 
 	apiurl := apiBase + "stream:verify"
 	jmsg := map[string]string{
-		"state": generatename.GenerateName(),
+		"state": util.GenerateName(),
 	}
 	raw, err := json.Marshal(jmsg)
 	if err != nil {

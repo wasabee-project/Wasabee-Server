@@ -22,9 +22,9 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // final step of the oauth cycle
@@ -388,7 +388,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 		IssuedAt(time.Now()).
 		Subject(string(gid)).
 		Issuer(hostname).
-		JwtID(generatename.GenerateID(16)).
+		JwtID(util.GenerateID(16)).
 		Audience([]string{"wasabee"}).
 		Expiration(time.Now().Add(time.Hour * 24 * 7)).
 		Build()

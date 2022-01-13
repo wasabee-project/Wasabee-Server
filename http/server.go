@@ -19,9 +19,9 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/util"
 
 	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
@@ -44,13 +44,16 @@ func Start() {
 	c := config.Get()
 	c.HTTP.Webroot = strings.TrimSuffix(c.HTTP.Webroot, "/")
 
+	// set up the scanners list
+	scanners = util.NewSafemap()
+
 	oc := config.GetOauthConfig()
 	if oc.ClientID == "" || oc.ClientSecret == "" {
 		log.Errorw("startup", "Oauth ClientID", oc.ClientID, "Oauth ClientSecret", oc.ClientSecret)
 		log.Fatal("Oauth Client not configured: logins will fail")
 	}
 
-	oauthStateString = generatename.GenerateName()
+	oauthStateString = util.GenerateName()
 	// log.Debugw("startup", "oauthStateString", oauthStateString)
 
 	key := c.HTTP.CookieSessionKey

@@ -60,7 +60,7 @@ var limiter *rate.Limiter
 // Start is called from main() to initialize the config
 func Start(ctx context.Context) {
 	if config.Get().Rocks.APIKey == "" {
-		log.Debug("Rocks not configured, not starting")
+		log.Debugw("startup", "message", "Rocks not configured, not starting")
 		return
 	}
 
@@ -83,7 +83,7 @@ func Start(ctx context.Context) {
 	// there is no reason to stay running now -- this costs nothing
 	<-ctx.Done()
 
-	log.Infow("Shutdown", "message", "rocks shutting down")
+	log.Infow("shutdown", "message", "rocks shutting down")
 	config.SetRocksRunning(false)
 }
 

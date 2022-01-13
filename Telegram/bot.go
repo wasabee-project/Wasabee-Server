@@ -7,11 +7,11 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/templates"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 var baseKbd tgbotapi.ReplyKeyboardMarkup
@@ -56,7 +56,7 @@ func Start(ctx context.Context) {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	hook = generatename.GenerateName()
+	hook = util.GenerateName()
 	whurl := fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
 	wh, _ := tgbotapi.NewWebhook(whurl)
 	if _, err = bot.Request(wh); err != nil {
@@ -94,7 +94,7 @@ func Start(ctx context.Context) {
 			}
 			if (i % 100) == 0 { // every 100 requests, change the endpoint
 				i = 1
-				hook = generatename.GenerateName()
+				hook = util.GenerateName()
 				whurl = fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
 				wh, _ := tgbotapi.NewWebhook(whurl)
 				_, err = bot.Request(wh)

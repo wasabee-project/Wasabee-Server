@@ -2,15 +2,23 @@ package auth
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
+	"github.com/wasabee-project/Wasabee-Server/util"
 	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
-var logoutlist sync.Map
+var logoutlist *util.Safemap
+var revokedjwt *util.Safemap
+
+// auth doesn't have a startup/shutdown sequence, this is fine
+// XXX Start could get the revoked list from the db and write it back on shutdown
+func init() {
+	logoutlist = util.NewSafemap()
+	revokedjwt = util.NewSafemap()
+}
 
 // Authorize is called to verify that an agent is permitted to use Wasabee.
 // V and Rocks are updated (if configured).
@@ -60,14 +68,14 @@ func Authorize(gid model.GoogleID) (bool, error) {
 
 // Logout adds a GoogleID to the list of logged out agents
 func Logout(gid model.GoogleID, reason string) {
-	logoutlist.Store(string(gid), true)
+	logoutlist.SetBool(string(gid), true)
 }
 
 // isLoggedOut looks to see if the user is on the force logout list
 func IsLoggedOut(gid model.GoogleID) bool {
-	out, ok := logoutlist.Load(string(gid))
-	if ok && out.(bool) {
-		logoutlist.Delete(string(gid))
+	out := logoutlist.GetBool(string(gid))
+	if out {
+		logoutlist.SetBool(string(gid), false)
 		return true
 	}
 
@@ -77,15 +85,10 @@ func IsLoggedOut(gid model.GoogleID) bool {
 // RevokeJWT adds a JWT ID to the revoked list
 func RevokeJWT(tokenID string) {
 	log.Infow("revoking JWT", "id", tokenID)
-	logoutlist.Store(tokenID, true)
+	revokedjwt.SetBool(tokenID, true)
 }
 
 // IsRevokedJWT checks if a JWT ID is on the revoked list.
 func IsRevokedJWT(tokenID string) bool {
-	out, ok := logoutlist.Load(tokenID)
-	if ok && out.(bool) {
-		log.Infow("revoked JWT", "id", tokenID)
-		return true
-	}
-	return false
+	return revokedjwt.GetBool(tokenID)
 }

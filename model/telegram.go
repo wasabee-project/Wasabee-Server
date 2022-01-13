@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // TelegramID is a user ID from telegram
@@ -72,7 +72,7 @@ func (gid GoogleID) TelegramName() (string, error) {
 
 // InitAgent establishes a new telegram user in the database and begins the verification process
 func (tgid TelegramID) InitAgent(name string, ott OneTimeToken) error {
-	authtoken := generatename.GenerateName()
+	authtoken := util.GenerateName()
 	gid, err := ott.Gid()
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf("token not recognized")
