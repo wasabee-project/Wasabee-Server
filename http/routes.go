@@ -256,11 +256,8 @@ func incrementScanner(req *http.Request) {
 func isScanner(req *http.Request) bool {
 	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
 
-	log.Debugw("scanner", "step", "check", "ip", ip)
-
 	i, ok := scanners.Get(ip)
 	if ok && i > 20 {
-		log.Debugw("scanner", "step", "check", "ip", ip, "count", i)
 		return true
 	}
 	return false
