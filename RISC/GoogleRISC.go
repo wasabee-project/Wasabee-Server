@@ -104,22 +104,22 @@ func Start(ctx context.Context) {
 			auth.Logout(gid, e.Reason)
 			_ = gid.Delete()
 		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
-			log.Warnw("credential change", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Debugw("credential change", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
-			log.Warnw("sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Debugw("sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
-			log.Warnw("tokens revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Debugw("tokens revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		case "https://schemas.openid.net/secevent/risc/event-type/verification":
 			// log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			// no need to do anything
 		case "https://accounts.google.com/risc/event/sessions-revoked":
-			log.Warnw("google sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
+			log.Debugw("google sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
 			_ = gid.RemoveAllFirebaseTokens()
 			auth.Logout(gid, e.Reason)
 		default:
