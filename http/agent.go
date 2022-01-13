@@ -149,7 +149,7 @@ func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
 	togid, err := model.ToGid(id)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 

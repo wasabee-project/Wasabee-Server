@@ -24,28 +24,33 @@ func linkRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	vars := mux.Vars(req)
 	op.ID = model.OperationID(vars["opID"])
 	if err = op.Populate(gid); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		if err.Error() == model.ErrOpNotFound {
+			http.Error(res, jsonError(err), http.StatusNotFound)
+		} else {
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		}
 		return gid, &model.Link{}, &op, err
 	}
 
 	if err = op.Populate(gid); err != nil {
-		log.Error(err)
 		if op.ID.IsDeletedOp() {
 			err := fmt.Errorf("requested deleted op")
 			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 			http.Error(res, jsonError(err), http.StatusGone)
 			return gid, &model.Link{}, &op, err
 		}
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return gid, &model.Link{}, &op, err
 	}
 
 	linkID := model.LinkID(vars["link"])
 	link, err := op.GetLink(linkID)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		if err.Error() == model.ErrLinkNotFound {
+			http.Error(res, jsonError(err), http.StatusNotFound)
+		} else {
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		}
 		return gid, link, &op, err
 	}
 	return gid, link, &op, nil

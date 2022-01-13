@@ -24,28 +24,33 @@ func markerRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID,
 	vars := mux.Vars(req)
 	op.ID = model.OperationID(vars["opID"])
 	if err = op.Populate(gid); err != nil {
-		log.Error(err)
 		if op.ID.IsDeletedOp() {
 			err := fmt.Errorf("requested deleted op")
 			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 			http.Error(res, jsonError(err), http.StatusGone)
 			return gid, &model.Marker{}, &op, err
 		}
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		if err.Error() == model.ErrOpNotFound {
+			http.Error(res, jsonError(err), http.StatusNotFound)
+		} else {
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		}
 		return gid, &model.Marker{}, &op, err
 	}
 
 	markerID := model.MarkerID(vars["marker"])
 	if err = op.Populate(gid); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return gid, &model.Marker{}, &op, err
 	}
 
 	marker, err := op.GetMarker(markerID)
 	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		if err.Error() == model.ErrMarkerNotFound {
+			http.Error(res, jsonError(err), http.StatusNotFound)
+		} else {
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		}
 		return gid, marker, &op, err
 	}
 	return gid, marker, &op, nil

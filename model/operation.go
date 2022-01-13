@@ -504,7 +504,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
 	err := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, referencetime FROM operation WHERE ID = ?", o.ID).Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.ReferenceTime)
 	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf("operation not found")
+		err = fmt.Errorf(ErrOpNotFound)
 		log.Errorw(err.Error(), "resource", o.ID, "GID", gid, "opID", o.ID)
 		return err
 	}

@@ -134,7 +134,6 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 
 	// o.Populate determines all, zone, or assigned-only
 	if err = o.Populate(gid); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}

@@ -32,7 +32,11 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 			http.Error(res, jsonError(err), http.StatusGone)
 			return gid, &op, &model.Task{}, err
 		}
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		if err.Error() == model.ErrOpNotFound {
+			http.Error(res, jsonError(err), http.StatusNotFound)
+		} else {
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		}
 		return gid, &op, &model.Task{}, err
 	}
 
@@ -40,7 +44,11 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	task, err := op.GetTask(taskID)
 	if err != nil {
 		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		if err.Error() == model.ErrTaskNotFound {
+			http.Error(res, jsonError(err), http.StatusNotFound)
+		} else {
+			http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		}
 		return gid, &op, task, err
 	}
 	return gid, &op, task, nil

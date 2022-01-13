@@ -287,5 +287,5 @@ func (o *Operation) GetLink(linkID LinkID) (*Link, error) {
 		}
 	}
 
-	return &Link{}, fmt.Errorf("link not found")
+	return &Link{}, fmt.Errorf(ErrLinkNotFound)
 }

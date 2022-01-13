@@ -217,7 +217,7 @@ func (o *Operation) GetMarker(markerID MarkerID) (*Marker, error) {
 		}
 	}
 
-	return &Marker{}, fmt.Errorf("marker not found")
+	return &Marker{}, fmt.Errorf(ErrMarkerNotFound)
 }
 
 // MarkerOrder changes the order of the tasks for an operation
