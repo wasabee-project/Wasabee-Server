@@ -18,12 +18,12 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
 	"github.com/wasabee-project/Wasabee-Server/background"
 	"github.com/wasabee-project/Wasabee-Server/config"
-	"github.com/wasabee-project/Wasabee-Server/generatename"
 	"github.com/wasabee-project/Wasabee-Server/http"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/templates"
+	"github.com/wasabee-project/Wasabee-Server/util"
 	"github.com/wasabee-project/Wasabee-Server/v"
 
 	"go.uber.org/zap"
@@ -118,7 +118,7 @@ func run(cargs *cli.Context) error {
 	}
 
 	// Load words
-	if err := generatename.LoadWordsFile(conf.WordListFile); err != nil {
+	if err := util.LoadWordsFile(conf.WordListFile); err != nil {
 		log.Fatalw("startup", "message", "Error loading word list", "wordlist", conf.WordListFile, "error", err.Error())
 	}
 

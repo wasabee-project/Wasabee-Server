@@ -8,7 +8,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/jwk"
 
-	"github.com/wasabee-project/Wasabee-Server/generatename"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 		return
 	}
 
-	_ = key.Set(jwk.KeyIDKey, generatename.GenerateID(16))
+	_ = key.Set(jwk.KeyIDKey, util.GenerateID(16))
 
 	buf, err := json.MarshalIndent(key, "", "  ")
 	if err != nil {
