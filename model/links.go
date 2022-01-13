@@ -276,7 +276,7 @@ func (l *Link) Swap() error {
 // GetLink looks up and returns a populated Link from an id
 func (o *Operation) GetLink(linkID LinkID) (*Link, error) {
 	if len(o.Links) == 0 { // XXX not a good test, not all ops have links
-		err := fmt.Errorf("attempt to use GetLink on unpopulated *Operation")
+		err := fmt.Errorf(ErrGetLinkUnpopulated)
 		log.Error(err)
 		return &Link{}, err
 	}

@@ -28,7 +28,7 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 
 		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID); err != nil {
 			log.Info(err)
-			err := fmt.Errorf("unable to remove key count for portal")
+			err := fmt.Errorf(ErrKeyUnableToRemove)
 			return err
 		}
 		return nil
@@ -37,15 +37,14 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 	if k.Onhand == 0 {
 		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? and gid = ?", o.ID, k.ID, k.Gid); err != nil {
 			log.Info(err)
-			err := fmt.Errorf("unable to remove key count for portal")
+			err := fmt.Errorf(ErrKeyUnableToRemove)
 			return err
 		}
 	} else {
 		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule))
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
-			err := fmt.Errorf("unable to record keys, ensure the op on the server is up-to-date")
-			return err
+			return fmt.Errorf(ErrKeyUnableToRecord)
 		}
 		if err != nil {
 			log.Error(err)

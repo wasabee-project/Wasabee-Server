@@ -130,7 +130,7 @@ func (o *Operation) IsOwner(gid GoogleID) bool {
 // Chown changes an operation's owner
 func (opID OperationID) Chown(gid GoogleID, to string) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("permission denied: not current owner")
+		err := fmt.Errorf(ErrNotOpOwner)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
@@ -142,7 +142,7 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 	}
 
 	if !togid.Valid() {
-		err := fmt.Errorf("unknown user")
+		err := fmt.Errorf(ErrUnknownUser)
 		log.Errorw(err.Error(), "to", to)
 		return err
 	}
@@ -177,7 +177,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 // AddPerm adds a new permission to an op
 func (opID OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("permission denied: not current owner of op")
+		err := fmt.Errorf(ErrNotOpOwner)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
@@ -188,14 +188,14 @@ func (opID OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Z
 		return err
 	}
 	if !inteam {
-		err := fmt.Errorf("you must be on a team to add it as a permission")
+		err := fmt.Errorf(ErrNotOnTeamAddPerm)
 		log.Errorw(err.Error(), "GID", gid, "team", teamID, "resource", opID)
 		return err
 	}
 
 	opp := OpPermRole(perm)
 	if !opp.Valid() {
-		err := fmt.Errorf("unknown permission type")
+		err := fmt.Errorf(ErrUnknownPermType)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID, "perm", perm)
 		return err
 	}
@@ -214,7 +214,7 @@ func (opID OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Z
 // DelPerm removes a permission from an op
 func (opID OperationID) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Zone) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("not owner of op")
+		err := fmt.Errorf(ErrNotOpOwner)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}

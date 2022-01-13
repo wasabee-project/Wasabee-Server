@@ -91,7 +91,7 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 
 	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.communityname, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &intelname, &level, &a.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &a.RISC, &ifac, &communityname, &pic, &vapi)
 	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf("unknown GoogleID: %s", gid)
+		err = fmt.Errorf(ErrUnknownGID)
 		return &a, err
 	}
 	if err != nil {
@@ -424,7 +424,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf("multiple V matches found, not using V results")
+		err := fmt.Errorf(ErrMultipleV)
 		log.Error(err)
 	}
 
@@ -444,7 +444,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf("multiple rocks matches found, not using rocks results")
+		err := fmt.Errorf(ErrMultipleRocks)
 		log.Error(err)
 	}
 
@@ -463,7 +463,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf("multiple intelname matches found, not using intelname results")
+		err := fmt.Errorf(ErrMultipleIntelname)
 		log.Error(err)
 	}
 
@@ -592,15 +592,14 @@ func ToGid(in string) (GoogleID, error) {
 
 	switch len(in) {
 	case 0:
-		err = fmt.Errorf("empty agent request")
+		err = fmt.Errorf(ErrEmptyAgent)
 	case 21:
 		gid = GoogleID(in)
 	default:
 		gid, err = SearchAgentName(in) // telegram @names covered here
 	}
 	if err == sql.ErrNoRows || gid == "" {
-		// if you change this message, also change http/team.go
-		err = fmt.Errorf("agent '%s' not registered with this wasabee server", in)
+		err = fmt.Errorf(ErrAgentNotFound)
 		log.Infow(err.Error(), "search", in, "message", err.Error())
 		return gid, err
 	}

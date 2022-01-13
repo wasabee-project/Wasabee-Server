@@ -7,7 +7,6 @@ import (
 	"html"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 
@@ -191,7 +190,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if key != "" { // prevents a bit of log spam
 		togid, err := model.ToGid(key)
-		if err != nil && strings.Contains(err.Error(), "not registered with this wasabee server") {
+		if err != nil && err.Error() == model.ErrAgentNotFound {
 			// no need to fill the logs with user typos
 			http.Error(res, jsonError(err), http.StatusNotAcceptable)
 			return

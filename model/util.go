@@ -16,7 +16,7 @@ func GenerateSafeName() (string, error) {
 		var i, total int
 		name = generatename.GenerateName()
 		if name == "" {
-			err := fmt.Errorf("name generation failed")
+			err := fmt.Errorf(ErrNameGenFailed)
 			return "", err
 		}
 		err := db.QueryRow("SELECT COUNT(OneTimeToken) FROM agent WHERE OneTimeToken = ?", name).Scan(&i)
