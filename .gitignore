@@ -1,9 +1,7 @@
+.DS_Store
+/.devcontainer/db/
+.stignore
 env
 eff_large_wordlist.txt
-.stignore
-.DS_Store
-env-test
-*.log
-/.devcontainer/db/
-/certs/
-/frontend/
+/logs/
+wasabee.json
