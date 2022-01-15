@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-// A safemap is a special-purpose map type for holding unsigned-ints or bools
+// Safemap is a special-purpose map type for holding unsigned-ints or bools
 // intended for use in http requests or performance-critical paths
 type Safemap struct {
 	d map[string]uint64
@@ -46,7 +46,7 @@ func (sm *Safemap) GetBool(key string) bool {
 	return ok && value > 0
 }
 
-// SetBook sets a boolean value into the map
+// SetBool sets a boolean value into the map
 func (sm *Safemap) SetBool(key string, value bool) {
 	sm.m.Lock()
 	if !value {
@@ -57,7 +57,7 @@ func (sm *Safemap) SetBool(key string, value bool) {
 	sm.m.Unlock()
 }
 
-// NewSafeMap returns an initialized pointer to a Safemap
+// NewSafemap returns an initialized pointer to a Safemap
 func NewSafemap() *Safemap {
 	var n Safemap
 	n.d = make(map[string]uint64)

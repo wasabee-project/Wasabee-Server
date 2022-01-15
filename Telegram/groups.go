@@ -266,7 +266,7 @@ func sendInviteLink(tgid model.TelegramID, chatID int64, team string) error {
 		return err
 	}
 	if r.Revoked { // has this ever been triggered?
-		err := fmt.Errorf("join linked already revoked?!")
+		err := fmt.Errorf("join linked already revoked")
 		log.Error(err)
 		return err
 	}
