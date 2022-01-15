@@ -22,7 +22,6 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(teamID)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -34,7 +33,6 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := rocks.CommunityMemberPull(teamID); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -55,7 +53,6 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -65,9 +62,8 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	err = team.SetRocks(rk, rc)
-	if err != nil {
-		log.Error(err)
+
+	if err = team.SetRocks(rk, rc); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

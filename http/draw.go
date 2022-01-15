@@ -65,9 +65,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawGetRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id := vars["opID"]
-
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
@@ -75,7 +72,8 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var o model.Operation
-	o.ID = model.OperationID(id)
+	vars := mux.Vars(req)
+	o.ID = model.OperationID(vars["opID"])
 
 	if o.ID.IsDeletedOp() {
 		err := fmt.Errorf("requested deleted op")
@@ -96,7 +94,6 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	// don't do full populate (slow) just yet
 	stat, err := o.ID.Stat()
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
@@ -158,8 +155,6 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-
-	// only the ID needs to be set for this
 	var op model.Operation
 	op.ID = model.OperationID(vars["opID"])
 
@@ -182,15 +177,15 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
-
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
+
+	vars := mux.Vars(req)
+	var op model.Operation
+	op.ID = model.OperationID(vars["opID"])
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
@@ -245,15 +240,14 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawChownRoute(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	to := vars["to"]
-
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
+	vars := mux.Vars(req)
+	to := vars["to"]
 	// only the ID needs to be set for this
 	var op model.Operation
 	op.ID = model.OperationID(vars["opID"])
@@ -267,7 +261,6 @@ func drawChownRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = op.ID.Chown(gid, to)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -298,7 +291,6 @@ func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
 	comment := req.FormValue("comment")
 	err = op.ID.PortalComment(portalID, comment)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

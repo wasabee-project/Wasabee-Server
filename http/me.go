@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -25,12 +25,11 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // get the logged in agent
 func meRoute(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Cache-Control", "no-store")
-
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -46,16 +45,13 @@ func meRoute(res http.ResponseWriter, req *http.Request) {
 	agent.QueryToken = formValidationToken(req)
 
 	data, _ := json.Marshal(agent)
+	res.Header().Set("Cache-Control", "no-store")
 	fmt.Fprint(res, string(data))
 }
 
 // use this to verify that form data is sent from a client that requested it
 func formValidationToken(req *http.Request) string {
-	idx := strings.LastIndex(req.RemoteAddr, ":")
-	if idx == -1 {
-		idx = len(req.RemoteAddr)
-	}
-	ip := req.RemoteAddr[0:idx]
+	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
 	toHash := fmt.Sprintf("%s %s %s", req.Header.Get("User-Agent"), ip, config.GetOauthConfig().ClientSecret)
 	hasher := sha256.New()
 	_, _ = hasher.Write([]byte(toHash))
@@ -102,7 +98,6 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = gid.SetWDShare(team, b); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -125,7 +120,6 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = gid.SetWDLoad(team, b); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -143,7 +137,6 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := model.TeamID(vars["team"])
 
 	if err = team.RemoveAgent(gid); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -162,9 +155,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	lat := vars["lat"]
 	lon := vars["lon"]
 
-	// do the work
 	if err = gid.SetLocation(lat, lon); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -193,9 +184,8 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Errorw("agent requested delete", "GID", gid.String())
+	log.Warnw("agent requested delete", "GID", gid.String())
 	if err := gid.Delete(); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -214,17 +204,16 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ses, err := store.Get(req, config.Get().HTTP.SessionName)
-	delete(ses.Values, "nonce")
-	delete(ses.Values, "id")
-	delete(ses.Values, "loginReq")
-	res.Header().Set("Connection", "close")
-
 	if err != nil {
 		log.Error(err)
 		_ = ses.Save(req, res)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+	delete(ses.Values, "nonce")
+	delete(ses.Values, "id")
+	delete(ses.Values, "loginReq")
+	res.Header().Set("Connection", "close")
 
 	ses.Options = &sessions.Options{
 		Path:     "/",
@@ -260,7 +249,6 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	err = gid.StoreFirebaseToken(token)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -281,7 +269,7 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	qt := req.FormValue("qt")
-	name := req.FormValue("name")
+	name := util.Sanitize(req.FormValue("name"))
 	faction := req.FormValue("faction")
 
 	qtTest := formValidationToken(req)
@@ -293,7 +281,6 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := gid.SetIntelData(name, faction); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -309,9 +296,7 @@ func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
 
 	v := req.FormValue("v")
 
-	log.Infow("agent submitted V API token", "GID", gid.String())
 	if err = gid.SetVAPIkey(v); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -398,7 +383,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Infow("jwt Refresh", "gid", gid, "token ID", jwtid)
+	log.Infow("jwt Refresh", "gid", gid, "token ID", jwtid, "message", "jwt Token refreshed for "+gid)
 	s := fmt.Sprintf("{\"status\":\"ok\", \"jwt\":\"%s\"}", string(signed[:]))
 	fmt.Fprint(res, s)
 }
@@ -409,20 +394,18 @@ func meCommProofRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	log.Debugw("generating community ID proof JWT", "GID", gid)
 
 	vars := mux.Vars(req)
-	name := vars["name"]
+	name := util.Sanitize(vars["name"])
 	if name == "" {
 		err := fmt.Errorf("name unset")
-		log.Error(err)
+		log.Debug(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	signed, err := community.BuildToken(gid, name)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -437,10 +420,9 @@ func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	// log.Debugw("verifying community proof JWT", "GID", gid)
 
 	vars := mux.Vars(req)
-	name := vars["name"]
+	name := util.Sanitize(vars["name"])
 
 	if name == "" {
 		err := fmt.Errorf("name unset")
@@ -451,7 +433,6 @@ func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
 
 	ok, err := community.Validate(gid, name)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -473,7 +454,6 @@ func meCommClearRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := gid.ClearCommunityName(); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

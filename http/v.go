@@ -23,7 +23,6 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -36,7 +35,6 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	vkey, err := gid.GetVAPIkey()
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -48,7 +46,6 @@ func vPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := v.Sync(req.Context(), team, vkey); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -68,7 +65,6 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	owns, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -96,7 +92,6 @@ func vConfigureTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	log.Infow("linking team to V", "GID", gid, "teamID", team, "vteam", vteam, "role", role)
 	if err := team.VConfigure(vteam, role); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -114,7 +109,6 @@ func vBulkImportRoute(res http.ResponseWriter, req *http.Request) {
 	mode := vars["mode"]
 
 	if err = v.BulkImport(gid, mode); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

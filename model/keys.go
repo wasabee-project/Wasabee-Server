@@ -44,7 +44,7 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 	} else {
 		k.Capsule = util.Sanitize(k.Capsule)
 
-		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule))
+		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, makeNullString(k.Capsule))
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
 			return fmt.Errorf(ErrKeyUnableToRecord)

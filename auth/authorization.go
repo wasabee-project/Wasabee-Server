@@ -71,7 +71,7 @@ func Logout(gid model.GoogleID, reason string) {
 	logoutlist.SetBool(string(gid), true)
 }
 
-// isLoggedOut looks to see if the user is on the force logout list
+// IsLoggedOut looks to see if the user is on the force logout list
 func IsLoggedOut(gid model.GoogleID) bool {
 	out := logoutlist.GetBool(string(gid))
 	if out {

@@ -170,7 +170,7 @@ func (tgid TelegramID) String() string {
 func (teamID TeamID) LinkToTelegramChat(chat TelegramID, opID OperationID) error {
 	log.Debugw("linking team to chat", "chat", chat, "teamID", teamID, "opID", opID)
 
-	_, err := db.Exec("REPLACE INTO telegramteam (teamID, telegram, opID) VALUES (?,?,?)", teamID, chat, MakeNullString(string(opID)))
+	_, err := db.Exec("REPLACE INTO telegramteam (teamID, telegram, opID) VALUES (?,?,?)", teamID, chat, makeNullString(string(opID)))
 	if err != nil {
 		log.Error(err)
 		return err

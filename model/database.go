@@ -181,8 +181,8 @@ func upgradeTables() {
 	}
 }
 
-// MakeNullString is used for values that may & might be inserted/updated as NULL in the database
-func MakeNullString(in interface{}) sql.NullString {
+// makeNullString is used for values that may & might be inserted/updated as NULL in the database
+func makeNullString(in interface{}) sql.NullString {
 	var s string
 
 	tmp, ok := in.(string)

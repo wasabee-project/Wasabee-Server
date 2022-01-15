@@ -35,7 +35,7 @@ func setupCommands() {
 		{Command: "claim", Description: "claim a task (assign to self)", Group: true},
 		{Command: "reject", Description: "reject a task (remove assignment)", Group: true},
 		{Command: "acknowledge", Description: "acknowledge an assignment", Group: true},
-		{Command: "start", Description: "inital setup and grant bot permission to communicate", Private: true},
+		{Command: "start", Description: "initial setup and grant bot permission to communicate", Private: true},
 		{Command: "help", Description: "show help info", Group: true, Private: true},
 	}
 

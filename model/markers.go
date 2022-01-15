@@ -37,7 +37,7 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.Zone = zonePrimary
 	}
 
-	comment := MakeNullString(util.Sanitize(m.Comment))
+	comment := makeNullString(util.Sanitize(m.Comment))
 
 	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
@@ -93,7 +93,7 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		m.Assignments = append(m.Assignments, m.AssignedTo)
 	}
 
-	comment := MakeNullString(util.Sanitize(m.Comment))
+	comment := makeNullString(util.Sanitize(m.Comment))
 
 	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)

@@ -4,16 +4,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"html"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/gorilla/mux"
 
-	// "github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -81,8 +80,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	name := html.EscapeString(vars["name"])
-
+	name := util.Sanitize(vars["name"])
 	if name == "" {
 		err := fmt.Errorf("empty team name")
 		log.Warnw(err.Error(), "GID", gid)
@@ -271,7 +269,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	message := req.FormValue("m")
+	message := util.Sanitize(req.FormValue("m"))
 	if message == "" {
 		message = "This is a toast notification"
 	}
@@ -302,7 +300,7 @@ func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	inGid := model.GoogleID(vars["gid"])
-	squad := req.FormValue("squad")
+	squad := util.Sanitize(req.FormValue("squad"))
 	if err = teamID.SetComment(inGid, squad); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -328,7 +326,7 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	teamname := req.FormValue("teamname")
+	teamname := util.Sanitize(req.FormValue("teamname"))
 	if teamname == "" {
 		err = fmt.Errorf("empty team name")
 		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
@@ -437,7 +435,6 @@ func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
 
 	list, err := gid.GetAgentLocations()
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -492,12 +489,9 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 
 		onteam, err := gid.AgentInTeam(team)
 		if err != nil {
-			log.Error(err)
 			continue
 		}
 		if !isowner && !onteam {
-			// err := fmt.Errorf("not on team - in bulk pull; probably an op where agent can't see all teams")
-			// log.Debugw(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
 			continue
 		}
 		t, err := team.FetchTeam()
@@ -529,6 +523,8 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(list)
 	if err != nil {
 		log.Warn(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
 	}
 	fmt.Fprint(res, string(data))
 }

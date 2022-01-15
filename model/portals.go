@@ -24,8 +24,8 @@ type Portal struct {
 
 // insertPortal adds a portal to the database
 func (opID OperationID) insertPortal(p Portal) error {
-	comment := MakeNullString(util.Sanitize(p.Comment))
-	hardness := MakeNullString(util.Sanitize(p.Hardness))
+	comment := makeNullString(util.Sanitize(p.Comment))
+	hardness := makeNullString(util.Sanitize(p.Hardness))
 
 	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
 		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
@@ -37,8 +37,8 @@ func (opID OperationID) insertPortal(p Portal) error {
 }
 
 func (opID OperationID) updatePortal(p Portal, tx *sql.Tx) error {
-	comment := MakeNullString(util.Sanitize(p.Comment))
-	hardness := MakeNullString(util.Sanitize(p.Hardness))
+	comment := makeNullString(util.Sanitize(p.Comment))
+	hardness := makeNullString(util.Sanitize(p.Hardness))
 
 	_, err := tx.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
 		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
@@ -142,7 +142,7 @@ func (p PortalID) String() string {
 
 // PortalHardness updates the comment on a portal
 func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error {
-	h := MakeNullString(util.Sanitize(hardness))
+	h := makeNullString(util.Sanitize(hardness))
 
 	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", h, portalID, opID)
 	if err != nil {
@@ -154,7 +154,7 @@ func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error
 
 // PortalComment updates the comment on a portal
 func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
-	c := MakeNullString(util.Sanitize(comment))
+	c := makeNullString(util.Sanitize(comment))
 
 	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", c, portalID, opID)
 	if err != nil {

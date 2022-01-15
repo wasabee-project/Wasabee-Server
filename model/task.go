@@ -346,7 +346,7 @@ func (t Task) SetDelta(delta int) error {
 
 // SetComment sets the comment on a task
 func (t Task) SetComment(comment string) error {
-	desc := MakeNullString(util.Sanitize(comment))
+	desc := makeNullString(util.Sanitize(comment))
 
 	_, err := db.Exec("UPDATE task SET comment = ? WHERE ID = ? AND opID = ?", desc, t.ID, t.opID)
 	if err != nil {

@@ -1,5 +1,6 @@
 package model
 
+// These error values are error strings visible to users, they need to be migrated to the translation system
 const (
 	ErrAgentNotFound        = "agent not registered with this wasabee server"
 	ErrEmptyAgent           = "empty agent request"

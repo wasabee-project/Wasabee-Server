@@ -26,7 +26,7 @@ const jwtService = "https://risc.googleapis.com/google.identity.risc.v1beta.Risc
 
 // Webhook is the http route for receiving RISC updates
 // pushes the updates into the RISC channel for processing
-func Webhook(res http.ResponseWriter, req *http.Request) {
+func webhook(res http.ResponseWriter, req *http.Request) {
 	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
 	if contentType != "application/secevent+jwt" {
 		err := fmt.Errorf("invalid request (needs to be application/secevent+jwt)")
@@ -69,7 +69,7 @@ func registerWebhook(ctx context.Context) {
 
 	// can these be pushed into registerWebhook?
 	risc := config.Subrouter(config.Get().RISC.Webhook)
-	risc.HandleFunc("", Webhook).Methods("POST")
+	risc.HandleFunc("", webhook).Methods("POST")
 
 	ar := jwk.NewAutoRefresh(ctx)
 	ar.Configure(googleConfig.JWKURI, jwk.WithMinRefreshInterval(60*time.Minute))

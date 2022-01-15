@@ -141,8 +141,9 @@ func liveLocationUpdate(inMsg *tgbotapi.Update) error {
 	return nil
 }
 
-// SendToTeamChannel sends a message to the primary (not linked to an op) chat linked to a team
-func SendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) error {
+// sendToTeamChannel sends a message to the primary (not linked to an op) chat linked to a team
+// unused
+func sendToTeamChannel(teamID model.TeamID, gid model.GoogleID, message string) error {
 	chatID, err := teamID.TelegramChat()
 	if err != nil {
 		log.Error(err)

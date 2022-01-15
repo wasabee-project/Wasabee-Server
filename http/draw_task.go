@@ -25,7 +25,6 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	vars := mux.Vars(req)
 	op.ID = model.OperationID(vars["opID"])
 	if err = op.Populate(gid); err != nil {
-		log.Error(err)
 		if op.ID.IsDeletedOp() {
 			err := fmt.Errorf("requested deleted op")
 			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -43,7 +42,6 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	taskID := model.TaskID(vars["taskID"])
 	task, err := op.GetTask(taskID)
 	if err != nil {
-		log.Error(err)
 		if err.Error() == model.ErrTaskNotFound {
 			http.Error(res, jsonError(err), http.StatusNotFound)
 		} else {
@@ -386,7 +384,6 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-
 	dependsOn := vars["dependsOn"]
 	if dependsOn == "" {
 		err = fmt.Errorf("empty dependency ID on depend add")

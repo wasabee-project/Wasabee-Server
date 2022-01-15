@@ -60,7 +60,7 @@ func (opID OperationID) insertLink(l Link) error {
 		l.State = "completed"
 	}
 
-	comment := MakeNullString(util.Sanitize(l.Comment))
+	comment := makeNullString(util.Sanitize(l.Comment))
 
 	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
@@ -134,7 +134,7 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		l.State = "completed"
 	}
 
-	comment := MakeNullString(util.Sanitize(l.Comment))
+	comment := makeNullString(util.Sanitize(l.Comment))
 
 	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)

@@ -140,8 +140,8 @@ func RocksCommunityToTeam(communityID string) (TeamID, error) {
 // Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).
 // adds/deletes at enl.rocks will be pushed here (onJoin/onLeave web hooks must be configured in the community at enl.rocks)
 func (teamID TeamID) SetRocks(key, community string) error {
-	k := MakeNullString(util.Sanitize(key))
-	c := MakeNullString(util.Sanitize(community))
+	k := makeNullString(util.Sanitize(key))
+	c := makeNullString(util.Sanitize(community))
 
 	_, err := db.Exec("UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", k, c, teamID)
 	if err != nil {
