@@ -1,2 +1,7 @@
-WASABI.fullchain.pem
-WASABI.key
+firebase.json
+jwk.json
+jwkpriv.json
+jwkpub.json
+risc.json
+wasabee.fullchain.pem
+wasabee.key
