@@ -7,6 +7,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // LinkID wrapper to ensure type safety
@@ -59,8 +60,10 @@ func (opID OperationID) insertLink(l Link) error {
 		l.State = "completed"
 	}
 
+	comment := MakeNullString(util.Sanitize(l.Comment))
+
 	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		l.ID, opID, MakeNullString(l.Comment), l.Order, l.State, l.Zone, l.DeltaMinutes)
+		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -131,8 +134,10 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		l.State = "completed"
 	}
 
+	comment := MakeNullString(util.Sanitize(l.Comment))
+
 	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		l.ID, opID, MakeNullString(l.Comment), l.Order, l.State, l.Zone, l.DeltaMinutes)
+		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err

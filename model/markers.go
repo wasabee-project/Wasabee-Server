@@ -7,6 +7,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // MarkerID wrapper to ensure type safety
@@ -36,8 +37,10 @@ func (opID OperationID) insertMarker(m Marker) error {
 		m.Zone = zonePrimary
 	}
 
+	comment := MakeNullString(util.Sanitize(m.Comment))
+
 	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		m.ID, opID, MakeNullString(m.Comment), m.Order, m.State, m.Zone, m.DeltaMinutes)
+		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -90,8 +93,10 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 		m.Assignments = append(m.Assignments, m.AssignedTo)
 	}
 
+	comment := MakeNullString(util.Sanitize(m.Comment))
+
 	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		m.ID, opID, MakeNullString(m.Comment), m.Order, m.State, m.Zone, m.DeltaMinutes)
+		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err

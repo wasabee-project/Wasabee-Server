@@ -87,8 +87,10 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 		reftime = time.Now()
 	}
 
+	comment := MakeNullString(util.Sanitize(o.Comment))
+
 	// start the insert process
-	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment, referencetime) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?)", o.ID, o.Name, gid, o.Color, MakeNullString(o.Comment), reftime.Format("2006-01-02 15:04:05"))
+	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment, referencetime) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?)", o.ID, o.Name, gid, o.Color, comment, reftime.Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -232,8 +234,10 @@ func drawOpUpdateWorker(o *Operation) error {
 		reftime = time.Now()
 	}
 
+	comment := MakeNullString(util.Sanitize(o.Comment))
+
 	_, err = tx.Exec("UPDATE operation SET name = ?, color = ?, comment = ?, referencetime = ? WHERE ID = ?",
-		o.Name, o.Color, MakeNullString(o.Comment), reftime.Format("2006-01-02 15:04:05"), o.ID)
+		o.Name, o.Color, comment, reftime.Format("2006-01-02 15:04:05"), o.ID)
 	if err != nil {
 		log.Error(err)
 		return err

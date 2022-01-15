@@ -290,6 +290,9 @@ func removeFromChat(g messaging.GoogleID, t messaging.TeamID) error {
 		log.Error(err)
 		return err
 	}
+	if chatID == 0 {
+		return nil
+	}
 
 	tgid, err := gid.TelegramID()
 	if err != nil {

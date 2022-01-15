@@ -7,6 +7,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // TeamID is the primary means for interfacing with teams
@@ -193,12 +194,13 @@ func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
 // NewTeam initializes a new team and returns a teamID
 // the creating gid is added and enabled on that team by default
 func (gid GoogleID) NewTeam(name string) (TeamID, error) {
-	var err error
 	team, err := GenerateSafeName()
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
+
+	name = util.Sanitize(name)
 	if name == "" {
 		err = fmt.Errorf("attempting to create unnamed team: using team ID")
 		log.Errorw(err.Error(), "GID", gid, "resource", team, "message", err.Error())
@@ -221,11 +223,18 @@ func (gid GoogleID) NewTeam(name string) (TeamID, error) {
 // Rename sets a new name for a teamID
 // does not check team ownership -- caller should take care of authorization
 func (teamID TeamID) Rename(name string) error {
-	_, err := db.Exec("UPDATE team SET name = ? WHERE teamID = ?", name, teamID)
-	if err != nil {
-		log.Error(err)
+	name = util.Sanitize(name)
+	if name == "" {
+		err := fmt.Errorf("empty name on rename")
+		log.Errorw(err.Error(), "resource", teamID, "message", err.Error())
+		return err
 	}
-	return err
+
+	if _, err := db.Exec("UPDATE team SET name = ? WHERE teamID = ?", name, teamID); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
 }
 
 // Delete removes the team identified by teamID
@@ -523,6 +532,7 @@ func (gid GoogleID) TeamListEnabled() []TeamID {
 
 // SetComment sets an agent's comment on a given team
 func (teamID TeamID) SetComment(gid GoogleID, comment string) error {
+	comment = util.Sanitize(comment)
 	if comment == "" {
 		comment = "agents"
 	}

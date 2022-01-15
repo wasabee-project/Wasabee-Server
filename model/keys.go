@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // KeyOnHand describes the already in possession for the op
@@ -41,6 +42,8 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 			return err
 		}
 	} else {
+		k.Capsule = util.Sanitize(k.Capsule)
+
 		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, MakeNullString(k.Capsule))
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)

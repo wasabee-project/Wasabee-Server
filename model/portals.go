@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // PortalID wrapper to ensure type safety
@@ -23,8 +24,11 @@ type Portal struct {
 
 // insertPortal adds a portal to the database
 func (opID OperationID) insertPortal(p Portal) error {
+	comment := MakeNullString(util.Sanitize(p.Comment))
+	hardness := MakeNullString(util.Sanitize(p.Hardness))
+
 	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
-		p.ID, opID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
+		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -33,8 +37,11 @@ func (opID OperationID) insertPortal(p Portal) error {
 }
 
 func (opID OperationID) updatePortal(p Portal, tx *sql.Tx) error {
+	comment := MakeNullString(util.Sanitize(p.Comment))
+	hardness := MakeNullString(util.Sanitize(p.Hardness))
+
 	_, err := tx.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
-		p.ID, opID, p.Name, p.Lon, p.Lat, MakeNullString(p.Comment), MakeNullString(p.Hardness))
+		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -135,36 +142,24 @@ func (p PortalID) String() string {
 
 // PortalHardness updates the comment on a portal
 func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error {
-	result, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", MakeNullString(hardness), portalID, opID)
+	h := MakeNullString(util.Sanitize(hardness))
+
+	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", h, portalID, opID)
 	if err != nil {
 		log.Error(err)
 		return err
-	}
-	ra, err := result.RowsAffected()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if ra != 1 {
-		log.Infow("ineffectual hardness assign", "resource", opID, "portal", portalID)
 	}
 	return nil
 }
 
 // PortalComment updates the comment on a portal
 func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
-	result, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", MakeNullString(comment), portalID, opID)
+	c := MakeNullString(util.Sanitize(comment))
+
+	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", c, portalID, opID)
 	if err != nil {
 		log.Error(err)
 		return err
-	}
-	ra, err := result.RowsAffected()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if ra != 1 {
-		log.Infow("ineffectual comment assign", "resource", opID, "portal", portalID)
 	}
 	return nil
 }
