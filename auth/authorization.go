@@ -19,7 +19,7 @@ func Start(ctx context.Context) {
 	log.Infow("startup", "message", "setting up authorization")
 
 	logoutlist = util.NewSafemap()
-	revokedjwt := model.LoadRevokedJWT()
+	revokedjwt = model.LoadRevokedJWT()
 
 	<-ctx.Done()
 
