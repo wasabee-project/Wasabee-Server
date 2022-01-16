@@ -258,7 +258,7 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 }
 
 // ClearAssignments removes any assignments for this task from the database
-func (t Task) ClearAssignments(tx *sql.Tx) error {
+func (t *Task) ClearAssignments(tx *sql.Tx) error {
 	if _, err := tx.Exec("DELETE FROM assignments WHERE taskID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
@@ -271,7 +271,7 @@ func (t Task) ClearAssignments(tx *sql.Tx) error {
 }
 
 // IsAssignedTo checks to see if a task is assigned to a particular agent
-func (t Task) IsAssignedTo(gid GoogleID) bool {
+func (t *Task) IsAssignedTo(gid GoogleID) bool {
 	var x int
 
 	err := db.QueryRow("SELECT COUNT(*) FROM assignments WHERE opID = ? AND taskID = ? AND gid = ?", t.opID, t.ID, gid).Scan(&x)
@@ -283,7 +283,7 @@ func (t Task) IsAssignedTo(gid GoogleID) bool {
 }
 
 // Claim assignes a task to the calling agent
-func (t Task) Claim(gid GoogleID) error {
+func (t *Task) Claim(gid GoogleID) error {
 	if _, err := db.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES (?,?,?)", t.opID, t.ID, gid); err != nil {
 		log.Error(err)
 		return err
@@ -296,7 +296,7 @@ func (t Task) Claim(gid GoogleID) error {
 }
 
 // Complete marks as task as completed
-func (t Task) Complete() error {
+func (t *Task) Complete() error {
 	if _, err := db.Exec("UPDATE task SET state = 'completed' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
@@ -305,7 +305,7 @@ func (t Task) Complete() error {
 }
 
 // Incomplete marks a task as not completed
-func (t Task) Incomplete() error {
+func (t *Task) Incomplete() error {
 	if _, err := db.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
@@ -314,7 +314,7 @@ func (t Task) Incomplete() error {
 }
 
 // Acknowledge marks a task as acknowledged
-func (t Task) Acknowledge() error {
+func (t *Task) Acknowledge() error {
 	if _, err := db.Exec("UPDATE task SET state = 'acknowledged' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
@@ -323,7 +323,7 @@ func (t Task) Acknowledge() error {
 }
 
 // Reject unassignes an agent from a task
-func (t Task) Reject(gid GoogleID) error {
+func (t *Task) Reject(gid GoogleID) error {
 	if _, err := db.Exec("UPDATE task SET state = 'pending' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
@@ -336,7 +336,7 @@ func (t Task) Reject(gid GoogleID) error {
 }
 
 // SetDelta sets the DeltaMinutes of a link in an operation
-func (t Task) SetDelta(delta int) error {
+func (t *Task) SetDelta(delta int) error {
 	_, err := db.Exec("UPDATE link SET delta = ? WHERE ID = ? and opID = ?", delta, t.ID, t.opID)
 	if err != nil {
 		log.Error(err)
@@ -345,7 +345,7 @@ func (t Task) SetDelta(delta int) error {
 }
 
 // SetComment sets the comment on a task
-func (t Task) SetComment(comment string) error {
+func (t *Task) SetComment(comment string) error {
 	desc := makeNullString(util.Sanitize(comment))
 
 	_, err := db.Exec("UPDATE task SET comment = ? WHERE ID = ? AND opID = ?", desc, t.ID, t.opID)
@@ -357,7 +357,7 @@ func (t Task) SetComment(comment string) error {
 }
 
 // SetZone updates the task's zone
-func (t Task) SetZone(z Zone) error {
+func (t *Task) SetZone(z Zone) error {
 	if _, err := db.Exec("UPDATE task SET zone = ? WHERE ID = ? AND opID = ?", z, t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
@@ -366,7 +366,7 @@ func (t Task) SetZone(z Zone) error {
 }
 
 // SetOrder updates the task'sorder
-func (t Task) SetOrder(order int16) error {
+func (t *Task) SetOrder(order int16) error {
 	if _, err := db.Exec("UPDATE task SET order = ? WHERE ID = ? AND opID = ?", order, t.ID, t.opID); err != nil {
 		log.Error(err)
 		return err
@@ -375,7 +375,7 @@ func (t Task) SetOrder(order int16) error {
 }
 
 // GetOrder returns a tasks order
-func (t Task) GetOrder() int16 {
+func (t *Task) GetOrder() int16 {
 	return t.Order
 }
 
@@ -401,16 +401,16 @@ func (o *Operation) GetTask(taskID TaskID) (*Task, error) {
 func (o *Operation) GetTaskByStepNumber(step int16) (UnspecifiedTask, error) {
 	for _, m := range o.Markers {
 		if m.Order == step {
-			return m, nil
+			return &m, nil
 		}
 	}
 
 	for _, l := range o.Links {
 		if l.Order == step {
-			return l, nil
+			return &l, nil
 		}
 	}
-	return Task{}, fmt.Errorf(ErrTaskNotFound)
+	return &Task{}, fmt.Errorf(ErrTaskNotFound)
 }
 
 // checkAssignments validates that assignments are made to agents on teams -- uses the precache

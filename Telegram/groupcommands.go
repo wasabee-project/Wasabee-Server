@@ -370,15 +370,13 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		Order: task.GetOrder(),
 	}
 
-	switch task.(type) {
-	case model.Marker:
-		m := task.(model.Marker)
-		p, _ := o.PortalDetails(m.PortalID, gid)
+	switch task := task.(type) {
+	case *model.Marker:
+		p, _ := o.PortalDetails(task.PortalID, gid)
 		d.Name = p.Name
-		d.Type = model.NewMarkerType(m.Type)
-	case model.Link:
-		l := task.(model.Link)
-		p, _ := o.PortalDetails(l.From, gid)
+		d.Type = model.NewMarkerType(task.Type)
+	case *model.Link:
+		p, _ := o.PortalDetails(task.From, gid)
 		d.Name = p.Name
 		d.Type = "link"
 	}
@@ -452,7 +450,7 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
-	m := task.(model.Marker)
+	m := task.(*model.Marker)
 	p, _ := o.PortalDetails(m.PortalID, gid)
 
 	type data struct {
@@ -526,7 +524,7 @@ func gcReject(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
-	m := task.(model.Marker)
+	m := task.(*model.Marker)
 	p, _ := o.PortalDetails(m.PortalID, gid)
 
 	type data struct {

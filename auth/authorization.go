@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -13,11 +14,17 @@ import (
 var logoutlist *util.Safemap
 var revokedjwt *util.Safemap
 
-// auth doesn't have a startup/shutdown sequence, this is fine
-// XXX Start could get the revoked list from the db and write it back on shutdown
-func init() {
+// Start does initialization and loads/stores the revoked JWT token lists
+func Start(ctx context.Context) {
+	log.Infow("startup", "message", "setting up authorization")
+
 	logoutlist = util.NewSafemap()
-	revokedjwt = util.NewSafemap()
+	revokedjwt := model.LoadRevokedJWT()
+
+	<-ctx.Done()
+
+	log.Infow("shutdown", "message", "shutting down authorization")
+	model.StoreRevokedJWT(revokedjwt)
 }
 
 // Authorize is called to verify that an agent is permitted to use Wasabee.

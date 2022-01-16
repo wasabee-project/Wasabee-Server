@@ -16,6 +16,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
 	"github.com/wasabee-project/Wasabee-Server/Telegram"
+	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/background"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/http"
@@ -136,15 +137,22 @@ func run(cargs *cli.Context) error {
 	var wg sync.WaitGroup
 
 	// start background tasks
+	wg.Add(1)
 	go func(ctx context.Context) {
-		wg.Add(1)
 		defer wg.Done()
 		background.Start(ctx)
 	}(ctx)
 
-	// start firebase
+	// start authorization
+	wg.Add(1)
 	go func(ctx context.Context) {
-		wg.Add(1)
+		defer wg.Done()
+		auth.Start(ctx)
+	}(ctx)
+
+	// start firebase
+	wg.Add(1)
+	go func(ctx context.Context) {
 		defer wg.Done()
 		wfb.Start(ctx)
 	}(ctx)
@@ -153,29 +161,29 @@ func run(cargs *cli.Context) error {
 	go wasabeehttps.Start()
 
 	// start risc
+	wg.Add(1)
 	go func(ctx context.Context) {
-		wg.Add(1)
 		defer wg.Done()
 		risc.Start(ctx)
 	}(ctx)
 
 	// start Telegram
+	wg.Add(1)
 	go func(ctx context.Context) {
-		wg.Add(1)
 		defer wg.Done()
 		wtg.Start(ctx)
 	}(ctx)
 
 	// start V
+	wg.Add(1)
 	go func(ctx context.Context) {
-		wg.Add(1)
 		defer wg.Done()
 		v.Start(ctx)
 	}(ctx)
 
 	// start Rocks
+	wg.Add(1)
 	go func(ctx context.Context) {
-		wg.Add(1)
 		defer wg.Done()
 		rocks.Start(ctx)
 	}(ctx)

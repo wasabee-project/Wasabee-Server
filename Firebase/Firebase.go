@@ -64,5 +64,4 @@ func Start(ctx context.Context) {
 
 	log.Infow("Shutdown", "message", "Firebase Shutting down")
 	config.SetFirebaseRunning(false)
-	return
 }

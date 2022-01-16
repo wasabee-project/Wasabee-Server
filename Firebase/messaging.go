@@ -480,6 +480,8 @@ func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 		if !resp.Success {
 			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
 				_ = model.RemoveFirebaseToken(tokens[pos])
+			} else {
+				log.Warn(resp.Error)
 			}
 		}
 	}
