@@ -234,9 +234,9 @@ func (opID OperationID) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zo
 }
 
 // Operations returns a slice containing all the OpPermissions which reference this team
-func (t TeamID) Operations() ([]OpPermission, error) {
+func (teamID TeamID) Operations() ([]OpPermission, error) {
 	var perms []OpPermission
-	rows, err := db.Query("SELECT opID, permission, zone FROM permissions WHERE teamID = ?", t)
+	rows, err := db.Query("SELECT opID, permission, zone FROM permissions WHERE teamID = ?", teamID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return perms, err
@@ -253,7 +253,7 @@ func (t TeamID) Operations() ([]OpPermission, error) {
 		}
 		perms = append(perms, OpPermission{
 			OpID:   OperationID(opid),
-			TeamID: t,
+			TeamID: teamID,
 			Role:   OpPermRole(role),
 			Zone:   zone,
 		})
