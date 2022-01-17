@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
@@ -54,12 +55,13 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 
 // firebase announce change to all relevant teams
 func taskStatusAnnounce(op *model.Operation, taskID model.TaskID, status string, updateID string) {
-	var teams []model.TeamID
+	time.Sleep(80 * time.Millisecond)
+	teams := make(map[model.TeamID]bool)
 	for _, t := range op.Teams {
-		teams = append(teams, t.TeamID)
+		teams[t.TeamID] = true
 	}
 
-	for _, t := range teams {
+	for t := range teams {
 		if err := wfb.TaskStatus(taskID, op.ID, t, status, updateID); err != nil {
 			log.Error(err)
 		}
@@ -106,9 +108,11 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 
-	for _, agent := range assignments {
-		go wfb.AssignTask(agent, task.ID, op.ID, uid)
-	}
+	go func() {
+		for _, agent := range assignments {
+			wfb.AssignTask(agent, task.ID, op.ID, uid)
+		}
+	}()
 }
 
 func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
