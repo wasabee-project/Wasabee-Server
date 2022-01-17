@@ -313,40 +313,27 @@ func markerAssignTouch(gid model.GoogleID, markerID model.MarkerID, op *model.Op
 		log.Error(err)
 	}
 
-	if err := wfb.AssignMarker(gid, model.TaskID(markerID), op.ID, uid); err != nil {
-		log.Error(err)
-	}
+	_ = wfb.AssignMarker(gid, model.TaskID(markerID), op.ID, uid)
 	return uid
 }
 
-// linkStatusTouch updates the updateID and notifies all teams of the update
+// markerStatusTouch updates the updateID and notifies all teams of the update
 func markerStatusTouch(op *model.Operation, markerID model.MarkerID, status string) string {
 	// update the timestamp and updateID
 	uid, err := op.Touch()
 	if err != nil {
-		log.Error(err)
 		return ""
 	}
 
 	// announce to all relevant teams
-	var teams []model.TeamID
-	for _, t := range op.Teams {
-		teams = append(teams, t.TeamID)
-	}
-	if len(teams) == 0 {
-		// not populated?
-		teams, err = op.ID.Teams()
-		if err != nil {
-			log.Error(err)
-			return uid
+	go func() {
+		teams := make(map[model.TeamID]bool)
+		for _, t := range op.Teams {
+			teams[t.TeamID] = true
 		}
-	}
-
-	for _, t := range teams {
-		err := wfb.MarkerStatus(model.TaskID(markerID), op.ID, t, status, uid)
-		if err != nil {
-			log.Error(err)
+		for t := range teams {
+			_ = wfb.MarkerStatus(model.TaskID(markerID), op.ID, t, status, uid)
 		}
-	}
+	}()
 	return uid
 }

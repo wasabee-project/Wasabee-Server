@@ -323,9 +323,7 @@ func linkAssignTouch(gid model.GoogleID, linkID model.LinkID, op *model.Operatio
 		log.Error(err)
 	}
 
-	if err := wfb.AssignLink(gid, model.TaskID(linkID), op.ID, uid); err != nil {
-		log.Error(err)
-	}
+	_ = wfb.AssignLink(gid, model.TaskID(linkID), op.ID, uid)
 	return uid
 }
 
@@ -333,28 +331,18 @@ func linkAssignTouch(gid model.GoogleID, linkID model.LinkID, op *model.Operatio
 func linkStatusTouch(op *model.Operation, linkID model.LinkID, status string) string {
 	uid, err := op.Touch()
 	if err != nil {
-		log.Error(err)
 		return ""
 	}
 
 	// announce to all relevant teams
-	var teams []model.TeamID
-	for _, t := range op.Teams {
-		teams = append(teams, t.TeamID)
-	}
-	if len(teams) == 0 {
-		// not populated?
-		teams, err = op.ID.Teams()
-		if err != nil {
-			log.Error(err)
-			return uid
+	go func() {
+		teams := make(map[model.TeamID]bool)
+		for _, t := range op.Teams {
+			teams[t.TeamID] = true
 		}
-	}
-
-	for _, t := range teams {
-		if err := wfb.LinkStatus(model.TaskID(linkID), op.ID, t, status, uid); err != nil {
-			log.Error(err)
+		for t := range teams {
+			_ = wfb.LinkStatus(model.TaskID(linkID), op.ID, t, status, uid)
 		}
-	}
+	}()
 	return uid
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
@@ -53,18 +52,15 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	return gid, &op, task, nil
 }
 
-// firebase announce change to all relevant teams
+// taskStatusAnnounce send the fb annoucen to all relevant teams
 func taskStatusAnnounce(op *model.Operation, taskID model.TaskID, status string, updateID string) {
-	time.Sleep(80 * time.Millisecond)
 	teams := make(map[model.TeamID]bool)
 	for _, t := range op.Teams {
 		teams[t.TeamID] = true
 	}
 
 	for t := range teams {
-		if err := wfb.TaskStatus(taskID, op.ID, t, status, updateID); err != nil {
-			log.Error(err)
-		}
+		_ = wfb.TaskStatus(taskID, op.ID, t, status, updateID)
 	}
 }
 

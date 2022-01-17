@@ -515,28 +515,18 @@ func touch(op model.Operation) string {
 	// update the timestamp and updateID
 	uid, err := op.Touch()
 	if err != nil {
-		log.Error(err)
 		return ""
 	}
 
 	// announce to all relevant teams
-	var teams []model.TeamID
-	for _, t := range op.Teams {
-		teams = append(teams, t.TeamID)
-	}
-	if len(teams) == 0 {
-		// not populated?
-		teams, err = op.ID.Teams()
-		if err != nil {
-			log.Error(err)
-			return uid
+	go func() {
+		teams := make(map[model.TeamID]bool)
+		for _, t := range op.Teams {
+			teams[t.TeamID] = true
 		}
-	}
-
-	for _, t := range teams {
-		if err := wfb.MapChange(t, op.ID, uid); err != nil {
-			log.Error(err)
+		for t := range teams {
+			_ = wfb.MapChange(t, op.ID, uid)
 		}
-	}
+	}()
 	return uid
 }
