@@ -6,53 +6,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	// "strconv"
 	"strings"
 	"time"
 
+	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
-
-type vTeamID int64
-
-// Result is set by the V trust API
-type trustResult struct {
-	Status  string       `json:"status"`
-	Message string       `json:"message,omitempty"`
-	Data    model.VAgent `json:"data"`
-}
-
-// Version 2.0 of the team query
-type teamResult struct {
-	Status  string         `json:"status"`
-	Message string         `json:"message,omitempty"`
-	Agents  []model.VAgent `json:"data"`
-}
-
-type bulkResult struct {
-	Status string                            `json:"status"`
-	Agents map[model.TelegramID]model.VAgent `json:"data"`
-}
-
-// myTeams is what V returns when an agent's teams are requested
-type myTeams struct {
-	Status  string   `json:"status"`
-	Teams   []myTeam `json:"data"`
-	Message string   `json:"message,omitempty"`
-}
-
-type myTeam struct {
-	TeamID vTeamID `json:"teamid"`
-	Name   string  `json:"team"`
-	Roles  []struct {
-		ID   uint8  `json:"id"`
-		Name string `json:"name"`
-	} `json:"roles"`
-	Admin bool `json:"admin"`
-}
 
 // Start is called start V integration
 func Start(ctx context.Context) {
@@ -72,6 +34,8 @@ func Start(ctx context.Context) {
 		AddToRemote:      addToRemote,
 		RemoveFromRemote: removeFromRemote,
 	})
+
+	auth.RegisterAuthProvider(&V{})
 
 	config.SetVRunning(true)
 
@@ -329,88 +293,6 @@ func Sync(ctx context.Context, teamID model.TeamID, key string) error {
 	return nil
 }
 
-var rolenames = map[uint8]string{
-	0:   "All",
-	1:   "Planner",
-	2:   "Operator",
-	3:   "Linker",
-	4:   "Keyfarming",
-	5:   "Cleaner",
-	6:   "Field Agent",
-	7:   "Item Sponsor",
-	8:   "Key Transport",
-	9:   "Recharging",
-	10:  "Software Support",
-	11:  "Anomaly TL",
-	12:  "Team Lead",
-	13:  "Other",
-	100: "Team-0",
-	101: "Team-1",
-	102: "Team-2",
-	103: "Team-3",
-	104: "Team-4",
-	105: "Team-5",
-	106: "Team-6",
-	107: "Team-7",
-	108: "Team-8",
-	109: "Team-9",
-	110: "Team-10",
-	111: "Team-11",
-	112: "Team-12",
-	113: "Team-13",
-	114: "Team-14",
-	115: "Team-15",
-	116: "Team-16",
-	117: "Team-17",
-	118: "Team-18",
-	119: "Team-19",
-}
-
-// Authorize checks if an agent is permitted to use Wasabee based on V data
-// data is cached per-agent for one hour
-// if an agent is not known at V, they are implicitly permitted
-// if an agent is banned, blacklisted, etc at V, they are prohibited
-func Authorize(gid model.GoogleID) bool {
-	a, fetched, err := model.VFromDB(gid)
-	if err != nil {
-		log.Error(err)
-		// do not block on db error
-		return true
-	}
-
-	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
-		net, err := trustCheck(gid)
-		if err != nil {
-			log.Error(err)
-			// do not block on network error unless already listed as blacklisted in DB
-			return !a.Blacklisted
-		}
-		// log.Debugw("v cache refreshed", "gid", gid, "data", net.Data)
-		err = model.VToDB(&net.Data)
-		if err != nil {
-			log.Error(err)
-		}
-		a = &net.Data // use the network result now that it is saved
-	}
-
-	if a.Agent != "" {
-		if a.Quarantine {
-			log.Warnw("access denied", "GID", gid, "reason", "quarantined at V")
-			return false
-		}
-		if a.Flagged {
-			log.Warnw("access denied", "GID", gid, "reason", "flagged at V")
-			return false
-		}
-		if a.Blacklisted || a.Banned {
-			log.Warnw("access denied", "GID", gid, "reason", "blacklisted at V")
-			return false
-		}
-	}
-
-	return true
-}
-
 // BulkImport imports all teams of which the GoogleID is an admin
 // mode determines how many teams are created
 // team = one Wasabee Team per V team -- roles are ignored
@@ -563,16 +445,4 @@ func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 	}
 	a := br.Agents[tgid]
 	return &a, nil
-}
-
-func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	// V's api doesn't support this?
-	// log.Info("v add to remote not written")
-	return nil
-}
-
-func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	// V's api doesn't support this?
-	// log.Info("v remove from remote not written")
-	return nil
 }

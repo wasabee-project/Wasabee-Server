@@ -6,9 +6,9 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
-	"github.com/wasabee-project/Wasabee-Server/rocks"
+	// "github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/util"
-	"github.com/wasabee-project/Wasabee-Server/v"
+	// "github.com/wasabee-project/Wasabee-Server/v"
 )
 
 var logoutlist *util.Safemap
@@ -28,9 +28,9 @@ func Start(ctx context.Context) {
 }
 
 // Authorize is called to verify that an agent is permitted to use Wasabee.
-// V and Rocks are updated (if configured).
 // Accounts that are locked due to Google RISC are blocked.
 // Accounts that have indicated they are RES in Intel are blocked.
+// V and Rocks are checked (if configured).
 // Returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked.
 func Authorize(gid model.GoogleID) (bool, error) {
 	// if the agent isn't known to this server, pre-populate everything
@@ -53,21 +53,11 @@ func Authorize(gid model.GoogleID) (bool, error) {
 		return false, err
 	}
 
-	// query both rocks and V at the same time -- probably not necessary now
-	// *.Authorize checks cache in db, if too old, checks service and saves updates
-	channel := make(chan bool, 2)
-	defer close(channel)
-	go func() {
-		channel <- v.Authorize(gid)
-	}()
-	go func() {
-		channel <- rocks.Authorize(gid)
-	}()
-
-	// "true" means "not blocked", "false" means "blocked"
-	e1, e2 := <-channel, <-channel
-	if !e1 || !e2 {
-		return false, fmt.Errorf("access denied")
+	// sequentially loop through authorization providers
+	for _, p := range providers {
+		if !p.Authorize(gid) {
+			return false, fmt.Errorf("access denied")
+		}
 	}
 
 	return true, nil

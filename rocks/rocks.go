@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"time"
 
 	"golang.org/x/time/rate"
 
+	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
@@ -18,43 +18,6 @@ import (
 )
 
 var holdtime = 3 * time.Second
-
-// communityNotice is sent from a community when an agent is added or removed
-// consumed by RocksCommunitySync function below
-type communityNotice struct {
-	Community string           `json:"community"`
-	Action    string           `json:"action"`
-	User      agent            `json:"user"`
-	TGId      model.TelegramID `json:"tg_id"`
-	TGName    string           `json:"tg_user"`
-}
-
-// communityResponse is returned from a query request
-type communityResponse struct {
-	Community  string           `json:"community"`
-	Title      string           `json:"title"`
-	Members    []model.GoogleID `json:"members"`    // googleID
-	Moderators []string         `json:"moderators"` // googleID
-	User       agent            `json:"user"`       // (Members,Moderators || User) present, not both
-	Error      string           `json:"error"`
-}
-
-// Agent is the data sent by enl.rocks -- the version sent in the communityResponse is different, but close enough for our purposes
-type agent struct {
-	Gid      model.GoogleID `json:"gid"`
-	TGId     int64          `json:"tgid"`
-	Agent    string         `json:"agentid"`
-	Verified bool           `json:"verified"`
-	Smurf    bool           `json:"smurf"`
-	// Fullname string `json:"name"`
-}
-
-// sent by rocks on community pushes
-type rocksPushResponse struct {
-	Error   string `json:"error"`
-	Success bool   `json:"success"`
-}
-
 var limiter *rate.Limiter
 
 // Start is called from main() to initialize the config
@@ -66,7 +29,6 @@ func Start(ctx context.Context) {
 
 	limiter = rate.NewLimiter(rate.Limit(0.5), 10)
 
-	// V and Rocks need to be moved to the respective system's Start()
 	rocks := config.Subrouter("/rocks")
 	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
 	// rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
@@ -78,6 +40,9 @@ func Start(ctx context.Context) {
 		AddToRemote:      addToRemote,
 		RemoveFromRemote: removeFromRemote,
 	})
+
+	auth.RegisterAuthProvider(&Rocks{})
+
 	config.SetRocksRunning(true)
 
 	// there is no reason to stay running now -- this costs nothing
@@ -159,7 +124,8 @@ func CommunitySync(msg json.RawMessage) error {
 			log.Error(err)
 			return err
 		}
-		_ = Authorize(rc.User.Gid)
+		r := &Rocks{}
+		_ = r.Authorize(rc.User.Gid)
 	}
 
 	if rc.Action == "onJoin" {
@@ -252,163 +218,4 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		}
 	}
 	return nil
-}
-
-// addToRemote adds an agent to a Rocks Community IF that community has API enabled.
-func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	// log.Debug("add to remote rocks", "gid", gid, "teamID", teamID)
-	t := model.TeamID(teamID)
-	cid, err := t.RocksKey()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	if cid == "" || gid == "" {
-		return nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
-	defer cancel()
-	if err := limiter.Wait(ctx); err != nil {
-		log.Infow("timeout waiting on .rocks rate limiter", "GID", gid)
-	}
-
-	c := config.Get().Rocks
-	client := &http.Client{
-		Timeout: holdtime,
-	}
-	apiurl := fmt.Sprintf("%s/%s?key=%s", c.CommunityEndpoint, gid, cid)
-	// #nosec
-	resp, err := client.PostForm(apiurl, url.Values{"Agent": {string(gid)}})
-	if err != nil {
-		err := fmt.Errorf("error adding agent to rocks community")
-		log.Errorw(err.Error(), "GID", gid)
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	var rr rocksPushResponse
-	err = json.Unmarshal(body, &rr)
-	if err != nil {
-		log.Error(err)
-		log.Debug(string(body))
-	}
-	if !rr.Success {
-		log.Errorw("unable to add to remote rocks team", "teamID", teamID, "gid", gid, "cid", cid, "error", rr.Error)
-		if rr.Error == "Invalid key" {
-			c, _ := t.RocksCommunity()
-			_ = t.SetRocks("", c) // unlink
-		}
-	}
-	return nil
-}
-
-// removeFromRemote removes an agent from a Rocks Community IF that community has API enabled.
-func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
-	// log.Debugw("remove from remote rocks", "gid", gid, "teamID", teamID)
-	t := model.TeamID(teamID)
-	cid, err := t.RocksKey()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if cid == "" || gid == "" {
-		return nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
-	defer cancel()
-	if err := limiter.Wait(ctx); err != nil {
-		log.Info(err)
-		// just keep going
-	}
-
-	c := config.Get().Rocks
-	apiurl := fmt.Sprintf("%s/%s?key=%s", c.CommunityEndpoint, gid, cid)
-	req, err := http.NewRequest("DELETE", apiurl, nil)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	client := &http.Client{
-		Timeout: holdtime,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		// default err leaks API key to logs
-		err := fmt.Errorf("error removing agent from .rocks community")
-		log.Errorw(err.Error(), "GID", gid)
-		return err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	var rr rocksPushResponse
-	err = json.Unmarshal(body, &rr)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if !rr.Success {
-		err = fmt.Errorf(rr.Error)
-		log.Error(err)
-		if rr.Error == "Invalid key" {
-			c, _ := t.RocksCommunity()
-			_ = t.SetRocks("", c) // unlink
-		}
-		return err
-	}
-	return nil
-}
-
-// Authorize checks Rocks to see if an agent is permitted to use Wasabee
-// responses are cached for an hour
-// unknown agents are permitted implicitly
-// if an agent is marked as smurf at rocks, they are prohibited
-func Authorize(gid model.GoogleID) bool {
-	a, fetched, err := model.RocksFromDB(gid)
-	if err != nil {
-		log.Error(err)
-		// do not block on db error
-		return true
-	}
-
-	// log.Debugw("rocks from cache", "gid", gid, "data", a)
-	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
-		net, err := Search(string(gid))
-		if err != nil {
-			log.Error(err)
-			return !a.Smurf // do not block on network error unless already listed as a smurf in the cache
-		}
-		// log.Debugw("rocks cache refreshed", "gid", gid, "data", net)
-		if net.Gid == "" {
-			// log.Debugw("Rocks returned a result without a GID, adding it", "gid", gid, "result", net)
-			net.Gid = gid
-		}
-		err = model.RocksToDB(net)
-		if err != nil {
-			log.Error(err)
-		}
-		a = net
-	}
-
-	if a.Agent != "" && a.Smurf {
-		log.Warnw("access denied", "GID", gid, "reason", "listed as smurf at enl.rocks")
-		return false
-	}
-
-	// not in rocks is not sufficient to block
-	return true
 }
