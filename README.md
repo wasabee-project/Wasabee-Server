@@ -1,11 +1,8 @@
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GoReportCard](https://goreportcard.com/badge/wasabee-project/Wasabee-Server)](https://goreportcard.com/report/wasabee-project/Wasabee-Server)
 [![GoDoc](https://godoc.org/github.com/wasabee-project/Wasabee-Server?status.svg)](https://godoc.org/github.com/wasabee-project/Wasabee-Server)
-![GitHub issues](https://img.shields.io/github/issues/wasabee-project/Wasabee-Server.svg)
-[![Build Status](https://travis-ci.com/wasabee-project/Wasabee-Server.svg?branch=master)](https://travis-ci.com/wasabee-project/Wasabee-Server)
-[![Coverage Status](https://coveralls.io/repos/github/wasabee-project/Wasabee-Server/badge.svg?branch=master)](https://coveralls.io/github/wasabee-project/Wasabee-Server?branch=master)
 
-[IITC Plugin](https://github.com/pcaddict08/Wasabee-IITC)
+[The Wasabee Ecosystem](https://github.com/wasabee-project/)
 
 # Wasabee-Server 
 ### The Server-Side component for the Wasabee Project tools for Enlightened Agents.
