@@ -136,20 +136,15 @@ func validateToken(rawjwt []byte) error {
 		jwt.WithIssuer("https://accounts.google.com"),
 		jwt.InferAlgorithmFromKey(true),
 		jwt.UseDefaultKey(true),
-		jwt.WithKeySet(keys))
+		jwt.WithKeySet(keys),
+		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
-		log.Errorw("RISC", "error", err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
+		log.Errorw("RISC", "error", err.Error(), "subsystem", "RISC")
 		return err
 	}
 	if token == nil {
 		err := fmt.Errorf("unable to verify RISC event")
-		log.Errorw(err.Error(), "subsystem", "RISC", "raw", string(rawjwt))
-		return err
-	}
-
-	// jwt.WithValidate(true) makes this redundant
-	if err := jwt.Validate(token); err != nil {
-		log.Infow("RISC jwt validate failed", "error", err)
+		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 
@@ -172,16 +167,8 @@ func validateToken(rawjwt []byte) error {
 			continue
 		}
 
-		// log.Debugw("RISC event", "subsystem", "RISC", "type", k, "data", v, "message", "RISC event")
-
-		// XXX this is ugly and brittle - it is JSON, just unmarshal it.
+		// it is JSON, just unmarshal it...
 		x := v.(map[string]interface{})
-
-		/* if err := json.Unmarshal(x, &r); err != nil {
-			log.Errorw(err.Error(), "subsystem", "RISC", "message", err.Error(), "data", x)
-			continue
-		} */
-
 		if x["reason"] != nil {
 			r.Subject.Reason = x["reason"].(string)
 		}
