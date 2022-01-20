@@ -102,13 +102,19 @@ func fetch(name string) (*profile, error) {
 
 // move the constants into the config package
 func checkJWT(raw, name string, gid model.GoogleID) error {
-	token, err := jwt.Parse([]byte(raw), jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
+	token, err := jwt.Parse([]byte(raw),
+		jwt.InferAlgorithmFromKey(true),
+		jwt.UseDefaultKey(true),
+		jwt.WithKeySet(config.JWParsingKeys()))
 	if err != nil {
 		log.Errorw("community token parse failed", "err", err.Error(), "gid", gid, "name", name)
 		return err
 	}
 
-	if err := jwt.Validate(token, jwt.WithAudience(aud), jwt.WithClaimValue(xme, name), jwt.WithClaimValue(xgid, string(gid))); err != nil {
+	if err := jwt.Validate(token,
+		jwt.WithAudience(aud),
+		jwt.WithClaimValue(xme, name),
+		jwt.WithClaimValue(xgid, string(gid))); err != nil {
 		log.Errorw("community token validate failed", "err", err.Error(), "gid", gid, "name", name)
 		return err
 	}

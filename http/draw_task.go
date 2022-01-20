@@ -106,7 +106,7 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 
 	go func() {
 		for _, agent := range assignments {
-			wfb.AssignTask(agent, task.ID, op.ID, uid)
+			_ = wfb.AssignTask(agent, task.ID, op.ID, uid)
 		}
 	}()
 }
