@@ -83,9 +83,9 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		var lat, lon string
 		var faction IntelFaction
 		var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-		var intelname, communityname, enlID, vname, rocksname, picurl sql.NullString
+		var intelname, communityname, enlID, vname, rocksname, picurl, comment sql.NullString
 
-		err := rows.Scan(&agent.Gid, &vname, &intelname, &rocksname, &agent.Comment, &agent.ShareLocation, &lat, &lon, &agent.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &agent.ShareWD, &agent.LoadWD, &faction, &communityname, &picurl)
+		err := rows.Scan(&agent.Gid, &vname, &intelname, &rocksname, &comment, &agent.ShareLocation, &lat, &lon, &agent.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &agent.ShareWD, &agent.LoadWD, &faction, &communityname, &picurl)
 		if err != nil {
 			log.Error(err)
 			return &teamList, err
@@ -107,6 +107,10 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 
 		if rocksname.Valid {
 			agent.RocksName = rocksname.String
+		}
+
+		if comment.Valid {
+			agent.Comment = comment.String
 		}
 
 		if enlID.Valid {
@@ -532,11 +536,9 @@ func (gid GoogleID) TeamListEnabled() []TeamID {
 
 // SetComment sets an agent's comment on a given team
 func (teamID TeamID) SetComment(gid GoogleID, comment string) error {
-	comment = util.Sanitize(comment)
-	if comment == "" {
-		comment = "agents"
-	}
-	_, err := db.Exec("UPDATE agentteams SET comment = ? WHERE teamID = ? AND gid = ?", comment, teamID, gid)
+	c := makeNullString(util.Sanitize(comment))
+
+	_, err := db.Exec("UPDATE agentteams SET comment = ? WHERE teamID = ? AND gid = ?", c, teamID, gid)
 	if err != nil {
 		log.Error(err)
 		return err
