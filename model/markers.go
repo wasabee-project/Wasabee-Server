@@ -32,7 +32,6 @@ type AttributeID string
 // Attribute is per-marker-type data
 type Attribute struct {
 	ID         AttributeID `json:"ID"`
-	MarkerID   MarkerID    `json:"markerID"`
 	AssignedTo GoogleID    `json:"assignedTo,omitempty"`
 	Name       string      `json:"name"`
 	Value      string      `json:"value"`
