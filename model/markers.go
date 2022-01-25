@@ -18,11 +18,24 @@ type MarkerType string
 
 // Marker is defined by the Wasabee IITC plugin.
 type Marker struct {
-	ID         MarkerID   `json:"ID"`
-	PortalID   PortalID   `json:"portalId"`
-	Type       MarkerType `json:"type"`
-	AssignedTo GoogleID   `json:"assignedTo"` // deprecated, use Assignments from Task
+	ID         MarkerID    `json:"ID"`
+	PortalID   PortalID    `json:"portalId"`
+	Type       MarkerType  `json:"type"`
+	AssignedTo GoogleID    `json:"assignedTo,omitempty"` // deprecated, use Assignments from Task
+	Attributes []Attribute `json:"attributes,omitempty"`
 	Task
+}
+
+// AttributeID is the attribute ID
+type AttributeID string
+
+// Attribute is per-marker-type data
+type Attribute struct {
+	ID         AttributeID `json:"ID"`
+	MarkerID   MarkerID    `json:"markerID"`
+	AssignedTo GoogleID    `json:"assignedTo,omitempty"`
+	Name       string      `json:"name"`
+	Value      string      `json:"value"`
 }
 
 // TODO use the logic from insertZone to unify insertMarker and updateMarker
@@ -65,8 +78,14 @@ func (opID OperationID) insertMarker(m Marker) error {
 
 	// len() == 0 could be empty, or could be old client; do not clear them (yet)
 	if len(m.DependsOn) > 0 {
-		err = m.SetDepends(m.DependsOn, nil)
-		if err != nil {
+		if err := m.SetDepends(m.DependsOn, nil); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	if len(m.Attributes) > 0 {
+		if err := m.setAttributes(m.Attributes, nil); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -125,6 +144,14 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 			return err
 		}
 	}
+
+	if len(m.Attributes) > 0 {
+		if err := m.setAttributes(m.Attributes, tx); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -148,9 +175,7 @@ func (opID OperationID) deleteMarker(mid MarkerID, tx *sql.Tx) error {
 func (o *Operation) populateMarkers(zones []Zone, gid GoogleID, assignments map[TaskID][]GoogleID, depends map[TaskID][]TaskID) error {
 	var comment sql.NullString
 
-	var err error
-	var rows *sql.Rows
-	rows, err = db.Query("SELECT marker.ID, marker.PortalID, marker.type, task.comment, task.state, task.taskorder, task.zone, task.delta FROM marker JOIN task ON marker.ID = task.ID WHERE marker.opID = ? AND marker.opID = task.opID", o.ID)
+	rows, err := db.Query("SELECT marker.ID, marker.PortalID, marker.type, task.comment, task.state, task.taskorder, task.zone, task.delta FROM marker JOIN task ON marker.ID = task.ID WHERE marker.opID = ? AND marker.opID = task.opID", o.ID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -192,6 +217,10 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID, assignments map[
 		if !tmpMarker.Zone.inZones(zones) && !tmpMarker.IsAssignedTo(gid) {
 			continue
 		}
+
+		// load attributes
+		tmpMarker.loadAttributes()
+
 		o.Markers = append(o.Markers, tmpMarker)
 	}
 
@@ -279,4 +308,60 @@ func NewMarkerType(old MarkerType) string {
 		return "virus"
 	}
 	return old.String()
+}
+
+func (m *Marker) setAttributes(a []Attribute, tx *sql.Tx) error {
+	needtx := false
+	if tx == nil {
+		needtx = true
+		tx, _ = db.Begin()
+
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Error(err)
+			}
+		}()
+	}
+
+	if _, err := tx.Exec("DELETE FROM markerattributes WHERE opID = ? AND markerID = ?", m.opID, m.ID); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	for _, v := range a {
+		if _, err := tx.Exec("INSERT INTO markerattributes (ID, opID, markerID, assignedTo, name, value) VALUES ()", v.ID, m.opID, m.ID, v.AssignedTo, v.Name, v.Value); err != nil {
+			log.Error(err)
+			continue
+		}
+	}
+
+	if needtx {
+		if err := tx.Commit(); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *Marker) loadAttributes() error {
+	rows, err := db.Query("SELECT ID, assignedTo, name, value FROM markerattributes WHERE opID = ? AND markerID = ?", m.opID, m.ID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		tmp := Attribute{}
+
+		if err := rows.Scan(&tmp.ID, &tmp.AssignedTo, &tmp.Name, &tmp.Value); err != nil {
+			log.Error(err)
+			continue
+		}
+
+		m.Attributes = append(m.Attributes, tmp)
+	}
+	return nil
 }
