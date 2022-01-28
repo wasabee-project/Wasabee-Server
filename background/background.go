@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -13,16 +14,22 @@ func Start(ctx context.Context) {
 	log.Infow("startup", "message", "running initial background tasks")
 	model.LocationClean()
 
-	ticker := time.NewTicker(time.Hour)
-	defer ticker.Stop()
+	hourly := time.NewTicker(time.Hour)
+	defer hourly.Stop()
+
+	weekly := time.NewTicker(time.Hour * 24 * 7)
+	defer weekly.Stop()
+	wfb.Resubscribe()
 
 	for {
 		select {
 		case <-ctx.Done():
 			log.Infow("shutdown", "message", "background tasks shutting down")
 			return
-		case <-ticker.C:
+		case <-hourly.C:
 			model.LocationClean()
+		case <-weekly.C:
+			wfb.Resubscribe()
 		}
 	}
 }

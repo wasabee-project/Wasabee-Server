@@ -602,3 +602,47 @@ func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
 
 	return nil
 }
+
+func (teamID TeamID) FetchFBTokens() ([]string, error) {
+	var tokens []string
+
+	rows, err := db.Query("SELECT firebase.token FROM agentteams JOIN firebase ON firebase.gid = agentteams.gid WHERE agentteams.teamID = ?", teamID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return tokens, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var token string
+		if err = rows.Scan(&token); err != nil {
+			log.Error(err)
+			continue
+		}
+		tokens = append(tokens, token)
+	}
+
+	return tokens, nil
+}
+
+func GetAllTeams() ([]TeamID, error) {
+	var teams []TeamID
+
+	rows, err := db.Query("SELECT DISTINCT teamID FROM team")
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return teams, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var teamID TeamID
+		if err = rows.Scan(&teamID); err != nil {
+			log.Error(err)
+			continue
+		}
+		teams = append(teams, teamID)
+	}
+
+	return teams, nil
+}

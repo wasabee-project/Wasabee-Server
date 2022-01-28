@@ -486,3 +486,33 @@ func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 		}
 	}
 }
+
+// Resubscribe refreshes all the topic subscriptions for every team
+func Resubscribe() {
+	teams, err := model.GetAllTeams()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	for _, teamID := range teams {
+		tokens, err := teamID.FetchFBTokens()
+		if err != nil || len(tokens) == 0 {
+			continue
+		}
+
+		// log.Debugw("resubscribing tokens", "teamID", teamID, "count", len(tokens))
+
+		tmr, err := msg.SubscribeToTopic(fbctx, tokens, string(teamID))
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		if tmr != nil && tmr.FailureCount > 0 {
+			for _, f := range tmr.Errors {
+				log.Debugw("removing dead firebase token", "token", tokens[f.Index])
+				_ = model.RemoveFirebaseToken(tokens[f.Index])
+			}
+		}
+	}
+}
