@@ -6,9 +6,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
-	// "github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/util"
-	// "github.com/wasabee-project/Wasabee-Server/v"
 )
 
 var logoutlist *util.Safemap
