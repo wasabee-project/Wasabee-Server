@@ -20,31 +20,35 @@ import (
 type WasabeeConf struct {
 	GoogleCreds       string // path to file.json
 	GoogleProject     string // project name for firebase/profile/risc
-	WordListFile      string // "eff-large-words.txt" filename
 	DB                string // db connect string
-	FrontendPath      string // path to directory
+	WordListFile      string // "eff-large-words.txt" filename
+	FrontendPath      string // path to directory continaing templates
 	Certs             string // path to director containing certs
-	CertFile          string // name of file (relative to Certs)
-	CertKey           string // name of file (relative to Certs)
-	WebUIURL          string // URL of WebUI
-	JKU               string // URL to well-known JKU (for 3rd parties to verify our JWT)
-	DefaultPictureURL string // URL to a default image for agents
+	CertFile          string // filename (relative to Certs)
+	CertKey           string // filename (relative to Certs)
+	FirebaseKey       string // filename (relative to Certs)
 	JWKpriv           string // filename (relative to Certs)
 	JWKpub            string // filename (relative to Certs)
-	FirebaseKey       string // filename (relative to Certs)
-	fbRunning         bool
+	JKU               string // URL to well-known JKU (for 3rd parties to verify our JWT)
+	DefaultPictureURL string // URL to a default image for agents
+	WebUIURL          string // URL of WebUI
 
+	// configuraiton for various subsystems
 	V        wv
 	Rocks    wrocks
 	Telegram wtg
 	HTTP     whttp
 	RISC     wrisc
 
+	// not configurable
+	fbRunning bool
+
 	// loaded by LoadFile()
 	jwSigningKeys jwk.Set
 	jwParsingKeys jwk.Set
 }
 
+// Configure v.enl.one
 type wv struct {
 	APIKey         string // get from V
 	APIEndpoint    string // use default
@@ -53,6 +57,7 @@ type wv struct {
 	running        bool
 }
 
+// Configuration for the Telegram Bot
 type wtg struct {
 	APIKey         string // defined by Telegram
 	HookPath       string // use default
@@ -62,12 +67,14 @@ type wtg struct {
 	running        bool
 }
 
+// Configure Google RISC
 type wrisc struct {
 	Cert      string // filename to cert.json
 	Webhook   string // use default
 	Discovery string // use default
 }
 
+// Configure enl.rocks
 type wrocks struct {
 	APIKey            string // get from Rocks (gfl)
 	StatusEndpoint    string // use default
@@ -75,14 +82,15 @@ type wrocks struct {
 	running           bool
 }
 
+// Configure the HTTPS REST interface
 type whttp struct {
 	Webroot          string // "https://xx.wasabee.rocks"
 	ListenHTTPS      string // ":443" or "192.168.34.1:443"
-	CookieSessionKey string // 32-char random
+	CookieSessionKey string // 32-char random (deprecated)
 	Logfile          string // https logs
-	SessionName      string // JWT aud / cookie name
+	SessionName      string // JWT aud name
 
-	// defined by Google
+	// defined by Google (deprecated)
 	OauthClientID    string // required
 	OauthSecret      string // required
 	OauthUserInfoURL string // use defauilt
@@ -111,13 +119,13 @@ func LoadFile(filename string) (*WasabeeConf, error) {
 	// #nosec
 	raw, err := os.ReadFile(filename)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	in := defaults
 	// overwrite the defaults with what is in the file
 	if err := json.Unmarshal(raw, &in); err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	// these env vars always win
