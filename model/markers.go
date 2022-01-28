@@ -13,6 +13,8 @@ import (
 // MarkerID wrapper to ensure type safety
 type MarkerID string
 
+// type MarkerID [40]byte
+
 // MarkerType will be an enum once we figure out the full list
 type MarkerType string
 
@@ -29,12 +31,13 @@ type Marker struct {
 // AttributeID is the attribute ID
 type AttributeID string
 
+// type AttributeID [40]byte
+
 // Attribute is per-marker-type data
 type Attribute struct {
-	ID         AttributeID `json:"ID"`
-	AssignedTo GoogleID    `json:"assignedTo,omitempty"`
-	Name       string      `json:"name"`
-	Value      string      `json:"value"`
+	ID    AttributeID `json:"ID"`
+	Name  string      `json:"name"`
+	Value string      `json:"value"`
 }
 
 // TODO use the logic from insertZone to unify insertMarker and updateMarker
@@ -328,7 +331,7 @@ func (m *Marker) setAttributes(a []Attribute, tx *sql.Tx) error {
 	}
 
 	for _, v := range a {
-		if _, err := tx.Exec("INSERT INTO markerattributes (ID, opID, markerID, assignedTo, name, value) VALUES ()", v.ID, m.opID, m.ID, v.AssignedTo, v.Name, v.Value); err != nil {
+		if _, err := tx.Exec("INSERT INTO markerattributes (ID, opID, markerID, name, value) VALUES ()", v.ID, m.opID, m.ID, v.Name, v.Value); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -345,7 +348,7 @@ func (m *Marker) setAttributes(a []Attribute, tx *sql.Tx) error {
 }
 
 func (m *Marker) loadAttributes() error {
-	rows, err := db.Query("SELECT ID, assignedTo, name, value FROM markerattributes WHERE opID = ? AND markerID = ?", m.opID, m.ID)
+	rows, err := db.Query("SELECT ID, name, value FROM markerattributes WHERE opID = ? AND markerID = ?", m.opID, m.ID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -355,7 +358,7 @@ func (m *Marker) loadAttributes() error {
 	for rows.Next() {
 		tmp := Attribute{}
 
-		if err := rows.Scan(&tmp.ID, &tmp.AssignedTo, &tmp.Name, &tmp.Value); err != nil {
+		if err := rows.Scan(&tmp.ID, &tmp.Name, &tmp.Value); err != nil {
 			log.Error(err)
 			continue
 		}
