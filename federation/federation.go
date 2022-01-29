@@ -83,10 +83,10 @@ func Start(ctx context.Context) {
 	for _, p := range config.Get().Peers {
 		conn, err := grpc.Dial(p, clientopts...)
 		if err != nil {
-			log.Error(err)
-			continue
+			log.Info(err)
+			// continue
 		}
-		defer conn.Close()
+		// defer conn.Close()
 
 		c := pb.NewWasabeeFederationClient(conn)
 		peers = append(peers, c)
@@ -116,7 +116,6 @@ func valid(authorization []string) bool {
 	rawjwt := strings.TrimPrefix(authorization[0], "Bearer ")
 	token, err := jwt.Parse([]byte(rawjwt),
 		jwt.WithValidate(true),
-		//		jwt.WithIssuer("https://accounts.google.com"),
 		jwt.InferAlgorithmFromKey(true),
 		jwt.UseDefaultKey(true),
 		//		jwt.WithKeySet(keys),
@@ -135,10 +134,10 @@ func valid(authorization []string) bool {
 	// log.Debugw("token", "t", m)
 
 	iss := token.Issuer()
+	sub := token.Subject()
 	dom := config.Get().GRPCDomain
-	log.Debugw("issuer", "iss", iss, "dom", dom)
-
-	if !strings.Contains(iss, dom) {
+	if !strings.Contains(iss, dom) || !strings.Contains(sub, dom) {
+		log.Info("federation JWT creds", "iss", iss, "sub", sub, "dom", dom)
 		err := fmt.Errorf("unable to verify gRPC call")
 		log.Error(err)
 		return false
