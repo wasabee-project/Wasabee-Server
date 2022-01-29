@@ -19,7 +19,8 @@ var defaults *WasabeeConf = &WasabeeConf{
 	JWKpriv:     "jwkpriv.json",
 	JWKpub:      "jwkpub.json",
 
-	GRPCPort: 51500,
+	GRPCPort:   51500,
+	GRPCDomain: "example.com",
 
 	V: wv{
 		APIEndpoint:    "https://v.enl.one/api/v1",

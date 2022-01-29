@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -23,6 +24,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/community"
 	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/federation"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/util"
@@ -165,6 +167,20 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 		_ = wfb.AgentLocation(teamID)
 	}
 
+	flat, err := strconv.ParseFloat(lat, 32)
+	if err != nil {
+		log.Error(err)
+		flat = float64(0)
+	}
+
+	flon, err := strconv.ParseFloat(lon, 32)
+	if err != nil {
+		log.Error(err)
+		flon = float64(0)
+	}
+
+	federation.SetAgentLocation(req.Context(), gid, float32(flat), float32(flon))
+
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -253,6 +269,8 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	federation.AddFirebaseToken(req.Context(), gid, token)
+
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -284,6 +302,9 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
+
+	federation.SetIntelData(req.Context(), gid, name, faction)
+
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -442,6 +463,8 @@ func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
+
+	federation.SetCommunityID(req.Context(), gid, name)
 
 	fmt.Fprint(res, jsonStatusOK)
 }

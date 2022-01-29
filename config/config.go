@@ -35,6 +35,7 @@ type WasabeeConf struct {
 	WebUIURL          string   // URL of WebUI
 	GRPCPort          uint16   // Port on which to send and receive gRPC messages
 	Peers             []string // hostname/ip of servers to update
+	GRPCDomain        string   // domain for grpc credentials
 
 	// configuraiton for various subsystems
 	V        wv

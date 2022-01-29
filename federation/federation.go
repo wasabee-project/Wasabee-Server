@@ -116,10 +116,10 @@ func valid(authorization []string) bool {
 	rawjwt := strings.TrimPrefix(authorization[0], "Bearer ")
 	token, err := jwt.Parse([]byte(rawjwt),
 		jwt.WithValidate(true),
-//		jwt.WithIssuer("https://accounts.google.com"),
+		//		jwt.WithIssuer("https://accounts.google.com"),
 		jwt.InferAlgorithmFromKey(true),
 		jwt.UseDefaultKey(true),
-//		jwt.WithKeySet(keys),
+		//		jwt.WithKeySet(keys),
 		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
 		log.Error(err)
@@ -128,9 +128,21 @@ func valid(authorization []string) bool {
 	if token == nil {
 		err := fmt.Errorf("unable to verify gRPC call")
 		log.Error(err)
+		return false
 	}
-	m, _ := token.AsMap(context.TODO())
-	log.Debugw("token", "t", m)
+
+	// m, _ := token.AsMap(context.TODO())
+	// log.Debugw("token", "t", m)
+
+	iss := token.Issuer()
+	dom := config.Get().GRPCDomain
+	log.Debugw("issuer", "iss", iss, "dom", dom)
+
+	if !strings.Contains(iss, dom) {
+		err := fmt.Errorf("unable to verify gRPC call")
+		log.Error(err)
+		return false
+	}
 
 	return true
 }
