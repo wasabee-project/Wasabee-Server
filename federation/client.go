@@ -50,7 +50,7 @@ func SetIntelData(ctx context.Context, gid model.GoogleID, intelname, faction st
 			log.Error(err)
 			continue
 		}
-		log.Debug("SetIntelData", "r", r)
+		log.Debugw("SetIntelData", "r", r)
 	}
 	return nil
 }
@@ -65,7 +65,7 @@ func AddFirebaseToken(ctx context.Context, gid model.GoogleID, token string) err
 			log.Error(err)
 			continue
 		}
-		log.Debug("AddFirebaseToken", "r", r)
+		log.Debugw("AddFirebaseToken", "r", r)
 	}
 	return nil
 }
