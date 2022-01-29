@@ -59,7 +59,6 @@ func Start(ctx context.Context) {
 	ratelimitinit()
 	config.SetFirebaseRunning(true)
 
-	// there is no reason to stay running now -- this costs nothing
 	<-ctx.Done()
 
 	log.Infow("Shutdown", "message", "Firebase Shutting down")
