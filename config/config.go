@@ -3,7 +3,6 @@ package config
 import (
 	// "context"
 	"encoding/json"
-	"net"
 	"os"
 	"path"
 	"path/filepath"
@@ -46,7 +45,6 @@ type WasabeeConf struct {
 
 	// not configurable
 	fbRunning bool
-	peers     []net.IP
 
 	// loaded by LoadFile()
 	jwSigningKeys jwk.Set
@@ -158,10 +156,6 @@ func LoadFile(filename string) (*WasabeeConf, error) {
 
 	// finish setup
 	if err := setupJWK(certdir, c.JWKpriv, c.JWKpub); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := setupFederationPeers(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -311,25 +305,4 @@ func SetFirebaseRunning(r bool) {
 // GetWebUI is used in templates
 func GetWebUI() string {
 	return c.WebUIURL
-}
-
-func setupFederationPeers() error {
-	for _, peer := range c.Peers {
-		log.Debugw("adding federation peer", "peer", peer)
-		addrs, err := net.LookupIP(peer)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-
-		// this might be too much -- multiple IPs per host?
-		for _, a := range addrs {
-			c.peers = append(c.peers, a)
-		}
-	}
-	return nil
-}
-
-func GetFederationPeers() []net.IP {
-	return c.peers
 }
