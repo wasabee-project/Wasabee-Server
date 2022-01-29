@@ -19,6 +19,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/background"
 	"github.com/wasabee-project/Wasabee-Server/config"
+	"github.com/wasabee-project/Wasabee-Server/federation"
 	"github.com/wasabee-project/Wasabee-Server/http"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -165,6 +166,12 @@ func run(cargs *cli.Context) error {
 	go func(ctx context.Context) {
 		defer wg.Done()
 		risc.Start(ctx)
+	}(ctx)
+
+	wg.Add(1)
+	go func(ctx context.Context) {
+		defer wg.Done()
+		federation.Start(ctx)
 	}(ctx)
 
 	// start Telegram
