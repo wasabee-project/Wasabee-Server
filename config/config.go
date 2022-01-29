@@ -3,6 +3,7 @@ package config
 import (
 	// "context"
 	"encoding/json"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
@@ -18,20 +19,22 @@ import (
 
 // WasabeeConf is the primary config structure
 type WasabeeConf struct {
-	GoogleCreds       string // path to file.json
-	GoogleProject     string // project name for firebase/profile/risc
-	DB                string // db connect string
-	WordListFile      string // "eff-large-words.txt" filename
-	FrontendPath      string // path to directory continaing templates
-	Certs             string // path to director containing certs
-	CertFile          string // filename (relative to Certs)
-	CertKey           string // filename (relative to Certs)
-	FirebaseKey       string // filename (relative to Certs)
-	JWKpriv           string // filename (relative to Certs)
-	JWKpub            string // filename (relative to Certs)
-	JKU               string // URL to well-known JKU (for 3rd parties to verify our JWT)
-	DefaultPictureURL string // URL to a default image for agents
-	WebUIURL          string // URL of WebUI
+	GoogleCreds       string   // path to file.json
+	GoogleProject     string   // project name for firebase/profile/risc
+	DB                string   // db connect string
+	WordListFile      string   // "eff-large-words.txt" filename
+	FrontendPath      string   // path to directory continaing templates
+	Certs             string   // path to director containing certs
+	CertFile          string   // filename (relative to Certs)
+	CertKey           string   // filename (relative to Certs)
+	FirebaseKey       string   // filename (relative to Certs)
+	JWKpriv           string   // filename (relative to Certs)
+	JWKpub            string   // filename (relative to Certs)
+	JKU               string   // URL to well-known JKU (for 3rd parties to verify our JWT)
+	DefaultPictureURL string   // URL to a default image for agents
+	WebUIURL          string   // URL of WebUI
+	GRPCPort          uint16   // Port on which to send and receive gRPC messages
+	Peers             []string // hostname/ip of servers to update
 
 	// configuraiton for various subsystems
 	V        wv
@@ -42,6 +45,7 @@ type WasabeeConf struct {
 
 	// not configurable
 	fbRunning bool
+	peers     []net.IP
 
 	// loaded by LoadFile()
 	jwSigningKeys jwk.Set
@@ -153,6 +157,10 @@ func LoadFile(filename string) (*WasabeeConf, error) {
 
 	// finish setup
 	if err := setupJWK(certdir, c.JWKpriv, c.JWKpub); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := setupFederationPeers(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -302,4 +310,25 @@ func SetFirebaseRunning(r bool) {
 // GetWebUI is used in templates
 func GetWebUI() string {
 	return c.WebUIURL
+}
+
+func setupFederationPeers() error {
+	for _, peer := range c.Peers {
+		log.Debugw("adding federation peer", "peer", peer)
+		addrs, err := net.LookupIP(peer)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		// this might be too much -- multiple IPs per host?
+		for _, a := range addrs {
+			c.peers = append(c.peers, a)
+		}
+	}
+	return nil
+}
+
+func GetFederationPeers() []net.IP {
+	return c.peers
 }

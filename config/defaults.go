@@ -19,6 +19,8 @@ var defaults *WasabeeConf = &WasabeeConf{
 	JWKpriv:     "jwkpriv.json",
 	JWKpub:      "jwkpub.json",
 
+	GRPCPort: 51500,
+
 	V: wv{
 		APIEndpoint:    "https://v.enl.one/api/v1",
 		StatusEndpoint: "https://status.enl.one/api/location",
