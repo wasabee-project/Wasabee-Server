@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option go_package = "github.com/wasabee-project/Wasabee-Server/federation";
+
+package wasabee;
+
+service WasabeeFederation {
+	rpc SetCommunityID(CommunityID) returns (Error) {}
+	rpc SetAgentLocation(AgentLocation) returns (Error) {}
+	rpc SetIntelData(IntelData) returns (Error) {}
+	rpc AddFirebaseToken(FBData) returns (Error) {}
+}
+
+message CommunityID {
+	string googleid = 1;
+	string communityname = 2;
+}
+
+message AgentLocation {
+	string googleid = 1;
+	float lat = 2;
+	float lng = 3;
+}
+
+message IntelData {
+	string googleid = 1;
+	string name = 2;
+	string faction = 3;
+}
+
+message FBData {
+	string googleid = 1;
+	string token = 2;
+}
+
+message Error {
+	string code = 1;
+	string message = 2;
+}
