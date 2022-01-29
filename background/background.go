@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
@@ -19,7 +20,10 @@ func Start(ctx context.Context) {
 
 	weekly := time.NewTicker(time.Hour * 24 * 7)
 	defer weekly.Stop()
-	wfb.Resubscribe()
+
+	if config.IsFirebaseRunning() {
+		wfb.Resubscribe() // prevent a crash if background starts before firebase
+	}
 
 	for {
 		select {
