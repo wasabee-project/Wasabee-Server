@@ -12,9 +12,11 @@ import (
 	"github.com/lestrrat-go/jwx/jwt"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	pb "github.com/wasabee-project/Wasabee-Server/federation/pb"
@@ -24,6 +26,11 @@ import (
 type wafed struct {
 	pb.UnimplementedWasabeeFederationServer
 }
+
+var (
+	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
+	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
+)
 
 var peers []pb.WasabeeFederationClient
 
@@ -58,12 +65,10 @@ func Start(ctx context.Context) {
 		return
 	}
 
-	serveropts := []grpc.ServerOption{
+	s := grpc.NewServer(
 		grpc.UnaryInterceptor(ensureValidToken),
 		grpc.Creds(credentials.NewServerTLSFromCert(&servercert)),
-	}
-
-	s := grpc.NewServer(serveropts...)
+	)
 	pb.RegisterWasabeeFederationServer(s, &wafed{})
 
 	go func() {
@@ -73,15 +78,12 @@ func Start(ctx context.Context) {
 	}()
 	defer s.GracefulStop()
 
-	// server running, now set up clients
-	// https://github.com/grpc/grpc-go/blob/master/examples/features/authentication/client/main.go
-	clientopts := []grpc.DialOption{
-		grpc.WithPerRPCCredentials(perRPC),
-		grpc.WithTransportCredentials(clientcreds),
-	}
-
 	for _, p := range config.Get().Peers {
-		conn, err := grpc.Dial(p, clientopts...)
+		conn, err := grpc.Dial(
+			p,
+			grpc.WithPerRPCCredentials(perRPC),
+			grpc.WithTransportCredentials(clientcreds),
+		)
 		if err != nil {
 			log.Info(err)
 			// continue
@@ -99,11 +101,13 @@ func Start(ctx context.Context) {
 func ensureValidToken(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("missing metadata")
+		return nil, errMissingMetadata
 	}
 
+	// log.Debugw("gRPC metadata", "md", md)
+
 	if !valid(md["authorization"]) {
-		return nil, fmt.Errorf("invalid token")
+		return nil, errInvalidToken
 	}
 	return handler(ctx, req)
 }
@@ -114,11 +118,12 @@ func valid(authorization []string) bool {
 	}
 
 	rawjwt := strings.TrimPrefix(authorization[0], "Bearer ")
+
+	//		jwt.WithKeySet(keys),
 	token, err := jwt.Parse([]byte(rawjwt),
 		jwt.WithValidate(true),
 		jwt.InferAlgorithmFromKey(true),
 		jwt.UseDefaultKey(true),
-		//		jwt.WithKeySet(keys),
 		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
 		log.Error(err)
@@ -138,7 +143,7 @@ func valid(authorization []string) bool {
 	dom := config.Get().GRPCDomain
 	if !strings.Contains(iss, dom) || !strings.Contains(sub, dom) {
 		log.Info("federation JWT creds", "iss", iss, "sub", sub, "dom", dom)
-		err := fmt.Errorf("unable to verify gRPC call")
+		err := fmt.Errorf("unable to validate gRPC caller")
 		log.Error(err)
 		return false
 	}
