@@ -39,20 +39,7 @@ func Start(ctx context.Context) {
 	fc := path.Join(c.Certs, c.CertFile)
 	key := path.Join(c.Certs, c.CertKey)
 
-	servercert, err := tls.LoadX509KeyPair(fc, key)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	clientcreds, err := credentials.NewClientTLSFromFile(fc, "")
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	keypath := path.Join(c.Certs, c.FirebaseKey)
-	perRPC, err := oauth.NewJWTAccessFromFile(keypath)
+	cert, err := tls.LoadX509KeyPair(fc, key)
 	if err != nil {
 		log.Error(err)
 		return
@@ -67,7 +54,7 @@ func Start(ctx context.Context) {
 
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(ensureValidToken),
-		grpc.Creds(credentials.NewServerTLSFromCert(&servercert)),
+		grpc.Creds(credentials.NewServerTLSFromCert(&cert)),
 	)
 	pb.RegisterWasabeeFederationServer(s, &wafed{})
 
@@ -77,6 +64,20 @@ func Start(ctx context.Context) {
 		}
 	}()
 	defer s.GracefulStop()
+
+	// start up client per-peer
+	clientcreds, err := credentials.NewClientTLSFromFile(fc, "")
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	keypath := path.Join(c.Certs, c.FirebaseKey)
+	perRPC, err := oauth.NewJWTAccessFromFile(keypath)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 
 	for _, p := range config.Get().Peers {
 		conn, err := grpc.Dial(
