@@ -1,6 +1,7 @@
 package wasabeehttps
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -179,7 +180,7 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 		flon = float64(0)
 	}
 
-	federation.SetAgentLocation(req.Context(), gid, float32(flat), float32(flon))
+	go federation.SetAgentLocation(context.Background(), gid, float32(flat), float32(flon))
 
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -269,7 +270,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	federation.AddFirebaseToken(req.Context(), gid, token)
+	go federation.AddFirebaseToken(context.Background(), gid, token)
 
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -303,7 +304,7 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	federation.SetIntelData(req.Context(), gid, name, faction)
+	go federation.SetIntelData(context.Background(), gid, name, faction)
 
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -464,7 +465,7 @@ func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	federation.SetCommunityID(req.Context(), gid, name)
+	go federation.SetCommunityID(context.Background(), gid, name)
 
 	fmt.Fprint(res, jsonStatusOK)
 }
