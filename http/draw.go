@@ -231,7 +231,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 	err = model.DrawUpdate(op.ID, json.RawMessage(jBlob), gid)
 	if err != nil {
-		log.Error(err)
+		// log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

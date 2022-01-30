@@ -433,7 +433,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		incrementScanner(req)
 		err := fmt.Errorf("invalid one-time token")
 		log.Warn(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 

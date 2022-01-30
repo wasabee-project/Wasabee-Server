@@ -22,7 +22,7 @@ func (ott OneTimeToken) Gid() (GoogleID, error) {
 	err := db.QueryRow("SELECT gid FROM agent WHERE OneTimeToken = ?", ott).Scan(&gid)
 	if err != nil && err == sql.ErrNoRows {
 		err := fmt.Errorf(ErrInvalidOTT)
-		log.Info(err)
+		log.Warn(err)
 		return "", err
 	}
 	if err != nil {
@@ -51,7 +51,6 @@ func (gid GoogleID) newOneTimeToken() (OneTimeToken, error) {
 func (ott OneTimeToken) Increment() (GoogleID, error) {
 	gid, err := ott.Gid()
 	if err != nil {
-		log.Error(err)
 		return "", err
 	}
 

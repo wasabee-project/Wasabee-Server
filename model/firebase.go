@@ -52,7 +52,7 @@ func (gid GoogleID) StoreFirebaseToken(token string) error {
 		return nil
 	}
 
-	log.Debugw("adding token", "subsystem", "Firebase", "GID", gid, "token", token)
+	// log.Debugw("adding token", "subsystem", "Firebase", "GID", gid, "token", token)
 	_, err = db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		log.Error(err)
@@ -60,9 +60,8 @@ func (gid GoogleID) StoreFirebaseToken(token string) error {
 	}
 
 	// Subscribe this token to all team topics
-	// This isn't right -- each token sub now triggers messages in Telegram teams...
-	tl := g.teamList()
-	for _, teamID := range tl {
+	// TODO: This isn't right -- each token sub now triggers messages in Telegram teams...
+	for _, teamID := range g.teamList() {
 		messaging.AddToRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
 	}
 
