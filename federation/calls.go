@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/wasabee-project/Wasabee-Server/auth"
 	pb "github.com/wasabee-project/Wasabee-Server/federation/pb"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -88,6 +89,15 @@ func (w *wafed) AddFirebaseToken(ctx context.Context, in *pb.FBData) (*pb.Error,
 		e.Message = err.Error()
 		return &e, err
 	}
+
+	e.Message = "ok"
+	return &e, nil
+}
+
+func (w *wafed) RevokeJWT(ctx context.Context, in *pb.Token) (*pb.Error, error) {
+	var e pb.Error
+
+	auth.RevokeJWT(in.Tokenid)
 
 	e.Message = "ok"
 	return &e, nil

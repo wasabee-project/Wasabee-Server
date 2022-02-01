@@ -10,7 +10,7 @@ import (
 
 func SetCommunityID(ctx context.Context, gid model.GoogleID, name string) error {
 	for _, p := range peers {
-		r, err := p.SetCommunityID(ctx, &pb.CommunityID{
+		_, err := p.SetCommunityID(ctx, &pb.CommunityID{
 			Googleid:      string(gid),
 			Communityname: name,
 		})
@@ -18,14 +18,13 @@ func SetCommunityID(ctx context.Context, gid model.GoogleID, name string) error 
 			log.Error(err)
 			continue
 		}
-		log.Debugw("SetCommunityID", "r", r)
 	}
 	return nil
 }
 
 func SetAgentLocation(ctx context.Context, gid model.GoogleID, lat, lng float32) error {
 	for _, p := range peers {
-		r, err := p.SetAgentLocation(ctx, &pb.AgentLocation{
+		_, err := p.SetAgentLocation(ctx, &pb.AgentLocation{
 			Googleid: string(gid),
 			Lat:      lat,
 			Lng:      lng,
@@ -34,14 +33,13 @@ func SetAgentLocation(ctx context.Context, gid model.GoogleID, lat, lng float32)
 			log.Error(err)
 			continue
 		}
-		log.Debugw("SetAgentLocation", "r", r)
 	}
 	return nil
 }
 
 func SetIntelData(ctx context.Context, gid model.GoogleID, intelname, faction string) error {
 	for _, p := range peers {
-		r, err := p.SetIntelData(ctx, &pb.IntelData{
+		_, err := p.SetIntelData(ctx, &pb.IntelData{
 			Googleid: string(gid),
 			Name:     intelname,
 			Faction:  faction,
@@ -50,14 +48,13 @@ func SetIntelData(ctx context.Context, gid model.GoogleID, intelname, faction st
 			log.Error(err)
 			continue
 		}
-		log.Debugw("SetIntelData", "r", r)
 	}
 	return nil
 }
 
 func AddFirebaseToken(ctx context.Context, gid model.GoogleID, token string) error {
 	for _, p := range peers {
-		r, err := p.AddFirebaseToken(ctx, &pb.FBData{
+		_, err := p.AddFirebaseToken(ctx, &pb.FBData{
 			Googleid: string(gid),
 			Token:    token,
 		})
@@ -65,7 +62,19 @@ func AddFirebaseToken(ctx context.Context, gid model.GoogleID, token string) err
 			log.Error(err)
 			continue
 		}
-		log.Debugw("AddFirebaseToken", "r", r)
+	}
+	return nil
+}
+
+func RevokeJWT(ctx context.Context, tokenid string) error {
+	for _, p := range peers {
+		_, err := p.RevokeJWT(ctx, &pb.Token{
+			Tokenid:    tokenid,
+		})
+		if err != nil {
+			log.Error(err)
+			continue
+		}
 	}
 	return nil
 }

@@ -221,7 +221,7 @@ func (o *Operation) populateMarkers(zones []Zone, gid GoogleID, assignments map[
 		}
 
 		// load attributes
-		tmpMarker.loadAttributes()
+		_ = tmpMarker.loadAttributes()
 
 		o.Markers = append(o.Markers, tmpMarker)
 	}
