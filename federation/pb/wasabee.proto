@@ -9,6 +9,7 @@ service WasabeeFederation {
 	rpc SetAgentLocation(AgentLocation) returns (Error) {}
 	rpc SetIntelData(IntelData) returns (Error) {}
 	rpc AddFirebaseToken(FBData) returns (Error) {}
+	rpc RevokeJWT(Token) returns (Error) {}
 }
 
 message CommunityID {
@@ -31,6 +32,10 @@ message IntelData {
 message FBData {
 	string googleid = 1;
 	string token = 2;
+}
+
+message Token {
+	string tokenid = 1;
 }
 
 message Error {
