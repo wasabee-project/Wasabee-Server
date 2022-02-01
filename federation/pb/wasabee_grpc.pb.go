@@ -26,6 +26,7 @@ type WasabeeFederationClient interface {
 	SetAgentLocation(ctx context.Context, in *AgentLocation, opts ...grpc.CallOption) (*Error, error)
 	SetIntelData(ctx context.Context, in *IntelData, opts ...grpc.CallOption) (*Error, error)
 	AddFirebaseToken(ctx context.Context, in *FBData, opts ...grpc.CallOption) (*Error, error)
+	RevokeJWT(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Error, error)
 }
 
 type wasabeeFederationClient struct {
@@ -72,6 +73,15 @@ func (c *wasabeeFederationClient) AddFirebaseToken(ctx context.Context, in *FBDa
 	return out, nil
 }
 
+func (c *wasabeeFederationClient) RevokeJWT(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Error, error) {
+	out := new(Error)
+	err := c.cc.Invoke(ctx, "/wasabee.WasabeeFederation/RevokeJWT", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WasabeeFederationServer is the server API for WasabeeFederation service.
 // All implementations must embed UnimplementedWasabeeFederationServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type WasabeeFederationServer interface {
 	SetAgentLocation(context.Context, *AgentLocation) (*Error, error)
 	SetIntelData(context.Context, *IntelData) (*Error, error)
 	AddFirebaseToken(context.Context, *FBData) (*Error, error)
+	RevokeJWT(context.Context, *Token) (*Error, error)
 	mustEmbedUnimplementedWasabeeFederationServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedWasabeeFederationServer) SetIntelData(context.Context, *Intel
 }
 func (UnimplementedWasabeeFederationServer) AddFirebaseToken(context.Context, *FBData) (*Error, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddFirebaseToken not implemented")
+}
+func (UnimplementedWasabeeFederationServer) RevokeJWT(context.Context, *Token) (*Error, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RevokeJWT not implemented")
 }
 func (UnimplementedWasabeeFederationServer) mustEmbedUnimplementedWasabeeFederationServer() {}
 
@@ -184,6 +198,24 @@ func _WasabeeFederation_AddFirebaseToken_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WasabeeFederation_RevokeJWT_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Token)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WasabeeFederationServer).RevokeJWT(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/wasabee.WasabeeFederation/RevokeJWT",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WasabeeFederationServer).RevokeJWT(ctx, req.(*Token))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WasabeeFederation_ServiceDesc is the grpc.ServiceDesc for WasabeeFederation service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var WasabeeFederation_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddFirebaseToken",
 			Handler:    _WasabeeFederation_AddFirebaseToken_Handler,
+		},
+		{
+			MethodName: "RevokeJWT",
+			Handler:    _WasabeeFederation_RevokeJWT_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
