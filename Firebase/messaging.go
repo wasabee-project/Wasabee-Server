@@ -465,7 +465,10 @@ func genericMulticast(data map[string]string, tokens []string) {
 		Data:   data,
 		Tokens: tokens,
 	}
+
+	multicastFantoutMutex.Lock()
 	br, err := msg.SendMulticast(fbctx, &m)
+	multicastFantoutMutex.Unlock()
 	if err != nil {
 		log.Error(err)
 		// carry on

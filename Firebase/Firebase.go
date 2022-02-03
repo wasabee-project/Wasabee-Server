@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
 
 	firebase "firebase.google.com/go"
 	// "firebase.google.com/go/auth"
@@ -18,6 +19,7 @@ import (
 
 var msg *messaging.Client
 var fbctx context.Context
+var multicastFantoutMutex sync.Mutex
 
 // Start is the main startup function for the Firebase subsystem
 func Start(ctx context.Context) {
