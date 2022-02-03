@@ -69,7 +69,7 @@ func AddFirebaseToken(ctx context.Context, gid model.GoogleID, token string) err
 func RevokeJWT(ctx context.Context, tokenid string) error {
 	for _, p := range peers {
 		_, err := p.RevokeJWT(ctx, &pb.Token{
-			Tokenid:    tokenid,
+			Tokenid: tokenid,
 		})
 		if err != nil {
 			log.Error(err)

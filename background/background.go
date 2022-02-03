@@ -32,6 +32,7 @@ func Start(ctx context.Context) {
 			return
 		case <-hourly.C:
 			model.LocationClean()
+			wfb.ResetDefaultRateLimits()
 		case <-weekly.C:
 			wfb.Resubscribe()
 		}

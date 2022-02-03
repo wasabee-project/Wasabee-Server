@@ -2,6 +2,7 @@ package wfb
 
 import (
 	"encoding/json"
+	"strings"
 
 	"firebase.google.com/go/messaging"
 
@@ -450,9 +451,14 @@ func genericMulticast(data map[string]string, tokens []string) {
 			Data:   data,
 			Tokens: subset,
 		}
+		multicastFantoutMutex.Lock()
 		br, err := msg.SendMulticast(fbctx, &m)
+		multicastFantoutMutex.Unlock()
 		if err != nil {
 			log.Error(err)
+			if strings.Contains(err.Error(), "Topic quota exceeded") {
+				slowdown()
+			}
 			// carry on
 		}
 		// log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
@@ -471,6 +477,9 @@ func genericMulticast(data map[string]string, tokens []string) {
 	multicastFantoutMutex.Unlock()
 	if err != nil {
 		log.Error(err)
+		if strings.Contains(err.Error(), "Topic quota exceeded") {
+			slowdown()
+		}
 		// carry on
 	}
 	// log.Debugw("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
@@ -502,6 +511,12 @@ func Resubscribe() {
 		tokens, err := teamID.FetchFBTokens()
 		if err != nil || len(tokens) == 0 {
 			continue
+		}
+
+		// TODO: fix this if we ever see it...
+		if len(tokens) > 500 {
+			log.Warnw("team has more than 500 tokens, only re-subscribing the first 500", "teamID", teamID, "count", len(tokens))
+			tokens = tokens[:500]
 		}
 
 		// log.Debugw("resubscribing tokens", "teamID", teamID, "count", len(tokens))

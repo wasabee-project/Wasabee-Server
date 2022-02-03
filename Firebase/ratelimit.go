@@ -11,8 +11,10 @@ import (
 var rlTeam *util.Safemap
 var rlOp *util.Safemap
 
-const agentLocationChangeRate = time.Second * 10
-const mapChangeRate = time.Second * 10
+const baseChangeRate = time.Second * 10
+
+var agentLocationChangeRate = baseChangeRate
+var mapChangeRate = baseChangeRate
 
 func ratelimitinit() {
 	rlTeam = util.NewSafemap()
@@ -57,4 +59,15 @@ func ratelimitOp(teamID model.TeamID, opID model.OperationID) bool {
 	}
 
 	return false
+}
+
+func slowdown() {
+	// google wants exponential fall-off, but I'll try linear first
+	agentLocationChangeRate = agentLocationChangeRate + baseChangeRate
+	mapChangeRate = mapChangeRate + baseChangeRate
+}
+
+func ResetDefaultRateLimits() {
+	agentLocationChangeRate = baseChangeRate
+	mapChangeRate = baseChangeRate
 }
