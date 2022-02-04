@@ -26,7 +26,6 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 	}
 	if details.Name == "" {
 		log.Infow("attempt to assign key count to portal not in op", "GID", k.Gid, "resource", o.ID, "portal", k.ID)
-
 		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID); err != nil {
 			log.Info(err)
 			err := fmt.Errorf(ErrKeyUnableToRemove)
@@ -35,16 +34,15 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 		return nil
 	}
 
+	k.Capsule = util.Sanitize(k.Capsule) // can be NULL, but NULL causes the unique key to not work as intended
 	if k.Onhand == 0 {
-		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? and gid = ?", o.ID, k.ID, k.Gid); err != nil {
+		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? AND gid = ? AND capsule = ?", o.ID, k.ID, k.Gid, k.Capsule); err != nil {
 			log.Info(err)
 			err := fmt.Errorf(ErrKeyUnableToRemove)
 			return err
 		}
 	} else {
-		k.Capsule = util.Sanitize(k.Capsule)
-
-		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, makeNullString(k.Capsule))
+		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule)
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
 			return fmt.Errorf(ErrKeyUnableToRecord)
