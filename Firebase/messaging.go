@@ -534,3 +534,21 @@ func Resubscribe() {
 		}
 	}
 }
+
+// will be used soon
+func teamsToCondition(teams []model.TeamID) string {
+	if len(teams) == 0 {
+		return "all"
+	}
+
+	var condition strings.Builder
+	for i, teamID := range teams {
+		if i > 0 {
+			sb.WriteString(" || ")
+		}
+		topic := fmt.Sprintf("'%s' in topics", string(teamID))
+		sb.WriteString(topic)
+	}
+	log.Debug(condition.String())
+	return condition.String()
+}
