@@ -331,8 +331,12 @@ func markerStatusTouch(op *model.Operation, markerID model.MarkerID, status stri
 		for _, t := range op.Teams {
 			teams[t.TeamID] = true
 		}
+		var ta []model.TeamID
 		for t := range teams {
-			_ = wfb.MarkerStatus(model.TaskID(markerID), op.ID, t, status, uid)
+			ta = append(ta, t)
+		}
+		if len(ta) > 0 {
+			_ = wfb.MarkerStatus(model.TaskID(markerID), op.ID, ta, status, uid)
 		}
 	}()
 	return uid

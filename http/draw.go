@@ -524,8 +524,12 @@ func touch(op model.Operation) string {
 		for _, t := range op.Teams {
 			teams[t.TeamID] = true
 		}
+		var ta []model.TeamID
 		for t := range teams {
-			_ = wfb.MapChange(t, op.ID, uid)
+			ta = append(ta, t)
+		}
+		if len(ta) > 0 {
+			_ = wfb.MapChange(ta, op.ID, uid)
 		}
 	}()
 	return uid

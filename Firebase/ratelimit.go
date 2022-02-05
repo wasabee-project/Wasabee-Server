@@ -1,31 +1,32 @@
 package wfb
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
-var rlTeam *util.Safemap
+var rlAgent *util.Safemap
 var rlOp *util.Safemap
+var rlTeam *util.Safemap
 
 const baseChangeRate = time.Second * 10
 
 var agentLocationChangeRate = baseChangeRate
 var mapChangeRate = baseChangeRate
+var teamRate = baseChangeRate
 
 func ratelimitinit() {
-	rlTeam = util.NewSafemap()
+	rlAgent = util.NewSafemap()
 	rlOp = util.NewSafemap()
 }
 
-// control how often teams are notified of agent location change
 func ratelimitTeam(teamID model.TeamID) bool {
 	now := time.Now()
 
-	i, ok := rlTeam.Get(string(teamID))
+	i, ok := rlAgent.Get(string(teamID))
 	if !ok { // no entry for this team, must be OK
 		return true
 	}
@@ -33,20 +34,35 @@ func ratelimitTeam(teamID model.TeamID) bool {
 	t := time.Unix(int64(i), 0)
 
 	if t.After(now.Add(0 - agentLocationChangeRate)) {
-		rlTeam.Set(string(teamID), uint64(now.Unix())) // update with this this time
+		rlAgent.Set(string(teamID), uint64(now.Unix())) // update with this this time
 		return true
 	}
 
 	return false
 }
 
-// control how often teams are notified of a map update
-func ratelimitOp(teamID model.TeamID, opID model.OperationID) bool {
+func ratelimitAgent(gid model.GoogleID) bool {
 	now := time.Now()
 
-	key := fmt.Sprint("%s-%s", string(opID), string(teamID))
+	i, ok := rlAgent.Get(string(gid))
+	if !ok { // no entry for this team, must be OK
+		return true
+	}
 
-	i, ok := rlOp.Get(key)
+	t := time.Unix(int64(i), 0)
+
+	if t.After(now.Add(0 - agentLocationChangeRate)) {
+		rlAgent.Set(string(gid), uint64(now.Unix())) // update with this this time
+		return true
+	}
+
+	return false
+}
+
+func ratelimitOp(opID model.OperationID) bool {
+	now := time.Now()
+
+	i, ok := rlOp.Get(string(opID))
 	if !ok {
 		return true
 	}
@@ -54,7 +70,7 @@ func ratelimitOp(teamID model.TeamID, opID model.OperationID) bool {
 	t := time.Unix(int64(i), 0)
 
 	if t.After(now.Add(0 - mapChangeRate)) {
-		rlOp.Set(key, uint64(now.Unix()))
+		rlOp.Set(string(opID), uint64(now.Unix()))
 		return true
 	}
 
@@ -62,12 +78,19 @@ func ratelimitOp(teamID model.TeamID, opID model.OperationID) bool {
 }
 
 func slowdown() {
-	// google wants exponential fall-off, but I'll try linear first
-	agentLocationChangeRate = agentLocationChangeRate + baseChangeRate
-	mapChangeRate = mapChangeRate + baseChangeRate
+	agentLocationChangeRate = agentLocationChangeRate + agentLocationChangeRate
+	mapChangeRate = mapChangeRate + mapChangeRate
+	teamRate = teamRate + teamRate
+	log.Infow("firebase rate limit slowing down", "mapChangeRate", mapChangeRate)
 }
 
 func ResetDefaultRateLimits() {
+	if mapChangeRate == baseChangeRate {
+		return
+	}
+
+	log.Debug("resetting rate")
 	agentLocationChangeRate = baseChangeRate
 	mapChangeRate = baseChangeRate
+	teamRate = baseChangeRate
 }

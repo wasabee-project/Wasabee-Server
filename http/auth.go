@@ -106,10 +106,8 @@ func callbackRoute(res http.ResponseWriter, req *http.Request) {
 	// j, _ := mintjwt(m.Gid)
 	// log.Debugw("minted jwt for testing", "jwt", j)
 
-	for _, t := range m.Gid.TeamListEnabled() {
-		if err := wfb.AgentLogin(t, m.Gid); err != nil {
-			log.Error(err)
-		}
+	if err := wfb.AgentLogin(m.Gid.TeamListEnabled(), m.Gid); err != nil {
+		log.Error(err)
 	}
 
 	name, err := m.Gid.IngressName()
@@ -354,10 +352,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	)
 
 	// notify other teams of agent login
-	for _, t := range m.Gid.TeamListEnabled() {
-		if err := wfb.AgentLogin(t, m.Gid); err != nil {
-			log.Error(err)
-		}
+	if err := wfb.AgentLogin(m.Gid.TeamListEnabled(), m.Gid); err != nil {
+		log.Error(err)
 	}
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
@@ -516,10 +512,8 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		"message", name+" oneTimeToken login",
 		"client", req.Header.Get("User-Agent"))
 
-	for _, t := range gid.TeamListEnabled() {
-		if err := wfb.AgentLogin(t, gid); err != nil {
-			log.Error(err)
-		}
+	if err := wfb.AgentLogin(gid.TeamListEnabled(), gid); err != nil {
+		log.Error(err)
 	}
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2

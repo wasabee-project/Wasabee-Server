@@ -2,6 +2,7 @@ package wfb
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"firebase.google.com/go/messaging"
@@ -15,31 +16,64 @@ import (
 // AgentLocation alerts a team to refresh agent location data
 // we do not send the agent's location via firebase since it is possible to subscribe to topics (teams) via a client
 // the clients must pull the server to get the updates
-func AgentLocation(teamID model.TeamID) error {
+func AgentLocation(gid model.GoogleID) {
 	if !config.IsFirebaseRunning() {
-		return nil
+		return
 	}
-	if !ratelimitTeam(teamID) {
-		return nil
-	}
-
-	data := map[string]string{
-		"msg": string(teamID),
-		"cmd": "Agent Location Change",
-		"srv": config.Get().HTTP.Webroot,
-		// we could send gid here for a single agent location change...
+	if !ratelimitAgent(gid) {
+		log.Debugw("skipping agent due to rate limits", "gid", gid)
+		return
 	}
 
-	m := messaging.Message{
-		Topic: string(teamID),
-		Data:  data,
+	tokens, err := gid.FirebaseLocationTokens()
+	if len(tokens) == 0 {
+		return
 	}
 
-	if _, err := msg.Send(fbctx, &m); err != nil {
-		log.Errorw(err.Error(), "Command", m)
-		return err
+	var toSend []*messaging.Message
+	var brTokens []string
+	var curTeam model.TeamID
+	var skipping bool
+
+	for _, token := range tokens {
+		if curTeam != token.TeamID {
+			// log.Debugw("next team", "teamID", token.TeamID)
+			curTeam = token.TeamID
+			skipping = false
+			if !ratelimitTeam(token.TeamID) {
+				log.Debugw("skipping this team due to rate limits", "teamID", token.TeamID)
+				skipping = true
+				continue
+			}
+		}
+		if skipping {
+			log.Debugw("skipping this team", "teamID", token.TeamID)
+			continue
+		}
+
+		m := messaging.Message{
+			Token: token.Token,
+			Data: map[string]string{
+				"msg": string(token.TeamID),
+				"cmd": "Agent Location Change",
+				"srv": config.Get().HTTP.Webroot,
+			},
+		}
+		toSend = append(toSend, &m)
+		brTokens = append(brTokens, token.Token)
+		if len(toSend) > 500 {
+			log.Debug("got 500 messages outgoing, stopping")
+			break
+		}
 	}
-	return nil
+
+	br, err := msg.SendAll(fbctx, toSend)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	processBatchResponse(br, brTokens)
+	return
 }
 
 // AssignLink lets an agent know they have a new assignment on a given operation
@@ -115,11 +149,11 @@ func AssignTask(gid model.GoogleID, taskID model.TaskID, opID model.OperationID,
 }
 
 // MarkerStatus reports a marker update to a team/topic
-func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
+func MarkerStatus(markerID model.TaskID, opID model.OperationID, teams []model.TeamID, status string, updateID string) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
-	if !ratelimitOp(teamID, opID) {
+	if !ratelimitOp(opID) {
 		return nil
 	}
 
@@ -131,24 +165,33 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teamID model.Te
 		"srv":      config.Get().HTTP.Webroot,
 		"updateID": updateID,
 	}
-	m := messaging.Message{
-		Topic: string(teamID),
-		Data:  data,
-	}
 
-	if _, err := msg.Send(fbctx, &m); err != nil {
-		log.Error(err)
+	conditions, err := teamsToCondition(teams)
+	if err != nil {
 		return err
+	}
+	for _, condition := range conditions {
+		m := messaging.Message{
+			Condition: condition,
+			Data:      data,
+		}
+		if _, err := msg.Send(fbctx, &m); err != nil {
+			log.Error(err)
+			if strings.Contains(err.Error(), "Topic quota exceeded") {
+				slowdown()
+			}
+			return err
+		}
 	}
 	return nil
 }
 
 // LinkStatus reports a link update to a team/topic
-func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
+func LinkStatus(linkID model.TaskID, opID model.OperationID, teams []model.TeamID, status string, updateID string) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
-	if !ratelimitOp(teamID, opID) {
+	if !ratelimitOp(opID) {
 		return nil
 	}
 
@@ -160,24 +203,35 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"srv":      config.Get().HTTP.Webroot,
 		"updateID": updateID,
 	}
-	m := messaging.Message{
-		Topic: string(teamID),
-		Data:  data,
+
+	conditions, err := teamsToCondition(teams)
+	if err != nil {
+		return err
 	}
 
-	if _, err := msg.Send(fbctx, &m); err != nil {
-		log.Error(err)
-		return err
+	for _, condition := range conditions {
+		m := messaging.Message{
+			Condition: condition,
+			Data:      data,
+		}
+
+		if _, err := msg.Send(fbctx, &m); err != nil {
+			log.Error(err)
+			if strings.Contains(err.Error(), "Topic quota exceeded") {
+				slowdown()
+			}
+			return err
+		}
 	}
 	return nil
 }
 
 // TaskStatus reports a task update to a team/topic
-func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID, status string, updateID string) error {
+func TaskStatus(taskID model.TaskID, opID model.OperationID, teams []model.TeamID, status string, updateID string) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
-	if !ratelimitOp(teamID, opID) {
+	if !ratelimitOp(opID) {
 		return nil
 	}
 
@@ -189,14 +243,25 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teamID model.TeamID
 		"srv":      config.Get().HTTP.Webroot,
 		"updateID": updateID,
 	}
-	m := messaging.Message{
-		Topic: string(teamID),
-		Data:  data,
+
+	conditions, err := teamsToCondition(teams)
+	if err != nil {
+		return err
 	}
 
-	if _, err := msg.Send(fbctx, &m); err != nil {
-		log.Error(err)
-		return err
+	for _, condition := range conditions {
+		m := messaging.Message{
+			Condition: condition,
+			Data:      data,
+		}
+
+		if _, err := msg.Send(fbctx, &m); err != nil {
+			log.Error(err)
+			if strings.Contains(err.Error(), "Topic quota exceeded") {
+				slowdown()
+			}
+			return err
+		}
 	}
 	return nil
 }
@@ -314,12 +379,12 @@ func sendTarget(g wm.GoogleID, t wm.Target) error {
 	return nil
 }
 
-// MapChange alerts a team of the need to need to refresh map data
-func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) error {
+// MapChange alerts teams of the need to need to refresh map data
+func MapChange(teams []model.TeamID, opID model.OperationID, updateID string) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
-	if !ratelimitOp(teamID, opID) {
+	if !ratelimitOp(opID) {
 		return nil
 	}
 
@@ -330,36 +395,58 @@ func MapChange(teamID model.TeamID, opID model.OperationID, updateID string) err
 		"srv":      config.Get().HTTP.Webroot,
 	}
 
-	m := messaging.Message{
-		Topic: string(teamID),
-		Data:  data,
+	conditions, err := teamsToCondition(teams)
+	if err != nil {
+		return err
 	}
 
-	if _, err := msg.Send(fbctx, &m); err != nil {
-		log.Error(err)
-		return err
+	for _, condition := range conditions {
+		m := messaging.Message{
+			Condition: condition,
+			Data:      data,
+		}
+
+		if _, err := msg.Send(fbctx, &m); err != nil {
+			log.Error(err)
+			if strings.Contains(err.Error(), "Topic quota exceeded") {
+				slowdown()
+			}
+			return err
+		}
 	}
 	return nil
 }
 
 // AgentLogin alerts a team of an agent on that team logging in
-func AgentLogin(teamID model.TeamID, gid model.GoogleID) error {
+func AgentLogin(teams []model.TeamID, gid model.GoogleID) error {
 	if !config.IsFirebaseRunning() {
 		return nil
 	}
+
 	data := map[string]string{
 		"gid": string(gid),
 		"cmd": "Login",
 		"srv": config.Get().HTTP.Webroot,
 	}
-	m := messaging.Message{
-		Topic: string(teamID),
-		Data:  data,
+
+	conditions, err := teamsToCondition(teams)
+	if err != nil {
+		return err
 	}
 
-	if _, err := msg.Send(fbctx, &m); err != nil {
-		log.Error(err)
-		return err
+	for _, condition := range conditions {
+		m := messaging.Message{
+			Condition: condition,
+			Data:      data,
+		}
+
+		if _, err := msg.Send(fbctx, &m); err != nil {
+			log.Error(err)
+			if strings.Contains(err.Error(), "Topic quota exceeded") {
+				slowdown()
+			}
+			return err
+		}
 	}
 	return nil
 }
@@ -383,6 +470,9 @@ func sendAnnounce(teamID wm.TeamID, a wm.Announce) error {
 
 	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
+		if strings.Contains(err.Error(), "Topic quota exceeded") {
+			slowdown()
+		}
 		return err
 	}
 	return nil
@@ -442,11 +532,17 @@ func genericMulticast(data map[string]string, tokens []string) {
 	if len(tokens) == 0 {
 		return
 	}
+	data["srv"] = config.Get().HTTP.Webroot
 
 	// can send up to 500 per block
-	for len(tokens) > 500 {
-		subset := tokens[:500]
-		tokens = tokens[500:]
+	for len(tokens) > 0 {
+		r := len(tokens)
+		if r > 500 {
+			r = 500
+		}
+
+		subset := tokens[:r]
+		tokens = tokens[r:]
 		m := messaging.MulticastMessage{
 			Data:   data,
 			Tokens: subset,
@@ -456,34 +552,11 @@ func genericMulticast(data map[string]string, tokens []string) {
 		multicastFantoutMutex.Unlock()
 		if err != nil {
 			log.Error(err)
-			if strings.Contains(err.Error(), "Topic quota exceeded") {
-				slowdown()
-			}
-			// carry on
+			return // carry on ?
 		}
-		// log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+		log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 		processBatchResponse(br, subset)
 	}
-
-	data["srv"] = config.Get().HTTP.Webroot
-
-	m := messaging.MulticastMessage{
-		Data:   data,
-		Tokens: tokens,
-	}
-
-	multicastFantoutMutex.Lock()
-	br, err := msg.SendMulticast(fbctx, &m)
-	multicastFantoutMutex.Unlock()
-	if err != nil {
-		log.Error(err)
-		if strings.Contains(err.Error(), "Topic quota exceeded") {
-			slowdown()
-		}
-		// carry on
-	}
-	// log.Debugw("final multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
-	processBatchResponse(br, tokens)
 }
 
 // processBatchResponse looks for invalid tokens responses and removes the offending tokens
@@ -493,7 +566,7 @@ func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
 			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
 				_ = model.RemoveFirebaseToken(tokens[pos])
 			} else {
-				log.Warn(resp.Error)
+				log.Debugw("processBatchResponse", "unhandled error", resp.Error)
 			}
 		}
 	}
@@ -535,20 +608,35 @@ func Resubscribe() {
 	}
 }
 
-// will be used soon
-func teamsToCondition(teams []model.TeamID) string {
+func teamsToCondition(teams []model.TeamID) ([]string, error) {
+	var conditionSet []string
+
 	if len(teams) == 0 {
-		return "all"
+		err := fmt.Errorf("no teams set")
+		log.Error(err)
+		return conditionSet, err
 	}
 
-	var condition strings.Builder
-	for i, teamID := range teams {
-		if i > 0 {
-			sb.WriteString(" || ")
+	for len(teams) > 0 {
+		r := len(teams)
+		if r > 5 {
+			r = 5
 		}
-		topic := fmt.Sprintf("'%s' in topics", string(teamID))
-		sb.WriteString(topic)
+
+		subset := teams[:r]
+		teams = teams[r:]
+
+		var condition strings.Builder
+		for i, teamID := range subset {
+			if i > 0 {
+				condition.WriteString(" || ")
+			}
+			topic := fmt.Sprintf("'%s' in topics", string(teamID))
+			condition.WriteString(topic)
+		}
+
+		log.Debug(condition.String())
+		conditionSet = append(conditionSet, condition.String())
 	}
-	log.Debug(condition.String())
-	return condition.String()
+	return conditionSet, nil
 }

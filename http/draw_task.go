@@ -58,9 +58,13 @@ func taskStatusAnnounce(op *model.Operation, taskID model.TaskID, status string,
 	for _, t := range op.Teams {
 		teams[t.TeamID] = true
 	}
-
+	var ta []model.TeamID
 	for t := range teams {
-		_ = wfb.TaskStatus(taskID, op.ID, t, status, updateID)
+		ta = append(ta, t)
+	}
+
+	if len(ta) > 0 {
+		_ = wfb.TaskStatus(taskID, op.ID, ta, status, updateID)
 	}
 }
 

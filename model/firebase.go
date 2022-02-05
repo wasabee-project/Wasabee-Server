@@ -113,3 +113,35 @@ func FirebaseBroadcastList() ([]string, error) {
 	}
 	return out, nil
 }
+
+// TeamToken is the returned struct from FirebaseLocationTokens
+type TeamToken struct {
+	TeamID TeamID
+	Token  string
+}
+
+// FirebaserLocationTokens returns a list all tokens for the agents on the teams with which this agent is sharing location
+// instead of sending to the team topics, we do the fanout manually -- to avoid hitting the (small) fanout quota
+func (gid GoogleID) FirebaseLocationTokens() ([]TeamToken, error) {
+	var out []TeamToken
+
+	rows, err := db.Query("SELECT DISTINCT teamid, token FROM firebase JOIN agentteams ON firebase.gid = agentteams.gid WHERE agentteams.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND shareLoc = 'On')", gid)
+	if err != nil && err == sql.ErrNoRows {
+		return out, nil
+	}
+	if err != nil {
+		log.Error(err)
+		return out, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var tt TeamToken
+		if err := rows.Scan(&tt.TeamID, &tt.Token); err != nil {
+			log.Error(err)
+			continue
+		}
+		out = append(out, tt)
+	}
+	return out, nil
+}

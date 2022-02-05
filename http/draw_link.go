@@ -340,8 +340,12 @@ func linkStatusTouch(op *model.Operation, linkID model.LinkID, status string) st
 		for _, t := range op.Teams {
 			teams[t.TeamID] = true
 		}
+		var ta []model.TeamID
 		for t := range teams {
-			_ = wfb.LinkStatus(model.TaskID(linkID), op.ID, t, status, uid)
+			ta = append(ta, t)
+		}
+		if len(ta) > 0 {
+			_ = wfb.LinkStatus(model.TaskID(linkID), op.ID, ta, status, uid)
 		}
 	}()
 	return uid
