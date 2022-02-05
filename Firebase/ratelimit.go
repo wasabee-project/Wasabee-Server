@@ -21,6 +21,7 @@ var teamRate = baseChangeRate
 func ratelimitinit() {
 	rlAgent = util.NewSafemap()
 	rlOp = util.NewSafemap()
+	rlTeam = util.NewSafemap()
 }
 
 func ratelimitTeam(teamID model.TeamID) bool {
@@ -29,7 +30,7 @@ func ratelimitTeam(teamID model.TeamID) bool {
 	i, ok := rlTeam.Get(string(teamID))
 	if !ok {
 		log.Debug("no entry in map")
-		// rlTeam.Set(string(teamID), uint64(now.Unix()))
+		rlTeam.Set(string(teamID), uint64(now.Unix()))
 		return true
 	}
 
@@ -48,7 +49,7 @@ func ratelimitAgent(gid model.GoogleID) bool {
 
 	i, ok := rlAgent.Get(string(gid))
 	if !ok {
-		// rlAgent.Set(string(gid), uint64(now.Unix()))
+		rlAgent.Set(string(gid), uint64(now.Unix()))
 		return true
 	}
 
@@ -67,7 +68,7 @@ func ratelimitOp(opID model.OperationID) bool {
 
 	i, ok := rlOp.Get(string(opID))
 	if !ok {
-		// rlOp.Set(string(opID), uint64(now.Unix()))
+		rlOp.Set(string(opID), uint64(now.Unix()))
 		return true
 	}
 

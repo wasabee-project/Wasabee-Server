@@ -596,13 +596,13 @@ func Resubscribe() {
 		// log.Debugw("resubscribing tokens", "teamID", teamID, "count", len(tokens))
 
 		tmr, err := msg.SubscribeToTopic(fbctx, tokens, string(teamID))
-		if err != nil {
+		if err != nil && !messaging.IsUnknown(err) {
 			log.Error(err)
 			return
 		}
 		if tmr != nil && tmr.FailureCount > 0 {
 			for _, f := range tmr.Errors {
-				log.Debugw("removing dead firebase token", "token", tokens[f.Index])
+				log.Debugw("removing dead firebase token", "token", tokens[f.Index][:24], "reason", f.Reason)
 				_ = model.RemoveFirebaseToken(tokens[f.Index])
 			}
 		}
