@@ -602,8 +602,12 @@ func Resubscribe() {
 		}
 		if tmr != nil && tmr.FailureCount > 0 {
 			for _, f := range tmr.Errors {
-				log.Debugw("removing dead firebase token", "token", tokens[f.Index][:24], "reason", f.Reason)
-				_ = model.RemoveFirebaseToken(tokens[f.Index])
+				if !strings.Contains(f.Reason, "code: internal-error") {
+					log.Debugw("removing dead firebase token", "token", tokens[f.Index][:24], "reason", f.Reason)
+					_ = model.RemoveFirebaseToken(tokens[f.Index])
+				} else {
+					log.Debug("not removing firebase token", "reason", f.Reason)
+				}
 			}
 		}
 	}
