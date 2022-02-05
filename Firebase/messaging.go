@@ -170,6 +170,8 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teams []model.T
 	}
 
 	conditions := teamsToCondition(teams)
+	multicastFantoutMutex.Lock()
+	defer multicastFantoutMutex.Unock()
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -205,6 +207,8 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teams []model.TeamI
 	}
 
 	conditions := teamsToCondition(teams)
+	multicastFantoutMutex.Lock()
+	defer multicastFantoutMutex.Unock()
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -241,6 +245,8 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teams []model.TeamI
 	}
 
 	conditions := teamsToCondition(teams)
+	multicastFantoutMutex.Lock()
+	defer multicastFantoutMutex.Unock()
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -388,6 +394,8 @@ func MapChange(teams []model.TeamID, opID model.OperationID, updateID string) er
 	}
 
 	conditions := teamsToCondition(teams)
+	multicastFantoutMutex.Lock()
+	defer multicastFantoutMutex.Unock()
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -418,6 +426,8 @@ func AgentLogin(teams []model.TeamID, gid model.GoogleID) error {
 	}
 
 	conditions := teamsToCondition(teams)
+	multicastFantoutMutex.Lock()
+	defer multicastFantoutMutex.Unock()
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -531,9 +541,7 @@ func genericMulticast(data map[string]string, tokens []string) {
 			Data:   data,
 			Tokens: subset,
 		}
-		multicastFantoutMutex.Lock()
 		br, err := msg.SendMulticast(fbctx, &m)
-		multicastFantoutMutex.Unlock()
 		if err != nil {
 			log.Error(err)
 			return // carry on ?
