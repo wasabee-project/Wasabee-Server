@@ -8,12 +8,16 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
+// these three could be one map, since the keys will not(*) collide
+// for discernable values of not
 var rlAgent *util.Safemap
 var rlOp *util.Safemap
 var rlTeam *util.Safemap
 
+// standard messaging rates apply
 const baseChangeRate = time.Second * 10
 
+// three values since these could be adjusted per-type, right now they move together
 var agentLocationChangeRate = baseChangeRate
 var mapChangeRate = baseChangeRate
 var teamRate = baseChangeRate
@@ -29,7 +33,6 @@ func ratelimitTeam(teamID model.TeamID) bool {
 
 	i, ok := rlTeam.Get(string(teamID))
 	if !ok {
-		log.Debug("no entry in map")
 		rlTeam.Set(string(teamID), uint64(now.Unix()))
 		return true
 	}
@@ -84,6 +87,8 @@ func ratelimitOp(opID model.OperationID) bool {
 
 // break this in to per-type slowdowns....
 func slowdown() {
+	log.Debug("slowing firebase rate")
+
 	agentLocationChangeRate = agentLocationChangeRate + agentLocationChangeRate
 	mapChangeRate = mapChangeRate + mapChangeRate
 	teamRate = teamRate + teamRate

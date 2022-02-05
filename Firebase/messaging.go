@@ -21,7 +21,7 @@ func AgentLocation(gid model.GoogleID) {
 		return
 	}
 	if !ratelimitAgent(gid) {
-		log.Debugw("skipping agent due to rate limits", "gid", gid)
+		// log.Debugw("skipping agent due to rate limits", "gid", gid)
 		return
 	}
 
@@ -47,7 +47,6 @@ func AgentLocation(gid model.GoogleID) {
 			}
 		}
 		if skipping {
-			log.Debugw("skipping this team", "teamID", token.TeamID)
 			continue
 		}
 
@@ -65,7 +64,7 @@ func AgentLocation(gid model.GoogleID) {
 		toSend = append(toSend, &m)
 		brTokens = append(brTokens, token.Token)
 		if len(toSend) > 500 {
-			log.Debug("got 500 messages outgoing, stopping")
+			log.Debug("got 500 messages outgoing, stopping -- FIXME scot was lazy")
 			break
 		}
 	}
@@ -546,7 +545,7 @@ func genericMulticast(data map[string]string, tokens []string) {
 			log.Error(err)
 			return // carry on ?
 		}
-		log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+		log.Infow("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
 		processBatchResponse(br, subset)
 	}
 }
@@ -589,7 +588,7 @@ func Resubscribe() {
 
 		// TODO: fix this if we ever see it...
 		if len(tokens) > 500 {
-			log.Warnw("team has more than 500 tokens, only re-subscribing the first 500", "teamID", teamID, "count", len(tokens))
+			log.Warnw("team has more than 500 tokens, only re-subscribing the first 500", "teamID", teamID, "count", len(tokens), "scot is lazy", "AF")
 			tokens = tokens[:500]
 		}
 
@@ -606,7 +605,7 @@ func Resubscribe() {
 					log.Debugw("removing dead firebase token", "token", tokens[f.Index][:24], "reason", f.Reason)
 					_ = model.RemoveFirebaseToken(tokens[f.Index])
 				} else {
-					log.Debug("not removing firebase token", "reason", f.Reason)
+					log.Debugw("not removing firebase token", "reason", f.Reason)
 				}
 			}
 		}
@@ -640,7 +639,7 @@ func teamsToCondition(teams []model.TeamID) []string {
 			condition.WriteString(topic)
 		}
 
-		log.Debug(condition.String())
+		// log.Debug(condition.String())
 		conditionSet = append(conditionSet, condition.String())
 	}
 	return conditionSet
