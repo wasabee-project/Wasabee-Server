@@ -352,9 +352,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	)
 
 	// notify other teams of agent login
-	if err := wfb.AgentLogin(m.Gid.TeamListEnabled(), m.Gid); err != nil {
-		log.Error(err)
-	}
+	_ = wfb.AgentLogin(m.Gid.TeamListEnabled(), m.Gid)
 
 	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
 	res.Header().Set("Cache-Control", "no-store")

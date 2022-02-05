@@ -13,9 +13,9 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// AgentLocation alerts a team to refresh agent location data
-// we do not send the agent's location via firebase since it is possible to subscribe to topics (teams) via a client
-// the clients must pull the server to get the updates
+// AgentLocation alerts all appropriate teams about an agent's moving
+// Do not send to topic since this hits the fanout-quota quickly
+// We do the fanout manually, sending directly to tokens has a much higher quota
 func AgentLocation(gid model.GoogleID) {
 	if !config.IsFirebaseRunning() {
 		return
@@ -50,6 +50,9 @@ func AgentLocation(gid model.GoogleID) {
 			log.Debugw("skipping this team", "teamID", token.TeamID)
 			continue
 		}
+
+		// look through brTokens to make sure we've not already used this token
+		// due to multiple shared teams
 
 		m := messaging.Message{
 			Token: token.Token,
@@ -166,10 +169,7 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teams []model.T
 		"updateID": updateID,
 	}
 
-	conditions, err := teamsToCondition(teams)
-	if err != nil {
-		return err
-	}
+	conditions := teamsToCondition(teams)
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -204,11 +204,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teams []model.TeamI
 		"updateID": updateID,
 	}
 
-	conditions, err := teamsToCondition(teams)
-	if err != nil {
-		return err
-	}
-
+	conditions := teamsToCondition(teams)
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -244,11 +240,7 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teams []model.TeamI
 		"updateID": updateID,
 	}
 
-	conditions, err := teamsToCondition(teams)
-	if err != nil {
-		return err
-	}
-
+	conditions := teamsToCondition(teams)
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -395,11 +387,7 @@ func MapChange(teams []model.TeamID, opID model.OperationID, updateID string) er
 		"srv":      config.Get().HTTP.Webroot,
 	}
 
-	conditions, err := teamsToCondition(teams)
-	if err != nil {
-		return err
-	}
-
+	conditions := teamsToCondition(teams)
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -429,11 +417,7 @@ func AgentLogin(teams []model.TeamID, gid model.GoogleID) error {
 		"srv": config.Get().HTTP.Webroot,
 	}
 
-	conditions, err := teamsToCondition(teams)
-	if err != nil {
-		return err
-	}
-
+	conditions := teamsToCondition(teams)
 	for _, condition := range conditions {
 		m := messaging.Message{
 			Condition: condition,
@@ -608,13 +592,13 @@ func Resubscribe() {
 	}
 }
 
-func teamsToCondition(teams []model.TeamID) ([]string, error) {
+func teamsToCondition(teams []model.TeamID) []string {
 	var conditionSet []string
 
 	if len(teams) == 0 {
 		err := fmt.Errorf("no teams set")
-		log.Error(err)
-		return conditionSet, err
+		log.Info(err)
+		return conditionSet
 	}
 
 	for len(teams) > 0 {
@@ -638,5 +622,5 @@ func teamsToCondition(teams []model.TeamID) ([]string, error) {
 		log.Debug(condition.String())
 		conditionSet = append(conditionSet, condition.String())
 	}
-	return conditionSet, nil
+	return conditionSet
 }
