@@ -179,7 +179,7 @@ func MarkerStatus(markerID model.TaskID, opID model.OperationID, teams []model.T
 		}
 		if _, err := msg.Send(fbctx, &m); err != nil {
 			log.Error(err)
-			if strings.Contains(err.Error(), "Topic quota exceeded") {
+			if messaging.IsTooManyTopics(err) || messaging.IsMessageRateExceeded(err) {
 				slowdown()
 			}
 			return err
@@ -217,7 +217,7 @@ func LinkStatus(linkID model.TaskID, opID model.OperationID, teams []model.TeamI
 
 		if _, err := msg.Send(fbctx, &m); err != nil {
 			log.Error(err)
-			if strings.Contains(err.Error(), "Topic quota exceeded") {
+			if messaging.IsTooManyTopics(err) || messaging.IsMessageRateExceeded(err) {
 				slowdown()
 			}
 			return err
@@ -255,7 +255,7 @@ func TaskStatus(taskID model.TaskID, opID model.OperationID, teams []model.TeamI
 
 		if _, err := msg.Send(fbctx, &m); err != nil {
 			log.Error(err)
-			if strings.Contains(err.Error(), "Topic quota exceeded") {
+			if messaging.IsTooManyTopics(err) || messaging.IsMessageRateExceeded(err) {
 				slowdown()
 			}
 			return err
@@ -404,7 +404,7 @@ func MapChange(teams []model.TeamID, opID model.OperationID, updateID string) er
 
 		if _, err := msg.Send(fbctx, &m); err != nil {
 			log.Error(err)
-			if strings.Contains(err.Error(), "Topic quota exceeded") {
+			if messaging.IsTooManyTopics(err) || messaging.IsMessageRateExceeded(err) {
 				slowdown()
 			}
 			return err
@@ -436,7 +436,7 @@ func AgentLogin(teams []model.TeamID, gid model.GoogleID) error {
 
 		if _, err := msg.Send(fbctx, &m); err != nil {
 			log.Error(err)
-			if strings.Contains(err.Error(), "Topic quota exceeded") {
+			if messaging.IsTooManyTopics(err) || messaging.IsMessageRateExceeded(err) {
 				slowdown()
 			}
 			return err
@@ -464,7 +464,7 @@ func sendAnnounce(teamID wm.TeamID, a wm.Announce) error {
 
 	if _, err := msg.Send(fbctx, &m); err != nil {
 		log.Error(err)
-		if strings.Contains(err.Error(), "Topic quota exceeded") {
+		if messaging.IsTooManyTopics(err) || messaging.IsMessageRateExceeded(err) {
 			slowdown()
 		}
 		return err
@@ -553,13 +553,22 @@ func genericMulticast(data map[string]string, tokens []string) {
 
 // processBatchResponse looks for invalid tokens responses and removes the offending tokens
 func processBatchResponse(br *messaging.BatchResponse, tokens []string) {
+	var slowed bool
 	for pos, resp := range br.Responses {
 		if !resp.Success {
+			if messaging.IsInternal(resp.Error) || messaging.IsUnknown(resp.Error) || messaging.IsServerUnavailable(resp.Error) {
+				continue
+			}
 			if messaging.IsRegistrationTokenNotRegistered(resp.Error) {
 				_ = model.RemoveFirebaseToken(tokens[pos])
-			} else {
-				log.Debugw("processBatchResponse", "unhandled error", resp.Error)
+				continue
 			}
+			if messaging.IsMessageRateExceeded(resp.Error) && !slowed {
+				slowdown()
+				slowed = true // only one slowdown step per message send
+				continue
+			}
+			log.Infow("processBatchResponse", "error", resp.Error)
 		}
 	}
 }

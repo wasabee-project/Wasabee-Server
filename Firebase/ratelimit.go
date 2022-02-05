@@ -26,15 +26,17 @@ func ratelimitinit() {
 func ratelimitTeam(teamID model.TeamID) bool {
 	now := time.Now()
 
-	i, ok := rlAgent.Get(string(teamID))
-	if !ok { // no entry for this team, must be OK
+	i, ok := rlTeam.Get(string(teamID))
+	if !ok {
+		log.Debug("no entry in map")
+		// rlTeam.Set(string(teamID), uint64(now.Unix()))
 		return true
 	}
 
 	t := time.Unix(int64(i), 0)
 
 	if t.After(now.Add(0 - agentLocationChangeRate)) {
-		rlAgent.Set(string(teamID), uint64(now.Unix())) // update with this this time
+		rlTeam.Set(string(teamID), uint64(now.Unix()))
 		return true
 	}
 
@@ -45,14 +47,15 @@ func ratelimitAgent(gid model.GoogleID) bool {
 	now := time.Now()
 
 	i, ok := rlAgent.Get(string(gid))
-	if !ok { // no entry for this team, must be OK
+	if !ok {
+		// rlAgent.Set(string(gid), uint64(now.Unix()))
 		return true
 	}
 
 	t := time.Unix(int64(i), 0)
 
 	if t.After(now.Add(0 - agentLocationChangeRate)) {
-		rlAgent.Set(string(gid), uint64(now.Unix())) // update with this this time
+		rlAgent.Set(string(gid), uint64(now.Unix()))
 		return true
 	}
 
@@ -64,6 +67,7 @@ func ratelimitOp(opID model.OperationID) bool {
 
 	i, ok := rlOp.Get(string(opID))
 	if !ok {
+		// rlOp.Set(string(opID), uint64(now.Unix()))
 		return true
 	}
 
@@ -77,6 +81,7 @@ func ratelimitOp(opID model.OperationID) bool {
 	return false
 }
 
+// break this in to per-type slowdowns....
 func slowdown() {
 	agentLocationChangeRate = agentLocationChangeRate + agentLocationChangeRate
 	mapChangeRate = mapChangeRate + mapChangeRate
@@ -89,7 +94,7 @@ func ResetDefaultRateLimits() {
 		return
 	}
 
-	log.Debug("resetting rate")
+	log.Debug("resetting firebase rate")
 	agentLocationChangeRate = baseChangeRate
 	mapChangeRate = baseChangeRate
 	teamRate = baseChangeRate
