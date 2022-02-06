@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
@@ -147,7 +148,19 @@ func (o OperationID) dependsPrecache() (map[TaskID][]TaskID, error) {
 } */
 
 // GetAssignments gets all assignments for a task
-func (t *Task) GetAssignments() ([]GoogleID, error) {
+func (t *Task) GetAssignments(tx *sql.Tx) ([]GoogleID, error) {
+	needtx := false
+	if tx == nil {
+		needtx = true
+		tx, _ = db.Begin()
+
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Error(err)
+			}
+		}()
+	}
+
 	tmp := make([]GoogleID, 0)
 
 	if t.ID == "" {
@@ -170,6 +183,12 @@ func (t *Task) GetAssignments() ([]GoogleID, error) {
 		tmp = append(tmp, g)
 	}
 
+	if needtx {
+		if err := tx.Commit(); err != nil {
+			log.Error(err)
+			return tmp, err
+		}
+	}
 	return tmp, nil
 }
 
@@ -217,10 +236,23 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 		}()
 	}
 
-	// we could be smarter and load the existing, then only add new, but this is fast and easy
-	if err := t.ClearAssignments(tx); err != nil {
+	// fast path for no assignments
+	if len(gs) == 0 {
+		if err := t.ClearAssignments(tx); err != nil {
+			log.Error(err)
+			return err
+		}
+		return nil
+	}
+
+	b, err := t.GetAssignments(tx)
+	if err != nil {
 		log.Error(err)
-		return err
+		// continue
+	}
+	before := make(map[GoogleID]bool)
+	for _, gid := range b {
+		before[gid] = true
 	}
 
 	if len(gs) > 0 {
@@ -235,6 +267,21 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 				continue
 			}
 			_, err := tx.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES (?, ?, ?)", t.opID, t.ID, gid)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+			if _, ok := before[gid]; ok {
+				delete(before, gid)
+			} else {
+				messaging.SendAssignment(messaging.GoogleID(gid), messaging.TaskID(t.ID), messaging.OperationID(t.opID), "assigned")
+			}
+		}
+		for gid := range before {
+			if gid == "" {
+				continue
+			}
+			_, err := tx.Exec("DELETE FROM assignments WHERE opID = ? AND taskID = ? AND gid = ?", t.opID, t.ID, gid)
 			if err != nil {
 				log.Error(err)
 				return err

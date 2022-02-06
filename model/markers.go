@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
-	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
@@ -132,11 +131,6 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 	if err := m.SetAssignments(m.Assignments, tx); err != nil {
 		log.Error(err)
 		return err
-	}
-
-	// TBD: not spam assignments on updates if nothing has changed
-	for _, g := range m.Assignments {
-		go messaging.SendAssignment(messaging.GoogleID(g), messaging.TaskID(m.ID), messaging.OperationID(m.opID), m.State)
 	}
 
 	// do not clear them if someone is using an old client (yet)

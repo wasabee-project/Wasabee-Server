@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
-	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
@@ -24,7 +23,6 @@ type Link struct {
 	Completed  bool     `json:"completed"`     // deprecated, use State from Task
 	Color      string   `json:"color"`
 	MuCaptured int      `json:"mu"`
-	Changed    bool     `json:"changed,omitempty"`
 	Task
 }
 
@@ -149,16 +147,10 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 		return err
 	}
 
-	// only update assignments if Changed bit is set -- don't flood messages if nothing changed
-	if l.Changed {
-		// empty assignments clears them
-		if err := l.SetAssignments(l.Assignments, tx); err != nil {
-			log.Error(err)
-			return err
-		}
-		for _, g := range l.Assignments {
-			messaging.SendAssignment(messaging.GoogleID(g), messaging.TaskID(l.ID), messaging.OperationID(opID), "assigned")
-		}
+	// empty assignments clears them
+	if err := l.SetAssignments(l.Assignments, tx); err != nil {
+		log.Error(err)
+		return err
 	}
 
 	// do not clear if they used an old client
