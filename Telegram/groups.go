@@ -240,7 +240,9 @@ func addToChat(g messaging.GoogleID, t messaging.TeamID) error {
 	}
 
 	text, _ := templates.ExecuteLang("joinedTeam", lang, d)
-	sendQueue <- tgbotapi.NewMessage(chat.ID, text)
+	msg := tgbotapi.NewMessage(chat.ID, text)
+	msg.ParseMode = "HTML"
+	sendQueue <-msg
 
 	return nil
 }
