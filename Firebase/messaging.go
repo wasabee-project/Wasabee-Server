@@ -616,8 +616,6 @@ func teamsToCondition(teams []model.TeamID) []string {
 	var conditionSet []string
 
 	if len(teams) == 0 {
-		err := fmt.Errorf("no teams set")
-		log.Info(err)
 		return conditionSet
 	}
 
