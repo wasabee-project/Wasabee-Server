@@ -587,9 +587,9 @@ func Resubscribe() {
 		}
 
 		// TODO: fix this if we ever see it...
-		if len(tokens) > 500 {
-			log.Warnw("team has more than 500 tokens, only re-subscribing the first 500", "teamID", teamID, "count", len(tokens), "scot is lazy", "AF")
-			tokens = tokens[:500]
+		if len(tokens) > 1000 {
+			log.Warnw("team has more than 1000 tokens, only re-subscribing the first 1000", "teamID", teamID, "count", len(tokens), "scot is lazy", "AF")
+			tokens = tokens[:1000]
 		}
 
 		// log.Debugw("resubscribing tokens", "teamID", teamID, "count", len(tokens))
