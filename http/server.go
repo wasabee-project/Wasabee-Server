@@ -29,7 +29,6 @@ import (
 
 var srv *http.Server
 
-// var logfileHandle    *os.File
 var unrolled *logger.Logger
 var oauthStateString string
 var store *sessions.CookieStore

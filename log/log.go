@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"cloud.google.com/go/logging"
 	"github.com/jonstaryuk/gcloudzap"
@@ -119,6 +120,9 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 
 // Debug logs at the lowest level
 func Debug(args ...interface{}) {
+	if strings.Contains(args[0].(string), "TLS handshake error") {
+		return
+	}
 	sugared.Debug(args...)
 }
 

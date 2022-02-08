@@ -256,7 +256,7 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 		before[gid] = true
 	}
 
-	log.Debugw("setting assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
+	// log.Debugw("setting assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
 	if len(gs) > 0 {
 		// remove any duplicates
 		deduped := make(map[GoogleID]bool)
@@ -283,6 +283,7 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 				// changesmade = true
 			}
 		}
+		// Need an messaging.BuildAssignment / messaging.BulkSendAddignments pair to do this in one go
 
 		for gid := range before {
 			if gid == "" {
