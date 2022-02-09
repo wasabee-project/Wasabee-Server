@@ -125,7 +125,7 @@ type TeamToken struct {
 func (gid GoogleID) FirebaseLocationTokens() ([]TeamToken, error) {
 	var out []TeamToken
 
-	rows, err := db.Query("SELECT DISTINCT teamid, token FROM firebase JOIN agentteams ON firebase.gid = agentteams.gid WHERE agentteams.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND shareLoc = 'On')", gid)
+	rows, err := db.Query("SELECT DISTINCT teamid, token FROM firebase JOIN agentteams ON firebase.gid = agentteams.gid WHERE agentteams.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND shareLoc = 1)", gid)
 	if err != nil && err == sql.ErrNoRows {
 		return out, nil
 	}

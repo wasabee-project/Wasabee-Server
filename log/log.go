@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 
 	"cloud.google.com/go/logging"
 	"github.com/jonstaryuk/gcloudzap"
@@ -32,8 +31,7 @@ func Start(ctx context.Context, c *Configuration) {
 	var cores []zapcore.Core
 
 	if c.Console {
-		atom := zap.NewAtomicLevel()
-		atom.SetLevel(c.ConsoleLevel)
+		atom := zap.NewAtomicLevelAt(c.ConsoleLevel)
 		encoderCfg := zap.NewDevelopmentEncoderConfig()
 		encoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		consoleCore := zapcore.NewCore(
@@ -45,11 +43,18 @@ func Start(ctx context.Context, c *Configuration) {
 	}
 
 	if c.FilePath != "" {
-		fileCore, err := addFileLog(c.FilePath, c.FileLevel)
+		filecore, err := addFileLog(c.FilePath, c.FileLevel)
 		if err != nil {
 			fmt.Printf("Unable to open log file, %s: %v\n", c.FilePath, err)
 		} else {
-			cores = append(cores, fileCore)
+			cores = append(cores, filecore)
+
+			// intercept standard logger here -- send to file, but not console or cloud
+			stdLogger := zap.New(filecore, zap.AddCaller())
+			undo, err := zap.RedirectStdLogAt(stdLogger, c.FileLevel)
+			if err != nil {
+				undo()
+			}
 		}
 	}
 
@@ -62,29 +67,11 @@ func Start(ctx context.Context, c *Configuration) {
 		}
 	}
 
-	tee := zapcore.NewTee(cores...)
-	sugarfree := zap.New(tee, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zap.FatalLevel)) // zap.FatalLevel
-	undo, err := zap.RedirectStdLogAt(sugarfree, zap.DebugLevel)
-	if err != nil {
-		undo()
-	}
-
-	sugared = sugarfree.Sugar()
+	sugared = zap.New(zapcore.NewTee(cores...), zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zap.FatalLevel)).Sugar()
 }
 
 func addGoogleCloud(ctx context.Context, project string, jsonPath string) (zapcore.Core, error) {
-	opt := option.WithCredentialsFile(jsonPath)
-
-	atom := zap.NewAtomicLevel()
-	atom.SetLevel(zap.InfoLevel)
-	encoderCfg := zap.NewProductionEncoderConfig()
-	inCore := zapcore.NewCore(
-		zapcore.NewJSONEncoder(encoderCfg),
-		zapcore.AddSync(ioutil.Discard),
-		atom,
-	)
-
-	client, err := logging.NewClient(ctx, project, opt)
+	gclient, err := logging.NewClient(ctx, project, option.WithCredentialsFile(jsonPath))
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +80,14 @@ func addGoogleCloud(ctx context.Context, project string, jsonPath string) (zapco
 	if err != nil {
 		hn = "wasabee-server"
 	}
-	gcore := gcloudzap.Tee(inCore, client, hn)
+
+	inCore := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.AddSync(ioutil.Discard),
+		zap.NewAtomicLevelAt(zap.InfoLevel),
+	)
+
+	gcore := gcloudzap.Tee(inCore, gclient, hn)
 	return gcore, nil
 }
 
@@ -105,32 +99,17 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 		return nil, err
 	}
 
-	atom := zap.NewAtomicLevel()
-	atom.SetLevel(level)
-
-	encoderCfg := zap.NewDevelopmentEncoderConfig()
-	fileCore := zapcore.NewCore(
-		zapcore.NewConsoleEncoder(encoderCfg),
+	filecore := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
 		zapcore.Lock(lf),
-		atom,
+		zap.NewAtomicLevelAt(level),
 	)
 
-	return fileCore, nil
+	return filecore, nil
 }
 
 // Debug logs at the lowest level
 func Debug(args ...interface{}) {
-	switch args[0].(type) {
-	case error:
-		err := args[0].(error)
-		if strings.Contains(err.Error(), "TLS handshake error") {
-			return
-		}
-	case string:
-		if strings.Contains(args[0].(string), "TLS handshake error") {
-			return
-		}
-	}
 	sugared.Debug(args...)
 }
 
