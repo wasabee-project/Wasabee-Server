@@ -120,8 +120,16 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 
 // Debug logs at the lowest level
 func Debug(args ...interface{}) {
-	if strings.Contains(args[0].(string), "TLS handshake error") {
-		return
+	switch args[0].(type) {
+	case error:
+		err := args[0].(error)
+		if strings.Contains(err.Error(), "TLS handshake error") {
+			return
+		}
+	case string:
+		if strings.Contains(args[0].(string), "TLS handshake error") {
+			return
+		}
 	}
 	sugared.Debug(args...)
 }
