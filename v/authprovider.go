@@ -15,7 +15,7 @@ type V struct{}
 // if an agent is not known at V, they are implicitly permitted
 // if an agent is banned, blacklisted, etc at V, they are prohibited
 func (v *V) Authorize(gid model.GoogleID) bool {
-	log.Debugw("V authorize", "gid", gid)
+	// log.Debugw("V authorize", "gid", gid)
 
 	a, fetched, err := model.VFromDB(gid)
 	if err != nil {

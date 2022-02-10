@@ -15,7 +15,7 @@ type Rocks struct{}
 // unknown agents are permitted implicitly
 // if an agent is marked as smurf at rocks, they are prohibited
 func (r *Rocks) Authorize(gid model.GoogleID) bool {
-	log.Debugw("rocks authorize", "gid", gid)
+	// log.Debugw("rocks authorize", "gid", gid)
 
 	a, fetched, err := model.RocksFromDB(gid)
 	if err != nil {
