@@ -364,6 +364,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func mintjwt(gid model.GoogleID) (string, error) {
+	sessionName := config.Get().HTTP.SessionName
+
 	hostname, err := os.Hostname()
 	if err != nil {
 		return "", err
@@ -383,7 +385,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 		Subject(string(gid)).
 		Issuer(hostname).
 		JwtID(util.GenerateID(16)).
-		Audience([]string{"wasabee"}).
+		Audience([]string{sessionName}).
 		Expiration(time.Now().Add(time.Hour * 24 * 7)).
 		Build()
 	if err != nil {

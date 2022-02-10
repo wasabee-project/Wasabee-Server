@@ -161,14 +161,22 @@ func authMW(next http.Handler) http.Handler {
 		req.Header.Del("X-Wasabee-TokenID") // don't allow spoofing
 
 		if h := req.Header.Get("Authorization"); h != "" {
-			token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
+			token, err := jwt.ParseRequest(req,
+				jwt.InferAlgorithmFromKey(true),
+				jwt.UseDefaultKey(true),
+				jwt.WithKeySet(config.JWParsingKeys()),
+				jwt.WithValidate(true),
+				jwt.WithAudience(sessionName),
+				// jwt.WithIssuer("https://accounts.google.com"),
+				jwt.WithAcceptableSkew(20*time.Second),
+			)
 			if err != nil {
 				log.Info(err)
 				http.Error(res, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			// expiration validation is implicit
+			// expiration validation is implicit -- redundant with above now
 			if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
 				log.Infow("JWT validate failed", "error", err, "sub", token.Subject())
 				http.Error(res, err.Error(), http.StatusUnauthorized)

@@ -360,7 +360,8 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// this was already done in authMW, but double-check it here
-	if err := jwt.Validate(token, jwt.WithAudience("wasabee")); err != nil {
+	sessionName := config.Get().HTTP.SessionName
+	if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
 		log.Info(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return

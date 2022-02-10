@@ -235,7 +235,7 @@ func iosRoute(res http.ResponseWriter, req *http.Request) {
 // called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
-	log.Debugw("404", "req", req.URL)
+	// log.Debugw("404", "req", req.URL)
 	http.Error(res, "404: file not found", http.StatusNotFound)
 }
 
@@ -243,7 +243,7 @@ func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
 	err := fmt.Errorf("file not found")
-	log.Debugw(err.Error(), "URL", req.URL)
+	// log.Debugw(err.Error(), "URL", req.URL)
 	http.Error(res, jsonError(err), http.StatusNotFound)
 }
 
