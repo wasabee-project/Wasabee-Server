@@ -37,7 +37,6 @@ func AgentLocation(gid model.GoogleID) {
 
 	for _, token := range tokens {
 		if curTeam != token.TeamID {
-			// log.Debugw("next team", "teamID", token.TeamID)
 			curTeam = token.TeamID
 			skipping = false
 			if !ratelimitTeam(token.TeamID) {
@@ -50,9 +49,7 @@ func AgentLocation(gid model.GoogleID) {
 			continue
 		}
 
-		// look through brTokens to make sure we've not already used this token
-		// due to multiple shared teams
-
+		// not doing multicast due to multiple shared teams
 		m := messaging.Message{
 			Token: token.Token,
 			Data: map[string]string{
@@ -64,7 +61,7 @@ func AgentLocation(gid model.GoogleID) {
 		toSend = append(toSend, &m)
 		brTokens = append(brTokens, token.Token)
 		if len(toSend) > 500 {
-			log.Debug("got 500 messages outgoing, stopping -- FIXME scot was lazy")
+			log.Debug("more than 500 messages outgoing on AgentLocation send, only sending 500 -- FIXME scot was lazy")
 			break
 		}
 	}
@@ -74,7 +71,7 @@ func AgentLocation(gid model.GoogleID) {
 		log.Error(err)
 		return
 	}
-	processBatchResponse(br, brTokens)
+	processBatchResponse(br, brTokens) // do the work on an async go routine?
 	return
 }
 
@@ -545,8 +542,8 @@ func genericMulticast(data map[string]string, tokens []string) {
 			log.Error(err)
 			return // carry on ?
 		}
-		log.Infow("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
-		processBatchResponse(br, subset)
+		log.Debugw("multicast block", "success", br.SuccessCount, "failure", br.FailureCount)
+		processBatchResponse(br, subset) // spawn a go routine? would async help here?
 	}
 }
 
