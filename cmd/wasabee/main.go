@@ -84,9 +84,14 @@ func run(cargs *cli.Context) error {
 	// the main context used for all sub-services, when this is canceled, everything shuts down
 	ctx, shutdown := context.WithCancel(context.Background())
 
-	// config depends on log, so do this the hard way
+	// if the console isn't a TTY, don't log to it
+	console := false
+	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
+		console = true
+	}
+	// config depends on log, so we need to build this manually
 	logconf := log.Configuration{
-		Console:            true,
+		Console:            console,
 		ConsoleLevel:       zap.InfoLevel,
 		FilePath:           cargs.String("log"),
 		FileLevel:          zap.InfoLevel,
@@ -95,6 +100,10 @@ func run(cargs *cli.Context) error {
 	}
 	if cargs.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
+		// if debug and not console, log debug to file
+		if !console {
+			logconf.FileLevel = zap.DebugLevel
+		}
 	}
 	log.Start(context.Background(), &logconf)
 
