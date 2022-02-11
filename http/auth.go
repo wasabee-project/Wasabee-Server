@@ -198,9 +198,8 @@ func getOauthUserInfo(accessToken string) ([]byte, error) {
 }
 
 func getAgentID(req *http.Request) (model.GoogleID, error) {
-	// X-Wasabee-GID header set in authMW
-	if x := req.Header.Get("X-Wasabee-GID"); x != "" {
-		return model.GoogleID(x), nil
+	if x := req.Context().Value("X-Wasabee-GID").(model.GoogleID); x != "" {
+		return x, nil
 	}
 
 	err := errors.New("getAgentID called for unauthenticated agent")

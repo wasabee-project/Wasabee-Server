@@ -205,10 +205,6 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if tid := req.Header.Get("X-Wasabee-TokenID"); tid != "" {
-		auth.RevokeJWT(tid)
-	}
-
 	fmt.Fprint(res, jsonStatusOK)
 }
 

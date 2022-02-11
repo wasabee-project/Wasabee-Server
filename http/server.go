@@ -157,9 +157,6 @@ func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		sessionName := config.Get().HTTP.SessionName
 
-		req.Header.Del("X-Wasabee-GID")     // don't allow spoofing
-		req.Header.Del("X-Wasabee-TokenID") // don't allow spoofing
-
 		if h := req.Header.Get("Authorization"); h != "" {
 			token, err := jwt.ParseRequest(req,
 				jwt.InferAlgorithmFromKey(true),
@@ -201,9 +198,8 @@ func authMW(next http.Handler) http.Handler {
 			}
 
 			// pass the GoogleID around so subsequent functions can easily access it
-			// would this be better in req.Context.Values?
-			req.Header.Set("X-Wasabee-GID", string(gid))
-			req.Header.Set("X-Wasabee-TokenID", token.JwtID())
+			ctx := context.WithValue(req.Context(), "X-Wasabee-GID", gid)
+			req = req.WithContext(ctx)
 			next.ServeHTTP(res, req)
 			return
 		}
@@ -277,7 +273,8 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
-		req.Header.Set("X-Wasabee-GID", gid.String())
+		ctx := context.WithValue(req.Context(), "X-Wasabee-GID", gid)
+		req = req.WithContext(ctx)
 		next.ServeHTTP(res, req)
 	})
 }
