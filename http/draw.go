@@ -86,7 +86,8 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	assignOnly := o.AssignedOnlyAccess(gid)
 	if !read && !assignOnly {
 		err := fmt.Errorf("forbidden")
-		log.Warnw(err.Error(), "GID", gid, "resource", o.ID)
+		agent, _ := gid.IngressName()
+		log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "message", "no access to operation", "agent", agent)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}

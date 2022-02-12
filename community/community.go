@@ -59,7 +59,8 @@ func Validate(gid model.GoogleID, name string) (bool, error) {
 	if err := gid.SetCommunityName(profile.Name); err != nil {
 		return false, err
 	}
-	log.Infow("validated niantic community name", "gid", gid, "name", profile.Name, "requested", name)
+	message := fmt.Sprintf("validated community name for %s", name)
+	log.Infow("validated", "gid", gid, "name", profile.Name, "requested", name, "message", message)
 	return true, nil
 }
 
