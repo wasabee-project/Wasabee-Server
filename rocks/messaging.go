@@ -62,6 +62,12 @@ func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	}
 	if !rr.Success {
 		log.Errorw("unable to add to remote rocks team", "teamID", teamID, "gid", gid, "cid", cid, "error", rr.Error)
+
+		// try to alert the team owner
+		owner, _ := t.Owner()
+		msg := fmt.Sprintf("unable to add agent to rocks community for teamID: %s. Check that your community ID and api key are correct.", teamID)
+		messaging.SendMessage(messaging.GoogleID(owner), msg)
+
 		if rr.Error == "Invalid key" {
 			c, _ := t.RocksCommunity()
 			_ = t.SetRocks("", c) // unlink
