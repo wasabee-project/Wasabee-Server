@@ -648,3 +648,15 @@ func GetAllTeams() ([]TeamID, error) {
 
 	return teams, nil
 }
+
+// Valid checks to see if team exists.
+func (teamID TeamID) Valid() bool {
+	var i uint8
+
+	err := db.QueryRow("SELECT COUNT(*) FROM team WHERE teamID = ?", teamID).Scan(&i)
+	if err != nil || i != 1 {
+		return false
+	}
+
+	return true
+}

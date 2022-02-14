@@ -210,7 +210,6 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 	c := config.Get()
 
 	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		log.Debug("iOS legacy triggered")
 		url := c.HTTP.LoginURL + "?returnto=" + c.HTTP.Webroot + "/api/v1/ios"
 		http.Redirect(res, req, url, http.StatusMovedPermanently)
 	}
@@ -227,8 +226,8 @@ func iosRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	name, _ := gid.IngressName()
-	log.Debugw("ios login", "message", "ios login", "gid", gid, "name", name)
-	msg := "ios Webview login successful for " + name
+	log.Info("ios login", "message", "ios login", "gid", gid, "name", name)
+	msg := "Please upgrade to the development version of Wasabee-IITC for iOS. see https://webui.wasabee.rocks/#/help for the link. The webview login method is no longer supported."
 	fmt.Fprint(res, msg)
 }
 
@@ -264,5 +263,6 @@ func isScanner(req *http.Request) bool {
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {
+	log.Info("old firebase service worker route")
 	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", http.Dir(config.Get().FrontendPath)))
 }

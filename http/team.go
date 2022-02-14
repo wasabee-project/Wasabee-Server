@@ -1,7 +1,6 @@
 package wasabeehttps
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -25,16 +24,20 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	team := model.TeamID(vars["team"])
 
+	if !team.Valid() {
+		err := fmt.Errorf("team not found")
+		http.Error(res, jsonError(err), http.StatusNotFound)
+		return
+	}
+
 	isowner, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
 	onteam, err := gid.AgentInTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -44,15 +47,9 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
+
 	teamList, err := team.FetchTeam()
-	if err == sql.ErrNoRows {
-		err = fmt.Errorf("team not found while fetching member list")
-		log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
-		http.Error(res, jsonError(err), http.StatusNotFound)
-		return
-	}
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -90,7 +87,6 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	_, err = gid.NewTeam(name)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +115,6 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err = team.Delete(); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -137,7 +132,6 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := model.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -150,12 +144,10 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	togid, err := model.ToGid(vars["to"])
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	if err = team.Chown(togid); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -175,7 +167,6 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -189,16 +180,13 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	if key != "" { // prevents a bit of log spam
 		togid, err := model.ToGid(key)
 		if err != nil && err.Error() == model.ErrAgentNotFound {
-			// no need to fill the logs with user typos
 			http.Error(res, jsonError(err), http.StatusNotAcceptable)
 			return
 		} else if err != nil {
-			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
 		if err = team.AddAgent(togid); err != nil {
-			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -217,13 +205,11 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := model.TeamID(vars["team"])
 	togid, err := model.ToGid(vars["key"])
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -240,7 +226,6 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err = team.RemoveAgent(togid); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -258,7 +243,6 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	team := model.TeamID(vars["team"])
 	safe, err := gid.OwnsTeam(team)
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -302,7 +286,6 @@ func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 	inGid := model.GoogleID(vars["gid"])
 	squad := util.Sanitize(req.FormValue("squad"))
 	if err = teamID.SetComment(inGid, squad); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -334,7 +317,6 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err := teamID.Rename(teamname); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -355,7 +337,6 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	if owns, _ := gid.OwnsTeam(teamID); owns {
 		key, err = teamID.GenerateJoinToken()
 		if err != nil {
-			log.Error(err)
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -390,9 +371,7 @@ func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	teamID := model.TeamID(vars["team"])
 
 	if owns, _ := gid.OwnsTeam(teamID); owns {
-		err := teamID.DeleteJoinToken()
-		if err != nil {
-			log.Error(err)
+		if err := teamID.DeleteJoinToken(); err != nil {
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -418,7 +397,6 @@ func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
 	key := vars["key"]
 
 	if err = teamID.JoinToken(gid, key); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -495,13 +473,8 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 			continue
 		}
 		t, err := team.FetchTeam()
-		if err == sql.ErrNoRows {
-			err = fmt.Errorf("team not found while fetching member list - in bulk pull")
-			log.Warnw(err.Error(), "teamID", team, "GID", gid.String())
-			continue
-		}
 		if err != nil {
-			log.Error(err)
+			log.Errorw(err.Error(), "teamID", team, "GID", gid.String())
 			continue
 		}
 
