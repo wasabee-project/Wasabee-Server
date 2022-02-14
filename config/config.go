@@ -35,6 +35,8 @@ type WasabeeConf struct {
 	GRPCPort          uint16   // Port on which to send and receive gRPC messages
 	Peers             []string // hostname/ip of servers to update
 	GRPCDomain        string   // domain for grpc credentials
+	StoreRevisions    bool     // keep a copy of each upload
+	RevisionsDir      string   // where to keep them
 
 	// configuraiton for various subsystems
 	V        wv

@@ -22,6 +22,9 @@ var defaults *WasabeeConf = &WasabeeConf{
 	GRPCPort:   51500,
 	GRPCDomain: "example.com",
 
+	StoreRevisions: false,
+	RevisionsDir:   "ops",
+
 	V: wv{
 		APIEndpoint:    "https://v.enl.one/api/v1",
 		StatusEndpoint: "https://status.enl.one/api/location",

@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
 	"time"
 
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
@@ -200,6 +203,20 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	if err := drawOpUpdateWorker(&o); err != nil {
 		log.Error(err)
 		return err
+	}
+
+	// store backup revision
+	c := config.Get()
+	if c.StoreRevisions {
+		fn := fmt.Sprintf("%s-%d.json", opID, time.Now().Unix())
+		p := path.Join(c.RevisionsDir, fn)
+		log.Debugw("storing", "fn", fn)
+
+		err := os.WriteFile(p, op, 0600)
+		if err != nil {
+			log.Error(err)
+			// don't return
+		}
 	}
 	return nil
 }
