@@ -169,8 +169,6 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	}
 
 	var filterGid model.GoogleID
-	msg.ParseMode = "HTML"
-	msg.DisableWebPagePreview = true
 	tokens := strings.Split(inMsg.Message.Text, " ")
 	if len(tokens) > 1 {
 		filterGid, err = model.SearchAgentName(strings.TrimSpace(tokens[1]))
@@ -340,6 +338,13 @@ func gcClaim(inMsg *tgbotapi.Update) {
 	}
 
 	tokens := strings.Split(inMsg.Message.Text, " ")
+	if len(tokens) < 2 {
+		err := fmt.Errorf("specify the task step #")
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
 	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
 	if err != nil {
 		log.Error(err)
@@ -421,6 +426,13 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 	}
 
 	tokens := strings.Split(inMsg.Message.Text, " ")
+	if len(tokens) < 2 {
+		err := fmt.Errorf("specify the task step #")
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
 	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
 	if err != nil {
 		log.Error(err)
@@ -504,6 +516,13 @@ func gcReject(inMsg *tgbotapi.Update) {
 	}
 
 	tokens := strings.Split(inMsg.Message.Text, " ")
+	if len(tokens) < 2 {
+		err := fmt.Errorf("specify the task step #")
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
 	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
 	if err != nil {
 		log.Error(err)
