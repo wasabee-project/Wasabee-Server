@@ -57,16 +57,9 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	// check to see if this opID is already in use
-	var count int
-	err := db.QueryRow("SELECT COUNT(ID) FROM operation WHERE ID = ?", o.ID).Scan(&count)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if count != 0 {
-		err := fmt.Errorf("attempt to POST to an existing opID; use PUT to update an existing op")
-		log.Infow(err.Error(), "GID", gid)
+	if o.ID.Valid() {
+		err := fmt.Errorf("attempt to create an opID that is already in use")
+		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
 		return err
 	}
 	if o.ID.IsDeletedOp() {
@@ -75,7 +68,7 @@ func DrawInsert(op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	if err = drawOpInsertWorker(&o, gid); err != nil {
+	if err := drawOpInsertWorker(&o, gid); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -187,6 +180,12 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 	if o.ID.IsDeletedOp() {
 		err := fmt.Errorf("attempt to update a deleted opID; duplicate and upload the copy instead")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
+		return err
+	}
+
+	if !opID.Valid() {
+		err := fmt.Errorf("update op.ID does not exist")
+		log.Errorw(err.Error(), "resource", opID)
 		return err
 	}
 
@@ -708,4 +707,16 @@ func allOpAgents(perms []OpPermission, tx *sql.Tx) (map[GoogleID]bool, error) {
 		}
 	}
 	return am, nil
+}
+
+func (opID OperationID) Valid() bool {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM operation WHERE ID = ?", opID).Scan(&count)
+	if err != nil {
+		log.Error(err)
+	}
+	if count != 1 {
+		return false
+	}
+	return true
 }

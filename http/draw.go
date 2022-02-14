@@ -39,14 +39,14 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	if string(jBlob) == "" {
 		err := fmt.Errorf("empty JSON on operation upload")
-		log.Infow(err.Error(), "GID", gid, "resource", "new operation")
+		log.Infow(err.Error(), "GID", gid)
 		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
 	jRaw := json.RawMessage(jBlob)
 	if err = model.DrawInsert(jRaw, gid); err != nil {
-		log.Infow(err.Error(), "GID", gid, "resource", "new operation")
+		log.Infow(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -54,7 +54,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	// the IITC plugin wants the full /me data on draw POST so it can update its list of ops
 	agent, err := gid.GetAgent()
 	if err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
