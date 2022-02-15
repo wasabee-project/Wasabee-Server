@@ -52,7 +52,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 	/* plan b */
 	var o model.Operation
 	d := json.NewDecoder(req.Body)
-	d.DisallowUnknownFields()
+	// d.DisallowUnknownFields()
 	if err := d.Decode(&o); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
@@ -72,9 +72,34 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	data, _ := json.Marshal(agent)
 	res.Header().Set("Cache-Control", "no-store")
-	fmt.Fprint(res, string(data))
+	// data, _ := json.Marshal(agent)
+	// fmt.Fprint(res, string(data))
+	if err = json.NewEncoder(res).Encode(&agent); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	// store backup revision -- used for testing
+	c := config.Get()
+	if c.StoreRevisions {
+		fn := fmt.Sprintf("%s-POST.json", o.ID)
+		p := path.Join(c.RevisionsDir, fn)
+		log.Debugw("storing", "p", p)
+
+		fh, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer fh.Close()
+
+		if err = json.NewEncoder(fh).Encode(&o); err != nil {
+			log.Error(err)
+			return
+		}
+	}
 }
 
 func drawGetRoute(res http.ResponseWriter, req *http.Request) {
@@ -149,16 +174,21 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	s, err := json.Marshal(o)
+	/* s, err := json.Marshal(o)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
-	}
+	} */
 	res.Header().Set("Last-Modified", lastModified.Format(time.RFC1123))
 	res.Header().Set("Cache-Control", "no-store")
 	res.Header().Set("ETag", o.LastEditID)
-	fmt.Fprint(res, string(s))
+	// fmt.Fprint(res, string(s))
+	if err = json.NewEncoder(res).Encode(&o); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
@@ -246,7 +276,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 	/* plan b */
 	d := json.NewDecoder(req.Body)
-	d.DisallowUnknownFields()
+	// d.DisallowUnknownFields()
 	if err := d.Decode(&op); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
