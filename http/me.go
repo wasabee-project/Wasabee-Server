@@ -47,9 +47,8 @@ func meRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	agent.QueryToken = formValidationToken(req)
 
-	data, _ := json.Marshal(agent)
 	res.Header().Set("Cache-Control", "no-store")
-	fmt.Fprint(res, string(data))
+	json.NewEncoder(res).Encode(&agent)
 }
 
 // use this to verify that form data is sent from a client that requested it

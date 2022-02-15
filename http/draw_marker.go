@@ -200,14 +200,7 @@ func drawMarkerFetch(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-
-	j, err := json.Marshal(marker)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprint(res, string(j))
+	json.NewEncoder(res).Encode(marker)
 }
 
 func drawMarkerCompleteRoute(res http.ResponseWriter, req *http.Request) {

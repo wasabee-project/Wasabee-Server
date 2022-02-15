@@ -59,14 +59,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		teamList.RocksKey = ""
 		teamList.JoinLinkToken = ""
 	}
-
-	data, err := json.Marshal(teamList)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprint(res, string(data))
+	json.NewEncoder(res).Encode(&teamList)
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
@@ -355,9 +348,7 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 		Ok:  "OK",
 		Key: key,
 	}
-	jo, _ := json.Marshal(o)
-
-	fmt.Fprint(res, string(jo))
+	json.NewEncoder(res).Encode(&o)
 }
 
 func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
@@ -416,13 +407,7 @@ func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
-	ll, err := json.Marshal(list)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprint(res, ll)
+	json.NewEncoder(res).Encode(list)
 }
 
 func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
@@ -492,17 +477,11 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		list = append(list, *t)
 	}
 
-	// no valid teams
+	// no valid teams -- is this still necessary?
 	if len(list) == 0 {
 		fmt.Fprint(res, "[]")
 		return
 	}
 
-	data, err := json.Marshal(list)
-	if err != nil {
-		log.Warn(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprint(res, string(data))
+	json.NewEncoder(res).Encode(list)
 }

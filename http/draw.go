@@ -33,23 +33,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	/* plan a
-	jBlob, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	var o model.Operation
-	if err := json.Unmarshal(json.RawMessage(jBlob), &o); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-	plan a */
-
-	/* plan b */
 	var o model.Operation
 	d := json.NewDecoder(req.Body)
 	// d.DisallowUnknownFields()
@@ -58,7 +41,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	/* plan b */
 
 	if err = model.DrawInsert(&o, gid); err != nil {
 		log.Infow(err.Error(), "GID", gid)
@@ -73,8 +55,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	res.Header().Set("Cache-Control", "no-store")
-	// data, _ := json.Marshal(agent)
-	// fmt.Fprint(res, string(data))
 	if err = json.NewEncoder(res).Encode(&agent); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -174,16 +154,9 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	/* s, err := json.Marshal(o)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	} */
 	res.Header().Set("Last-Modified", lastModified.Format(time.RFC1123))
 	res.Header().Set("Cache-Control", "no-store")
 	res.Header().Set("ETag", o.LastEditID)
-	// fmt.Fprint(res, string(s))
 	if err = json.NewEncoder(res).Encode(&o); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -260,29 +233,13 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	/* plan a
-	jBlob, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if err := json.Unmarshal(json.RawMessage(jBlob), &op); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	} */
-
-	/* plan b */
 	d := json.NewDecoder(req.Body)
 	// d.DisallowUnknownFields()
 	if err := d.Decode(&op); err != nil {
-		log.Error(err)
+		log.Errorw("decoding incoming update", "error", err.Error(), "If-Match", im, "LastEditID", s.LastEditID, "headers", req.Header)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	/* plan b */
 
 	if opID != op.ID { // after unmarshal
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")

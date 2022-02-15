@@ -25,8 +25,7 @@ func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	data, _ := json.Marshal(dkl)
-	fmt.Fprint(res, string(data))
+	json.NewEncoder(res).Encode(dkl)
 }
 
 func setDefensiveKey(res http.ResponseWriter, req *http.Request) {

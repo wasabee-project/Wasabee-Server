@@ -305,15 +305,7 @@ func drawLinkFetch(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-
-	j, err := json.Marshal(link)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprint(res, string(j))
+	json.NewEncoder(res).Encode(link)
 }
 
 // linkAssignTouch updates the updateID and notifies ONLY the agent to whom the assigment was made

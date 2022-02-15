@@ -34,9 +34,8 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	data, _ := json.Marshal(agent)
 	res.Header().Add("Cache-Control", "no-store") // location changes frequently
-	fmt.Fprint(res, string(data))
+	json.NewEncoder(res).Encode(&agent)
 }
 
 func agentMessageRoute(res http.ResponseWriter, req *http.Request) {

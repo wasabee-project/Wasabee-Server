@@ -251,15 +251,7 @@ func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-
-	j, err := json.Marshal(task)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprint(res, string(j))
+	json.NewEncoder(res).Encode(task)
 }
 
 func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
