@@ -3,14 +3,17 @@ package wasabeehttps
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	// "io"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
+	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -30,6 +33,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	/* plan a
 	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
@@ -37,15 +41,26 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if string(jBlob) == "" {
-		err := fmt.Errorf("empty JSON on operation upload")
-		log.Infow(err.Error(), "GID", gid)
-		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
+	var o model.Operation
+	if err := json.Unmarshal(json.RawMessage(jBlob), &o); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
+	plan a */
 
-	jRaw := json.RawMessage(jBlob)
-	if err = model.DrawInsert(jRaw, gid); err != nil {
+	/* plan b */
+	var o model.Operation
+	d := json.NewDecoder(req.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&o); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+	/* plan b */
+
+	if err = model.DrawInsert(&o, gid); err != nil {
 		log.Infow(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
@@ -57,7 +72,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-
 	data, _ := json.Marshal(agent)
 	res.Header().Set("Cache-Control", "no-store")
 	fmt.Fprint(res, string(data))
@@ -186,25 +200,12 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	var op model.Operation
 	op.ID = model.OperationID(vars["opID"])
+	opID := op.ID // used to verify that the URL used is right for the op data
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	jBlob, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if string(jBlob) == "" {
-		err := fmt.Errorf("empty JSON on operation upload")
-		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
-		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
@@ -229,14 +230,64 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = model.DrawUpdate(op.ID, json.RawMessage(jBlob), gid)
+	/* plan a
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
-		// log.Error(err)
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.Unmarshal(json.RawMessage(jBlob), &op); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	} */
+
+	/* plan b */
+	d := json.NewDecoder(req.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&op); err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+	/* plan b */
+
+	if opID != op.ID { // after unmarshal
+		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
+		log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
+		http.Error(res, jsonError(err), http.StatusNotAcceptable)
+		return
+	}
+
+	err = model.DrawUpdate(&op, gid)
+	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	uid := touch(op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
+
+	// store backup revision -- used for testing
+	c := config.Get()
+	if c.StoreRevisions {
+		fn := fmt.Sprintf("%s-%s.json", opID, uid)
+		p := path.Join(c.RevisionsDir, fn)
+		log.Debugw("storing", "p", p)
+
+		fh, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer fh.Close()
+
+		if err = json.NewEncoder(fh).Encode(&op); err != nil {
+			log.Error(err)
+			return
+		}
+	}
 }
 
 func drawChownRoute(res http.ResponseWriter, req *http.Request) {

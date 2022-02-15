@@ -2,13 +2,9 @@ package model
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path"
 	"time"
 
-	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
@@ -50,32 +46,19 @@ type OpStat struct {
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
 // use ONLY for initial op creation
 // All assignment data and key count data is assumed to be correct
-func DrawInsert(op json.RawMessage, gid GoogleID) error {
-	var o Operation
-	if err := json.Unmarshal(op, &o); err != nil {
-		log.Error(err)
-		return err
-	}
-
+func DrawInsert(o *Operation, gid GoogleID) error {
 	if o.ID.Valid() {
 		err := fmt.Errorf("attempt to create an opID that is already in use")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
 		return err
 	}
+
 	if o.ID.IsDeletedOp() {
 		err := fmt.Errorf("attempt to reuse a deleted opID; duplicate and upload the copy instead")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
 		return err
 	}
 
-	if err := drawOpInsertWorker(&o, gid); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
-}
-
-func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 	// convert from RFC1123 to SQL format
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
@@ -161,31 +144,19 @@ func drawOpInsertWorker(o *Operation, gid GoogleID) error {
 }
 
 // DrawUpdate is called to UPDATE an existing draw
-// Links are added/removed as necessary -- assignments _are_ overwritten
-// Markers are added/removed as necessary -- assignments _are_ overwritten
+// Links & Markers are added/removed as necessary -- assignments are properly updated as necessary (including notifications on change)
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
-func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
-	var o Operation
-	if err := json.Unmarshal(op, &o); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	if opID != o.ID {
-		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
-		log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
-		return err
-	}
-
+// Database is locked per-op, each update runs in an all-or-nothing transaction
+func DrawUpdate(o *Operation, gid GoogleID) error {
 	if o.ID.IsDeletedOp() {
 		err := fmt.Errorf("attempt to update a deleted opID; duplicate and upload the copy instead")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
 		return err
 	}
 
-	if !opID.Valid() {
+	if !o.ID.Valid() {
 		err := fmt.Errorf("update op.ID does not exist")
-		log.Errorw(err.Error(), "resource", opID)
+		log.Errorw(err.Error(), "resource", o.ID)
 		return err
 	}
 
@@ -199,28 +170,6 @@ func DrawUpdate(opID OperationID, op json.RawMessage, gid GoogleID) error {
 		return err
 	}
 
-	if err := drawOpUpdateWorker(&o); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	// store backup revision
-	c := config.Get()
-	if c.StoreRevisions {
-		fn := fmt.Sprintf("%s-%d.json", opID, time.Now().Unix())
-		p := path.Join(c.RevisionsDir, fn)
-		log.Debugw("storing", "fn", fn)
-
-		err := os.WriteFile(p, op, 0600)
-		if err != nil {
-			log.Error(err)
-			// don't return
-		}
-	}
-	return nil
-}
-
-func drawOpUpdateWorker(o *Operation) error {
 	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
 		log.Error(err)
 		return err
@@ -246,7 +195,6 @@ func drawOpUpdateWorker(o *Operation) error {
 
 	reftime, err := time.Parse(time.RFC1123, o.ReferenceTime)
 	if err != nil {
-		// log.Debugw(err.Error(), "message", "bad reference time, defaulting to now()")
 		reftime = time.Now()
 	}
 

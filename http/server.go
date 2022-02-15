@@ -85,8 +85,8 @@ func Start() {
 	srv = &http.Server{
 		Handler:           router,
 		Addr:              c.HTTP.ListenHTTPS,
-		WriteTimeout:      (15 * time.Second),
-		ReadTimeout:       (15 * time.Second),
+		WriteTimeout:      (30 * time.Second),
+		ReadTimeout:       (30 * time.Second),
 		ReadHeaderTimeout: (2 * time.Second),
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS12,
