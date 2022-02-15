@@ -153,13 +153,13 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 
 func (opID OperationID) deleteMarker(mid MarkerID, tx *sql.Tx) error {
 	// deleting the task would cascade and take this out... but this is safe
-	_, err := tx.Exec("DELETE FROM marker WHERE opID = ? and ID = ?", opID, mid)
+	_, err := tx.Exec("DELETE FROM task WHERE opID = ? and ID = ?", opID, mid)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM link WHERE opID = ? and ID = ?", opID, mid)
+	_, err = tx.Exec("DELETE FROM marker WHERE opID = ? and ID = ?", opID, mid)
 	if err != nil {
 		log.Error(err)
 		return err
