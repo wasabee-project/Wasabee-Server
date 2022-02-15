@@ -3,7 +3,7 @@ package rocks
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -19,7 +19,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jBlob, err := ioutil.ReadAll(req.Body)
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)

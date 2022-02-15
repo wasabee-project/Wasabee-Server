@@ -3,7 +3,7 @@ package wasabeehttps
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -30,7 +30,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jBlob, err := ioutil.ReadAll(req.Body)
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -194,7 +194,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jBlob, err := ioutil.ReadAll(req.Body)
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

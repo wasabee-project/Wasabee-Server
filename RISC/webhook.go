@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -42,7 +42,7 @@ func webhook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	raw, err := ioutil.ReadAll(req.Body)
+	raw, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -165,7 +165,7 @@ func updateWebhook() error {
 	}
 	if response.StatusCode != http.StatusOK {
 		err := fmt.Errorf("non-OK status")
-		raw, _ := ioutil.ReadAll(response.Body)
+		raw, _ := io.ReadAll(response.Body)
 		log.Errorw(err.Error(), "subsystem", "RISC", "content", string(raw))
 		return err
 	}
@@ -218,7 +218,7 @@ func disableWebhook() {
 		return
 	}
 	if response.StatusCode != http.StatusOK {
-		raw, _ = ioutil.ReadAll(response.Body)
+		raw, _ = io.ReadAll(response.Body)
 		log.Errorw("not OK status", "subsystem", "RISC", "content", string(raw))
 	}
 
@@ -248,7 +248,7 @@ func disableWebhook() {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
-	raw, _ := ioutil.ReadAll(response.Body)
+	raw, _ := io.ReadAll(response.Body)
 	log.Info(string(raw))
 
 	return nil
@@ -285,7 +285,7 @@ func ping() error {
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
-		raw, _ := ioutil.ReadAll(response.Body)
+		raw, _ := io.ReadAll(response.Body)
 		log.Errorw("non OK status", "subsystem", "RISC", "content", string(raw))
 	}
 
@@ -332,7 +332,7 @@ func AddSubject(gid model.GoogleID) error {
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
-		raw, _ := ioutil.ReadAll(response.Body)
+		raw, _ := io.ReadAll(response.Body)
 		log.Errorw("non OK status", "subsystem", "RISC", "content", string(raw))
 	}
 

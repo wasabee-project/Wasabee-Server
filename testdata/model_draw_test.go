@@ -3,14 +3,14 @@ package wasabee_test
 import (
 	"encoding/json"
 	// "fmt"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/wasabee-project/Wasabee-Server"
 )
 
 func TestOperation(t *testing.T) {
-	content, err := ioutil.ReadFile("testdata/test1.json")
+	content, err := io.ReadFile("testdata/test1.json")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -147,7 +147,7 @@ func TestOperation(t *testing.T) {
 func TestDamagedOperation(t *testing.T) {
 	wasabee.Log.Info("starting TestDamageOperation")
 
-	content, err := ioutil.ReadFile("testdata/test3.json")
+	content, err := io.ReadFile("testdata/test3.json")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -167,7 +167,7 @@ func TestDamagedOperation(t *testing.T) {
 	// does not print error for invalid portals
 	opp.KeyOnHand(gid, wasabee.PortalID("83c4d2bee503409cbfc76db98af4d749.xx"), 7, "")
 
-	content, err = ioutil.ReadFile("testdata/test3-update.json")
+	content, err = io.ReadFile("testdata/test3-update.json")
 	if err != nil {
 		t.Error(err.Error())
 	}

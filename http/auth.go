@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	// "net/http/httputil"
 	"os"
@@ -189,7 +189,7 @@ func getOauthUserInfo(accessToken string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -228,7 +228,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jBlob, err := ioutil.ReadAll(req.Body)
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

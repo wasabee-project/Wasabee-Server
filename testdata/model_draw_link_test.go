@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	// "fmt"
 	"github.com/wasabee-project/Wasabee-Server"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
 func TestDistance(t *testing.T) {
-	content, err := ioutil.ReadFile("testdata/test1.json")
+	content, err := io.ReadFile("testdata/test1.json")
 	if err != nil {
 		t.Error(err.Error())
 	}

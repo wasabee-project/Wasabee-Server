@@ -3,7 +3,7 @@ package wtg
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -41,7 +41,7 @@ func webhook(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
-	jBlob, err := ioutil.ReadAll(req.Body)
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)

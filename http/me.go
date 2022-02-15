@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -245,7 +245,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	t, err := ioutil.ReadAll(req.Body)
+	t, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

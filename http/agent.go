@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -95,7 +95,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jBlob, err := ioutil.ReadAll(req.Body)
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

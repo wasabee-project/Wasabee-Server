@@ -3,7 +3,7 @@ package wasabeehttps
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -434,7 +434,7 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jBlob, err := ioutil.ReadAll(req.Body)
+	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

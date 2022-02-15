@@ -3,7 +3,7 @@ package community
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -82,7 +82,7 @@ func fetch(name string) (*profile, error) {
 		return &p.Profile, err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
 		return &p.Profile, err

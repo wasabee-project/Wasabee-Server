@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -74,7 +74,7 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
 		return &trustResult{}, err
@@ -125,7 +125,7 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 		return &myTeams{}, err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
 		return &myTeams{}, err
@@ -170,7 +170,7 @@ func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 		return &teamResult{}, err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
 		return &teamResult{}, err
@@ -426,7 +426,7 @@ func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
 		return &model.VAgent{}, err
