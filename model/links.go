@@ -93,7 +93,13 @@ func (opID OperationID) insertLink(l Link) error {
 }
 
 func (opID OperationID) deleteLink(lid LinkID, tx *sql.Tx) error {
-	_, err := tx.Exec("DELETE FROM link WHERE OpID = ? and ID = ?", opID, lid)
+	_, err := tx.Exec("DELETE FROM task WHERE OpID = ? and ID = ?", opID, lid)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM link WHERE OpID = ? and ID = ?", opID, lid)
 	if err != nil {
 		log.Error(err)
 		return err
