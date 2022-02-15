@@ -417,7 +417,12 @@ func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprint(res, list)
+	ll, err := json.Marshal(list)
+	if err != nil {
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(res, ll)
 }
 
 func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {

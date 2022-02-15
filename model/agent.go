@@ -2,7 +2,6 @@ package model
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -74,6 +73,14 @@ type AdOperation struct {
 type AgentID interface {
 	Gid() (GoogleID, error)
 	fmt.Stringer
+}
+
+// AgentLocation is the lite version used for the team location pull
+type AgentLocation struct {
+	Gid  GoogleID `json:"gid"`
+	Lat  float64  `json:"lat"`
+	Lon  float64  `json:"lng"`
+	Date string   `json:"date"`
 }
 
 // Gid just satisfies the AgentID interface
@@ -700,16 +707,9 @@ func (ad Agent) Save() error {
 }
 
 // GetAgentLocations is a fast-path to get all available agent locations
-func (gid GoogleID) GetAgentLocations() (string, error) {
-	type loc struct {
-		Gid  GoogleID `json:"gid"`
-		Lat  float64  `json:"lat"`
-		Lon  float64  `json:"lng"`
-		Date string   `json:"date"`
-	}
-
-	var list []loc
-	var tmpL loc
+func (gid GoogleID) GetAgentLocations() ([]AgentLocation, error) {
+	var list []AgentLocation
+	var tmpL AgentLocation
 	var lat, lon string
 
 	var rows *sql.Rows
@@ -719,14 +719,14 @@ func (gid GoogleID) GetAgentLocations() (string, error) {
 		"AND x.shareLoc= 1 AND x.gid = l.gid", gid)
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return list, err
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&tmpL.Gid, &lat, &lon, &tmpL.Date); err != nil {
 			log.Error(err)
-			return "", err
+			return list, err
 		}
 		tmpL.Lat, _ = strconv.ParseFloat(lat, 64)
 		tmpL.Lon, _ = strconv.ParseFloat(lon, 64)
@@ -737,12 +737,7 @@ func (gid GoogleID) GetAgentLocations() (string, error) {
 
 		list = append(list, tmpL)
 	}
-
-	jList, err := json.Marshal(list)
-	if err != nil {
-		return "", err
-	}
-	return string(jList), nil
+	return list, nil
 }
 
 // SetCommunityName sets the name the agent is known as on the Niantic Community -- this is the most trustworthy source of agent identity
