@@ -3,7 +3,6 @@ package wasabeehttps
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -43,7 +42,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !isowner && !onteam {
 		err := fmt.Errorf("not on team")
-		log.Infow(err.Error(), "teamID", team, "GID", gid.String(), "message", err.Error())
+		log.Infow(err.Error(), "teamID", team, "gid", gid, "message", err.Error())
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -73,7 +72,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 	name := util.Sanitize(vars["name"])
 	if name == "" {
 		err := fmt.Errorf("empty team name")
-		log.Warnw(err.Error(), "GID", gid)
+		log.Warnw(err.Error(), "gid", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -103,7 +102,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden")
-		log.Warnw(err.Error(), "resource", team, "GID", gid)
+		log.Warnw(err.Error(), "resource", team, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -130,7 +129,7 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden")
-		log.Warnw(err.Error(), "resource", team, "GID", gid)
+		log.Warnw(err.Error(), "resource", team, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -165,7 +164,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden")
-		log.Warnw(err.Error(), "resource", team, "GID", gid)
+		log.Warnw(err.Error(), "resource", team, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -208,13 +207,13 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if gid == togid {
 		err := fmt.Errorf("cannot remove owner")
-		log.Warnw(err.Error(), "resource", team, "GID", gid)
+		log.Warnw(err.Error(), "resource", team, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden")
-		log.Warnw(err.Error(), "resource", team, "GID", gid)
+		log.Warnw(err.Error(), "resource", team, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -241,7 +240,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	if !safe {
 		err := fmt.Errorf("forbidden: only team owners can send announcements")
-		log.Warnw(err.Error(), "resource", team, "GID", gid)
+		log.Warnw(err.Error(), "resource", team, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -271,7 +270,7 @@ func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 
 	if owns, _ := gid.OwnsTeam(teamID); !owns {
 		err = fmt.Errorf("forbidden: only the team owner can set comments")
-		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -297,7 +296,7 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 
 	if owns, _ := gid.OwnsTeam(teamID); !owns {
 		err = fmt.Errorf("only the team owner can rename a team")
-		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -305,7 +304,7 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 	teamname := util.Sanitize(req.FormValue("teamname"))
 	if teamname == "" {
 		err = fmt.Errorf("empty team name")
-		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -335,7 +334,7 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		err = fmt.Errorf("forbidden: only the team owner can create join links")
-		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
@@ -361,15 +360,15 @@ func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	teamID := model.TeamID(vars["team"])
 
-	if owns, _ := gid.OwnsTeam(teamID); owns {
-		if err := teamID.DeleteJoinToken(); err != nil {
-			http.Error(res, jsonError(err), http.StatusInternalServerError)
-			return
-		}
-	} else {
+	if owns, _ := gid.OwnsTeam(teamID); !owns {
 		err = fmt.Errorf("forbidden: only the team owner can remove join links")
-		log.Warnw(err.Error(), "resource", teamID, "GID", gid)
+		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
+		return
+	}
+
+	if err := teamID.DeleteJoinToken(); err != nil {
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(res, jsonStatusOK)
@@ -419,29 +418,15 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
-		log.Warnw(err.Error(), "GID", gid, "resource", "bulk team request")
+		log.Warnw(err.Error(), "gid", gid, "resource", "bulk team request")
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	jBlob, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if len(jBlob) == 0 {
-		err := fmt.Errorf("empty JSON on bulk team request")
-		log.Warnw(err.Error(), "GID", gid)
-		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
 		return
 	}
 
 	var requestedteams struct {
 		TeamIDs []model.TeamID `json:"teamids"`
 	}
-	if err := json.Unmarshal(json.RawMessage(jBlob), &requestedteams); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&requestedteams); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -464,7 +449,7 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		}
 		t, err := team.FetchTeam()
 		if err != nil {
-			log.Errorw(err.Error(), "teamID", team, "GID", gid.String())
+			log.Errorw(err.Error(), "teamID", team, "gid", gid)
 			continue
 		}
 

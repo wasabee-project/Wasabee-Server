@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io"
 	"net/http"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -94,24 +93,8 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jBlob, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if string(jBlob) == "" {
-		log.Warnw("empty JSON", "GID", gid)
-		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
-		return
-	}
-
-	jRaw := json.RawMessage(jBlob)
 	var target messaging.Target
-	err = json.Unmarshal(jRaw, &target)
-	if err != nil {
-		log.Error(err)
+	if err := json.NewDecoder(req.Body).Decode(target); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
