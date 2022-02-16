@@ -236,7 +236,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	d := json.NewDecoder(req.Body)
 	// d.DisallowUnknownFields()
 	if err := d.Decode(&op); err != nil {
-		log.Errorw("decoding incoming update", "error", err.Error(), "If-Match", im, "LastEditID", s.LastEditID, "headers", req.Header)
+		log.Errorw("decoding incoming update", "error", err.Error(), "If-Match", im, "LastEditID", s.LastEditID, "Content-Length", req.Header.Get("Content-Length"))
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
