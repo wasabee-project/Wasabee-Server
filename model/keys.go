@@ -42,7 +42,7 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 			return err
 		}
 	} else {
-		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule)
+		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule) // REPLACE OK SCB
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
 			return fmt.Errorf(ErrKeyUnableToRecord)

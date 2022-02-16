@@ -60,14 +60,14 @@ func (opID OperationID) insertLink(l Link) error {
 
 	comment := makeNullString(util.Sanitize(l.Comment))
 
-	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
 		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)",
+	_, err = db.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
 		l.ID, opID, l.From, l.To, l.Color, l.MuCaptured)
 	if err != nil {
 		log.Error(err)
@@ -140,14 +140,14 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 
 	comment := makeNullString(util.Sanitize(l.Comment))
 
-	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
 		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	_, err = tx.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)", l.ID, opID, l.From, l.To, l.Color, l.MuCaptured)
+	_, err = tx.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)", l.ID, opID, l.From, l.To, l.Color, l.MuCaptured) // REPLACE OK SCB
 	if err != nil {
 		log.Error(err)
 		return err

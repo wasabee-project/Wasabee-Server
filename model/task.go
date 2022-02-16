@@ -68,7 +68,6 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 		return err
 	}
 
-	// we could just blit them all at once
 	for _, depend := range d {
 		if _, err := tx.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, depend); err != nil {
 			log.Error(err)
@@ -236,16 +235,6 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 		}()
 	}
 
-	/* fast path for no assignments
-	if len(gs) == 0 {
-		log.Debug("clearing all assignments")
-		if err := t.ClearAssignments(tx); err != nil {
-			log.Error(err)
-			return err
-		}
-		return nil
-	} */
-
 	b, err := t.GetAssignments(tx)
 	if err != nil {
 		log.Error(err)
@@ -258,13 +247,11 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 
 	// log.Debugw("setting assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
 	if len(gs) > 0 {
-		// remove any duplicates
 		deduped := make(map[GoogleID]bool)
 		for _, gid := range gs {
 			deduped[gid] = true
 		}
 
-		// changesmade := false
 		for gid := range deduped {
 			if gid == "" {
 				continue
@@ -273,14 +260,13 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 				delete(before, gid)
 				// log.Debugw("existing assignment", "gid", gid)
 			} else {
-				log.Debugw("new assignment", "gid", gid)
+				// log.Debugw("new assignment", "gid", gid)
 				_, err := tx.Exec("REPLACE INTO assignments (opID, taskID, gid) VALUES (?, ?, ?)", t.opID, t.ID, gid)
 				if err != nil {
 					log.Error(err)
 					return err
 				}
 				messaging.SendAssignment(messaging.GoogleID(gid), messaging.TaskID(t.ID), messaging.OperationID(t.opID), "assigned")
-				// changesmade = true
 			}
 		}
 		// Need an messaging.BuildAssignment / messaging.BulkSendAddignments pair to do this in one go
@@ -295,17 +281,7 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 				log.Error(err)
 				return err
 			}
-			// changesmade = true
 		}
-
-		/*
-			if changesmade {
-				log.Debug("new or made changes, reverting state to 'assigned'")
-				if _, err := tx.Exec("UPDATE task SET state = 'assigned' WHERE ID = ? AND opID = ?", t.ID, t.opID); err != nil {
-					log.Error(err)
-					return err
-				}
-			} */
 	}
 
 	if needtx {

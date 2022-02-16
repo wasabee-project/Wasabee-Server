@@ -40,7 +40,7 @@ func (opID OperationID) updatePortal(p Portal, tx *sql.Tx) error {
 	comment := makeNullString(util.Sanitize(p.Comment))
 	hardness := makeNullString(util.Sanitize(p.Hardness))
 
-	_, err := tx.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
+	_, err := tx.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)", // REPLACE OK SCB (so long as any task is rebuilt after)
 		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
 	if err != nil {
 		log.Error(err)

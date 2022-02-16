@@ -95,7 +95,7 @@ func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
 		}()
 	}
 
-	_, err := tx.Exec("REPLACE INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?)", z.Zone, o.ID, z.Name, z.Color)
+	_, err := tx.Exec("REPLACE INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?)", z.Zone, o.ID, z.Name, z.Color) // REPLACE OK SCB
 	if err != nil {
 		log.Error(err)
 		return err

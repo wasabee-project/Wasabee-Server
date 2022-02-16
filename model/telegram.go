@@ -170,6 +170,7 @@ func (tgid TelegramID) String() string {
 func (teamID TeamID) LinkToTelegramChat(chat TelegramID, opID OperationID) error {
 	log.Debugw("linking team to chat", "chat", chat, "teamID", teamID, "opID", opID)
 
+	// REPLACE OK SCB
 	_, err := db.Exec("REPLACE INTO telegramteam (teamID, telegram, opID) VALUES (?,?,?)", teamID, chat, makeNullString(string(opID)))
 	if err != nil {
 		log.Error(err)
@@ -225,7 +226,7 @@ func ChatToTeam(chat int64) (TeamID, OperationID, error) {
 
 // AddToChatMemberList notes a telegramID has been seen in a given telegram chat
 func AddToChatMemberList(agent TelegramID, chat TelegramID) error {
-	if _, err := db.Exec("REPLACE INTO telegramchatmembers (agent, chat) VALUES (?, ?)", agent, chat); err != nil {
+	if _, err := db.Exec("INSERT IGNORE INTO telegramchatmembers (agent, chat) VALUES (?, ?)", agent, chat); err != nil {
 		// log.Debug(err) // foreign key errors due to chat not being linked can be ignored
 		return err
 	}

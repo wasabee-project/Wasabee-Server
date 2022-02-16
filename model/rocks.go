@@ -25,17 +25,17 @@ func RocksToDB(a *RocksAgent) error {
 
 	// this should be fixed now
 	if a.Gid == "" {
-		log.Info("empty GID in agent from Rocks", "agent", a)
+		log.Error("empty GID in agent from Rocks", "agent", a)
 		return nil
 	}
 
 	if len(a.Agent) > 15 {
-		log.Infow("bad agent name from Rocks", "gid", a.Gid, "name", a.Agent)
+		log.Infow("long agent name from Rocks", "gid", a.Gid, "name", a.Agent)
 	}
 
+	// REPLACE OK SCB
 	_, err := db.Exec("REPLACE INTO rocks (gid, tgid, agent, verified, smurf, fetched) VALUES (?,?,LEFT(?,15),?,?,UTC_TIMESTAMP())", a.Gid, a.TGId, a.Agent, a.Verified, a.Smurf)
 	if err != nil {
-		// there is a race somewhere that tries to insert this here before the agent is in the agent table, just log it for now
 		log.Error(err)
 		return nil
 	}

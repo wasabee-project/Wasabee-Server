@@ -53,14 +53,14 @@ func (opID OperationID) insertMarker(m Marker) error {
 
 	comment := makeNullString(util.Sanitize(m.Comment))
 
-	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
 		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type)
+	_, err = db.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type) // REPLACE OK SCB
 	if err != nil {
 		log.Error(err)
 		return err
@@ -115,14 +115,14 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 
 	comment := makeNullString(util.Sanitize(m.Comment))
 
-	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
 		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if _, err := tx.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type); err != nil {
+	if _, err := tx.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type); err != nil { // REPLACE OK SCB
 		log.Error(err)
 		return err
 	}

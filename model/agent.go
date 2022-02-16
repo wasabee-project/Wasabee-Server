@@ -8,6 +8,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
+	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
 // GoogleID is the primary location for interfacing with the agent type
@@ -320,7 +321,6 @@ func (gid GoogleID) SetLocation(lat, lon string) error {
 		flon = float64(0)
 	}
 
-	// REPLACE INTO?
 	point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
 	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", point, gid); err != nil {
 		log.Error(err)
@@ -620,6 +620,8 @@ func ToGid(in string) (GoogleID, error) {
 // SetIntelData sets the untrusted data from IITC - do not depend on these values for authorization
 // but if someone says they are a smurf, who are we to deny their self-identity?
 func (gid GoogleID) SetIntelData(name, faction string) error {
+	name = util.Sanitize(name) // don't trust this too much
+
 	if name == "" {
 		return nil
 	}
@@ -646,8 +648,7 @@ func (gid GoogleID) SetIntelData(name, faction string) error {
 func (gid GoogleID) IntelSmurf() bool {
 	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT intelfaction FROM agent WHERE GID = ?", gid).Scan(&ifac)
-	if err != nil {
+	if err := db.QueryRow("SELECT intelfaction FROM agent WHERE GID = ?", gid).Scan(&ifac); err != nil {
 		log.Error(err)
 		return false
 	}
@@ -667,40 +668,14 @@ func (gid GoogleID) FirstLogin() error {
 		return err
 	}
 
-	ad := Agent{
-		GoogleID:     gid,
-		Name:         string(gid),
-		OneTimeToken: OneTimeToken(ott),
-		RISC:         false,
-		IntelFaction: "unset",
-	}
-
-	if err := ad.Save(); err != nil {
+	if _, err := db.Exec("INSERT IGNORE INTO agent (gid, OneTimeToken) VALUES (?,?)", gid, ott); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if _, err = db.Exec("REPLACE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", ad.GoogleID); err != nil {
+	if _, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", gid); err != nil {
 		log.Error(err)
 		return err
-	}
-
-	return nil
-}
-
-// Save is called by FirstLogin, Authorize, and from the Pub/Sub system to write a new agent
-// also updates an existing agent from Pub/Sub
-func (ad Agent) Save() error {
-	if _, err := db.Exec("REPLACE INTO agent (gid, OneTimeToken, RISC, IntelFaction) VALUES (?,?,?,?)", ad.GoogleID, ad.OneTimeToken, ad.RISC, FactionFromString(ad.IntelFaction)); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	if ad.Telegram.ID != 0 {
-		if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, gid, verified) VALUES (?, ?, ?)", ad.Telegram.ID, ad.GoogleID, ad.Telegram.Verified); err != nil {
-			log.Error(err)
-			return err
-		}
 	}
 
 	return nil
