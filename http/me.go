@@ -257,8 +257,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	err = gid.StoreFirebaseToken(token)
-	if err != nil {
+	if err := gid.StoreFirebaseToken(token); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

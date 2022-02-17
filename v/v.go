@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -48,11 +47,13 @@ func Start(ctx context.Context) {
 
 // trustCheck checks a agent at V and populates a trustResult
 func trustCheck(id model.GoogleID) (*trustResult, error) {
+	tr := trustResult{}
+
 	if !config.IsVRunning() {
-		return &trustResult{}, nil
+		return &tr, nil
 	}
 	if id == "" {
-		return &trustResult{}, fmt.Errorf("empty trustCheck value")
+		return &tr, fmt.Errorf("empty trustCheck value")
 	}
 
 	vc := config.Get().V
@@ -61,7 +62,7 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Error(err)
-		return &trustResult{}, err
+		return &tr, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -70,21 +71,14 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 	if err != nil {
 		log.Debug(err)
 		err = fmt.Errorf("unable to request user info from V")
-		return &trustResult{}, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return &trustResult{}, err
+		return &tr, err
 	}
 
-	var tr trustResult
-	if err := json.Unmarshal(body, &tr); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
 		log.Error(err)
 		return &tr, err
 	}
+
 	if tr.Status != "ok" && tr.Message != "Agent not found" {
 		err = fmt.Errorf(tr.Message)
 		log.Info(err)
@@ -96,15 +90,17 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 
 // geTeams pulls a list of teams the agent is on at V
 func getTeams(gid model.GoogleID) (*myTeams, error) {
+	v := myTeams{}
+
 	key, err := gid.GetVAPIkey()
 	if err != nil {
 		log.Error(err)
-		return &myTeams{}, err
+		return &v, err
 	}
 	if key == "" {
 		err := fmt.Errorf("cannot get V teams if no V API key set")
 		log.Error(err)
-		return &myTeams{}, err
+		return &v, err
 	}
 
 	vc := config.Get().V
@@ -113,7 +109,7 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 	if err != nil {
 		err := fmt.Errorf("error establishing agent's team pull request")
 		log.Error(err)
-		return &myTeams{}, err
+		return &v, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -122,18 +118,10 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 	if err != nil {
 		err := fmt.Errorf("error executing team pull request")
 		log.Error(err)
-		return &myTeams{}, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return &myTeams{}, err
+		return &v, err
 	}
 
-	var v myTeams
-	err = json.Unmarshal(body, &v)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
 		log.Error(err)
 		return &v, err
 	}
@@ -141,14 +129,16 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 }
 
 func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
+	vt := teamResult{}
+
 	if vteamID == 0 {
-		return &teamResult{}, nil
+		return &vt, nil
 	}
 
 	if key == "" {
 		err := fmt.Errorf("cannot get V team if no V API key set")
 		log.Error(err)
-		return &teamResult{}, err
+		return &vt, err
 	}
 
 	vc := config.Get().V
@@ -158,7 +148,7 @@ func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 		// do not leak API key to logs
 		err := fmt.Errorf("error establishing team pull request")
 		log.Error(err)
-		return &teamResult{}, err
+		return &vt, err
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -167,21 +157,14 @@ func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 	if err != nil {
 		err := fmt.Errorf("error executing team pull request")
 		log.Error(err)
-		return &teamResult{}, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return &teamResult{}, err
+		return &vt, err
 	}
 
-	var vt teamResult
-	err = json.Unmarshal(body, &vt)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&vt); err != nil {
 		log.Error(err)
 		return &vt, err
 	}
+
 	if vt.Status != "ok" {
 		err := fmt.Errorf(vt.Message)
 		log.Error(err)
@@ -401,7 +384,8 @@ func bulkImportWorker(gid model.GoogleID, key string, mode string, teamsfromv *m
 
 // TelegramSearch queries V for information about an agent by TelegramID
 func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
-	var br bulkResult
+	br := bulkResult{}
+
 	if !config.IsVRunning() {
 		return &model.VAgent{}, nil
 	}
@@ -425,19 +409,11 @@ func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 		return &model.VAgent{}, err
 	}
 
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&br); err != nil {
 		log.Error(err)
 		return &model.VAgent{}, err
 	}
 
-	log.Debug(string(body))
-	err = json.Unmarshal(body, &br)
-	if err != nil {
-		log.Error(err)
-		return &model.VAgent{}, err
-	}
 	if br.Status != "ok" {
 		err = fmt.Errorf(br.Status)
 		log.Info(err)

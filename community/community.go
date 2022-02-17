@@ -3,7 +3,6 @@ package community
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -81,17 +80,12 @@ func fetch(name string) (*profile, error) {
 		log.Errorw(err.Error(), "fetch", name)
 		return &p.Profile, err
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+
+	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
 		log.Error(err)
 		return &p.Profile, err
 	}
 
-	if err = json.Unmarshal(body, &p); err != nil {
-		log.Error(err)
-		return &p.Profile, err
-	}
 	if p.Exception != "" {
 		err := fmt.Errorf(p.Exception)
 		log.Errorw(err.Error(), "code", p.Code, "class", p.Class)
