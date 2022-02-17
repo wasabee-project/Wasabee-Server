@@ -19,6 +19,7 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// TODO: use json.Decode here, rewrite CommunitySync to take it already Decoded...
 	jBlob, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Error(err)
@@ -34,14 +35,9 @@ func rocksCommunityRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	jRaw := json.RawMessage(jBlob)
-	err = CommunitySync(jRaw)
-	if err != nil {
+	if err := CommunitySync(jRaw); err != nil {
 		log.Errorw(err.Error(), "content", jRaw)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
-
-		// XXX get the team owner
-		// XXX send a message to the team owner with relevant debug info
-
 		return
 	}
 

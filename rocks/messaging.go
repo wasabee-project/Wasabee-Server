@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -48,18 +47,12 @@ func addToRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	rr := rocksPushResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&rr); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	var rr rocksPushResponse
-	err = json.Unmarshal(body, &rr)
-	if err != nil {
-		log.Error(err)
-		log.Debug(string(body))
-	}
 	if !rr.Success {
 		log.Errorw("unable to add to remote rocks team", "teamID", teamID, "gid", gid, "cid", cid, "error", rr.Error)
 
@@ -113,20 +106,14 @@ func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 		log.Errorw(err.Error(), "GID", gid)
 		return err
 	}
-
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+
+	rr := rocksPushResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&rr); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	var rr rocksPushResponse
-	err = json.Unmarshal(body, &rr)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
 	if !rr.Success {
 		err = fmt.Errorf(rr.Error)
 		log.Error(err)

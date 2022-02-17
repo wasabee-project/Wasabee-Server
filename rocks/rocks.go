@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -54,8 +53,10 @@ func Start(ctx context.Context) {
 
 // Search checks a agent at enl.rocks and returns an Agent
 func Search(id string) (*model.RocksAgent, error) {
+	agent := model.RocksAgent{}
+
 	if !config.IsRocksRunning() {
-		return &model.RocksAgent{}, nil
+		return &agent, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
@@ -72,7 +73,7 @@ func Search(id string) (*model.RocksAgent, error) {
 		// do not leak API key to logs
 		err := fmt.Errorf("error establishing .rocks request")
 		log.Errorw(err.Error(), "search", id)
-		return &model.RocksAgent{}, err
+		return &agent, err
 	}
 	client := &http.Client{
 		Timeout: holdtime,
@@ -82,18 +83,11 @@ func Search(id string) (*model.RocksAgent, error) {
 		// do not leak API key to logs
 		err := fmt.Errorf("error executing .rocks request")
 		log.Errorw(err.Error(), "search", id)
-		return &model.RocksAgent{}, err
+		return &agent, err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return &model.RocksAgent{}, err
-	}
 
-	var agent model.RocksAgent
-	err = json.Unmarshal(body, &agent)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&agent); err != nil {
 		log.Error(err)
 		return &agent, err
 	}
@@ -124,29 +118,33 @@ func CommunitySync(msg json.RawMessage) error {
 			log.Error(err)
 			return err
 		}
+
 		r := &Rocks{}
 		_ = r.Authorize(rc.User.Gid)
 	}
 
 	if rc.Action == "onJoin" {
-		if inteam, err := rc.User.Gid.AgentInTeam(teamID); inteam {
+		if inteam, err := rc.User.Gid.AgentInTeam(teamID); err != nil || inteam {
+			return err // if already on the team, this is nil
+		}
+		if err := teamID.AddAgent(rc.User.Gid); err != nil {
 			return err
 		}
-		err := teamID.AddAgent(rc.User.Gid)
+		owner, err := teamID.Owner()
 		if err != nil {
-			log.Error(err)
 			return err
 		}
+		agent, _ := rc.User.Gid.IngressName()
+		team, _ := teamID.Name()
+		messaging.SendMessage(messaging.GoogleID(owner), fmt.Sprintf("added %s to %s via rocks community join", agent, team))
 	} else {
 		if err := teamID.RemoveAgent(rc.User.Gid); err != nil {
-			log.Error(err)
 			return err
 		}
 	}
 
 	if rc.TGId > 0 && rc.TGName != "" {
 		if err := rc.TGId.SetName(rc.TGName); err != nil {
-			log.Error(err)
 			return err
 		}
 	}
@@ -190,15 +188,9 @@ func CommunityMemberPull(teamID model.TeamID) error {
 		return err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
 
-	var rr communityResponse
-	err = json.Unmarshal(body, &rr)
-	if err != nil {
+	rr := communityResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&rr); err != nil {
 		log.Error(err)
 		return err
 	}
