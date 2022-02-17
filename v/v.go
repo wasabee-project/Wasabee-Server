@@ -73,6 +73,7 @@ func trustCheck(id model.GoogleID) (*trustResult, error) {
 		err = fmt.Errorf("unable to request user info from V")
 		return &tr, err
 	}
+	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
 		log.Error(err)
@@ -120,6 +121,7 @@ func getTeams(gid model.GoogleID) (*myTeams, error) {
 		log.Error(err)
 		return &v, err
 	}
+	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
 		log.Error(err)
@@ -159,6 +161,7 @@ func (vteamID vTeamID) getTeamFromV(key string) (*teamResult, error) {
 		log.Error(err)
 		return &vt, err
 	}
+	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&vt); err != nil {
 		log.Error(err)
@@ -408,6 +411,7 @@ func TelegramSearch(tgid model.TelegramID) (*model.VAgent, error) {
 		err = fmt.Errorf("unable to search at V")
 		return &model.VAgent{}, err
 	}
+	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&br); err != nil {
 		log.Error(err)
