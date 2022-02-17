@@ -66,6 +66,10 @@ func AgentLocation(gid model.GoogleID) {
 		}
 	}
 
+	if len(toSend) == 0 {
+		return
+	}
+
 	br, err := msg.SendAll(fbctx, toSend)
 	if err != nil {
 		log.Error(err)
