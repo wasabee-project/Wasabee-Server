@@ -325,7 +325,6 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	log.Debugw("refrehing JWT", "GID", gid)
 
 	ok, err := auth.Authorize(gid)
 	if !ok {
