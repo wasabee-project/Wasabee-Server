@@ -3,7 +3,6 @@ package wtg
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -13,13 +12,14 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
+const jsonType = "application/json"
+const ctHeader = "Content-Type"
+
 // webhook is the http route for receiving Telegram updates
 func webhook(res http.ResponseWriter, req *http.Request) {
-	var err error
-
 	if hook == "" {
 		err := fmt.Errorf("the Telegram API is not configured")
-		log.Info(err)
+		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -28,36 +28,22 @@ func webhook(res http.ResponseWriter, req *http.Request) {
 	h := vars["hook"]
 
 	if h != hook {
-		err = fmt.Errorf("%s is not a valid hook", h)
+		err := fmt.Errorf("%s is not a valid hook", h)
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get("Content-Type")), " ", "", -1), ";")[0]
-	if contentType != "application/json" {
-		err = fmt.Errorf("invalid request (needs to be application/json)")
-		log.Error(err)
+	contentType := strings.Split(strings.Replace(strings.ToLower(req.Header.Get(ctHeader)), " ", "", -1), ";")[0]
+	if contentType != jsonType {
+		err := fmt.Errorf("invalid request")
+		log.Errorw(err.Error(), ctHeader, contentType)
 		http.Error(res, err.Error(), http.StatusNotAcceptable)
 		return
 	}
-	jBlob, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if string(jBlob) == "" {
-		err = fmt.Errorf("empty JSON")
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusNotAcceptable)
-		return
-	}
-	jRaw := json.RawMessage(jBlob)
 
 	var update tgbotapi.Update
-	err = json.Unmarshal(jRaw, &update)
-	if err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&update); err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -66,6 +52,6 @@ func webhook(res http.ResponseWriter, req *http.Request) {
 	// put the update into the subsystem update channel for processing by the bot logic
 	upChan <- update
 
-	res.Header().Set("Content-Type", "application/json")
+	res.Header().Set(ctHeader, jsonType)
 	fmt.Fprint(res, `{"status":"ok"}`)
 }
