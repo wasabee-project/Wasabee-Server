@@ -26,7 +26,7 @@ paths:
       responses:
         "200":
           description: success
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -48,7 +48,7 @@ paths:
       responses:
         "200":
           description: success
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -61,10 +61,14 @@ paths:
       responses:
         "200":
           description: operation uploaded
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
 
-  /me:
+  /api/v1/me:
     get:
-      deprecated: true
+	  summary: Profile of the authenticated agent
       tags:
         - User Info
       responses:
@@ -125,9 +129,86 @@ paths:
       responses:
         "200":
           description: data stored
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me/firebase:
+    post:
+	  summary: Add firebase token for agent
+      tags:
+        - "User Info"
+      requestBody:
+        required: true
+        content:
+          test/plain:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: data stored
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me/VAPIkey:
+    post:
+      summary: Set V API Key for agent
+      tags:
+        - "User Info"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                v:
+                  type: string
+      responses:
+        "200":
+          description: success
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me/jwtrefresh:
+    get:
+      summary: refresh the current jwt bearer token, extending its valid lifetime (lifetime parameter not yet implemented)
+      tags:
+        - Auth
+      requestBody:
+        required: false
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                lifetime:
+                  type: int
+      responses:
+        "200":
+          description: success
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -188,7 +269,26 @@ paths:
 
 
   /api/v1/me/{teamID}:
+    put:
+	  summary: Toggle location sharing with this team
+      tags:
+        - "User info"
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+        shareLoc:
+		  description: On|on or [anything] for Off
+          type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
     delete:
+	  summary: Leave the team
       tags:
         - User Info
         - Team
