@@ -1010,15 +1010,6 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/team/new:
-    get:
-      summary: Create a team
-      tags:
-        - Team
-      parameters:
-        - name: name
-          in: query
-
   /api/v1/agent/{agentID}/target:
     post:
       summary: Send a terget to an agent
@@ -1083,6 +1074,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}:
     get:
       summary: Fetch a team
@@ -1116,6 +1108,7 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/chown:
     get:
       summary: Change team's owner
@@ -1137,6 +1130,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/rename:
     put:
       summary: Rename team
@@ -1163,6 +1157,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/announce:
     post:
       summary: Send an announcement to the team
@@ -1189,6 +1184,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/rocks:
     get:
       summary: Pull rocks community members into this team
@@ -1207,6 +1203,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/genJoinKey:
     get:
       summary: Request join link
@@ -1225,6 +1222,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/delJoinKey:
     get:
       summary: Delete current join link
@@ -1243,6 +1241,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/:
     get:
       summary: Link team to a rock community
@@ -1272,6 +1271,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/{agentID}:
     post:
       summary: Add agent to team
@@ -1317,6 +1317,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/{agentID}/displayname:
     post:
       summary: Set agent display name in the team
@@ -1350,6 +1351,7 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}/{agentID}/squad:
     post:
       summary: Set agent squad in the team
