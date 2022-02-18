@@ -72,7 +72,7 @@ paths:
   /me:
     get:
       deprecated: true
-      summary: Profile of the authenticated agent
+      summary: Profile of the authenticated agent (use /api/v1/me)
       tags:
         - "User Info"
       responses:
@@ -109,6 +109,7 @@ paths:
 
   /api/v1/me/intelid:
     put:
+      summary: Set name and faction from intel
       tags:
         - "User Info"
       requestBody:
@@ -216,6 +217,7 @@ paths:
 
   /api/v1/me/commproof:
     get:
+      summary: generate special-purpose JWT for posting at Niantic community
       tags:
         - "User Info"
       parameters:
@@ -242,6 +244,7 @@ paths:
 
   /api/v1/me/commverify:
     get:
+      summary: fetch the JWT from the Niantic community and verify that it is correct
       tags:
         - "User Info"
       parameters:
@@ -262,6 +265,7 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
     delete:
+      summary: remove verification
       tags:
         - "User Info"
       responses:
@@ -926,7 +930,7 @@ paths:
 
   /api/v1/agent/{gid}:
     get:
-      summary: Get Agent
+      summary: Get agent "profile"
       tags:
         - Agent
       parameters:
@@ -949,6 +953,71 @@ paths:
           $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
+
+  /api/v1/agent/{gid}/image:
+    get:
+      summary: Get agent icon/image
+      tags:
+        - Agent
+      parameters:
+        - name: gid
+          in: path
+          required: true
+          description: Google ID of the agent
+          schema:
+            type: string
+      responses:
+        "308":
+          description: redirect to the image
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: agent or image not found
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/agent/{gid}/message:
+    post:
+      summary: send a generic message via all known systems (firebase and telegram)
+      tags:
+        - Agent
+      parameters:
+        - name: gid
+          in: path
+          required: true
+          description: Google ID of the agent
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - m
+              properties:
+                m:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/team/new:
+    get:
+      summary: Create a team
+      tags:
+        - Team
+      parameters:
+        - name: name
+          in: query
 
   /api/v1/agent/{agentID}/target:
     post:
