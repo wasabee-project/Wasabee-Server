@@ -10,7 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
+	// "strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -165,19 +165,21 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 	// announce to teams with which this agent is sharing location information
 	go wfb.AgentLocation(gid)
 
-	flat, err := strconv.ParseFloat(lat, 32)
-	if err != nil {
-		log.Error(err)
-		flat = float64(0)
-	}
+	/*
+		flat, err := strconv.ParseFloat(lat, 32)
+		if err != nil {
+			log.Error(err)
+			flat = float64(0)
+		}
 
-	flon, err := strconv.ParseFloat(lon, 32)
-	if err != nil {
-		log.Error(err)
-		flon = float64(0)
-	}
+		flon, err := strconv.ParseFloat(lon, 32)
+		if err != nil {
+			log.Error(err)
+			flon = float64(0)
+		}
 
-	go federation.SetAgentLocation(context.Background(), gid, float32(flat), float32(flon))
+		go federation.SetAgentLocation(context.Background(), gid, float32(flat), float32(flon))
+	*/
 
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -473,6 +475,8 @@ func meCommClearRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
+
+	go federation.SetCommunityID(context.Background(), gid, "")
 
 	fmt.Fprint(res, jsonStatusOK)
 }

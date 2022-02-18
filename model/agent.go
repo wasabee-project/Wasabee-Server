@@ -717,6 +717,10 @@ func (gid GoogleID) GetAgentLocations() ([]AgentLocation, error) {
 
 // SetCommunityName sets the name the agent is known as on the Niantic Community -- this is the most trustworthy source of agent identity
 func (gid GoogleID) SetCommunityName(name string) error {
+	if name == "" {
+		return gid.ClearCommunityName()
+	}
+
 	if len(name) > 15 {
 		log.Infow("community name too long", "gid", gid, "name", name)
 	}
