@@ -70,10 +70,10 @@ paths:
 
   /me:
     get:
-	  deprecated: true
-	  summary: Profile of the authenticated agent
+      deprecated: true
+      summary: Profile of the authenticated agent
       tags:
-        - User Info
+        - "User Info"
       responses:
         "200":
           description: User data
@@ -143,7 +143,7 @@ paths:
 
   /api/v1/me/firebase:
     post:
-	  summary: Add firebase token for agent
+      summary: Add firebase token for agent
       tags:
         - "User Info"
       requestBody:
@@ -195,12 +195,12 @@ paths:
       summary: refresh the current jwt bearer token, extending its valid lifetime (lifetime parameter not yet implemented)
       tags:
         - Auth
-	  parameters:
-		- lifetime: lifetime
+      parameters:
+        - name: lifetime
           in: query
           required: false
           schema:
-            type: int
+            type: integer
       responses:
         "200":
           description: success
@@ -216,7 +216,7 @@ paths:
   /api/v1/me/commproof:
     get:
       tags:
-        - User Info
+        - "User Info"
       parameters:
         - name: name
           in: query
@@ -262,7 +262,7 @@ paths:
           $ref: "#/components/responses/Unexpected"
     delete:
       tags:
-        - User Info
+        - "User Info"
       responses:
         "200":
           description: Community identity removed
@@ -276,14 +276,12 @@ paths:
 
   /api/v1/me/{teamID}:
     put:
-	  summary: Toggle location sharing with this team
+      summary: Toggle location sharing with this team
       tags:
         - "User info"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
-        - state:
-		  description: On|on or [anything] for Off
-          type: string
+        - $ref: "#/components/parameters/stateParam"
       responses:
         "200":
           $ref: "#/components/responses/PostSuccess"
@@ -294,9 +292,9 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
     delete:
-	  summary: Leave the team
+      summary: Leave the team
       tags:
-        - User Info
+        - "User Info"
         - Team
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
@@ -312,14 +310,12 @@ paths:
 
   /api/v1/me/{teamID}/wdshare:
     put:
-	  summary: Toggle sharing wd keys with this team
+      summary: Toggle sharing wd keys with this team
       tags:
         - "User info"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
-        - state:
-		  description: On|on or [anything] for Off
-          type: string
+        - $ref: "#/components/parameters/stateParam"
       responses:
         "200":
           $ref: "#/components/responses/PostSuccess"
@@ -332,14 +328,12 @@ paths:
 
   /api/v1/me/{teamID}/wdload:
     put:
-	  summary: Toggle loading wd keys from this team
+      summary: Toggle loading wd keys from this team
       tags:
         - "User info"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
-        - state:
-		  description: On|on or [anything] for Off
-          type: string
+        - $ref: "#/components/parameters/stateParam"
       responses:
         "200":
           $ref: "#/components/responses/PostSuccess"
@@ -1725,6 +1719,8 @@ components:
           format: int32
         message:
           type: string
+    State:
+      type: object
 
   parameters:
     teamIDParam:
@@ -1769,6 +1765,14 @@ components:
       description: ID of the link
       schema:
         $ref: "#/components/schemas/TaskID"
+    stateParam:
+      name: state
+      in: query
+      required: true
+      description: On or Off
+      schema:
+        $ref: "#/components/schemas/State"
 
 security:
   - bearerAuth: []
+
