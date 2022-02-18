@@ -278,7 +278,7 @@ paths:
     put:
       summary: Toggle location sharing with this team
       tags:
-        - "User info"
+        - "User Info"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - $ref: "#/components/parameters/stateParam"
@@ -312,7 +312,7 @@ paths:
     put:
       summary: Toggle sharing wd keys with this team
       tags:
-        - "User info"
+        - "User Info"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - $ref: "#/components/parameters/stateParam"
@@ -330,7 +330,7 @@ paths:
     put:
       summary: Toggle loading wd keys from this team
       tags:
-        - "User info"
+        - "User Info"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - $ref: "#/components/parameters/stateParam"
