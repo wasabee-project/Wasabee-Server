@@ -164,30 +164,26 @@ func setupAuthRoutes(r *mux.Router) {
 
 	// teams
 	// create a new team
-	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")
-	r.HandleFunc("/team/vbulkimport", vBulkImportRoute).Methods("GET").Queries("mode", "{mode}")
-	r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}")
-	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")
-	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE")
-	r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE")
-	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}")
-	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET")
-	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET")
-	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET")
-	// (re)import the team from rocks
-	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")
-	// configure team link to enl.rocks community
-	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}")
-	// V routes
+	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create new team
+	r.HandleFunc("/team/vbulkimport", vBulkImportRoute).Methods("GET").Queries("mode", "{mode}") // sync with v
+	// r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}") // deprecated
+	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET") // get team membership/data
+	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE") // delete team
+	// r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE") // deprecated
+	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}") // change team owner
+	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET") // join via join-link-token 
+	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET") // generate join-link-token
+	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET", "DELETE") // remove join-link-token
+	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET") // (re)import the team from rocks
+	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
 	r.HandleFunc("/team/{team}/v", vPullTeamRoute).Methods("GET")
 	r.HandleFunc("/team/{team}/v", vConfigureTeamRoute).Methods("POST")
-	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST") // broadcast a message to the team
-	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT")
-	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")
-	r.HandleFunc("/team/{team}/{gid}/squad", setAgentTeamCommentRoute).Methods("POST") // remove this
-	r.HandleFunc("/team/{team}/{gid}/comment", setAgentTeamCommentRoute).Methods("POST")
-	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")
-	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")
+	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST") // broadcast a message to the team (form-data: m)
+	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT") // rename the team, (form-data: teamname)
+	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST") // key can be gid/name/enlid
+	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE") // remove agent from team
+	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET") // deprecated
+	r.HandleFunc("/team/{team}/{gid}/comment", setAgentTeamCommentRoute).Methods("POST") // set agent comment
 
 	// allow fetching specific teams in bulk - JSON list of teamIDs
 	r.HandleFunc("/teams", bulkTeamFetchRoute).Methods("POST")
