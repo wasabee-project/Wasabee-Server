@@ -56,6 +56,7 @@ paths:
   /api/v1/me/logout:
     get:
       summary: Logout
+      deprecated: true
       tags:
         - Auth
       responses:
@@ -91,7 +92,7 @@ paths:
   /api/v1/me:
     get:
       tags:
-        - User Info
+        - "User Info"
       responses:
         "200":
           description: User data
@@ -109,7 +110,7 @@ paths:
   /api/v1/me/intelid:
     put:
       tags:
-        - User Info
+        - "User Info"
       requestBody:
         content:
           multipart/form-data:
@@ -230,11 +231,11 @@ paths:
             application/jwt:
               schema:
                 type: string
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -242,7 +243,7 @@ paths:
   /api/v1/me/commverify:
     get:
       tags:
-        - User Info
+        - "User Info"
       parameters:
         - name: name
           in: query
@@ -252,11 +253,11 @@ paths:
       responses:
         "200":
           description: verification success
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -266,7 +267,7 @@ paths:
       responses:
         "200":
           description: Community identity removed
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
@@ -362,9 +363,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AgentData"
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -408,9 +409,9 @@ paths:
       responses:
         "200":
           description: operation updated
-        '401':
+        "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -428,7 +429,7 @@ paths:
 
   /api/v1/draw/{opID}/info:
     post:
-      summary: Set operation's comment
+      summary: Set operation"s comment
       tags:
         - Operation
       parameters:
@@ -448,7 +449,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -478,7 +479,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -533,7 +534,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -582,7 +583,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -637,7 +638,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -666,7 +667,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -854,7 +855,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -888,7 +889,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -988,7 +989,7 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -1022,7 +1023,7 @@ paths:
         - $ref: "#/components/parameters/teamIDParam"
       responses:
         "200":
-          description: requested team
+          description: requested team data
           content:
             application/json:
               schema:
@@ -1069,7 +1070,7 @@ paths:
           $ref: "#/components/responses/Unexpected"
   /api/v1/team/{teamID}/rename:
     put:
-      summary: Rename a team
+      summary: Rename team
       tags:
         - Team
       parameters:
@@ -1089,13 +1090,13 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
   /api/v1/team/{teamID}/announce:
     post:
-      summary: Send an announce to team
+      summary: Send an announcement to the team
       tags:
         - Team
       parameters:
@@ -1115,13 +1116,13 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
   /api/v1/team/{teamID}/rocks:
     get:
-      summary: Pull rocks
+      summary: Pull rocks community members into this team
       tags:
         - Team
       parameters:
@@ -1133,7 +1134,7 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
-        '406':
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -1151,6 +1152,8 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
   /api/v1/team/{teamID}/delJoinKey:
@@ -1167,6 +1170,8 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
   /api/v1/team/{teamID}/:
@@ -1194,6 +1199,8 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
   /api/v1/team/{teamID}/{agentID}:
@@ -1213,7 +1220,9 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -1233,6 +1242,10 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
   /api/v1/team/{teamID}/{agentID}/displayname:
@@ -1262,7 +1275,9 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -1293,7 +1308,9 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
-        '406':
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
@@ -1326,7 +1343,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     Unacceptable:
       description: Invalid Input
       content:
