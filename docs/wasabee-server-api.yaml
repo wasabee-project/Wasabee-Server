@@ -148,6 +148,7 @@ paths:
       summary: Add firebase token for agent
       tags:
         - "User Info"
+        - Messaging
       requestBody:
         required: true
         content:
@@ -171,6 +172,7 @@ paths:
       summary: Set V API Key for agent
       tags:
         - "User Info"
+        - V
       requestBody:
         required: true
         content:
@@ -220,6 +222,7 @@ paths:
       summary: generate special-purpose JWT for posting at Niantic community
       tags:
         - "User Info"
+        - Community
       parameters:
         - name: name
           in: query
@@ -247,6 +250,7 @@ paths:
       summary: fetch the JWT from the Niantic community and verify that it is correct
       tags:
         - "User Info"
+        - Community
       parameters:
         - name: name
           in: query
@@ -284,6 +288,7 @@ paths:
       summary: Toggle location sharing with this team
       tags:
         - "User Info"
+        - Team
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - $ref: "#/components/parameters/stateParam"
@@ -318,6 +323,7 @@ paths:
       summary: Toggle sharing wd keys with this team
       tags:
         - "User Info"
+        - "Defensive Keys"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - $ref: "#/components/parameters/stateParam"
@@ -336,6 +342,7 @@ paths:
       summary: Toggle loading wd keys from this team
       tags:
         - "User Info"
+        - "Defensive Keys"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - $ref: "#/components/parameters/stateParam"
@@ -461,6 +468,7 @@ paths:
   /api/v1/draw/{opID}/marker/{markerID}/assign:
     post:
       summary: Assign marker
+      deprecated: true
       tags:
         - Operation
         - Assignment
@@ -491,6 +499,7 @@ paths:
   /api/v1/draw/{opID}/marker/{markerID}/{action}:
     get:
       summary: Set marker state
+      deprecated: true
       tags:
         - Operation
         - Assignment
@@ -517,6 +526,7 @@ paths:
   /api/v1/draw/{opID}/marker/{markerID}/comment:
     post:
       summary: Set marker comment
+      deprecated: true
       tags:
         - Operation
         - Marker
@@ -565,6 +575,7 @@ paths:
   /api/v1/draw/{opID}/link/{linkID}/assign:
     post:
       summary: Assign link
+      deprecated: true
       tags:
         - Operation
         - Assignment
@@ -595,6 +606,7 @@ paths:
   /api/v1/draw/{opID}/link/{linkID}/{action}:
     get:
       summary: Set link state
+      deprecated: true
       tags:
         - Operation
         - Assignment
@@ -621,6 +633,7 @@ paths:
   /api/v1/draw/{opID}/link/{linkID}/desc:
     post:
       summary: Set lin description
+      deprecated: true
       tags:
         - Operation
         - Link
@@ -650,6 +663,7 @@ paths:
   /api/v1/draw/{opID}/link/{linkID}/zone:
     post:
       summary: Set link zone
+      deprecated: true
       tags:
         - Operation
         - Link
@@ -983,6 +997,7 @@ paths:
       summary: send a generic message via all known systems (firebase and telegram)
       tags:
         - Agent
+        - Messaging
       parameters:
         - name: gid
           in: path
@@ -1268,6 +1283,7 @@ paths:
       summary: pull the associated rocks team/role and adjust this team membership to match
       tags:
         - Team
+        - V
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
       responses:
@@ -1285,6 +1301,7 @@ paths:
       summary: set the team's V configuration
       tags:
         - Team
+        - V
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
       requestBody:
@@ -1316,6 +1333,7 @@ paths:
       summary: Send an announcement to the team
       tags:
         - Team
+        - Messaging
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
       requestBody:
@@ -1370,6 +1388,7 @@ paths:
       summary: Add agent to team - key can be GID, name, @telegram or ENLID
       tags:
         - Team
+        - Agent
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - name: agentID
@@ -1392,6 +1411,7 @@ paths:
       summary: Remove agent from team
       tags:
         - Team
+        - Agent
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - name: agentID
@@ -1414,9 +1434,9 @@ paths:
   /api/v1/team/{teamID}/{agentID}/comment:
     post:
       summary: Set agent team comment
-      deprecated: true
       tags:
         - Team
+        - Agent
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
         - name: agentID
@@ -1445,6 +1465,90 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+          
+  /api/v1/teams:
+    post:
+      summary: Bulk fetch team data
+      tags:
+        - Team
+      requestBody:
+        content:
+          application/json:
+            schema:
+                $ref: "#/components/schemas/BulkTeams"
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+          
+  /api/v1/d:
+    post:
+      summary: Set Defensive Keys
+      tags:
+        - "Defensive Keys"
+        - "User Info"
+      requestBody:
+        content:
+          application/json:
+            schema:
+                $ref: "#/components/schemas/DefensiveKey"
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    get:
+      summary: Get Defensive Keys
+      tags:
+        - "Defensive Keys"
+        - "User Info"
+      responses:
+        "200":
+          $ref: "#/components/schemas/DefensiveKeyList"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  
+  /api/v1/d/bulk:
+    post:
+      summary: Bulk import Defensive Keys
+      tags:
+        - "Defensive Keys"
+        - "User Info"
+      requestBody:
+        content:
+          application/json:
+            schema:
+                $ref: "#/components/schemas/DefensiveKeyList"
+      responses:
+        "200":
+          description: post successful
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
 
 components:
   securitySchemes:
@@ -1464,7 +1568,7 @@ components:
                 type: string
 
     NotLoggedIn:
-      description: The user is not logged
+      description: The user is not logged in
       content:
         application/json:
           schema:
@@ -1869,6 +1973,38 @@ components:
           type: string
     State:
       type: object
+    BulkTeams:
+      type: object
+      properties:
+        teamids:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamID"
+    DefensiveKey:
+      type: object
+      properties:
+        GID:
+          $ref: "#/components/schemas/GoogleID"
+        PortalID:
+          $ref: "#/components/schemas/PortalID"
+        CapID:
+          type: string
+        Count:
+          type: integer
+        Name:
+          type: string
+        Lat:
+          type: number
+        Lng:
+          type: number
+    DefensiveKeyList:
+      description: This isn't right, how to do a bare array?
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: "#/components/schemas/DefensiveKey"
 
   parameters:
     teamIDParam:
