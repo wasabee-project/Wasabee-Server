@@ -1,6 +1,6 @@
 openapi: "3.0.0"
 info:
-  version: 0.2.0
+  version: 0.2.1
   title: Wasabee Server
   license:
     name: MIT
@@ -64,8 +64,27 @@ paths:
 
   /me:
     get:
+      deprecated: true
       tags:
-        - "User info"
+        - User Info
+      responses:
+        "200":
+          description: User data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentData"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me:
+    get:
+      tags:
+        - User Info
       responses:
         "200":
           description: User data
@@ -83,7 +102,7 @@ paths:
   /api/v1/me/intelid:
     put:
       tags:
-        - "User Info"
+        - User Info
       requestBody:
         content:
           multipart/form-data:
@@ -113,10 +132,66 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
+  /api/v1/me/commproof:
+    get:
+      tags:
+        - User Info
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: JWT for Community verification
+          content:
+            application/jwt:
+              schema:
+                type: string
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '406':
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me/commverify:
+    get:
+      tags:
+        - User Info
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: verification success
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        '406':
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    delete:
+      tags:
+        - User Info
+      responses:
+        "200":
+          description: Community identity removed
+        '401':
+          $ref: "#/components/responses/NotLoggedIn"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+
   /api/v1/me/{teamID}:
     delete:
       tags:
-        - "User info"
+        - User Info
+        - Team
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
       responses:
@@ -143,6 +218,10 @@ paths:
       responses:
         "200":
           description: operation uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentData"
         '401':
           $ref: "#/components/responses/NotLoggedIn"
         '406':
@@ -249,9 +328,10 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required:
+                - agent
               properties:
                 agent:
-                  required: true
                   $ref: "#/components/schemas/GoogleID"
       responses:
         "200":
@@ -352,9 +432,10 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required:
+                - agent
               properties:
                 agent:
-                  required: true
                   $ref: "#/components/schemas/GoogleID"
       responses:
         "200":
