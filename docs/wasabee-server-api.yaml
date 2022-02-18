@@ -63,6 +63,8 @@ paths:
           description: operation uploaded
         "401":
           $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
 
@@ -279,7 +281,7 @@ paths:
         - "User info"
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
-        shareLoc:
+        - state:
 		  description: On|on or [anything] for Off
           type: string
       responses:
@@ -298,6 +300,46 @@ paths:
         - Team
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me/{teamID}/wdshare:
+    put:
+	  summary: Toggle sharing wd keys with this team
+      tags:
+        - "User info"
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+        - state:
+		  description: On|on or [anything] for Off
+          type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/me/{teamID}/wdload:
+    put:
+	  summary: Toggle loading wd keys from this team
+      tags:
+        - "User info"
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+        - state:
+		  description: On|on or [anything] for Off
+          type: string
       responses:
         "200":
           $ref: "#/components/responses/PostSuccess"
