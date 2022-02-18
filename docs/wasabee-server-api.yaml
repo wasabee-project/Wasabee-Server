@@ -66,8 +66,9 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/me:
+  /me:
     get:
+	  deprecated: true
 	  summary: Profile of the authenticated agent
       tags:
         - User Info
@@ -192,15 +193,12 @@ paths:
       summary: refresh the current jwt bearer token, extending its valid lifetime (lifetime parameter not yet implemented)
       tags:
         - Auth
-      requestBody:
-        required: false
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                lifetime:
-                  type: int
+	  parameters:
+		- lifetime: lifetime
+          in: query
+          required: false
+          schema:
+            type: int
       responses:
         "200":
           description: success
@@ -232,6 +230,8 @@ paths:
                 type: string
         '401':
           $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         '406':
           $ref: "#/components/responses/Unacceptable"
         default:
@@ -252,6 +252,8 @@ paths:
           description: verification success
         '401':
           $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         '406':
           $ref: "#/components/responses/Unacceptable"
         default:
@@ -264,6 +266,8 @@ paths:
           description: Community identity removed
         '401':
           $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
 
