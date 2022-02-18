@@ -1075,6 +1075,27 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
+  /api/v1/team/bulkvimport:
+    get:
+      summary: import/sync teams with v
+      tags:
+        - Team
+      parameters:
+        - name: mode 
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: import started in background, check team list in a moment
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
   /api/v1/team/{teamID}:
     get:
       summary: Fetch a team
@@ -1106,6 +1127,8 @@ paths:
           $ref: "#/components/responses/PostSuccess"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/Unexpected"
 
@@ -1131,67 +1154,18 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/team/{teamID}/rename:
-    put:
-      summary: Rename team
-      tags:
-        - Team
-      parameters:
-        - $ref: "#/components/parameters/teamIDParam"
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - teamname
-              properties:
-                teamname:
-                  type: string
-      responses:
-        "200":
-          $ref: "#/components/responses/PostSuccess"
-        "401":
-          $ref: "#/components/responses/NotLoggedIn"
-        "406":
-          $ref: "#/components/responses/Unacceptable"
-        default:
-          $ref: "#/components/responses/Unexpected"
-
-  /api/v1/team/{teamID}/announce:
-    post:
-      summary: Send an announcement to the team
-      tags:
-        - Team
-      parameters:
-        - $ref: "#/components/parameters/teamIDParam"
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - m
-              properties:
-                m:
-                  type: string
-      responses:
-        "200":
-          $ref: "#/components/responses/PostSuccess"
-        "401":
-          $ref: "#/components/responses/NotLoggedIn"
-        "406":
-          $ref: "#/components/responses/Unacceptable"
-        default:
-          $ref: "#/components/responses/Unexpected"
-
-  /api/v1/team/{teamID}/rocks:
+  /api/v1/team/{teamID}/join/{key}:
     get:
-      summary: Pull rocks community members into this team
+      summary: join a team using join-link-token
       tags:
         - Team
       parameters:
         - $ref: "#/components/parameters/teamIDParam"
+        - name: key
+          in: path 
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: success
@@ -1199,11 +1173,9 @@ paths:
           $ref: "#/components/responses/NotLoggedIn"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "406":
-          $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
-
+          
   /api/v1/team/{teamID}/genJoinKey:
     get:
       summary: Request join link
@@ -1242,7 +1214,26 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/team/{teamID}/:
+  /api/v1/team/{teamID}/rocks:
+    get:
+      summary: Pull rocks community members into this team (rocks community ID must already be configured for this team)
+      tags:
+        - Team
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+      responses:
+        "200":
+          description: success
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+  /api/v1/team/{teamID}/rockscfg:
     get:
       summary: Link team to a rock community
       tags:
@@ -1271,10 +1262,112 @@ paths:
           $ref: "#/components/responses/Unacceptable"
         default:
           $ref: "#/components/responses/Unexpected"
+          
+  /api/v1/team/{teamID}/v:
+    get:
+      summary: pull the associated rocks team/role and adjust this team membership to match
+      tags:
+        - Team
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+      responses:
+        "200":
+          description: success
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+    post:
+      summary: set the team's V configuration
+      tags:
+        - Team
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - vteam
+              properties:
+                vteam:
+                  type: string
+                role:
+                  type: string
+      responses:
+        "200":
+          description: success
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+          
+  /api/v1/team/{teamID}/announce:
+    post:
+      summary: Send an announcement to the team
+      tags:
+        - Team
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - m
+              properties:
+                m:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
+          
+  /api/v1/team/{teamID}/rename:
+    put:
+      summary: Rename team
+      tags:
+        - Team
+      parameters:
+        - $ref: "#/components/parameters/teamIDParam"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - teamname
+              properties:
+                teamname:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PostSuccess"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "406":
+          $ref: "#/components/responses/Unacceptable"
+        default:
+          $ref: "#/components/responses/Unexpected"
 
   /api/v1/team/{teamID}/{agentID}:
     post:
-      summary: Add agent to team
+      summary: Add agent to team - key can be GID, name, @telegram or ENLID
       tags:
         - Team
       parameters:
@@ -1318,9 +1411,10 @@ paths:
         default:
           $ref: "#/components/responses/Unexpected"
 
-  /api/v1/team/{teamID}/{agentID}/displayname:
+  /api/v1/team/{teamID}/{agentID}/comment:
     post:
-      summary: Set agent display name in the team
+      summary: Set agent team comment
+      deprecated: true
       tags:
         - Team
       parameters:
@@ -1339,40 +1433,6 @@ paths:
                 - displayname
               properties:
                 displayname:
-                  type: string
-      responses:
-        "200":
-          $ref: "#/components/responses/PostSuccess"
-        "401":
-          $ref: "#/components/responses/NotLoggedIn"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "406":
-          $ref: "#/components/responses/Unacceptable"
-        default:
-          $ref: "#/components/responses/Unexpected"
-
-  /api/v1/team/{teamID}/{agentID}/squad:
-    post:
-      summary: Set agent squad in the team
-      tags:
-        - Team
-      parameters:
-        - $ref: "#/components/parameters/teamIDParam"
-        - name: agentID
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/GoogleID"
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - squad
-              properties:
-                squad:
                   type: string
       responses:
         "200":
