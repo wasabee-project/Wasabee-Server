@@ -1,11 +1,14 @@
 package community
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jws"
@@ -15,6 +18,12 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
+
+var limiter *rate.Limiter
+
+func init() {
+	limiter = rate.NewLimiter(rate.Limit(0.5), 10)
+}
 
 // the top-level data structure defined by the community website
 type pull struct {
@@ -65,6 +74,13 @@ func Validate(gid model.GoogleID, name string) (bool, error) {
 
 func fetch(name string) (*profile, error) {
 	p := pull{}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5)
+	defer cancel()
+	if err := limiter.Wait(ctx); err != nil {
+		log.Warn(err)
+		// just keep going
+	}
 
 	apiurl := fmt.Sprintf("%s/%s.json", profileURL, name)
 	req, err := http.NewRequest("GET", apiurl, nil)
