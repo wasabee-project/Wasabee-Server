@@ -1597,6 +1597,8 @@ components:
       type: string
     GoogleID:
       type: string
+      minLength: 23
+      maxLength: 24
     TaskID:
       type: string
       minLength: 40
@@ -1613,8 +1615,14 @@ components:
       maxLength: 40
     TeamID:
       type: string
+      format: slug-slug-rand
     Zone:
       type: integer
+      minimum: 0
+      maximum: 16
+    State:
+      type: string
+      enum: [On, Off]
     AgentData:
       type: object
       required:
@@ -1640,6 +1648,8 @@ components:
           type: string
         Level:
           type: integer
+          minimum: 1
+          maximum: 16
         LocationKey:
           type: string
         VVerified:
@@ -1693,7 +1703,7 @@ components:
         JoinLinkToken:
           type: string
         State:
-          type: string
+          $ref: "#/components/schemas/State"
         ShareWD:
           type: string
         LoadWD:
@@ -1971,8 +1981,6 @@ components:
           format: int32
         message:
           type: string
-    State:
-      type: object
     BulkTeams:
       type: object
       properties:
