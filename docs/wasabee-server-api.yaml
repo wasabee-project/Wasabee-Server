@@ -1537,7 +1537,7 @@ paths:
         content:
           application/json:
             schema:
-                $ref: "#/components/schemas/DefensiveKeyList"
+                $ref: "#/components/schemas/DefensiveKeyBulk"
       responses:
         "200":
           description: post successful
@@ -2006,13 +2006,18 @@ components:
         Lng:
           type: number
     DefensiveKeyList:
-      description: This isn't right, how to do a bare array?
       type: object
       properties:
-        list:
+        DefensiveKeys:
           type: array
           items:
             $ref: "#/components/schemas/DefensiveKey"
+        Fetched:
+          type: string
+    DefensiveKeyBulk:
+      type: array
+      items:
+        $ref: "#/components/schemas/DefensiveKey"
 
   parameters:
     teamIDParam:
