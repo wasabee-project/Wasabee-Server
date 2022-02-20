@@ -158,7 +158,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Cache-Control", "no-store")
 	res.Header().Set("ETag", o.LastEditID)
 	if err = json.NewEncoder(res).Encode(&o); err != nil {
-		log.Error(err)
+		log.Errorw("unable to encode & send operation to client", "error", err.Error())
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
