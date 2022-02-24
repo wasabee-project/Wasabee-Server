@@ -42,7 +42,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = model.DrawInsert(&o, gid); err != nil {
+	if err = model.DrawInsert(req.Context(), &o, gid); err != nil {
 		log.Infow(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
@@ -248,7 +248,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = model.DrawUpdate(&op, gid)
+	err = model.DrawUpdate(req.Context(), &op, gid)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return

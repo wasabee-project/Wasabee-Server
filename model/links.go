@@ -29,7 +29,7 @@ type Link struct {
 // TODO use the logic from insertZone to unify insertLink and updateLink
 
 // insertLink adds a link to the database
-func (opID OperationID) insertLink(l Link) error {
+func (opID OperationID) insertLink(l Link, tx *sql.Tx) error {
 	if l.To == l.From {
 		log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
@@ -60,14 +60,14 @@ func (opID OperationID) insertLink(l Link) error {
 
 	comment := makeNullString(util.Sanitize(l.Comment))
 
-	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
+	_, err := tx.Exec("INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
+	_, err = tx.Exec("INSERT INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)",
 		l.ID, opID, l.From, l.To, l.Color, l.MuCaptured)
 	if err != nil {
 		log.Error(err)
@@ -75,14 +75,14 @@ func (opID OperationID) insertLink(l Link) error {
 	}
 
 	// clears if none set
-	if err := l.SetAssignments(l.Assignments, nil); err != nil {
+	if err := l.SetAssignments(l.Assignments, tx); err != nil {
 		log.Error(err)
 		return err
 	}
 
 	// do not clear if old client (yet)
 	if len(l.DependsOn) > 0 {
-		err = l.SetDepends(l.DependsOn, nil)
+		err = l.SetDepends(l.DependsOn, tx)
 		if err != nil {
 			log.Error(err)
 			return err

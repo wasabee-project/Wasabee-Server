@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -18,15 +19,15 @@ type KeyOnHand struct {
 }
 
 // insertKey adds a user keycount to the database
-func (o *Operation) insertKey(k KeyOnHand) error {
-	details, err := o.PortalDetails(k.ID, k.Gid)
+func (o *Operation) insertKey(k KeyOnHand, tx *sql.Tx) error {
+	details, err := o.ID.portalDetails(k.ID, tx)
 	if err != nil {
 		log.Error(err.Error())
 		return err
 	}
 	if details.Name == "" {
 		log.Infow("attempt to assign key count to portal not in op", "GID", k.Gid, "resource", o.ID, "portal", k.ID)
-		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID); err != nil {
+		if _, err = tx.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID); err != nil {
 			log.Info(err)
 			err := fmt.Errorf(ErrKeyUnableToRemove)
 			return err
@@ -36,13 +37,13 @@ func (o *Operation) insertKey(k KeyOnHand) error {
 
 	k.Capsule = util.Sanitize(k.Capsule) // can be NULL, but NULL causes the unique key to not work as intended
 	if k.Onhand == 0 {
-		if _, err = db.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? AND gid = ? AND capsule = ?", o.ID, k.ID, k.Gid, k.Capsule); err != nil {
+		if _, err = tx.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? AND gid = ? AND capsule = ?", o.ID, k.ID, k.Gid, k.Capsule); err != nil {
 			log.Info(err)
 			err := fmt.Errorf(ErrKeyUnableToRemove)
 			return err
 		}
 	} else {
-		_, err = db.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule) // REPLACE OK SCB
+		_, err = tx.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule) // REPLACE OK SCB
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
 			return fmt.Errorf(ErrKeyUnableToRecord)
@@ -121,5 +122,27 @@ func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, caps
 		Capsule: capsule,
 	}
 
-	return o.insertKey(k)
+	// get ctx from request?
+	tx, err := db.BeginTx(context.Background(), nil)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	defer func() {
+		err := tx.Rollback()
+		if err != nil && err != sql.ErrTxDone {
+			log.Error(err)
+		}
+	}()
+
+	if err := o.insertKey(k, tx); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
 }

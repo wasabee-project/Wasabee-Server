@@ -42,7 +42,7 @@ type Attribute struct {
 // TODO use the logic from insertZone to unify insertMarker and updateMarker
 
 // insertMarkers adds a marker to the database
-func (opID OperationID) insertMarker(m Marker) error {
+func (opID OperationID) insertMarker(m Marker, tx *sql.Tx) error {
 	if m.State == "" {
 		m.State = "pending"
 	}
@@ -53,14 +53,14 @@ func (opID OperationID) insertMarker(m Marker) error {
 
 	comment := makeNullString(util.Sanitize(m.Comment))
 
-	_, err := db.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
+	_, err := tx.Exec("INSERT INTO INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("REPLACE INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type) // REPLACE OK SCB
+	_, err = tx.Exec("INSERT INTO marker (ID, opID, PortalID, type) VALUES (?, ?, ?, ?)", m.ID, opID, m.PortalID, m.Type)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -72,21 +72,21 @@ func (opID OperationID) insertMarker(m Marker) error {
 	}
 
 	// empty m.Assignments clears any
-	if err := m.SetAssignments(m.Assignments, nil); err != nil {
+	if err := m.SetAssignments(m.Assignments, tx); err != nil {
 		log.Error(err)
 		return err
 	}
 
 	// len() == 0 could be empty, or could be old client; do not clear them (yet)
 	if len(m.DependsOn) > 0 {
-		if err := m.SetDepends(m.DependsOn, nil); err != nil {
+		if err := m.SetDepends(m.DependsOn, tx); err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
 	if len(m.Attributes) > 0 {
-		if err := m.setAttributes(m.Attributes, nil); err != nil {
+		if err := m.setAttributes(m.Attributes, tx); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -307,18 +307,6 @@ func NewMarkerType(old MarkerType) string {
 }
 
 func (m *Marker) setAttributes(a []Attribute, tx *sql.Tx) error {
-	needtx := false
-	if tx == nil {
-		needtx = true
-		tx, _ = db.Begin()
-
-		defer func() {
-			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-				log.Error(err)
-			}
-		}()
-	}
-
 	if _, err := tx.Exec("DELETE FROM markerattributes WHERE opID = ? AND markerID = ?", m.opID, m.ID); err != nil {
 		log.Error(err)
 		return err
@@ -330,14 +318,6 @@ func (m *Marker) setAttributes(a []Attribute, tx *sql.Tx) error {
 			continue
 		}
 	}
-
-	if needtx {
-		if err := tx.Commit(); err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
 	return nil
 }
 

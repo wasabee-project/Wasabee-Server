@@ -139,7 +139,7 @@ func run(cargs *cli.Context) error {
 	}
 
 	// Connect to database
-	if err = model.Connect(conf.DB); err != nil {
+	if err = model.Connect(ctx, conf.DB); err != nil {
 		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
 	}
 

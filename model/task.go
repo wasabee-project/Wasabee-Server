@@ -51,18 +51,6 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 		return nil
 	}
 
-	needtx := false
-	if tx == nil {
-		needtx = true
-		tx, _ = db.Begin()
-
-		defer func() {
-			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-				log.Error(err)
-			}
-		}()
-	}
-
 	if _, err := tx.Exec("DELETE FROM depends WHERE opID = ? AND taskID = ?", t.opID, t.ID); err != nil {
 		log.Error(err)
 		return err
@@ -70,13 +58,6 @@ func (t *Task) SetDepends(d []TaskID, tx *sql.Tx) error {
 
 	for _, depend := range d {
 		if _, err := tx.Exec("INSERT INTO depends (opID, taskID, dependsOn) VALUES (?, ?, ?)", t.opID, t.ID, depend); err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
-	if needtx {
-		if err := tx.Commit(); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -148,18 +129,6 @@ func (o OperationID) dependsPrecache() (map[TaskID][]TaskID, error) {
 
 // GetAssignments gets all assignments for a task
 func (t *Task) GetAssignments(tx *sql.Tx) ([]GoogleID, error) {
-	needtx := false
-	if tx == nil {
-		needtx = true
-		tx, _ = db.Begin()
-
-		defer func() {
-			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-				log.Error(err)
-			}
-		}()
-	}
-
 	tmp := make([]GoogleID, 0)
 
 	if t.ID == "" {
@@ -180,13 +149,6 @@ func (t *Task) GetAssignments(tx *sql.Tx) ([]GoogleID, error) {
 			continue
 		}
 		tmp = append(tmp, g)
-	}
-
-	if needtx {
-		if err := tx.Commit(); err != nil {
-			log.Error(err)
-			return tmp, err
-		}
 	}
 	return tmp, nil
 }
@@ -223,18 +185,6 @@ func (o OperationID) assignmentPrecache() (map[TaskID][]GoogleID, error) {
 
 // SetAssignments assigns a task to an agent using a given transaction, if the transaction is nil, one is created for this block
 func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
-	needtx := false
-	if tx == nil {
-		needtx = true
-		tx, _ = db.Begin()
-
-		defer func() {
-			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-				log.Error(err)
-			}
-		}()
-	}
-
 	b, err := t.GetAssignments(tx)
 	if err != nil {
 		log.Error(err)
@@ -283,14 +233,6 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 			}
 		}
 	}
-
-	if needtx {
-		if err := tx.Commit(); err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
 	return nil
 }
 

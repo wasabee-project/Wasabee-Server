@@ -23,11 +23,11 @@ type Portal struct {
 }
 
 // insertPortal adds a portal to the database
-func (opID OperationID) insertPortal(p Portal) error {
+func (opID OperationID) insertPortal(p Portal, tx *sql.Tx) error {
 	comment := makeNullString(util.Sanitize(p.Comment))
 	hardness := makeNullString(util.Sanitize(p.Hardness))
 
-	_, err := db.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
+	_, err := tx.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
 		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
 	if err != nil {
 		log.Error(err)
@@ -165,7 +165,8 @@ func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
 }
 
 // PortalDetails returns information about the portal
-func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, error) {
+// does access checking (cached)
+func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (*Portal, error) {
 	var p Portal
 	p.ID = portalID
 	p.opID = o.ID
@@ -173,18 +174,18 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, erro
 	if read, _ := o.ReadAccess(gid); !read {
 		err := fmt.Errorf("unauthorized: unable to get portal details")
 		log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "portal", portalID)
-		return p, err
+		return &p, err
 	}
 
 	var comment, hardness sql.NullString
 	err := db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", o.ID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
 	if err != nil && err == sql.ErrNoRows {
 		err := fmt.Errorf("portal %s not in op", portalID)
-		return p, err
+		return &p, err
 	}
 	if err != nil {
 		log.Error(err)
-		return p, err
+		return &p, err
 	}
 	if comment.Valid {
 		p.Comment = comment.String
@@ -192,7 +193,32 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (Portal, erro
 	if hardness.Valid {
 		p.Hardness = hardness.String
 	}
-	return p, nil
+	return &p, nil
+}
+
+// a transaction-safe version, no access checking
+func (opID OperationID) portalDetails(portalID PortalID, tx *sql.Tx) (*Portal, error) {
+	var p Portal
+	p.ID = portalID
+	p.opID = opID
+
+	var comment, hardness sql.NullString
+	err := tx.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", opID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
+	if err != nil && err == sql.ErrNoRows {
+		err := fmt.Errorf("portal %s not in op", portalID)
+		return &p, err
+	}
+	if err != nil {
+		log.Error(err)
+		return &p, err
+	}
+	if comment.Valid {
+		p.Comment = comment.String
+	}
+	if hardness.Valid {
+		p.Hardness = hardness.String
+	}
+	return &p, nil
 }
 
 // lookup and return a populated Portal from an ID

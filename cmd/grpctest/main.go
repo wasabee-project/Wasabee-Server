@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"time"
 	"path"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -27,8 +27,8 @@ func callRPC(client wrpc.WasabeeFederationClient, gid model.GoogleID, name strin
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	resp, err := client.SetCommunityID(ctx, &wrpc.CommunityID{
-		Googleid: string(gid),
-		Communityname:     name,
+		Googleid:      string(gid),
+		Communityname: name,
 	})
 	if err != nil {
 		log.Error(err)
@@ -40,10 +40,10 @@ func main() {
 	flag.Parse()
 
 	logconf := log.Configuration{
-		Console:            true,
-		ConsoleLevel:       zap.DebugLevel,
+		Console:      true,
+		ConsoleLevel: zap.DebugLevel,
 		// FilePath:           cargs.String("log"),
-		FileLevel:          zap.InfoLevel,
+		FileLevel: zap.InfoLevel,
 	}
 	log.Start(context.Background(), &logconf)
 

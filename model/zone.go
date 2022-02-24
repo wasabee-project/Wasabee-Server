@@ -82,19 +82,6 @@ func defaultZones() []ZoneListElement {
 }
 
 func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
-	needtx := false
-	if tx == nil {
-		needtx = true
-		tx, _ = db.Begin()
-
-		defer func() {
-			err := tx.Rollback()
-			if err != nil && err != sql.ErrTxDone {
-				log.Error(err)
-			}
-		}()
-	}
-
 	_, err := tx.Exec("REPLACE INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?)", z.Zone, o.ID, z.Name, z.Color) // REPLACE OK SCB
 	if err != nil {
 		log.Error(err)
@@ -116,14 +103,6 @@ func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
 			return err
 		}
 	}
-
-	if needtx {
-		if err := tx.Commit(); err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
 	return nil
 }
 

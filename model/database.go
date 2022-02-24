@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -13,7 +14,7 @@ import (
 var db *sql.DB
 
 // Connect tries to establish a connection to a MySQL/MariaDB database under the given URI and initializes the tables if they don"t exist yet.
-func Connect(uri string) error {
+func Connect(ctx context.Context, uri string) error {
 	// log.Debugw("startup", "database uri", uri)
 	result, err := sql.Open("mysql", uri)
 	if err != nil {
@@ -29,9 +30,9 @@ func Connect(uri string) error {
 	}
 	log.Infow("startup", "database", "connected", "version", version, "message", "connected to database")
 
-	setupTables()
-	upgradeTables()
-	optimizeTables()
+	setupTables(ctx)
+	upgradeTables(ctx)
+	optimizeTables(ctx)
 	return nil
 }
 
@@ -79,11 +80,11 @@ var tabledefs = []struct {
 }
 
 // setupTables checks for the existence of tables and creates them if needed
-func setupTables() {
+func setupTables(ctx context.Context) {
 	var table string
 	// use a tranaction to AVOID concurrency in this logic
 	// it is possible for these to go in out-of-order and fk problems to show up under rare circumstances
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Error(err)
 		panic(err)
@@ -130,7 +131,7 @@ func setupTables() {
 	// defer'd func runs here
 }
 
-func upgradeTables() {
+func upgradeTables(ctx context.Context) {
 	var upgrades = []struct {
 		test    string // a query that will fail if an upgrade is needed
 		upgrade string // the query to run to make the upgrade
@@ -138,7 +139,7 @@ func upgradeTables() {
 		// none for now
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Error(err)
 		panic(err)
@@ -184,10 +185,10 @@ func upgradeTables() {
 	}
 }
 
-func optimizeTables() {
+func optimizeTables(ctx context.Context) {
 	for _, table := range tabledefs {
 		log.Debugw("optimizing table", "table", table.tablename)
-		_, err := db.Exec(fmt.Sprintf("OPTIMIZE TABLE %s", table.tablename))
+		_, err := db.ExecContext(ctx, fmt.Sprintf("OPTIMIZE TABLE %s", table.tablename))
 		if err != nil {
 			log.Error(err)
 		}

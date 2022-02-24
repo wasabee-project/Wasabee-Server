@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -46,7 +47,7 @@ type OpStat struct {
 // DrawInsert parses a raw op sent from the IITC plugin and stores it in the database
 // use ONLY for initial op creation
 // All assignment data and key count data is assumed to be correct
-func DrawInsert(o *Operation, gid GoogleID) error {
+func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 	if o.ID.Valid() {
 		err := fmt.Errorf("attempt to create an opID that is already in use")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
@@ -68,8 +69,21 @@ func DrawInsert(o *Operation, gid GoogleID) error {
 
 	comment := makeNullString(util.Sanitize(o.Comment))
 
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	defer func() {
+		err := tx.Rollback()
+		if err != nil && err != sql.ErrTxDone {
+			log.Error(err)
+		}
+	}()
+
 	// start the insert process
-	_, err = db.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment, referencetime) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?)", o.ID, o.Name, gid, o.Color, comment, reftime.Format("2006-01-02 15:04:05"))
+	_, err = tx.Exec("INSERT INTO operation (ID, name, gid, color, modified, comment, referencetime) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?)", o.ID, o.Name, gid, o.Color, comment, reftime.Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -78,7 +92,7 @@ func DrawInsert(o *Operation, gid GoogleID) error {
 	portalMap := make(map[PortalID]bool)
 	for _, p := range o.OpPortals {
 		portalMap[p.ID] = true
-		if err = o.ID.insertPortal(p); err != nil {
+		if err = o.ID.insertPortal(p, tx); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -95,7 +109,7 @@ func DrawInsert(o *Operation, gid GoogleID) error {
 
 		// assignments here would be invalid since teams are not known
 		m.AssignedTo = ""
-		if err = o.ID.insertMarker(m); err != nil {
+		if err = o.ID.insertMarker(m, tx); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -116,14 +130,14 @@ func DrawInsert(o *Operation, gid GoogleID) error {
 		}
 		// assignments here would be invalid since teams are not known
 		l.AssignedTo = ""
-		if err = o.ID.insertLink(l); err != nil {
+		if err = o.ID.insertLink(l, tx); err != nil {
 			log.Error(err)
 			continue
 		}
 	}
 
 	for _, k := range o.Keys {
-		if err := o.insertKey(k); err != nil {
+		if err := o.insertKey(k, tx); err != nil {
 			log.Error(err)
 			continue
 		}
@@ -134,10 +148,15 @@ func DrawInsert(o *Operation, gid GoogleID) error {
 		o.Zones = defaultZones()
 	}
 	for _, z := range o.Zones {
-		if err = o.insertZone(z, nil); err != nil {
+		if err = o.insertZone(z, tx); err != nil {
 			log.Error(err)
 			continue
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Error(err)
+		return err
 	}
 
 	return nil
@@ -147,7 +166,7 @@ func DrawInsert(o *Operation, gid GoogleID) error {
 // Links & Markers are added/removed as necessary -- assignments are properly updated as necessary (including notifications on change)
 // Key count data is left untouched (unless the portal is no longer listed in the portals list).
 // Database is locked per-op, each update runs in an all-or-nothing transaction
-func DrawUpdate(o *Operation, gid GoogleID) error {
+func DrawUpdate(ctx context.Context, o *Operation, gid GoogleID) error {
 	if o.ID.IsDeletedOp() {
 		err := fmt.Errorf("attempt to update a deleted opID; duplicate and upload the copy instead")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
@@ -170,7 +189,7 @@ func DrawUpdate(o *Operation, gid GoogleID) error {
 		return err
 	}
 
-	if _, err := db.Exec("SELECT GET_LOCK(?,1)", o.ID); err != nil {
+	if _, err := db.ExecContext(ctx, "SELECT GET_LOCK(?,1)", o.ID); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -180,7 +199,7 @@ func DrawUpdate(o *Operation, gid GoogleID) error {
 		}
 	}()
 
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Error(err)
 		return err
