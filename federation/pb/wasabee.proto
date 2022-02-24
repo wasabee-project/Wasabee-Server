@@ -10,6 +10,7 @@ service WasabeeFederation {
 	rpc SetIntelData(IntelData) returns (Error) {}
 	rpc AddFirebaseToken(FBData) returns (Error) {}
 	rpc RevokeJWT(Token) returns (Error) {}
+	rpc SetTelegramID(TelegramID) returns (Error) {}
 }
 
 message CommunityID {
@@ -32,6 +33,12 @@ message IntelData {
 message FBData {
 	string googleid = 1;
 	string token = 2;
+}
+
+message TelegramID {
+	string googleid = 1;
+	int64 telegramid = 2;
+	string name = 3;
 }
 
 message Token {

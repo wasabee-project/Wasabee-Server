@@ -27,6 +27,7 @@ type WasabeeFederationClient interface {
 	SetIntelData(ctx context.Context, in *IntelData, opts ...grpc.CallOption) (*Error, error)
 	AddFirebaseToken(ctx context.Context, in *FBData, opts ...grpc.CallOption) (*Error, error)
 	RevokeJWT(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Error, error)
+	SetTelegramID(ctx context.Context, in *TelegramID, opts ...grpc.CallOption) (*Error, error)
 }
 
 type wasabeeFederationClient struct {
@@ -82,6 +83,15 @@ func (c *wasabeeFederationClient) RevokeJWT(ctx context.Context, in *Token, opts
 	return out, nil
 }
 
+func (c *wasabeeFederationClient) SetTelegramID(ctx context.Context, in *TelegramID, opts ...grpc.CallOption) (*Error, error) {
+	out := new(Error)
+	err := c.cc.Invoke(ctx, "/wasabee.WasabeeFederation/SetTelegramID", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WasabeeFederationServer is the server API for WasabeeFederation service.
 // All implementations must embed UnimplementedWasabeeFederationServer
 // for forward compatibility
@@ -91,6 +101,7 @@ type WasabeeFederationServer interface {
 	SetIntelData(context.Context, *IntelData) (*Error, error)
 	AddFirebaseToken(context.Context, *FBData) (*Error, error)
 	RevokeJWT(context.Context, *Token) (*Error, error)
+	SetTelegramID(context.Context, *TelegramID) (*Error, error)
 	mustEmbedUnimplementedWasabeeFederationServer()
 }
 
@@ -112,6 +123,9 @@ func (UnimplementedWasabeeFederationServer) AddFirebaseToken(context.Context, *F
 }
 func (UnimplementedWasabeeFederationServer) RevokeJWT(context.Context, *Token) (*Error, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RevokeJWT not implemented")
+}
+func (UnimplementedWasabeeFederationServer) SetTelegramID(context.Context, *TelegramID) (*Error, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetTelegramID not implemented")
 }
 func (UnimplementedWasabeeFederationServer) mustEmbedUnimplementedWasabeeFederationServer() {}
 
@@ -216,6 +230,24 @@ func _WasabeeFederation_RevokeJWT_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WasabeeFederation_SetTelegramID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TelegramID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WasabeeFederationServer).SetTelegramID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/wasabee.WasabeeFederation/SetTelegramID",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WasabeeFederationServer).SetTelegramID(ctx, req.(*TelegramID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WasabeeFederation_ServiceDesc is the grpc.ServiceDesc for WasabeeFederation service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -242,6 +274,10 @@ var WasabeeFederation_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevokeJWT",
 			Handler:    _WasabeeFederation_RevokeJWT_Handler,
+		},
+		{
+			MethodName: "SetTelegramID",
+			Handler:    _WasabeeFederation_SetTelegramID_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
