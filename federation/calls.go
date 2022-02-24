@@ -102,3 +102,18 @@ func (w *wafed) RevokeJWT(ctx context.Context, in *pb.Token) (*pb.Error, error) 
 	e.Message = "ok"
 	return &e, nil
 }
+
+func (w *wafed) SetTelegramID(ctx context.Context, in *pb.TelegramID) (*pb.Error, error) {
+	var e pb.Error
+
+	gid := model.GoogleID(in.Googleid)
+
+	if err := gid.SetTelegramID(model.TelegramID(in.Telegramid), in.Name); err != nil {
+		log.Error(err)
+		e.Message = err.Error()
+		return &e, err
+	}
+
+	e.Message = "ok"
+	return &e, nil
+}
