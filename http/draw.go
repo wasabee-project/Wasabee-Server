@@ -79,6 +79,27 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 			log.Error(err)
 			return
 		}
+
+		// get it from the database and do it again
+		var refetch model.Operation
+		refetch.ID = o.ID
+		_ = refetch.Populate(gid)
+
+		fn = fmt.Sprintf("%s-POST-POPULATED.json", refetch.ID)
+		p = path.Join(c.RevisionsDir, fn)
+		log.Debugw("storing", "p", p)
+
+		fhp, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer fhp.Close()
+
+		if err = json.NewEncoder(fhp).Encode(&refetch); err != nil {
+			log.Error(err)
+			return
+		}
 	}
 }
 
@@ -271,6 +292,26 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		defer fh.Close()
 
 		if err = json.NewEncoder(fh).Encode(&op); err != nil {
+			log.Error(err)
+			return
+		}
+
+		var refetch model.Operation
+		refetch.ID = op.ID
+		_ = refetch.Populate(gid)
+
+		fn = fmt.Sprintf("%s-%s-POPULATED.json", opID, uid)
+		p = path.Join(c.RevisionsDir, fn)
+		log.Debugw("storing", "p", p)
+
+		fhp, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer fhp.Close()
+
+		if err = json.NewEncoder(fhp).Encode(&refetch); err != nil {
 			log.Error(err)
 			return
 		}
