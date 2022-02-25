@@ -53,7 +53,7 @@ func (opID OperationID) insertMarker(m Marker, tx *sql.Tx) error {
 
 	comment := makeNullString(util.Sanitize(m.Comment))
 
-	_, err := tx.Exec("INSERT INTO INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := tx.Exec("INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)

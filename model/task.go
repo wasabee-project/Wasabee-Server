@@ -402,7 +402,7 @@ func (t *Task) checkAssignments(agentMap map[GoogleID]bool) {
 		if _, ok := agentMap[gid]; ok {
 			new = append(new, gid)
 		} else {
-			log.Warnw("removing assignment to agent no on any teams", "task", t.ID, "op", t.opID, "gid", gid)
+			log.Warnw("removing assignment for agent not on any teams", "task", t.ID, "op", t.opID, "gid", gid)
 		}
 	}
 

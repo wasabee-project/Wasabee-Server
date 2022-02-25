@@ -93,8 +93,8 @@ func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 	for _, p := range o.OpPortals {
 		portalMap[p.ID] = true
 		if err = o.ID.insertPortal(p, tx); err != nil {
-			log.Error(err)
-			continue
+			// log.Error(err)
+			return err
 		}
 	}
 
@@ -103,15 +103,16 @@ func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 
 		_, ok := portalMap[m.PortalID]
 		if !ok {
-			log.Warnw("portalID missing from portal list", "portal", m.PortalID, "resource", o.ID)
-			continue
+			err := fmt.Errorf("attempt to add marker to unknown portal")
+			log.Warnw(err.Error(), "portal", m.PortalID, "resource", o.ID)
+			return err
 		}
 
 		// assignments here would be invalid since teams are not known
 		m.AssignedTo = ""
 		if err = o.ID.insertMarker(m, tx); err != nil {
-			log.Error(err)
-			continue
+			// log.Error(err)
+			return err
 		}
 	}
 
@@ -120,26 +121,28 @@ func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 
 		_, ok := portalMap[l.From]
 		if !ok {
-			log.Warnw("source portal missing from portal list", "portal", l.From, "resource", o.ID)
-			continue
+			err := fmt.Errorf("attempt to source link from unknown portal")
+			log.Warnw(err.Error(), "portal", l.From, "resource", o.ID)
+			return err
 		}
 		_, ok = portalMap[l.To]
 		if !ok {
-			log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
-			continue
+			err := fmt.Errorf("attempt to send link to unknown portal")
+			log.Warnw(err.Error(), "portal", l.To, "resource", o.ID)
+			return err
 		}
 		// assignments here would be invalid since teams are not known
 		l.AssignedTo = ""
 		if err = o.ID.insertLink(l, tx); err != nil {
-			log.Error(err)
-			continue
+			// log.Error(err)
+			return err
 		}
 	}
 
 	for _, k := range o.Keys {
 		if err := o.insertKey(k, tx); err != nil {
-			log.Error(err)
-			continue
+			// log.Error(err)
+			return err
 		}
 	}
 
@@ -149,8 +152,8 @@ func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 	}
 	for _, z := range o.Zones {
 		if err = o.insertZone(z, tx); err != nil {
-			log.Error(err)
-			continue
+			// log.Error(err)
+			return err
 		}
 	}
 
@@ -287,16 +290,14 @@ func drawOpUpdatePortals(o *Operation, tx *sql.Tx) (map[PortalID]Portal, error) 
 	for _, p := range o.OpPortals {
 		portalMap[p.ID] = p
 		if err = o.ID.updatePortal(p, tx); err != nil {
-			log.Error(err)
-			continue
+			return portalMap, err
 		}
 		delete(curPortals, p.ID)
 	}
 	// clear portals that were not sent in this update
 	for k := range curPortals {
 		if err := o.ID.deletePortal(k, tx); err != nil {
-			log.Error(err)
-			continue
+			return portalMap, err
 		}
 	}
 	return portalMap, nil
@@ -325,15 +326,15 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 
 		_, ok := portalMap[m.PortalID]
 		if !ok {
-			log.Warnw("portal missing from portal list", "marker", m.PortalID, "resource", o.ID)
-			continue
+			err := fmt.Errorf("attempt to add marker to unknown portal")
+			log.Warnw(err.Error(), "marker", m.PortalID, "resource", o.ID)
+			return err
 		}
 
 		m.checkAssignments(agentMap)
 
 		if err := o.ID.updateMarker(m, tx); err != nil {
-			log.Error(err)
-			continue
+			return err
 		}
 		delete(curMarkers, m.ID)
 	}
@@ -341,8 +342,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 	// remove all markers not sent in this update
 	for k := range curMarkers {
 		if err := o.ID.deleteMarker(k, tx); err != nil {
-			log.Error(err)
-			continue
+			return err
 		}
 	}
 	return nil
@@ -371,27 +371,27 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 
 		_, ok := portalMap[l.From]
 		if !ok {
-			log.Warnw("source portal missing from portal list", "portal", l.From, "resource", o.ID)
-			continue
+			err := fmt.Errorf("attempt to source link from missing portal")
+			log.Warnw(err.Error(), "portal", l.From, "resource", o.ID)
+			return err
 		}
 		_, ok = portalMap[l.To]
 		if !ok {
-			log.Warnw("destination portal missing from portal list", "portal", l.To, "resource", o.ID)
-			continue
+			err := fmt.Errorf("attempt to send link to missing portal")
+			log.Warnw(err.Error(), "portal", l.To, "resource", o.ID)
+			return err
 		}
 
 		l.checkAssignments(agentMap)
 
 		if err = o.ID.updateLink(l, tx); err != nil {
-			log.Error(err)
-			continue
+			return err
 		}
 		delete(curLinks, l.ID)
 	}
 	for k := range curLinks {
 		if err = o.ID.deleteLink(k, tx); err != nil {
-			log.Error(err)
-			continue
+			return err
 		}
 	}
 	return nil
