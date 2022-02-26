@@ -94,7 +94,7 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var target messaging.Target
-	if err := json.NewDecoder(req.Body).Decode(target); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&target); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

@@ -42,7 +42,7 @@ func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := json.NewDecoder(req.Body).Decode(dk); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&dk); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
