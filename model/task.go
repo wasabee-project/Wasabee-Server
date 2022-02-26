@@ -185,6 +185,18 @@ func (o OperationID) assignmentPrecache() (map[TaskID][]GoogleID, error) {
 
 // SetAssignments assigns a task to an agent using a given transaction, if the transaction is nil, one is created for this block
 func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
+	needtx := false
+	if tx == nil {
+		needtx = true
+		tx, _ = db.Begin()
+
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Error(err)
+			}
+		}()
+	}
+
 	b, err := t.GetAssignments(tx)
 	if err != nil {
 		log.Error(err)
@@ -231,6 +243,13 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 				log.Error(err)
 				return err
 			}
+		}
+	}
+
+	if needtx {
+		if err := tx.Commit(); err != nil {
+			log.Error(err)
+			return err
 		}
 	}
 	return nil
