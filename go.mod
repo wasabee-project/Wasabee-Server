@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/jonstaryuk/gcloudzap v0.1.1
-	github.com/lestrrat-go/jwx v1.2.18
+	github.com/lestrrat-go/jwx/v2 v2.0.0
 	github.com/unrolled/logger v0.0.0-20201216141554-31a3694fe979
 	github.com/urfave/cli v1.22.5
 	go.uber.org/zap v1.21.0
@@ -24,17 +24,17 @@ require (
 
 require (
 	cloud.google.com/go v0.100.2 // indirect
-	cloud.google.com/go/compute v1.3.0 // indirect
+	cloud.google.com/go/compute v1.2.0 // indirect
 	cloud.google.com/go/firestore v1.6.1 // indirect
-	cloud.google.com/go/iam v0.2.0 // indirect
-	cloud.google.com/go/storage v1.20.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
+	cloud.google.com/go/iam v0.1.1 // indirect
+	cloud.google.com/go/storage v1.18.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/goccy/go-json v0.9.4 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
-	github.com/google/pprof v0.0.0-20220128192902-513e8ac6eea1 // indirect
+	github.com/google/pprof v0.0.0-20220113144219-d25a53d42d00 // indirect
 	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
@@ -43,16 +43,19 @@ require (
 	github.com/lestrrat-go/iter v1.0.1 // indirect
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20201217014255-9d1352758620 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
+	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220217155828-d576998c0009 // indirect
+	google.golang.org/genproto v0.0.0-20220211171837-173942840c17 // indirect
 )
+
+replace github.com/lestrrat-go/jwx/v2 => ../jwx

@@ -16,10 +16,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	// "github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jws"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	// "github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
@@ -347,7 +347,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	token, err := jwt.ParseRequest(req, jwt.InferAlgorithmFromKey(true), jwt.UseDefaultKey(true), jwt.WithKeySet(config.JWParsingKeys()))
+	token, err := jwt.ParseRequest(req, jwt.WithKeySet(config.JWParsingKeys(), jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)))
 	if err != nil {
 		log.Info(err)
 		http.Error(res, err.Error(), http.StatusUnauthorized)
@@ -389,10 +389,10 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	// increment and set refreshed count
 
 	// let consumers know where to get the keys if they want to verify
-	hdrs := jws.NewHeaders()
-	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
+	// hdrs := jws.NewHeaders()
+	// _ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
-	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
+	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key)) // , jwt.WithHeaders(hdrs))
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

@@ -13,8 +13,9 @@ import (
 
 	// "golang.org/x/oauth2"
 	//"golang.org/x/oauth2/google"
-	// "github.com/lestrrat-go/jwx/jws"
-	"github.com/lestrrat-go/jwx/jwt"
+	// "github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/auth"
@@ -159,9 +160,7 @@ func authMW(next http.Handler) http.Handler {
 
 		if h := req.Header.Get("Authorization"); h != "" {
 			token, err := jwt.ParseRequest(req,
-				jwt.InferAlgorithmFromKey(true),
-				jwt.UseDefaultKey(true),
-				jwt.WithKeySet(config.JWParsingKeys()),
+				jwt.WithKeySet(config.JWParsingKeys(), jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
 				jwt.WithValidate(true),
 				jwt.WithAudience(sessionName),
 				// jwt.WithIssuer("https://accounts.google.com"),

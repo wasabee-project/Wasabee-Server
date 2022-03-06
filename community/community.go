@@ -10,9 +10,9 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jws"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -113,10 +113,10 @@ func fetch(name string) (*profile, error) {
 
 // move the constants into the config package
 func checkJWT(raw, name string, gid model.GoogleID) error {
-	token, err := jwt.Parse([]byte(raw),
-		jwt.InferAlgorithmFromKey(true),
-		jwt.UseDefaultKey(true),
-		jwt.WithKeySet(config.JWParsingKeys()))
+	token, err := jwt.Parse(
+		[]byte(raw),
+		jwt.WithKeySet(config.JWParsingKeys(), jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
+	)
 	if err != nil {
 		log.Errorw("community token parse failed", "err", err.Error(), "gid", gid, "name", name)
 		return err
@@ -167,10 +167,10 @@ func BuildToken(gid model.GoogleID, name string) (string, error) {
 		return "", err
 	}
 
-	hdrs := jws.NewHeaders()
-	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
+	// hdrs := jws.NewHeaders()
+	// _ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
-	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
+	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key)) // , jwt.WithHeaders(hdrs))
 	if err != nil {
 		log.Error(err)
 		return "", err

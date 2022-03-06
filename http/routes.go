@@ -222,7 +222,7 @@ func iosRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	name, _ := gid.IngressName()
-	log.Info("ios login", "message", "ios login", "gid", gid, "name", name)
+	log.Infow("ios login", "message", "ios login", "gid", gid, "name", name)
 	msg := "Please upgrade to the development version of Wasabee-IITC for iOS. see https://webui.wasabee.rocks/#/help for the link. The webview login method is no longer supported."
 	fmt.Fprint(res, msg)
 }

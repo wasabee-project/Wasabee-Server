@@ -260,7 +260,6 @@ func drawLinkClaimRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = link.Claim(gid); err != nil {
-		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

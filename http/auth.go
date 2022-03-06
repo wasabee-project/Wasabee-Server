@@ -15,9 +15,9 @@ import (
 
 	"github.com/gorilla/sessions"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jws"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	// "github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
@@ -392,10 +392,10 @@ func mintjwt(gid model.GoogleID) (string, error) {
 	}
 
 	// let consumers know where to get the keys if they want to verify
-	hdrs := jws.NewHeaders()
-	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
+	// hdrs := jws.NewHeaders()
+	// _ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
-	signed, err := jwt.Sign(jwts, jwa.RS256, key, jwt.WithHeaders(hdrs))
+	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key)) // , jwt.WithHeaders(hdrs))
 	if err != nil {
 		return "", err
 	}

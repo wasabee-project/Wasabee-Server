@@ -11,8 +11,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
@@ -135,9 +136,7 @@ func validateToken(rawjwt []byte) error {
 	token, err := jwt.Parse(rawjwt,
 		jwt.WithValidate(true),
 		jwt.WithIssuer("https://accounts.google.com"),
-		jwt.InferAlgorithmFromKey(true),
-		jwt.UseDefaultKey(true),
-		jwt.WithKeySet(keys),
+		jwt.WithKeySet(keys, jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
 		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
 		log.Errorw("RISC", "error", err.Error(), "subsystem", "RISC")
