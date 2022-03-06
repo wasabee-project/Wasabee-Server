@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	// "github.com/lestrrat-go/jwx/v2/jws"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -120,11 +121,9 @@ func valid(authorization []string) bool {
 
 	rawjwt := strings.TrimPrefix(authorization[0], "Bearer ")
 
-	//		jwt.WithKeySet(keys),
 	token, err := jwt.Parse([]byte(rawjwt),
 		jwt.WithValidate(true),
-		jwt.InferAlgorithmFromKey(true),
-		jwt.UseDefaultKey(true),
+		//	jwt.WithKeySet(keys, jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
 		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
 		log.Error(err)
