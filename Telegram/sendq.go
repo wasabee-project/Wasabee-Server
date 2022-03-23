@@ -82,6 +82,7 @@ func sendqueueRunner(ctx context.Context) {
 			}
 
 			if _, err := bot.Send(msg); err != nil {
+				handleMsgError(msg)
 				errstr := string(err.Error())
 				if errstr == "Bad Request: chat not found" { // user has not started the bot or related condition
 					// add user to no-send list
@@ -104,5 +105,17 @@ func sendqueueRunner(ctx context.Context) {
 				}
 			}
 		}
+	}
+}
+
+// move the error handling above into here
+// look at way of alerting orig message sender of the fact that the agent does not have the bot started
+func handleMsgError(msg tgbotapi.Chattable) {
+	switch msg.(type) {
+	case tgbotapi.MessageConfig:
+		mc := msg.(tgbotapi.MessageConfig)
+		log.Debugw("MessageConfig", "ParseMode", mc.ParseMode, "entities", mc.Entities, "to", mc.ChatID, "ChannelUsername", mc.ChannelUsername)
+	default:
+		log.Debugw("default msg type", "msg", msg)
 	}
 }
