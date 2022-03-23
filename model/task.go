@@ -284,7 +284,7 @@ func (t *Task) IsAssignedTo(gid GoogleID) bool {
 
 // Claim assignes a task to the calling agent
 func (t *Task) Claim(gid GoogleID) error {
-	if _, err := db.Exec("INSERT INTO assignments (opID, taskID, gid) VALUES (?,?,?)", t.opID, t.ID, gid); err != nil {
+	if _, err := db.Exec("INSERT IGNORE INTO assignments (opID, taskID, gid) VALUES (?,?,?)", t.opID, t.ID, gid); err != nil {
 		log.Error(err)
 		return err
 	}
