@@ -18,7 +18,7 @@ func main() {
 		return
 	}
 
-	key, err := jwk.New(raw)
+	key, err := jwk.FromRaw(raw)
 	if err != nil {
 		fmt.Printf("failed to create symmetric key: %s\n", err)
 		return
