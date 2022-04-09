@@ -44,7 +44,7 @@ func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
 	var zones []Zone
 	var permitted bool
 
-	if o.IsOwner(gid) {
+	if o.ID.IsOwner(gid) {
 		zones = append(zones, ZoneAll)
 		return true, zones
 	}
@@ -79,7 +79,7 @@ func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
 
 // WriteAccess determines if an agent has write access to an op
 func (o *Operation) WriteAccess(gid GoogleID) bool {
-	if o.IsOwner(gid) {
+	if o.ID.IsOwner(gid) {
 		return true
 	}
 
@@ -112,19 +112,6 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 		return false
 	}
 	return true
-}
-
-// IsOwner checks to see if the operation is owned a given GoogleID
-// result cached so it may be called multiple times
-func (o *Operation) IsOwner(gid GoogleID) bool {
-	if o.Gid != "" {
-		return o.Gid == gid
-	}
-	if o.ID.IsOwner(gid) {
-		o.Gid = gid
-		return true
-	}
-	return false
 }
 
 // Chown changes an operation's owner

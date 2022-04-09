@@ -441,7 +441,7 @@ func drawOpUpdateZones(o *Operation, tx *sql.Tx) error {
 
 // Delete removes an operation and all associated data
 func (o *Operation) Delete(gid GoogleID) error {
-	if !o.IsOwner(gid) {
+	if !o.ID.IsOwner(gid) {
 		err := fmt.Errorf("permission denied")
 		log.Error(err)
 		return err
