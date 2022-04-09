@@ -389,10 +389,10 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	// increment and set refreshed count
 
 	// let consumers know where to get the keys if they want to verify
-	// hdrs := jws.NewHeaders()
-	// _ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
+	hdrs := jws.NewHeaders()
+	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
-	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key)) // , jwt.WithHeaders(hdrs))
+	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key, jws.WithProtectedHeaders(hdrs)))
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

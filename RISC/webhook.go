@@ -72,7 +72,7 @@ func registerWebhook(ctx context.Context) {
 	risc.HandleFunc("", webhook).Methods("POST")
 
 	ar := jwk.NewAutoRefresh(ctx)
-	ar.Configure(googleConfig.JWKURI, jwk.WithMinRefreshInterval(60*time.Minute))
+	ar.Configure(googleConfig.JWKURI, jwk.WithMinRefreshInterval(time.Hour))
 	tmp, err := ar.Refresh(ctx, googleConfig.JWKURI)
 	if err != nil {
 		log.Error(err)

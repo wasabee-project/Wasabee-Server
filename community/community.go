@@ -167,10 +167,10 @@ func BuildToken(gid model.GoogleID, name string) (string, error) {
 		return "", err
 	}
 
-	// hdrs := jws.NewHeaders()
-	// _ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
+	hdrs := jws.NewHeaders()
+	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
-	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key)) // , jwt.WithHeaders(hdrs))
+	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key, jws.WithProtectedHeaders(hdrs)))
 	if err != nil {
 		log.Error(err)
 		return "", err
