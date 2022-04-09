@@ -71,9 +71,9 @@ func registerWebhook(ctx context.Context) {
 	risc := config.Subrouter(config.Get().RISC.Webhook)
 	risc.HandleFunc("", webhook).Methods("POST")
 
-	ar := jwk.NewAutoRefresh(ctx)
-	ar.Configure(googleConfig.JWKURI, jwk.WithMinRefreshInterval(time.Hour))
-	tmp, err := ar.Refresh(ctx, googleConfig.JWKURI)
+	c := jwk.NewCache(ctx)
+	c.Register(googleConfig.JWKURI) // , jwk.WithMinRefreshInterval(time.Hour))
+	tmp, err := c.Get(ctx, googleConfig.JWKURI)
 	if err != nil {
 		log.Error(err)
 		return
@@ -99,7 +99,7 @@ func registerWebhook(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			tmp, err := ar.Fetch(ctx, googleConfig.JWKURI)
+			tmp, err := c.Refresh(ctx, googleConfig.JWKURI)
 			if err != nil {
 				log.Error(err)
 				return
