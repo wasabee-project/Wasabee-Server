@@ -207,7 +207,7 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 		before[gid] = true
 	}
 
-	// log.Debugw("setting assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
+	log.Debugw("setting assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
 	if len(gs) > 0 {
 		deduped := make(map[GoogleID]bool)
 		for _, gid := range gs {
@@ -220,9 +220,9 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 			}
 			if _, ok := before[gid]; ok {
 				delete(before, gid)
-				// log.Debugw("existing assignment", "gid", gid)
+				log.Debugw("existing assignment", "gid", gid)
 			} else {
-				// log.Debugw("new assignment", "gid", gid)
+				log.Debugw("new assignment", "gid", gid)
 				_, err := tx.Exec("REPLACE INTO assignments (opID, taskID, gid) VALUES (?, ?, ?)", t.opID, t.ID, gid)
 				if err != nil {
 					log.Error(err)

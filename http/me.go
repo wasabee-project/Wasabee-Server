@@ -339,7 +339,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	key, ok := config.JWSigningKeys().Get(0)
+	key, ok := config.JWSigningKeys().Key(0)
 	if !ok {
 		err := fmt.Errorf("encryption jwk not set")
 		log.Error(err)

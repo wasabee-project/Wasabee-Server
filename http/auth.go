@@ -1,7 +1,6 @@
 package wasabeehttps
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -27,113 +26,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
-// final step of the oauth cycle
-func callbackRoute(res http.ResponseWriter, req *http.Request) {
-	content, err := getAgentInfo(req.Context(), req.FormValue("state"), req.FormValue("code"))
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	var m struct {
-		Gid model.GoogleID `json:"id"`
-		Pic string         `json:"picture"`
-	}
-	if err = json.Unmarshal(content, &m); err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// session cookie
-	c := config.Get().HTTP
-	ses, err := store.Get(req, c.SessionName)
-	if err != nil {
-		// cookie is borked, maybe SessionName or key changed
-		log.Error("Cookie error: ", err)
-		ses = sessions.NewSession(store, c.SessionName)
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   -1,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
-		// := creates a new err, not overwriting
-		if err := ses.Save(req, res); err != nil {
-			log.Error(err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	authorized, err := auth.Authorize(m.Gid) // V & .rocks authorization takes place here
-	if !authorized {
-		log.Errorw("smurf detected", "GID", m.Gid)
-		http.Error(res, "Internal Error", http.StatusForbidden)
-		return
-	}
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if err = m.Gid.UpdatePicture(m.Pic); err != nil {
-		log.Info(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	ses.Values["id"] = m.Gid.String()
-	nonce, _ := calculateNonce(m.Gid)
-	ses.Values["nonce"] = nonce
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-
-	_ = ses.Save(req, res)
-	if !m.Gid.Valid() {
-		log.Errorw("agent not valid at end of login?", "GID", m.Gid)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// j, _ := mintjwt(m.Gid)
-	// log.Debugw("minted jwt for testing", "jwt", j)
-
-	if err := wfb.AgentLogin(m.Gid.TeamListEnabled(), m.Gid); err != nil {
-		log.Error(err)
-	}
-
-	name, err := m.Gid.IngressName()
-	if err != nil {
-		log.Errorw("no name at end of login?", "GID", m.Gid)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	// add random value to help curb login loops
-	sha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", m.Gid, time.Now().String())))
-	h := hex.EncodeToString(sha[:])
-	location := fmt.Sprintf("%s?r=%s", c.MeURL, h)
-	log.Infow("legacy login", "GID", m.Gid, "name", name, "message", name+" legacy login")
-	if ses.Values["loginReq"] != nil {
-		rr := ses.Values["loginReq"].(string)
-		if rr[:len(c.MeURL)] == c.MeURL || rr[:len(c.LoginURL)] == c.LoginURL {
-			// -- need to invert this logic now
-		} else {
-			location = rr
-		}
-		delete(ses.Values, "loginReq")
-	}
-	http.Redirect(res, req, location, http.StatusFound) // http.StatusSeeOther
-}
-
 // the secret value exchanged / verified each request
 // not really a nonce, but it started life as one
 func calculateNonce(gid model.GoogleID) (string, string) {
@@ -147,29 +39,6 @@ func calculateNonce(gid model.GoogleID) (string, string) {
 	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, c.CookieSessionKey, now)))
 	previous := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, c.CookieSessionKey, prev)))
 	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:])
-}
-
-// read the result from provider at end of oauth session
-func getAgentInfo(rctx context.Context, state string, code string) ([]byte, error) {
-	if state != oauthStateString {
-		return nil, fmt.Errorf("invalid oauth state")
-	}
-
-	ctx, cancel := context.WithTimeout(rctx, (5 * time.Second))
-	defer cancel()
-
-	token, err := config.GetOauthConfig().Exchange(ctx, code)
-	if err != nil {
-		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
-	}
-	cancel()
-
-	contents, err := getOauthUserInfo(token.AccessToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed getting agent info: %s", err.Error())
-	}
-
-	return contents, nil
 }
 
 // used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info
@@ -371,7 +240,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 	}
 
 	// XXX use last, rather than first?
-	key, ok := config.JWSigningKeys().Get(0)
+	key, ok := config.JWSigningKeys().Key(0)
 	if !ok {
 		return "", fmt.Errorf("encryption jwk not set")
 	}

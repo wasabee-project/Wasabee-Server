@@ -150,7 +150,7 @@ func BuildToken(gid model.GoogleID, name string) (string, error) {
 		return "", err
 	}
 
-	key, ok := config.JWSigningKeys().Get(0)
+	key, ok := config.JWSigningKeys().Key(0)
 	if !ok {
 		err := fmt.Errorf("encryption jwk not set")
 		log.Error(err)

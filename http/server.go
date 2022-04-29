@@ -293,38 +293,6 @@ func redirectOrError(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func googleRoute(res http.ResponseWriter, req *http.Request) {
-	ret := req.FormValue("returnto")
-	c := config.Get().HTTP
-
-	ses, err := store.Get(req, c.SessionName)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if ret != "" {
-		ses.Values["loginReq"] = ret
-	} else {
-		ses.Values["loginReq"] = c.MeURL
-	}
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400, // 0,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-	if err := ses.Save(req, res); err != nil {
-		log.Debug(err)
-	}
-
-	// the server may have several names/ports ; redirect back to the one the user called
-	oc := config.GetOauthConfig()
-	oc.RedirectURL = fmt.Sprintf("https://%s%s", req.Host, c.CallbackURL)
-	url := oc.AuthCodeURL(oauthStateString)
-	http.Redirect(res, req, url, http.StatusSeeOther)
-}
-
 func jsonError(e error) string {
 	return fmt.Sprintf(`{"status":"error","error":"%s"}`, e.Error())
 }
