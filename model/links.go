@@ -140,8 +140,9 @@ func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
 
 	comment := makeNullString(util.Sanitize(l.Comment))
 
-	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
-		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
+	_, err := tx.Exec("INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE comment = ?, taskorder = ?, state = ?, zone = ?, delta = ?",
+		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes,
+		comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err

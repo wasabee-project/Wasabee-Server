@@ -331,7 +331,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 			return err
 		}
 
-		m.checkAssignments(agentMap)
+		// m.checkAssignments(agentMap)
 
 		if err := o.ID.updateMarker(m, tx); err != nil {
 			return err
@@ -382,7 +382,7 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 			return err
 		}
 
-		l.checkAssignments(agentMap)
+		// l.checkAssignments(agentMap)
 
 		if err = o.ID.updateLink(l, tx); err != nil {
 			return err

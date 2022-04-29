@@ -207,8 +207,8 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 		before[gid] = true
 	}
 
-	log.Debugw("setting assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
 	if len(gs) > 0 {
+		log.Debugw("setting assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
 		deduped := make(map[GoogleID]bool)
 		for _, gid := range gs {
 			deduped[gid] = true
@@ -244,6 +244,11 @@ func (t *Task) SetAssignments(gs []GoogleID, tx *sql.Tx) error {
 				return err
 			}
 		}
+	}
+
+	if len(gs) == 0 && len(before) > 0 {
+		log.Debugw("clearing assignments", "opID", t.opID, "taskID", t.ID, "gs", gs, "before", b)
+		t.ClearAssignments(tx)
 	}
 
 	if needtx {

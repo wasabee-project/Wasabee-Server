@@ -115,8 +115,9 @@ func (opID OperationID) updateMarker(m Marker, tx *sql.Tx) error {
 
 	comment := makeNullString(util.Sanitize(m.Comment))
 
-	_, err := tx.Exec("REPLACE INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)", // REPLACE OK SCB
-		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
+	_, err := tx.Exec("INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE comment = ?, taskorder = ?, state = ?, zone = ?, delta = ?",
+		m.ID, opID, comment, m.Order, m.State, m.Zone, m.DeltaMinutes,
+		comment, m.Order, m.State, m.Zone, m.DeltaMinutes)
 	if err != nil {
 		log.Error(err)
 		return err
