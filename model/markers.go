@@ -314,7 +314,7 @@ func (m *Marker) setAttributes(a []Attribute, tx *sql.Tx) error {
 	}
 
 	for _, v := range a {
-		if _, err := tx.Exec("INSERT INTO markerattributes (ID, opID, markerID, name, value) VALUES ()", v.ID, m.opID, m.ID, v.Name, v.Value); err != nil {
+		if _, err := tx.Exec("INSERT INTO markerattributes (ID, opID, markerID, name, value) VALUES (?, ?, ?, ?, ?)", v.ID, m.opID, m.ID, v.Name, v.Value); err != nil {
 			log.Error(err)
 			continue
 		}
