@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
+	// "github.com/gorilla/sessions"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	// "github.com/lestrrat-go/jwx/v2/jwk"
@@ -215,7 +215,8 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	ses, err := store.Get(req, config.Get().HTTP.SessionName)
+
+	/* ses, err := store.Get(req, config.Get().HTTP.SessionName)
 	if err != nil {
 		log.Error(err)
 		_ = ses.Save(req, res)
@@ -233,7 +234,7 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	}
-	_ = ses.Save(req, res)
+	_ = ses.Save(req, res) */
 
 	auth.Logout(gid, "user requested")
 	fmt.Fprint(res, jsonStatusOK)

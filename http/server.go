@@ -17,7 +17,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
-	"github.com/gorilla/sessions"
+	// "github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -32,7 +32,6 @@ var srv *http.Server
 
 var unrolled *logger.Logger
 var oauthStateString string
-var store *sessions.CookieStore
 
 const jsonType = "application/json; charset=UTF-8"
 const jsonTypeShort = "application/json"
@@ -55,12 +54,6 @@ func Start() {
 
 	oauthStateString = util.GenerateName()
 	// log.Debugw("startup", "oauthStateString", oauthStateString)
-
-	key := c.HTTP.CookieSessionKey
-	if len(key) != 32 {
-		log.Error("SessionKey not 32 characters long: logins will fail")
-	}
-	store = sessions.NewCookieStore([]byte(key))
 
 	log.Debugw("startup", "https logfile", c.HTTP.Logfile)
 	// #nosec
@@ -158,120 +151,51 @@ func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		sessionName := config.Get().HTTP.SessionName
 
-		if h := req.Header.Get("Authorization"); h != "" {
-			token, err := jwt.ParseRequest(req,
-				jwt.WithKeySet(config.JWParsingKeys(), jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
-				jwt.WithValidate(true),
-				jwt.WithAudience(sessionName),
-				// jwt.WithIssuer("https://accounts.google.com"),
-				jwt.WithAcceptableSkew(20*time.Second),
-			)
-			if err != nil {
+		h := req.Header.Get("Authorization")
+		if h == "" {
+			log.Infow("JWT missing")
+			http.Error(res, "JWT missing", http.StatusUnauthorized)
+			return
+		}
+
+		token, err := jwt.ParseRequest(req,
+			jwt.WithKeySet(config.JWParsingKeys(), jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
+			jwt.WithValidate(true),
+			jwt.WithAudience(sessionName),
+			// jwt.WithIssuer("https://accounts.google.com"),
+			jwt.WithAcceptableSkew(20*time.Second),
+		)
+		if err != nil {
+			log.Info(err)
+			http.Error(res, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// expiration validation is implicit -- redundant with above now
+		if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
+			log.Infow("JWT validate failed", "error", err, "sub", token.Subject())
+			http.Error(res, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if auth.IsRevokedJWT(token.JwtID()) {
+			log.Infow("JWT revoked", "sub", token.Subject(), "token ID", token.JwtID())
+			http.Error(res, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		gid := model.GoogleID(token.Subject())
+		// too db intensive? -- cache it?
+		if !gid.Valid() {
+			// token minted on another server, never logged in to this server
+			if err := gid.FirstLogin(); err != nil {
 				log.Info(err)
 				http.Error(res, err.Error(), http.StatusUnauthorized)
 				return
 			}
-
-			// expiration validation is implicit -- redundant with above now
-			if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
-				log.Infow("JWT validate failed", "error", err, "sub", token.Subject())
-				http.Error(res, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			if auth.IsRevokedJWT(token.JwtID()) {
-				log.Infow("JWT revoked", "sub", token.Subject(), "token ID", token.JwtID())
-				http.Error(res, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			gid := model.GoogleID(token.Subject())
-			// too db intensive? -- cache it?
-			if !gid.Valid() {
-				// token minted on another server, never logged in to this server
-				if err := gid.FirstLogin(); err != nil {
-					log.Info(err)
-					http.Error(res, err.Error(), http.StatusUnauthorized)
-					return
-				}
-			}
-
-			// pass the GoogleID around so subsequent functions can easily access it
-			ctx := context.WithValue(req.Context(), "X-Wasabee-GID", gid)
-			req = req.WithContext(ctx)
-			next.ServeHTTP(res, req)
-			return
 		}
 
-		// no JWT, use legacy cookie
-		ses, err := store.Get(req, sessionName)
-		if err != nil {
-			log.Error(err)
-			delete(ses.Values, "nonce")
-			delete(ses.Values, "id")
-			delete(ses.Values, "loginReq")
-			res.Header().Set("Connection", "close")
-			_ = ses.Save(req, res)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   86400, // 0,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
-
-		id, ok := ses.Values["id"]
-		if !ok || id == nil {
-			// XXX cookie and returnto may be redundant, but cookie wasn't working in early tests
-			ses.Values["loginReq"] = req.URL.String()
-			res.Header().Set("Connection", "close")
-			_ = ses.Save(req, res)
-			// log.Debug("not logged in")
-			redirectOrError(res, req)
-			return
-		}
-
-		gid := model.GoogleID(id.(string))
-		if auth.IsLoggedOut(gid) {
-			log.Debugw("honoring previously requested logout", "gid", gid)
-			delete(ses.Values, "nonce")
-			delete(ses.Values, "id")
-			ses.Options = &sessions.Options{
-				Path:     "/",
-				MaxAge:   -1,
-				SameSite: http.SameSiteNoneMode,
-				Secure:   true,
-			}
-			http.Redirect(res, req, "/", http.StatusFound)
-			return
-		}
-
-		in, ok := ses.Values["nonce"]
-		if !ok || in == nil {
-			log.Errorw("gid set, but no nonce", "GID", gid)
-			redirectOrError(res, req)
-			return
-		}
-
-		nonce, pNonce := calculateNonce(gid)
-		if in.(string) != nonce {
-			res.Header().Set("Connection", "close")
-			if in.(string) != pNonce {
-				// log.Debugw("session timed out", "gid", gid)
-				ses.Values["nonce"] = "unset"
-			} else {
-				ses.Values["nonce"] = nonce
-			}
-			_ = ses.Save(req, res)
-		}
-
-		if ses.Values["nonce"] == "unset" {
-			redirectOrError(res, req)
-			return
-		}
-
+		// pass the GoogleID around so subsequent functions can easily access it
 		ctx := context.WithValue(req.Context(), "X-Wasabee-GID", gid)
 		req = req.WithContext(ctx)
 		next.ServeHTTP(res, req)

@@ -1,8 +1,6 @@
 package wasabeehttps
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,8 +9,6 @@ import (
 	// "net/http/httputil"
 	"os"
 	"time"
-
-	"github.com/gorilla/sessions"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -25,21 +21,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
-
-// the secret value exchanged / verified each request
-// not really a nonce, but it started life as one
-func calculateNonce(gid model.GoogleID) (string, string) {
-	t := time.Now()
-	y := t.Add(0 - 24*time.Hour)
-	c := config.Get().HTTP
-
-	now := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())  // t.Round(time.Hour).String()
-	prev := fmt.Sprintf("%d-%02d-%02d", y.Year(), y.Month(), y.Day()) // t.Add(0 - time.Hour).Round(time.Hour).String()
-	// something specific to the agent, something secret, something short-term
-	current := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, c.CookieSessionKey, now)))
-	previous := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", gid, c.CookieSessionKey, prev)))
-	return hex.EncodeToString(current[:]), hex.EncodeToString(previous[:])
-}
 
 // used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info
 func getOauthUserInfo(accessToken string) ([]byte, error) {
@@ -76,7 +57,7 @@ func getAgentID(req *http.Request) (model.GoogleID, error) {
 	return "", err
 }
 
-// apTokenRoute receives a Google Oauth2 token from the Android/iOS app and sets the authentication cookie
+// apTokenRoute receives a Google Oauth2 token from the Android/iOS app and sets the JWT
 func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	var m struct {
 		Gid model.GoogleID `json:"id"`
@@ -138,25 +119,6 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// session cookie
-	c := config.Get().HTTP
-	ses, err := store.Get(req, c.SessionName)
-	if err != nil {
-		// cookie is borked, maybe sessionName or key changed
-		log.Errorw("aptok cookie error", "error", err.Error())
-		ses = sessions.NewSession(store, c.SessionName)
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   -1,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
-		_ = ses.Save(req, res)
-		res.Header().Set("Connection", "close")
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
 	authorized, err := auth.Authorize(m.Gid) // V & .rocks authorization takes place here
 	if !authorized {
 		err = fmt.Errorf("access denied: %s", err.Error())
@@ -165,22 +127,6 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	ses.Values["id"] = m.Gid.String()
-	nonce, _ := calculateNonce(m.Gid)
-	ses.Values["nonce"] = nonce
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-	err = ses.Save(req, res)
-	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -222,8 +168,8 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	// notify other teams of agent login
 	_ = wfb.AgentLogin(m.Gid.TeamListEnabled(), m.Gid)
 
-	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
-	res.Header().Set("Cache-Control", "no-store")
+	// res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
+	// res.Header().Set("Cache-Control", "no-store")
 
 	// update picture
 	_ = m.Gid.UpdatePicture(m.Pic)
@@ -301,25 +247,6 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// session cookie
-	c := config.Get().HTTP
-	ses, err := store.Get(req, config.Get().HTTP.SessionName)
-	if err != nil {
-		// cookie is borked, maybe sessionName or key changed
-		log.Error("Cookie error: " + err.Error())
-		ses = sessions.NewSession(store, c.SessionName)
-		ses.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   -1,
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
-		}
-		_ = ses.Save(req, res)
-		res.Header().Set("Connection", "close")
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
 	authorized, err := auth.Authorize(gid) // V & .rocks authorization takes place here
 	if !authorized {
 		err = fmt.Errorf("access denied: %s", err)
@@ -332,21 +259,6 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ses.Values["id"] = gid.String()
-	nonce, _ := calculateNonce(gid)
-	ses.Values["nonce"] = nonce
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-	err = ses.Save(req, res)
-	if err != nil {
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
 	name, err := gid.IngressName()
 	if err != nil {
 		log.Error(err)
@@ -384,8 +296,8 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 
-	res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
-	res.Header().Set("Cache-Control", "no-store")
+	// res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
+	// res.Header().Set("Cache-Control", "no-store")
 
 	fmt.Fprint(res, string(data))
 }
