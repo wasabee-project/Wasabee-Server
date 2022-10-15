@@ -140,7 +140,9 @@ func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 			log.Error(err)
 			return gid, err
 		}
+
 		federation.SetTelegramID(context.Background(), tgid, name)
+
 		// rocks success
 		return gid, nil
 	}

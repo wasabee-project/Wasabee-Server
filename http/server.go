@@ -202,21 +202,6 @@ func authMW(next http.Handler) http.Handler {
 	})
 }
 
-func redirectOrError(res http.ResponseWriter, req *http.Request) {
-	c := config.Get().HTTP
-
-	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
-	} else {
-		var redirectURL = c.LoginURL
-		if req.URL.String()[:len(c.MeURL)] != c.MeURL {
-			redirectURL = c.LoginURL + "?returnto=" + req.URL.String()
-		}
-
-		http.Redirect(res, req, redirectURL, http.StatusFound)
-	}
-}
-
 func jsonError(e error) string {
 	return fmt.Sprintf(`{"status":"error","error":"%s"}`, e.Error())
 }

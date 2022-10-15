@@ -89,13 +89,12 @@ type wrocks struct {
 
 // Configure the HTTPS REST interface
 type whttp struct {
-	Webroot          string // "https://xx.wasabee.rocks"
-	ListenHTTPS      string // ":443" or "192.168.34.1:443"
-	CookieSessionKey string // 32-char random (deprecated)
-	Logfile          string // https logs
-	SessionName      string // JWT aud name
+	Webroot     string // "https://xx.wasabee.rocks"
+	ListenHTTPS string // ":443" or "192.168.34.1:443"
+	Logfile     string // https logs
+	SessionName string // JWT aud name
 
-	// defined by Google (deprecated)
+	// defined by Google
 	OauthClientID    string // required
 	OauthSecret      string // required
 	OauthUserInfoURL string // use defauilt
@@ -105,9 +104,6 @@ type whttp struct {
 	// URLS
 	APIPathURL      string // /api/v1
 	ApTokenURL      string // post Google Oauth token, get JWT/Cookie
-	MeURL           string // deprecated
-	LoginURL        string // deprecated
-	CallbackURL     string // deprecated
 	OneTimeTokenURL string // probably deprecated
 
 	CORS []string // list of sites for which browsers will make API request

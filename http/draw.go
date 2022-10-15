@@ -73,12 +73,13 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 			log.Error(err)
 			return
 		}
-		defer fh.Close()
 
 		if err = json.NewEncoder(fh).Encode(&o); err != nil {
 			log.Error(err)
+			fh.Close()
 			return
 		}
+		fh.Close()
 
 		// get it from the database and do it again
 		var refetch model.Operation
@@ -94,12 +95,13 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 			log.Error(err)
 			return
 		}
-		defer fhp.Close()
 
 		if err = json.NewEncoder(fhp).Encode(&refetch); err != nil {
 			log.Error(err)
+			fhp.Close()
 			return
 		}
+		fhp.Close()
 	}
 }
 
@@ -289,12 +291,13 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 			log.Error(err)
 			return
 		}
-		defer fh.Close()
 
 		if err = json.NewEncoder(fh).Encode(&op); err != nil {
 			log.Error(err)
+			fh.Close()
 			return
 		}
+		fh.Close()
 
 		var refetch model.Operation
 		refetch.ID = op.ID
@@ -309,12 +312,13 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 			log.Error(err)
 			return
 		}
-		defer fhp.Close()
 
 		if err = json.NewEncoder(fhp).Encode(&refetch); err != nil {
 			log.Error(err)
+			fhp.Close()
 			return
 		}
+		fhp.Close()
 	}
 }
 

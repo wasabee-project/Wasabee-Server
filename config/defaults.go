@@ -42,12 +42,8 @@ var defaults *WasabeeConf = &WasabeeConf{
 	HTTP: whttp{
 		Webroot:          "https://locallhost/",
 		ListenHTTPS:      ":443",
-		CookieSessionKey: "soontobeunused",
 		Logfile:          "logs/wasabee-https.log",
 		SessionName:      "wasabee",
-		MeURL:            "/me",
-		LoginURL:         "/login",
-		CallbackURL:      "/callback",
 		APIPathURL:       "/api/v1",
 		ApTokenURL:       "/aptok",
 		OneTimeTokenURL:  "/oneTimeToken",

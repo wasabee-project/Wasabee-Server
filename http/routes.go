@@ -5,7 +5,7 @@ import (
 	"net"
 	"net/http"
 	// "net/http/httputil"
-	"strings"
+	// "strings"
 
 	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/config"
@@ -52,13 +52,15 @@ func setupRouter() *mux.Router {
 	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
 
 	// /me route
-	meRouter := config.Subrouter(c.MeURL)
-	meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
-	meRouter.HandleFunc("", meRoute).Methods("GET", "POST", "HEAD")
-	meRouter.Use(authMW)
-	meRouter.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-	meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-	meRouter.PathPrefix("/me").HandlerFunc(notFoundJSONRoute)
+	/*
+		meRouter := config.Subrouter(c.MeURL)
+		meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
+		meRouter.HandleFunc("", meRoute).Methods("GET", "POST", "HEAD")
+		meRouter.Use(authMW)
+		meRouter.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+		meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
+		meRouter.PathPrefix(c.MeURL).HandlerFunc(notFoundJSONRoute)
+	*/
 
 	// /static files
 	static := config.Subrouter("/static")
@@ -73,8 +75,6 @@ func setupRouter() *mux.Router {
 
 // implied /api/v1
 func setupAuthRoutes(r *mux.Router) {
-	r.HandleFunc("/ios", iosRoute).Methods("GET", "PUT", "POST", "HEAD")
-
 	// This block requires authentication
 	r.HandleFunc("/draw", drawUploadRoute).Methods("POST")
 	r.HandleFunc("/draw/{opID}", drawGetRoute).Methods("GET", "HEAD")
@@ -203,26 +203,8 @@ func optionsRoute(res http.ResponseWriter, req *http.Request) {
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	c := config.Get()
 
-	if strings.Contains(req.Referer(), "intel.ingress.com") {
-		url := c.HTTP.LoginURL + "?returnto=" + c.HTTP.Webroot + "/api/v1/ios"
-		http.Redirect(res, req, url, http.StatusMovedPermanently)
-	}
-
 	url := fmt.Sprintf("%s?server=%s", c.WebUIURL, c.HTTP.Webroot)
 	http.Redirect(res, req, url, http.StatusMovedPermanently)
-}
-
-func iosRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	name, _ := gid.IngressName()
-	log.Infow("ios login", "message", "ios login", "gid", gid, "name", name)
-	msg := "Please upgrade to the development version of Wasabee-IITC for iOS. see https://webui.wasabee.rocks/#/help for the link. The webview login method is no longer supported."
-	fmt.Fprint(res, msg)
 }
 
 // called when a resource/endpoint is not found

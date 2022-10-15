@@ -79,7 +79,7 @@ func RevokeJWT(ctx context.Context, tokenid string) error {
 	return nil
 }
 
-func SetTelegramID(ctx context.Context, tgid model.TelegramID, name string) error {
+func SetTelegramID(ctx context.Context, tgid model.TelegramID, name string) {
 	for _, p := range peers {
 		_, err := p.SetTelegramID(ctx, &pb.TelegramID{
 			Telegramid: int64(tgid),
@@ -90,5 +90,5 @@ func SetTelegramID(ctx context.Context, tgid model.TelegramID, name string) erro
 			continue
 		}
 	}
-	return nil
+	return
 }
