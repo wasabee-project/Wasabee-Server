@@ -123,6 +123,7 @@ func valid(authorization []string) bool {
 
 	token, err := jwt.Parse([]byte(rawjwt),
 		jwt.WithValidate(true),
+		jwt.WithVerify(false),
 		//	jwt.WithKeySet(keys, jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
 		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
