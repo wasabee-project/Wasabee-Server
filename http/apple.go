@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	wfb "github.com/wasabee-project/Wasabee-Server/Firebase"
@@ -16,9 +17,20 @@ import (
 )
 
 func appleRoute(res http.ResponseWriter, req *http.Request) {
-	code := "get this from the request"
+	code, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Error(err)
+		http.Error(res, jsonError(err), http.StatusInternalServerError)
+		return
+	}
+	if string(code) == "" {
+		err = fmt.Errorf("empty send in apple route")
+		log.Warn(err)
+		http.Error(res, jsonStatusEmpty, http.StatusNotAcceptable)
+		return
+	}
 
-	id, err := appleAuth(code)
+	id, err := appleAuth(string(code))
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -33,16 +45,12 @@ func appleRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// will this ever be helpful? only if we map AppleIDs to valid GIDs
 	authorized, err := auth.Authorize(gid) // V & .rocks authorization takes place here
 	if !authorized {
 		err = fmt.Errorf("access denied: %s", err.Error())
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
-		return
-	}
-	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
