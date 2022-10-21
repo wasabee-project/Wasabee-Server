@@ -55,4 +55,12 @@ var defaults *WasabeeConf = &WasabeeConf{
 	Telegram: wtg{
 		HookPath: "/tg",
 	},
+	Apple: apple{
+		TeamID:   "XXXXXXXXXX",
+		ClientID: "rocks.wasabee,App",
+		KeyID:    "XXXXXXXXXX",
+		Secret: `-----BEGIN PRIVATE KEY-----
+YOUR_SECRET_PRIVATE_KEY
+-----END PRIVATE KEY-----`,
+	},
 }

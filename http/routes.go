@@ -32,6 +32,9 @@ func setupRouter() *mux.Router {
 	router.HandleFunc(c.ApTokenURL, apTokenRoute).Methods("POST")           // all clients should use this
 	router.HandleFunc(c.OneTimeTokenURL, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
 
+	// Apple Authentication routes
+	router.HandleFunc("/apple", appleRoute) // need more details, good enough for now
+
 	// common files that live under /static
 	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 	router.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
@@ -50,17 +53,6 @@ func setupRouter() *mux.Router {
 	api.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
 	api.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
 	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
-
-	// /me route
-	/*
-		meRouter := config.Subrouter(c.MeURL)
-		meRouter.Methods("OPTIONS").HandlerFunc(optionsRoute)
-		meRouter.HandleFunc("", meRoute).Methods("GET", "POST", "HEAD")
-		meRouter.Use(authMW)
-		meRouter.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-		meRouter.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-		meRouter.PathPrefix(c.MeURL).HandlerFunc(notFoundJSONRoute)
-	*/
 
 	// /static files
 	static := config.Subrouter("/static")

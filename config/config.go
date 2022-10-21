@@ -44,6 +44,7 @@ type WasabeeConf struct {
 	Telegram wtg
 	HTTP     whttp
 	RISC     wrisc
+	Apple    apple
 
 	// not configurable
 	fbRunning bool
@@ -110,6 +111,13 @@ type whttp struct {
 
 	oauthConfig *oauth2.Config
 	router      *mux.Router
+}
+
+type apple struct {
+	TeamID   string // 10 char
+	ClientID string // "rocks.wasabee.app"
+	KeyID    string // 10 char
+	Secret   string // from portal
 }
 
 var once sync.Once
