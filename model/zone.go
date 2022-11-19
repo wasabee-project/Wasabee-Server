@@ -70,7 +70,7 @@ type ZoneListElement struct {
 }
 
 type zonepoint struct {
-	Position uint8   `json:"position"`
+	Position uint16   `json:"position"`
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lng"`
 }
