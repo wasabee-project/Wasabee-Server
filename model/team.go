@@ -335,7 +335,28 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 		messaging.AgentDeleteOperation(messaging.GoogleID(gid), messaging.OperationID(opID))
 	}
 
-	// log.Debugw("removing agent from team", "GID", gid, "resource", teamID, "message", "removing agent from team")
+	// remove this team from ops the agent owns
+	oprows, err := db.Query("SELECT ID FROM operation WHERE gid = ?", gid)
+	if err != nil && err != sql.ErrNoRows {
+		log.Error(err)
+		return err
+	}
+	defer oprows.Close()
+
+	for oprows.Next() {
+		var ID OperationID
+		err = rows.Scan(&ID)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		if _, err := db.Exec("DELETE FROM permissions WHERE teamID = ? AND opID = ?", teamID, ID); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
 	return nil
 }
 
