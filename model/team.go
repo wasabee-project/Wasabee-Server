@@ -345,7 +345,7 @@ func (teamID TeamID) RemoveAgent(in AgentID) error {
 
 	for oprows.Next() {
 		var ID OperationID
-		err = rows.Scan(&ID)
+		err = oprows.Scan(&ID)
 		if err != nil {
 			log.Error(err)
 			return err
