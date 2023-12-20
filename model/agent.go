@@ -22,26 +22,26 @@ type Agent struct {
 	RocksName     string       `json:"rocksname,omitempty"`
 	IntelName     string       `json:"intelname,omitempty"`
 	CommunityName string       `json:"communityname,omitempty"`
-	Level         uint8        `json:"level,omitempty"`  // from v
 	OneTimeToken  OneTimeToken `json:"lockey,omitempty"` // historical name, is this used by any clients?
-	VVerified     bool         `json:"Vverified,omitempty"`
-	VBlacklisted  bool         `json:"blacklisted,omitempty"`
-	EnlID         string       `json:"enlid,omitempty"` // clients use this to draw URLs to V profiles
-	RocksVerified bool         `json:"rocks,omitempty"`
-	RISC          bool         `json:"RISC,omitempty"`
+	EnlID         string       `json:"enlid,omitempty"`  // clients use this to draw URLs to V profiles
 	ProfileImage  string       `json:"pic,omitempty"`
+	IntelFaction  string       `json:"intelfaction,omitempty"`
+	QueryToken    string       `json:"querytoken,omitempty"`
+	VAPIkey       string       `json:"vapi,omitempty"`
+	JWT           string       `json:"jwt,omitempty"`
 	Teams         []AdTeam
 	Ops           []AdOperation
 	Telegram      struct {
-		ID        int64  `json:"ID,omitempty"`
 		Name      string `json:"name,omitempty"`
-		Verified  bool   `json:"Verified,omitempty"`
 		Authtoken string `json:"Authtoken,omitempty"`
+		ID        int64  `json:"ID,omitempty"`
+		Verified  bool   `json:"Verified,omitempty"`
 	}
-	IntelFaction string `json:"intelfaction,omitempty"`
-	QueryToken   string `json:"querytoken,omitempty"`
-	VAPIkey      string `json:"vapi,omitempty"`
-	JWT          string `json:"jwt,omitempty"`
+	Level         uint8 `json:"level,omitempty"` // from v
+	VVerified     bool  `json:"Vverified,omitempty"`
+	VBlacklisted  bool  `json:"blacklisted,omitempty"`
+	RocksVerified bool  `json:"rocks,omitempty"`
+	RISC          bool  `json:"RISC,omitempty"`
 }
 
 // AdTeam is a sub-struct of Agent
@@ -63,11 +63,11 @@ type AdTeam struct {
 type AdOperation struct {
 	ID         OperationID
 	Name       string
-	IsOwner    bool
 	Color      string
 	TeamID     TeamID
 	Modified   string
 	LastEditID string
+	IsOwner    bool
 }
 
 // AgentID is anything that can be converted to a GoogleID or a string
@@ -79,9 +79,9 @@ type AgentID interface {
 // AgentLocation is the lite version used for the team location pull
 type AgentLocation struct {
 	Gid  GoogleID `json:"gid"`
+	Date string   `json:"date"`
 	Lat  float64  `json:"lat"`
 	Lon  float64  `json:"lng"`
-	Date string   `json:"date"`
 }
 
 // Gid just satisfies the AgentID interface

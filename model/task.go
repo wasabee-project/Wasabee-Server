@@ -24,15 +24,15 @@ type TaskID string
 
 // Task is the imported things for markers and links
 type Task struct {
-	ID           TaskID     `json:"task"`
+	ID           TaskID `json:"task"`
+	State        string `json:"state"`
+	Comment      string `json:"comment"`
+	opID         OperationID
 	Assignments  []GoogleID `json:"assignments"`
 	DependsOn    []TaskID   `json:"dependsOn"`
 	Zone         Zone       `json:"zone"`
 	DeltaMinutes int32      `json:"deltaminutes"`
-	State        string     `json:"state"`
-	Comment      string     `json:"comment"`
 	Order        int16      `json:"order"`
-	opID         OperationID
 }
 
 // AddDepend add a single task dependency

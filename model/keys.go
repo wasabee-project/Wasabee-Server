@@ -14,8 +14,8 @@ import (
 type KeyOnHand struct {
 	ID      PortalID `json:"portalId"`
 	Gid     GoogleID `json:"gid"`
-	Onhand  int32    `json:"onhand"`
 	Capsule string   `json:"capsule"`
+	Onhand  int32    `json:"onhand"`
 }
 
 // insertKey adds a user keycount to the database

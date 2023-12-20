@@ -63,10 +63,10 @@ func (z Zone) inZones(zones []Zone) bool {
 
 // ZoneListElement is used to map display names to zones
 type ZoneListElement struct {
-	Zone   Zone        `json:"id"`
 	Name   string      `json:"name"`
-	Points []zonepoint `json:"points"` // just a string for the client to parse
 	Color  string      `json:"color"`
+	Points []zonepoint `json:"points"` // just a string for the client to parse
+	Zone   Zone        `json:"id"`
 }
 
 type zonepoint struct {
@@ -77,7 +77,7 @@ type zonepoint struct {
 
 func defaultZones() []ZoneListElement {
 	return []ZoneListElement{
-		{zonePrimary, "Primary", nil, "purple"},
+		{"Primary", "purple", nil, zonePrimary},
 	}
 }
 

@@ -10,29 +10,29 @@ import (
 // VAgent is set by the V API
 // most of these fields are empty unless filled in by a team query
 type VAgent struct {
-	EnlID       string   `json:"enlid"`
-	Gid         GoogleID `json:"gid"`
-	Vlevel      int64    `json:"vlevel"`
-	Vpoints     int64    `json:"vpoints"`
-	Agent       string   `json:"agent"`
-	Level       int64    `json:"level"`
-	Quarantine  bool     `json:"quarantine"`
-	Active      bool     `json:"active"`
-	Blacklisted bool     `json:"blacklisted"`
-	Verified    bool     `json:"verified"`
-	Flagged     bool     `json:"flagged"`
-	Banned      bool     `json:"banned_by_nia"`
-	CellID      string   `json:"cellid"`
-	TelegramID  int64    `json:"telegramid"`
-	Telegram    string   `json:"telegram"`
-	Email       string   `json:"email"`
-	StartLat    float64  `json:"lat"`
-	StartLon    float64  `json:"lon"`
-	Distance    int64    `json:"distance"`
-	Roles       []struct {
-		ID   uint8  `json:"id"`
+	EnlID    string   `json:"enlid"`
+	Gid      GoogleID `json:"gid"`
+	Agent    string   `json:"agent"`
+	CellID   string   `json:"cellid"`
+	Telegram string   `json:"telegram"`
+	Email    string   `json:"email"`
+	Roles    []struct {
 		Name string `json:"name"`
+		ID   uint8  `json:"id"`
 	} `json:"roles"`
+	Vlevel      int64   `json:"vlevel"`
+	Vpoints     int64   `json:"vpoints"`
+	Level       int64   `json:"level"`
+	TelegramID  int64   `json:"telegramid"`
+	StartLat    float64 `json:"lat"`
+	StartLon    float64 `json:"lon"`
+	Distance    int64   `json:"distance"`
+	Quarantine  bool    `json:"quarantine"`
+	Active      bool    `json:"active"`
+	Blacklisted bool    `json:"blacklisted"`
+	Verified    bool    `json:"verified"`
+	Flagged     bool    `json:"flagged"`
+	Banned      bool    `json:"banned_by_nia"`
 }
 
 // VToDB updates the database to reflect an agent's current status at V.

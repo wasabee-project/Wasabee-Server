@@ -18,40 +18,41 @@ import (
 
 // WasabeeConf is the primary config structure
 type WasabeeConf struct {
-	GoogleCreds       string   // path to file.json
-	GoogleProject     string   // project name for firebase/profile/risc
-	DB                string   // db connect string
-	WordListFile      string   // "eff-large-words.txt" filename
-	FrontendPath      string   // path to directory continaing templates
-	Certs             string   // path to director containing certs
-	CertFile          string   // filename (relative to Certs)
-	CertKey           string   // filename (relative to Certs)
-	FirebaseKey       string   // filename (relative to Certs)
-	JWKpriv           string   // filename (relative to Certs)
-	JWKpub            string   // filename (relative to Certs)
-	JKU               string   // URL to well-known JKU (for 3rd parties to verify our JWT)
-	DefaultPictureURL string   // URL to a default image for agents
-	WebUIURL          string   // URL of WebUI
-	GRPCPort          uint16   // Port on which to send and receive gRPC messages
-	Peers             []string // hostname/ip of servers to update
-	GRPCDomain        string   // domain for grpc credentials
-	StoreRevisions    bool     // keep a copy of each upload
-	RevisionsDir      string   // where to keep them
-
-	// configuraiton for various subsystems
-	V        wv
-	Rocks    wrocks
-	Telegram wtg
-	HTTP     whttp
-	RISC     wrisc
-	Apple    apple
-
-	// not configurable
-	fbRunning bool
+	HTTP whttp
 
 	// loaded by LoadFile()
 	jwSigningKeys jwk.Set
 	jwParsingKeys jwk.Set
+	Apple         apple
+
+	RISC              wrisc
+	GoogleCreds       string // path to file.json
+	GoogleProject     string // project name for firebase/profile/risc
+	DB                string // db connect string
+	WordListFile      string // "eff-large-words.txt" filename
+	FrontendPath      string // path to directory continaing templates
+	Certs             string // path to director containing certs
+	CertFile          string // filename (relative to Certs)
+	CertKey           string // filename (relative to Certs)
+	FirebaseKey       string // filename (relative to Certs)
+	JWKpriv           string // filename (relative to Certs)
+	JWKpub            string // filename (relative to Certs)
+	JKU               string // URL to well-known JKU (for 3rd parties to verify our JWT)
+	DefaultPictureURL string // URL to a default image for agents
+	WebUIURL          string // URL of WebUI
+	GRPCDomain        string // domain for grpc credentials
+	RevisionsDir      string // where to keep them
+
+	// configuraiton for various subsystems
+	V              wv
+	Rocks          wrocks
+	Peers          []string // hostname/ip of servers to update
+	Telegram       wtg
+	GRPCPort       uint16 // Port on which to send and receive gRPC messages
+	StoreRevisions bool   // keep a copy of each upload
+
+	// not configurable
+	fbRunning bool
 }
 
 // Configure v.enl.one
@@ -67,9 +68,9 @@ type wv struct {
 type wtg struct {
 	APIKey         string // defined by Telegram
 	HookPath       string // use default
-	CleanOnStartup bool   // almost certainly not needed
 	name           string
 	id             int
+	CleanOnStartup bool // almost certainly not needed
 	running        bool
 }
 
@@ -90,6 +91,8 @@ type wrocks struct {
 
 // Configure the HTTPS REST interface
 type whttp struct {
+	oauthConfig *oauth2.Config
+	router      *mux.Router
 	Webroot     string // "https://xx.wasabee.rocks"
 	ListenHTTPS string // ":443" or "192.168.34.1:443"
 	Logfile     string // https logs
@@ -109,8 +112,6 @@ type whttp struct {
 
 	CORS []string // list of sites for which browsers will make API request
 
-	oauthConfig *oauth2.Config
-	router      *mux.Router
 }
 
 type apple struct {

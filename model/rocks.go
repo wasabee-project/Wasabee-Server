@@ -11,8 +11,8 @@ import (
 // RocksAgent is defined by enlightened.rocks
 type RocksAgent struct {
 	Gid      GoogleID `json:"gid"`
-	TGId     int64    `json:"tgid"`
 	Agent    string   `json:"agentid"`
+	TGId     int64    `json:"tgid"`
 	Verified bool     `json:"verified"`
 	Smurf    bool     `json:"smurf"`
 }

@@ -15,11 +15,11 @@ import (
 
 // Configuration is the primary config for logging
 type Configuration struct {
-	Console            bool
-	ConsoleLevel       zapcore.Level
 	GoogleCloudProject string
 	GoogleCloudCreds   string
 	FilePath           string
+	Console            bool
+	ConsoleLevel       zapcore.Level
 	FileLevel          zapcore.Level
 }
 

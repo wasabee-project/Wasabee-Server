@@ -27,12 +27,12 @@ func init() {
 
 // the top-level data structure defined by the community website
 type pull struct {
-	Profile profile // the one we are concerrned with
-	// the following are present on errors
-	Code      uint16
+	Profile   profile // the one we are concerrned with
 	Exception string
 	Class     string
 	// all other fields are ignored
+	// the following are present on errors
+	Code uint16
 }
 
 // the profile type defined by the community website

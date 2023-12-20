@@ -132,9 +132,9 @@ func gcStatus(inMsg *tgbotapi.Update) {
 	name, _ := teamID.Name()
 
 	type data struct {
+		OPStat   *model.OpStat
 		TeamName string
 		TeamID   model.TeamID
-		OPStat   *model.OpStat
 	}
 	d := data{
 		TeamName: name,

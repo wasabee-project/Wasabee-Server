@@ -11,8 +11,8 @@ import (
 
 // DefensiveKeyList is the list of all defensive keys
 type DefensiveKeyList struct {
-	DefensiveKeys []DefensiveKey
 	Fetched       string
+	DefensiveKeys []DefensiveKey
 }
 
 // DefensiveKey is a sub-struct of DefensiveKeyList
@@ -20,10 +20,10 @@ type DefensiveKey struct {
 	GID      GoogleID `json:"GID"`
 	PortalID PortalID `json:"PortalID"`
 	CapID    string   `json:"CapID"`
-	Count    int32    `json:"Count"`
 	Name     string   `json:"Name"`
 	Lat      string   `json:"Lat"`
 	Lon      string   `json:"Lng"`
+	Count    int32    `json:"Count"`
 }
 
 // ListDefensiveKeys gets all keys an agent is authorized to know about.

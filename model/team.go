@@ -17,10 +17,10 @@ type TeamID string
 type TeamData struct {
 	Name          string       `json:"name"`
 	ID            TeamID       `json:"id"`
-	TeamMembers   []TeamMember `json:"agents"`
 	RocksComm     string       `json:"rc,omitempty"`
 	RocksKey      string       `json:"rk,omitempty"`
 	JoinLinkToken string       `json:"jlt,omitempty"`
+	TeamMembers   []TeamMember `json:"agents"`
 	VTeam         int64        `json:"vt,omitempty"`
 	VRole         int8         `json:"vr,omitempty"`
 }
@@ -33,19 +33,19 @@ type TeamMember struct {
 	RocksName     string   `json:"rocksname,omitempty"`
 	IntelName     string   `json:"intelname,omitempty"`
 	CommunityName string   `json:"communityname,omitempty"`
-	Level         uint8    `json:"level,omitempty"`
 	EnlID         string   `json:"enlid,omitempty"`
 	PictureURL    string   `json:"pic,omitempty"`
+	IntelFaction  string   `json:"intelfaction"`
+	Comment       string   `json:"squad,omitempty"`
+	Date          string   `json:"date"`
+	Lat           float64  `json:"lat,omitempty"`
+	Lon           float64  `json:"lng,omitempty"`
+	Level         uint8    `json:"level,omitempty"`
 	Verified      bool     `json:"Vverified"`
 	Blacklisted   bool     `json:"blacklisted"`
 	RocksVerified bool     `json:"rocks"`
 	RocksSmurf    bool     `json:"smurf"`
-	IntelFaction  string   `json:"intelfaction"`
-	Comment       string   `json:"squad,omitempty"`
 	ShareLocation bool     `json:"state"`
-	Lat           float64  `json:"lat,omitempty"`
-	Lon           float64  `json:"lng,omitempty"`
-	Date          string   `json:"date"`
 	ShareWD       bool     `json:"shareWD"`
 	LoadWD        bool     `json:"loadWD"`
 }

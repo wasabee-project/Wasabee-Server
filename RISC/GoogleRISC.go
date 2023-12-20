@@ -28,9 +28,9 @@ var riscchan chan event
 var googleConfig struct {
 	Issuer      string   `json:"issuer"`
 	JWKURI      string   `json:"jwks_uri"`
-	Methods     []string `json:"delivery_methods_supported"`
 	AddEndpoint string   `json:"add_subject_endpoint"`
 	RemEndpoint string   `json:"remove_subject_endpoint"`
+	Methods     []string `json:"delivery_methods_supported"`
 }
 
 // the flag to indicate if we are running or not

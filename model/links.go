@@ -17,13 +17,13 @@ type Link struct {
 	ID         LinkID   `json:"ID"`
 	From       PortalID `json:"fromPortalId"`
 	To         PortalID `json:"toPortalId"`
-	Desc       string   `json:"description"`   // deprecated, use Comment from Task
-	AssignedTo GoogleID `json:"assignedTo"`    // deprecated, use Assignments from Task
-	ThrowOrder int16    `json:"throwOrderPos"` // deprecated, use Order from Task
-	Completed  bool     `json:"completed"`     // deprecated, use State from Task
+	Desc       string   `json:"description"` // deprecated, use Comment from Task
+	AssignedTo GoogleID `json:"assignedTo"`  // deprecated, use Assignments from Task
 	Color      string   `json:"color"`
-	MuCaptured int      `json:"mu"`
 	Task
+	MuCaptured int   `json:"mu"`
+	ThrowOrder int16 `json:"throwOrderPos"` // deprecated, use Order from Task
+	Completed  bool  `json:"completed"`     // deprecated, use State from Task
 }
 
 // TODO use the logic from insertZone to unify insertLink and updateLink

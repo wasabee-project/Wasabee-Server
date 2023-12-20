@@ -16,11 +16,11 @@ import (
 // need to update tgbotapi to allow ADDDING, not just setting commands for these...
 type command struct {
 	Command     string
-	Aliases     []string // future use
 	Description string
-	Private     bool // templates and future use
-	Group       bool // templates and future use
-	Admin       bool // future use
+	Aliases     []string // future use
+	Private     bool     // templates and future use
+	Group       bool     // templates and future use
+	Admin       bool     // future use
 }
 
 var commands []command
