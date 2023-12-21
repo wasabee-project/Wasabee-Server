@@ -31,7 +31,8 @@ import (
 var srv *http.Server
 
 var unrolled *logger.Logger
-var oauthStateString string
+
+// var oauthStateString string
 
 const jsonType = "application/json; charset=UTF-8"
 const jsonTypeShort = "application/json"
@@ -52,7 +53,7 @@ func Start() {
 		log.Fatal("Oauth Client not configured: logins will fail")
 	}
 
-	oauthStateString = util.GenerateName()
+	// oauthStateString = util.GenerateName()
 	// log.Debugw("startup", "oauthStateString", oauthStateString)
 
 	log.Debugw("startup", "https logfile", c.HTTP.Logfile)

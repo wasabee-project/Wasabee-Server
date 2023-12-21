@@ -26,6 +26,10 @@ func AgentLocation(gid model.GoogleID) {
 	}
 
 	tokens, err := gid.FirebaseLocationTokens()
+	if err != nil {
+		log.Infow("firebase token load", "gid", gid, "err", err)
+		return
+	}
 	if len(tokens) == 0 {
 		return
 	}
@@ -76,7 +80,6 @@ func AgentLocation(gid model.GoogleID) {
 		return
 	}
 	processBatchResponse(br, brTokens) // do the work on an async go routine?
-	return
 }
 
 // AssignLink lets an agent know they have a new assignment on a given operation

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -70,7 +69,7 @@ func Start(ctx context.Context) {
 		log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", full)
 	}
 	// #nosec
-	tmp, err := ioutil.ReadFile(full)
+	tmp, err := os.ReadFile(full)
 	if err != nil {
 		log.Error(err)
 		return

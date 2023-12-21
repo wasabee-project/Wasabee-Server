@@ -90,5 +90,4 @@ func SetTelegramID(ctx context.Context, tgid model.TelegramID, name string) {
 			continue
 		}
 	}
-	return
 }

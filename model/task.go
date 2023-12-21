@@ -419,7 +419,7 @@ func (o *Operation) GetTaskByStepNumber(step int16) (UnspecifiedTask, error) {
 }
 
 // checkAssignments validates that assignments are made to agents on teams -- uses the precache
-func (t *Task) checkAssignments(agentMap map[GoogleID]bool) {
+/* func (t *Task) checkAssignments(agentMap map[GoogleID]bool) {
 	var new []GoogleID
 
 	for _, gid := range t.Assignments {
@@ -431,4 +431,4 @@ func (t *Task) checkAssignments(agentMap map[GoogleID]bool) {
 	}
 
 	t.Assignments = new
-}
+} */

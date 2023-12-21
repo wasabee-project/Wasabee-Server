@@ -11,5 +11,5 @@ func LoadRevokedJWT() *util.Safemap {
 
 // StoreRevokedJWT does nothing yet
 func StoreRevokedJWT(r *util.Safemap) {
-	return
+	// return
 }

@@ -3,8 +3,8 @@ package util
 import (
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -40,7 +40,7 @@ func GenerateID(size int) string {
 // LoadWordsFile imports the word definition file used for names.
 func LoadWordsFile(filename string) error {
 	// #nosec
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		log.Error(err)
 		return err

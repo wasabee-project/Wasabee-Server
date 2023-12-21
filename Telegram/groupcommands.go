@@ -449,7 +449,7 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 	}
 
 	if !task.IsAssignedTo(gid) {
-		err := fmt.Errorf("Task must be assigned to you to acknowledge")
+		err := fmt.Errorf("task must be assigned to you to acknowledge")
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg

@@ -3,7 +3,7 @@ package templates
 import (
 	"bytes"
 	"html/template"
-	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 
@@ -33,7 +33,7 @@ func Start(frontendPath string) error {
 	templateSet := make(map[string]*template.Template)
 
 	log.Debugw("startup", "frontend template directory", fp)
-	files, err := ioutil.ReadDir(fp)
+	files, err := os.ReadDir(fp)
 	if err != nil {
 		log.Error(err)
 		return err

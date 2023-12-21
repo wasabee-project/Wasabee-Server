@@ -3,7 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"cloud.google.com/go/logging"
@@ -83,7 +83,7 @@ func addGoogleCloud(ctx context.Context, project string, jsonPath string) (zapco
 
 	inCore := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-		zapcore.AddSync(ioutil.Discard),
+		zapcore.AddSync(io.Discard),
 		zap.NewAtomicLevelAt(zap.InfoLevel),
 	)
 
