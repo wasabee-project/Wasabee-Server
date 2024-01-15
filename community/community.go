@@ -92,6 +92,7 @@ func fetch(name string) (*profile, error) {
 		Timeout: (3 * time.Second),
 	}
 	resp, err := client.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		log.Errorw(err.Error(), "fetch", name)
 		return &p.Profile, err
