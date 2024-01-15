@@ -163,6 +163,7 @@ func updateWebhook() error {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
+	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		err := fmt.Errorf("non-OK status")
 		raw, _ := io.ReadAll(response.Body)
@@ -217,6 +218,7 @@ func disableWebhook() {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return
 	}
+	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		raw, _ = io.ReadAll(response.Body)
 		log.Errorw("not OK status", "subsystem", "RISC", "content", string(raw))
@@ -248,6 +250,7 @@ func disableWebhook() {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
+	defer response.Body.Close()
 	raw, _ := io.ReadAll(response.Body)
 	log.Info(string(raw))
 
@@ -284,6 +287,7 @@ func ping() error {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
+	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(response.Body)
 		log.Errorw("non OK status", "subsystem", "RISC", "content", string(raw))
@@ -331,6 +335,7 @@ func AddSubject(gid model.GoogleID) error {
 		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
+	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(response.Body)
 		log.Errorw("non OK status", "subsystem", "RISC", "content", string(raw))
