@@ -33,7 +33,7 @@ func setupRouter() *mux.Router {
 	router.HandleFunc(c.OneTimeTokenURL, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
 
 	// Apple Authentication routes
-	router.HandleFunc("/apple", appleRoute) // need more details, good enough for now
+	// router.HandleFunc("/apple", appleRoute) // need more details, good enough for now
 
 	// common files that live under /static
 	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
@@ -139,9 +139,9 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/me/intelid", meIntelIDRoute).Methods("PUT", "POST")                                             // get ID from intel (not trusted)
 	r.HandleFunc("/me/VAPIkey", meVAPIkeyRoute).Methods("POST")                                                    // send an V API key for team sync
 	r.HandleFunc("/me/jwtrefresh", meJwtRefreshRoute).Methods("GET")                                               // returns a new JWT with the current token ID
-	r.HandleFunc("/me/commproof", meCommProofRoute).Methods("GET").Queries("name", "{name}")                       // generate a JWT to post on niantic's community to prove identity
-	r.HandleFunc("/me/commverify", meCommVerifyRoute).Methods("GET").Queries("name", "{name}")                     // fetch and verify the JWT posted on niantic's community
-	r.HandleFunc("/me/commverify", meCommClearRoute).Methods("DELETE")                                             // clear it
+	// r.HandleFunc("/me/commproof", meCommProofRoute).Methods("GET").Queries("name", "{name}")                       // generate a JWT to post on niantic's community to prove identity
+	// r.HandleFunc("/me/commverify", meCommVerifyRoute).Methods("GET").Queries("name", "{name}")                     // fetch and verify the JWT posted on niantic's community
+	// r.HandleFunc("/me/commverify", meCommClearRoute).Methods("DELETE")                                             // clear it
 
 	// other agents
 	// "profile" page, such as it is
@@ -155,7 +155,6 @@ func setupAuthRoutes(r *mux.Router) {
 	// teams
 	// create a new team
 	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}")     // create new team
-	r.HandleFunc("/team/vbulkimport", vBulkImportRoute).Methods("GET").Queries("mode", "{mode}") // sync with v
 	// r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}") // deprecated
 	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")       // get team membership/data
 	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE") // delete team
@@ -166,8 +165,6 @@ func setupAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET", "DELETE")                                                     // remove join-link-token
 	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
 	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
-	r.HandleFunc("/team/{team}/v", vPullTeamRoute).Methods("GET")
-	r.HandleFunc("/team/{team}/v", vConfigureTeamRoute).Methods("POST")
 	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")             // broadcast a message to the team (form-data: m)
 	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT")                  // rename the team, (form-data: teamname)
 	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")       // key can be gid/name/enlid

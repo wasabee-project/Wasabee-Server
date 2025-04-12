@@ -13,7 +13,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/templates"
-	"github.com/wasabee-project/Wasabee-Server/v"
 )
 
 func processDirectMessage(inMsg *tgbotapi.Update) error {
@@ -120,7 +119,7 @@ func processMessage(inMsg *tgbotapi.Update, gid model.GoogleID) error {
 	return nil
 }
 
-// checks rocks/v based on tgid, Inits agent if found
+// checks rocks based on tgid, Inits agent if found
 func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 	agent, err := rocks.Search(fmt.Sprint(tgid))
 	if err != nil {
@@ -146,35 +145,6 @@ func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 		// rocks success
 		return gid, nil
 	}
-
-	result, err := v.TelegramSearch(tgid)
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-	if result.Gid != "" {
-		log.Debugw("v is so useless")
-		result.Gid, _ = model.GetGIDFromEnlID(result.EnlID)
-	}
-
-	if result.Gid != "" {
-		gid := model.GoogleID(result.Gid)
-		if !gid.Valid() {
-			if err := gid.FirstLogin(); err != nil {
-				log.Error(err)
-				return "", err
-			}
-		}
-		if err := gid.SetTelegramID(tgid, name); err != nil {
-			log.Error(err)
-			return gid, err
-		}
-		federation.SetTelegramID(context.Background(), tgid, name)
-		// v success?!
-		return gid, nil
-	}
-
-	// not found in either service
 	return "", nil
 }
 

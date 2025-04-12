@@ -26,7 +26,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/rocks"
 	"github.com/wasabee-project/Wasabee-Server/templates"
 	"github.com/wasabee-project/Wasabee-Server/util"
-	"github.com/wasabee-project/Wasabee-Server/v"
 
 	"go.uber.org/zap"
 	// "golang.org/x/oauth2/google"
@@ -188,13 +187,6 @@ func run(cargs *cli.Context) error {
 	go func(ctx context.Context) {
 		defer wg.Done()
 		wtg.Start(ctx)
-	}(ctx)
-
-	// start V
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		v.Start(ctx)
 	}(ctx)
 
 	// start Rocks
