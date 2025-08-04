@@ -16,30 +16,24 @@ type GoogleID string
 
 // Agent is the complete agent struct, used for the /me page.
 type Agent struct {
-	GoogleID      GoogleID     `json:"GoogleID"`
-	Name          string       `json:"name,omitempty"`
-	VName         string       `json:"vname,omitempty"`
-	RocksName     string       `json:"rocksname,omitempty"`
-	IntelName     string       `json:"intelname,omitempty"`
-	CommunityName string       `json:"communityname,omitempty"`
-	OneTimeToken  OneTimeToken `json:"lockey,omitempty"` // historical name, is this used by any clients?
-	EnlID         string       `json:"enlid,omitempty"`  // clients use this to draw URLs to V profiles
-	ProfileImage  string       `json:"pic,omitempty"`
-	IntelFaction  string       `json:"intelfaction,omitempty"`
-	QueryToken    string       `json:"querytoken,omitempty"`
-	VAPIkey       string       `json:"vapi,omitempty"`
-	JWT           string       `json:"jwt,omitempty"`
-	Teams         []AdTeam
-	Ops           []AdOperation
-	Telegram      struct {
+	GoogleID     GoogleID     `json:"GoogleID"`
+	Name         string       `json:"name,omitempty"`
+	RocksName    string       `json:"rocksname,omitempty"`
+	IntelName    string       `json:"intelname,omitempty"`
+	OneTimeToken OneTimeToken `json:"lockey,omitempty"` // historical name, is this used by any clients?
+	ProfileImage string       `json:"pic,omitempty"`
+	IntelFaction string       `json:"intelfaction,omitempty"`
+	QueryToken   string       `json:"querytoken,omitempty"`
+	JWT          string       `json:"jwt,omitempty"`
+	Teams        []AdTeam
+	Ops          []AdOperation
+	Telegram     struct {
 		Name      string `json:"name,omitempty"`
 		Authtoken string `json:"Authtoken,omitempty"`
 		ID        int64  `json:"ID,omitempty"`
 		Verified  bool   `json:"Verified,omitempty"`
 	}
 	Level         uint8 `json:"level,omitempty"` // from v
-	VVerified     bool  `json:"Vverified,omitempty"`
-	VBlacklisted  bool  `json:"blacklisted,omitempty"`
 	RocksVerified bool  `json:"rocks,omitempty"`
 	RISC          bool  `json:"RISC,omitempty"`
 }
@@ -55,8 +49,6 @@ type AdTeam struct {
 	ShareWD       string
 	LoadWD        string
 	Owner         GoogleID
-	VTeam         int64 `json:"VTeam,omitempty"`
-	VTeamRole     uint8 `json:"VTeamRole,omitempty"`
 }
 
 // AdOperation is a sub-struct of Agent
@@ -93,11 +85,11 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgent() (*Agent, error) {
 	var a Agent
 	a.GoogleID = gid
-	var level, vname, vid, pic, vapi, intelname, rocksname, communityname sql.NullString
-	var vverified, vblacklisted, rocksverified sql.NullBool
+	var level, vname, pic, intelname, rocksname sql.NullString
+	var rocksverified sql.NullBool
 	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, v.level, a.OneTimeToken, v.verified AS VVerified, v.Blacklisted AS VBlacklisted, v.enlid AS Vid, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.communityname, a.picurl, v.VAPIkey FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &intelname, &level, &a.OneTimeToken, &vverified, &vblacklisted, &vid, &rocksverified, &a.RISC, &ifac, &communityname, &pic, &vapi)
+	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, a.OneTimeToken, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &intelname, &a.OneTimeToken, &rocksverified, &a.RISC, &ifac, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = fmt.Errorf(ErrUnknownGID)
 		return &a, err
@@ -107,38 +99,18 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 		return &a, err
 	}
 
-	a.Name = gid.bestname(intelname, vname, rocksname, communityname)
+	a.Name = gid.bestname(intelname, rocksname)
 
 	if intelname.Valid {
 		a.IntelName = intelname.String
-	}
-
-	if communityname.Valid {
-		a.CommunityName = communityname.String
 	}
 
 	if rocksname.Valid {
 		a.RocksName = rocksname.String
 	}
 
-	if vname.Valid {
-		a.VName = vname.String
-	}
-
-	if vid.Valid {
-		a.EnlID = vid.String
-	}
-
 	if pic.Valid {
 		a.ProfileImage = pic.String
-	}
-
-	if vverified.Valid {
-		a.VVerified = vverified.Bool
-	}
-
-	if vblacklisted.Valid {
-		a.VBlacklisted = vblacklisted.Bool
 	}
 
 	if rocksverified.Valid {
@@ -167,20 +139,11 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 
 	a.IntelFaction = ifac.String()
 
-	if vapi.Valid {
-		// if the user set a short string... don't panic
-		len := len(vapi.String)
-		if len > 6 {
-			len = 6
-		}
-		a.VAPIkey = vapi.String[0:len] + "..." // never show the full thing
-	}
-
 	return &a, nil
 }
 
 func adTeams(ad *Agent) error {
-	rows, err := db.Query("SELECT x.teamID, team.name, x.shareLoc, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken, team.vteam, team.vrole FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ?", ad.GoogleID)
+	rows, err := db.Query("SELECT x.teamID, team.name, x.shareLoc, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -192,7 +155,7 @@ func adTeams(ad *Agent) error {
 		var shareLoc, shareWD, loadWD bool
 		var rc, rk, jlt sql.NullString
 
-		err := rows.Scan(&team.ID, &team.Name, &shareLoc, &shareWD, &loadWD, &rc, &rk, &team.Owner, &jlt, &team.VTeam, &team.VTeamRole)
+		err := rows.Scan(&team.ID, &team.Name, &shareLoc, &shareWD, &loadWD, &rc, &rk, &team.Owner, &jlt)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -345,7 +308,7 @@ func (gid GoogleID) IngressName() (string, error) {
 		return string(gid), err
 	}
 
-	return gid.bestname(intelname, vname, rocksname, communityname), nil
+	return gid.bestname(intelname, rocksname), nil
 }
 
 // IngressName is used for templates
@@ -354,15 +317,7 @@ func IngressName(g messaging.GoogleID) string {
 	return name
 }
 
-func (gid GoogleID) bestname(intel, v, rocks, communityname sql.NullString) string {
-	if communityname.Valid {
-		return communityname.String
-	}
-
-	if v.Valid {
-		return v.String
-	}
-
+func (gid GoogleID) bestname(intel, rocks sql.NullString) string {
 	if rocks.Valid && rocks.String != "-hidden-" {
 		return rocks.String
 	}

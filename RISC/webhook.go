@@ -12,7 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/httprc/v3"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -71,9 +72,14 @@ func registerWebhook(ctx context.Context) {
 	risc := config.Subrouter(config.Get().RISC.Webhook)
 	risc.HandleFunc("", webhook).Methods("POST")
 
-	c := jwk.NewCache(ctx)
-	c.Register(googleConfig.JWKURI) // , jwk.WithMinRefreshInterval(time.Hour))
-	tmp, err := c.Get(ctx, googleConfig.JWKURI)
+	c, err := jwk.NewCache(ctx, httprc.NewClient())
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	c.Register(ctx, googleConfig.JWKURI)
+	tmp, err := c.Lookup(ctx, googleConfig.JWKURI)
 	if err != nil {
 		log.Error(err)
 		return

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
-	// "github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
+	// "github.com/lestrrat-go/jwx/v3/jws"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -124,6 +124,8 @@ func valid(authorization []string) bool {
 	token, err := jwt.Parse([]byte(rawjwt),
 		jwt.WithValidate(true),
 		jwt.WithVerify(false),
+		jwt.WithIssuer(config.Get().GRPCDomain),
+		jwt.WithSubject(config.Get().GRPCDomain),
 		//	jwt.WithKeySet(keys, jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
 		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
@@ -138,16 +140,6 @@ func valid(authorization []string) bool {
 
 	// m, _ := token.AsMap(context.TODO())
 	// log.Debugw("token", "t", m)
-
-	iss := token.Issuer()
-	sub := token.Subject()
-	dom := config.Get().GRPCDomain
-	if !strings.Contains(iss, dom) || !strings.Contains(sub, dom) {
-		log.Info("federation JWT creds", "iss", iss, "sub", sub, "dom", dom)
-		err := fmt.Errorf("unable to validate gRPC caller")
-		log.Error(err)
-		return false
-	}
 
 	return true
 }

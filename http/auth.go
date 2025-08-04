@@ -10,9 +10,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"

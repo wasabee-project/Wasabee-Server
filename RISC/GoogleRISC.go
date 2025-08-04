@@ -10,9 +10,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
@@ -147,8 +147,9 @@ func validateToken(rawjwt []byte) error {
 		return err
 	}
 
-	events, ok := token.Get("events")
-	if !ok {
+	var events interface{} // map[string]interface{}
+	err = token.Get("events", &events)
+	if err != nil {
 		err := fmt.Errorf("unable to get events from token")
 		log.Error(err)
 		return err

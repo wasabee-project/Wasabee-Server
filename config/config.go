@@ -11,7 +11,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/gorilla/mux"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )

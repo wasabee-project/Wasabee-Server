@@ -16,14 +16,13 @@ import (
 	"github.com/gorilla/mux"
 	// "github.com/gorilla/sessions"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	// "github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	// "github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
-	"github.com/wasabee-project/Wasabee-Server/community"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/federation"
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -304,23 +303,6 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, jsonStatusOK)
 }
 
-func meVAPIkeyRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	v := req.FormValue("v")
-
-	if err = gid.SetVAPIkey(v); err != nil {
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	fmt.Fprint(res, jsonStatusOK)
-}
-
 func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	gid, err := getAgentID(req)
 	if err != nil {
@@ -403,81 +385,4 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	log.Infow("jwt Refresh", "gid", gid, "token ID", jwtid, "message", "jwt Token refreshed for "+gid)
 	s := fmt.Sprintf("{\"status\":\"ok\", \"jwt\":\"%s\"}", string(signed[:]))
 	fmt.Fprint(res, s)
-}
-
-func meCommProofRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	name := util.Sanitize(vars["name"])
-	if name == "" {
-		err := fmt.Errorf("name unset")
-		log.Debug(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	signed, err := community.BuildToken(gid, name)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	s := fmt.Sprintf("{\"status\":\"ok\", \"jwt\":\"%s\"}", signed)
-	fmt.Fprint(res, s)
-}
-
-func meCommVerifyRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	vars := mux.Vars(req)
-	name := util.Sanitize(vars["name"])
-
-	if name == "" {
-		err := fmt.Errorf("name unset")
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	ok, err := community.Validate(gid, name)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	if !ok {
-		err := fmt.Errorf("unable to verify")
-		log.Error(err)
-		http.Error(res, jsonError(err), http.StatusNotAcceptable)
-		return
-	}
-
-	go federation.SetCommunityID(context.Background(), gid, name)
-
-	fmt.Fprint(res, jsonStatusOK)
-}
-
-func meCommClearRoute(res http.ResponseWriter, req *http.Request) {
-	gid, err := getAgentID(req)
-	if err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	if err := gid.ClearCommunityName(); err != nil {
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-
-	go federation.SetCommunityID(context.Background(), gid, "")
-
-	fmt.Fprint(res, jsonStatusOK)
 }

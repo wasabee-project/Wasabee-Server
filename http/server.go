@@ -12,10 +12,10 @@ import (
 	"time"
 
 	// "golang.org/x/oauth2"
-	//"golang.org/x/oauth2/google"
-	// "github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	// "golang.org/x/oauth2/google"
+	// "github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 
 	// "github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/auth"

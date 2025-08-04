@@ -21,19 +21,14 @@ type TeamData struct {
 	RocksKey      string       `json:"rk,omitempty"`
 	JoinLinkToken string       `json:"jlt,omitempty"`
 	TeamMembers   []TeamMember `json:"agents"`
-	VTeam         int64        `json:"vt,omitempty"`
-	VRole         int8         `json:"vr,omitempty"`
 }
 
 // TeamMember is the light version of AgentData, containing visible information exported to teams
 type TeamMember struct {
 	Gid           GoogleID `json:"id"`
 	Name          string   `json:"name"`
-	VName         string   `json:"vname,omitempty"`
 	RocksName     string   `json:"rocksname,omitempty"`
 	IntelName     string   `json:"intelname,omitempty"`
-	CommunityName string   `json:"communityname,omitempty"`
-	EnlID         string   `json:"enlid,omitempty"`
 	PictureURL    string   `json:"pic,omitempty"`
 	IntelFaction  string   `json:"intelfaction"`
 	Comment       string   `json:"squad,omitempty"`
@@ -41,8 +36,6 @@ type TeamMember struct {
 	Lat           float64  `json:"lat,omitempty"`
 	Lon           float64  `json:"lng,omitempty"`
 	Level         uint8    `json:"level,omitempty"`
-	Verified      bool     `json:"Vverified"`
-	Blacklisted   bool     `json:"blacklisted"`
 	RocksVerified bool     `json:"rocks"`
 	RocksSmurf    bool     `json:"smurf"`
 	ShareLocation bool     `json:"state"`
@@ -68,10 +61,9 @@ func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
 // FetchTeam populates an entire TeamData struct
 func (teamID TeamID) FetchTeam() (*TeamData, error) {
 	var teamList TeamData
-	// var rows *sql.Rows
 
-	rows, err := db.Query("SELECT agentteams.gid, v.Agent, agent.IntelName, rocks.Agent, agentteams.comment, agentteams.shareLoc, Y(locations.loc), X(locations.loc), locations.upTime, v.Verified, v.Blacklisted, v.EnlID, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction, agent.communityname, agent.picurl "+
-		" FROM agentteams JOIN team ON agentteams.teamID = team.teamID JOIN agent ON agentteams.gid = agent.gid JOIN locations ON agentteams.gid = locations.gid LEFT JOIN v ON agentteams.gid = v.gid LEFT JOIN rocks ON agentteams.gid = rocks.gid WHERE agentteams.teamID = ?", teamID)
+	rows, err := db.Query("SELECT agentteams.gid, agent.IntelName, rocks.Agent, agentteams.comment, agentteams.shareLoc, Y(locations.loc), X(locations.loc), locations.upTime, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction, agent.picurl "+
+		" FROM agentteams JOIN team ON agentteams.teamID = team.teamID JOIN agent ON agentteams.gid = agent.gid JOIN locations ON agentteams.gid = locations.gid LEFT JOIN rocks ON agentteams.gid = rocks.gid WHERE agentteams.teamID = ?", teamID)
 	if err != nil {
 		log.Error(err)
 		return &teamList, err
@@ -82,27 +74,19 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 		agent := TeamMember{}
 		var lat, lon string
 		var faction IntelFaction
-		var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-		var intelname, communityname, enlID, vname, rocksname, picurl, comment sql.NullString
+		var rocksverified, rockssmurf sql.NullBool
+		var intelname, rocksname, picurl, comment sql.NullString
 
-		err := rows.Scan(&agent.Gid, &vname, &intelname, &rocksname, &comment, &agent.ShareLocation, &lat, &lon, &agent.Date, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &agent.ShareWD, &agent.LoadWD, &faction, &communityname, &picurl)
+		err := rows.Scan(&agent.Gid, &intelname, &rocksname, &comment, &agent.ShareLocation, &lat, &lon, &agent.Date, &rocksverified, &rockssmurf, &agent.ShareWD, &agent.LoadWD, &faction, &picurl)
 		if err != nil {
 			log.Error(err)
 			return &teamList, err
 		}
 
-		agent.Name = agent.Gid.bestname(intelname, vname, rocksname, communityname)
+		agent.Name = agent.Gid.bestname(intelname, rocksname)
 
 		if intelname.Valid {
 			agent.IntelName = intelname.String
-		}
-
-		if communityname.Valid {
-			agent.CommunityName = communityname.String
-		}
-
-		if vname.Valid {
-			agent.VName = vname.String
 		}
 
 		if rocksname.Valid {
@@ -111,18 +95,6 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 
 		if comment.Valid {
 			agent.Comment = comment.String
-		}
-
-		if enlID.Valid {
-			agent.EnlID = enlID.String
-		}
-
-		if vverified.Valid {
-			agent.Verified = vverified.Bool
-		}
-
-		if vblacklisted.Valid {
-			agent.Blacklisted = vblacklisted.Bool
 		}
 
 		if rocksverified.Valid {
@@ -150,7 +122,7 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 	}
 
 	var rockscomm, rockskey, joinlinktoken sql.NullString
-	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken, vteam, vrole FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken, &teamList.VTeam, &teamList.VRole); err != nil {
+	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken, FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken); err != nil {
 		log.Error(err)
 		return &teamList, err
 	}
@@ -412,8 +384,8 @@ func (gid GoogleID) SetWDLoad(teamID TeamID, state bool) error {
 func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	var tm TeamMember
 
-	var vverified, vblacklisted, rocksverified, rockssmurf sql.NullBool
-	var level, enlID, vname, rocksname, intelname, communityname, picurl sql.NullString
+	var rocksverified, rockssmurf sql.NullBool
+	var level, rocksname, intelname, picurl sql.NullString
 	var ifac IntelFaction
 
 	gid, err := id.Gid()
@@ -422,36 +394,20 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 		return nil, err
 	}
 
-	if err = db.QueryRow("SELECT agent.gid, v.agent, rocks.agent, agent.intelname, agent.intelfaction, v.level, v.verified, v.blacklisted, v.enlid, rocks.verified, rocks.smurf, agent.communityname, agent.picurl FROM agent LEFT JOIN v ON agent.gid = v.gid LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
-		&tm.Gid, &vname, &rocksname, &intelname, &ifac, &level, &vverified, &vblacklisted, &enlID, &rocksverified, &rockssmurf, &communityname, &picurl); err != nil {
+	if err = db.QueryRow("SELECT agent.gid, rocks.agent, agent.intelname, agent.intelfaction, rocks.verified, rocks.smurf, agent.picurl FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
+		&tm.Gid, &rocksname, &intelname, &ifac, &level, &rocksverified, &rockssmurf, &picurl); err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	tm.Name = tm.Gid.bestname(intelname, vname, rocksname, communityname)
+	tm.Name = tm.Gid.bestname(intelname, rocksname)
 
 	if intelname.Valid {
 		tm.IntelName = intelname.String
 	}
 
-	if communityname.Valid {
-		tm.CommunityName = communityname.String
-	}
-
-	if vname.Valid {
-		tm.VName = vname.String
-	}
-
 	if rocksname.Valid {
 		tm.RocksName = rocksname.String
-	}
-
-	if enlID.Valid {
-		tm.EnlID = enlID.String
-	}
-
-	if vverified.Valid {
-		tm.Verified = vverified.Bool
 	}
 
 	if level.Valid {
@@ -460,10 +416,6 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 			log.Error(err)
 		}
 		tm.Level = uint8(l)
-	}
-
-	if vblacklisted.Valid {
-		tm.Blacklisted = vblacklisted.Bool
 	}
 
 	if rocksverified.Valid {
