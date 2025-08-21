@@ -1,7 +1,6 @@
 package wasabeehttps
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -24,7 +23,6 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
-	"github.com/wasabee-project/Wasabee-Server/federation"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/util"
@@ -176,8 +174,6 @@ func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
 			log.Error(err)
 			flon = float64(0)
 		}
-
-		go federation.SetAgentLocation(context.Background(), gid, float32(flat), float32(flon))
 	*/
 
 	fmt.Fprint(res, jsonStatusOK)
@@ -264,8 +260,6 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	go federation.AddFirebaseToken(context.Background(), gid, token)
-
 	fmt.Fprint(res, jsonStatusOK)
 }
 
@@ -297,8 +291,6 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-
-	go federation.SetIntelData(context.Background(), gid, name, faction)
 
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -345,7 +337,13 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jwtid := token.JwtID()
+	jwtid, ok := token.JwtID()
+	if !ok {
+		err := fmt.Errorf("missing token ID")
+		log.Info(err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -375,7 +373,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	hdrs := jws.NewHeaders()
 	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
-	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key, jws.WithProtectedHeaders(hdrs)))
+	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256(), key, jws.WithProtectedHeaders(hdrs)))
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)

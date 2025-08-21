@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
@@ -18,7 +18,7 @@ func main() {
 		return
 	}
 
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import(raw)
 	if err != nil {
 		fmt.Printf("failed to create symmetric key: %s\n", err)
 		return

@@ -172,20 +172,28 @@ func authMW(next http.Handler) http.Handler {
 			return
 		}
 
+		subject, ok := token.Subject()
+		if !ok {
+			log.Infow("JWT missing subject")
+			http.Error(res, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
 		// expiration validation is implicit -- redundant with above now
 		if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
-			log.Infow("JWT validate failed", "error", err, "sub", token.Subject())
+			log.Infow("JWT validate failed", "error", err, "sub", subject)
 			http.Error(res, err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		if auth.IsRevokedJWT(token.JwtID()) {
-			log.Infow("JWT revoked", "sub", token.Subject(), "token ID", token.JwtID())
+		id, ok := token.JwtID()
+		if !ok || auth.IsRevokedJWT(id) {
+			log.Infow("JWT revoked", "sub", subject, "token ID", id)
 			http.Error(res, err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		gid := model.GoogleID(token.Subject())
+		gid := model.GoogleID(subject)
 		// too db intensive? -- cache it?
 		if !gid.Valid() {
 			// token minted on another server, never logged in to this server

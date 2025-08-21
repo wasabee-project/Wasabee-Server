@@ -210,7 +210,7 @@ func mintjwt(gid model.GoogleID) (string, error) {
 	hdrs := jws.NewHeaders()
 	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
-	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256, key, jws.WithProtectedHeaders(hdrs)))
+	signed, err := jwt.Sign(jwts, jwt.WithKey(jwa.RS256(), key, jws.WithProtectedHeaders(hdrs)))
 	if err != nil {
 		return "", err
 	}

@@ -1,14 +1,12 @@
 package wtg
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
-	"github.com/wasabee-project/Wasabee-Server/federation"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
@@ -139,8 +137,6 @@ func firstlogin(tgid model.TelegramID, name string) (model.GoogleID, error) {
 			log.Error(err)
 			return gid, err
 		}
-
-		federation.SetTelegramID(context.Background(), tgid, name)
 
 		// rocks success
 		return gid, nil
