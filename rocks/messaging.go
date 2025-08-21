@@ -115,7 +115,7 @@ func removeFromRemote(gid messaging.GoogleID, teamID messaging.TeamID) error {
 	}
 
 	if !rr.Success {
-		err = fmt.Errorf(rr.Error)
+		err = fmt.Errorf("%s", rr.Error)
 		log.Error(err)
 		if rr.Error == "Invalid key" {
 			c, _ := t.RocksCommunity()
