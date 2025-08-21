@@ -122,7 +122,7 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 	}
 
 	var rockscomm, rockskey, joinlinktoken sql.NullString
-	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken, FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken); err != nil {
+	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken); err != nil {
 		log.Error(err)
 		return &teamList, err
 	}
