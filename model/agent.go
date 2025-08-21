@@ -86,11 +86,11 @@ func (gid GoogleID) Gid() (GoogleID, error) {
 func (gid GoogleID) GetAgent() (*Agent, error) {
 	var a Agent
 	a.GoogleID = gid
-	var level, vname, pic, intelname, rocksname sql.NullString
+	var level, pic, intelname, rocksname sql.NullString
 	var rocksverified sql.NullBool
 	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, a.OneTimeToken, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &intelname, &a.OneTimeToken, &rocksverified, &a.RISC, &ifac, &pic)
+	err := db.QueryRow("SELECT rocks.agent AS Rocksname, a.intelname, a.OneTimeToken, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid WHERE a.gid = ?", gid).Scan(&rocksname, &intelname, &a.OneTimeToken, &rocksverified, &a.RISC, &ifac, &pic)
 	if err != nil && err == sql.ErrNoRows {
 		err = errors.New(ErrUnknownGID)
 		return &a, err
@@ -297,8 +297,8 @@ func (gid GoogleID) SetLocation(lat, lon string) error {
 // IngressName returns an agent's name for a given GoogleID.
 // returns err == sql.ErrNoRows if there is no such agent.
 func (gid GoogleID) IngressName() (string, error) {
-	var intelname, rocksname, vname, communityname sql.NullString
-	err := db.QueryRow("SELECT rocks.agent, v.agent, agent.intelname, agent.communityname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid LEFT JOIN v ON agent.gid = v.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &vname, &intelname, &communityname)
+	var intelname, rocksname sql.NullString
+	err := db.QueryRow("SELECT rocks.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &intelname)
 
 	if err != nil && err == sql.ErrNoRows {
 		log.Error("getting ingressname for unknown gid")
@@ -363,6 +363,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		}
 	}
 
+	// XXX leave this in place for now since historical data is "fine"
 	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(communityname) = LOWER(?)", agent).Scan(&gid)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
@@ -465,7 +466,6 @@ func (gid GoogleID) Delete() error {
 	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
-	_, _ = db.Exec("DELETE FROM v WHERE gid = ?", gid)
 	_, _ = db.Exec("DELETE FROM rocks WHERE gid = ?", gid)
 
 	return nil
@@ -650,42 +650,4 @@ func (gid GoogleID) GetAgentLocations() ([]AgentLocation, error) {
 		list = append(list, tmpL)
 	}
 	return list, nil
-}
-
-// SetCommunityName sets the name the agent is known as on the Niantic Community -- this is the most trustworthy source of agent identity
-func (gid GoogleID) SetCommunityName(name string) error {
-	if name == "" {
-		return gid.ClearCommunityName()
-	}
-
-	if len(name) > 15 {
-		log.Infow("community name too long", "gid", gid, "name", name)
-	}
-
-	if _, err := db.Exec("UPDATE agent SET communityname = LEFT(?,15) WHERE gid = ?", name, gid); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
-}
-
-// CommunityNameToGID takes a community name and returns a GoogleID
-func CommunityNameToGID(name string) (GoogleID, error) {
-	var gid GoogleID
-
-	err := db.QueryRow("SELECT gid FROM agent WHERE communityname = ?", name).Scan(&gid)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return "", err
-	}
-	return gid, nil
-}
-
-// ClearCommunityName removes an agent's community name verification
-func (gid GoogleID) ClearCommunityName() error {
-	if _, err := db.Exec("UPDATE agent SET communityname = NULL WHERE gid = ?", gid); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
 }
