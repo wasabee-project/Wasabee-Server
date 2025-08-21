@@ -19,17 +19,9 @@ var defaults *WasabeeConf = &WasabeeConf{
 	JWKpriv:     "jwkpriv.json",
 	JWKpub:      "jwkpub.json",
 
-	GRPCPort:   51500,
-	GRPCDomain: "example.com",
-
 	StoreRevisions: false,
 	RevisionsDir:   "ops",
 
-	V: wv{
-		APIEndpoint:    "https://v.enl.one/api/v1",
-		StatusEndpoint: "https://status.enl.one/api/location",
-		TeamEndpoint:   "https://v.enl.one/api/v2/teams",
-	},
 	RISC: wrisc{
 		Cert:      "risc.json",
 		Webhook:   "/GoogleRISC",
@@ -54,13 +46,5 @@ var defaults *WasabeeConf = &WasabeeConf{
 	},
 	Telegram: wtg{
 		HookPath: "/tg",
-	},
-	Apple: apple{
-		TeamID:   "XXXXXXXXXX",
-		ClientID: "rocks.wasabee,App",
-		KeyID:    "XXXXXXXXXX",
-		Secret: `-----BEGIN PRIVATE KEY-----
-YOUR_SECRET_PRIVATE_KEY
------END PRIVATE KEY-----`,
 	},
 }

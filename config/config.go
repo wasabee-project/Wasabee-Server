@@ -23,7 +23,6 @@ type WasabeeConf struct {
 	// loaded by LoadFile()
 	jwSigningKeys jwk.Set
 	jwParsingKeys jwk.Set
-	Apple         apple
 
 	RISC              wrisc
 	GoogleCreds       string // path to file.json
@@ -40,28 +39,15 @@ type WasabeeConf struct {
 	JKU               string // URL to well-known JKU (for 3rd parties to verify our JWT)
 	DefaultPictureURL string // URL to a default image for agents
 	WebUIURL          string // URL of WebUI
-	GRPCDomain        string // domain for grpc credentials
 	RevisionsDir      string // where to keep them
 
 	// configuraiton for various subsystems
-	V              wv
 	Rocks          wrocks
-	Peers          []string // hostname/ip of servers to update
 	Telegram       wtg
-	GRPCPort       uint16 // Port on which to send and receive gRPC messages
 	StoreRevisions bool   // keep a copy of each upload
 
 	// not configurable
 	fbRunning bool
-}
-
-// Configure v.enl.one
-type wv struct {
-	APIKey         string // get from V
-	APIEndpoint    string // use default
-	StatusEndpoint string // use default (unused)
-	TeamEndpoint   string // use default
-	running        bool
 }
 
 // Configuration for the Telegram Bot
@@ -112,13 +98,6 @@ type whttp struct {
 
 	CORS []string // list of sites for which browsers will make API request
 
-}
-
-type apple struct {
-	TeamID   string // 10 char
-	ClientID string // "rocks.wasabee.app"
-	KeyID    string // 10 char
-	Secret   string // from portal
 }
 
 var once sync.Once
@@ -252,16 +231,6 @@ func setupJWK(certdir, signers, parsers string) error {
 	log.Debugw("loaded JWT parsing keys", "count", c.jwParsingKeys.Len(), "path", parsers)
 
 	return nil
-}
-
-// SetVRunning sets the current running state of V integration
-func SetVRunning(v bool) {
-	c.V.running = v
-}
-
-// IsVRunning reports the current running state of V integration
-func IsVRunning() bool {
-	return c.V.running
 }
 
 // SetRocksRunning sets the current running state of Rocks integration
