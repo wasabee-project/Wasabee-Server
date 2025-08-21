@@ -111,10 +111,9 @@ func sendqueueRunner(ctx context.Context) {
 // move the error handling above into here
 // look at way of alerting orig message sender of the fact that the agent does not have the bot started
 func handleMsgError(msg tgbotapi.Chattable) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case tgbotapi.MessageConfig:
-		mc := msg.(tgbotapi.MessageConfig)
-		log.Debugw("MessageConfig", "ParseMode", mc.ParseMode, "entities", mc.Entities, "to", mc.ChatID, "ChannelUsername", mc.ChannelUsername)
+		log.Debugw("MessageConfig", "ParseMode", msg.ParseMode, "entities", msg.Entities, "to", msg.ChatID, "ChannelUsername", msg.ChannelUsername)
 	default:
 		log.Debugw("default msg type", "msg", msg)
 	}

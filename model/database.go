@@ -74,7 +74,6 @@ var tabledefs = []struct {
 	{"telegram", `CREATE TABLE telegram (telegramID bigint(20) NOT NULL, telegramName varchar(32) NOT NULL, gid char(21) NOT NULL, verified tinyint(1) NOT NULL DEFAULT 0, authtoken varchar(32) DEFAULT NULL, PRIMARY KEY (telegramID), UNIQUE KEY gid (gid), CONSTRAINT fk_agent_telegram FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 	{"telegramteam", `CREATE TABLE telegramteam (teamID varchar(64) NOT NULL, telegram bigint(20) NOT NULL, opID char(40) DEFAULT NULL, PRIMARY KEY (telegram), UNIQUE KEY (teamID), CONSTRAINT fk_tt_team FOREIGN KEY (teamID) REFERENCES team (teamID) ON DELETE CASCADE, KEY (opID), CONSTRAINT fk_tt_op FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 	{"telegramchatmembers", `CREATE TABLE telegramchatmembers (agent bigint(20) NOT NULL, chat bigint(20) NOT NULL, PRIMARY KEY (agent,chat), KEY (chat), CONSTRAINT fk_tg_chat FOREIGN KEY (chat) REFERENCES telegramteam (telegram) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
-	{"v", `CREATE TABLE v (gid char(21) NOT NULL, enlid char(42) NOT NULL, vlevel int(11) DEFAULT NULL, vpoints int(11) DEFAULT NULL, agent varchar(16) DEFAULT NULL, level int(11) DEFAULT NULL, quarantine tinyint(4) NOT NULL DEFAULT 0, active tinyint(4) NOT NULL DEFAULT 0, blacklisted tinyint(4) NOT NULL DEFAULT 0, verified tinyint(4) NOT NULL DEFAULT 0, flagged tinyint(4) NOT NULL DEFAULT 0, banned tinyint(4) NOT NULL DEFAULT 0, cellid varchar(32) DEFAULT NULL, telegram varchar(32) DEFAULT NULL, telegramID int(11) NOT NULL DEFAULT 0, startlat float DEFAULT NULL, startlon float DEFAULT NULL, distance int(11) DEFAULT NULL, vapikey char(42) DEFAULT NULL, fetched timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (gid), CONSTRAINT fk_v_gid FOREIGN KEY (gid) REFERENCES agent (gid) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 	{"zone", `CREATE TABLE zone (ID tinyint(4) NOT NULL, opID char(40) NOT NULL, name varchar(64) NOT NULL DEFAULT 'zone', color varchar(10) NOT NULL DEFAULT 'green', PRIMARY KEY (ID,opID), KEY fk_operation_zone (opID), CONSTRAINT fk_operation_zone FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 	{"zonepoints", `CREATE TABLE zonepoints (zoneID tinyint(4) NOT NULL, opID char(40) NOT NULL, position tinyint(4) UNSIGNED NOT NULL, point point NOT NULL, PRIMARY KEY (zoneID,opID,position), KEY fk_operation_zonepoint (opID), CONSTRAINT fk_operation_zonepoint FOREIGN KEY (opID) REFERENCES operation (ID) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`},
 }
@@ -137,6 +136,7 @@ func upgradeTables(ctx context.Context) {
 		upgrade string // the query to run to make the upgrade
 	}{
 		{"SHOW FIELDS FROM zonepoints where field='position' and type like '%unsigned%'", "alter table zonepoints MODIFY COLUMN position tinyint(4) unsigned"},
+		// drop table v
 	}
 
 	tx, err := db.BeginTx(ctx, nil)

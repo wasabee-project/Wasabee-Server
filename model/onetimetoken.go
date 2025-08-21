@@ -2,7 +2,7 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
@@ -21,7 +21,7 @@ func (ott OneTimeToken) Gid() (GoogleID, error) {
 
 	err := db.QueryRow("SELECT gid FROM agent WHERE OneTimeToken = ?", ott).Scan(&gid)
 	if err != nil && err == sql.ErrNoRows {
-		err := fmt.Errorf(ErrInvalidOTT)
+		err := errors.New(ErrInvalidOTT)
 		log.Warn(err)
 		return "", err
 	}

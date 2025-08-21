@@ -2,7 +2,7 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
@@ -398,7 +398,7 @@ func (o *Operation) GetTask(taskID TaskID) (*Task, error) {
 		}
 	}
 
-	return &Task{}, fmt.Errorf(ErrTaskNotFound)
+	return &Task{}, errors.New(ErrTaskNotFound)
 }
 
 // GetTaskByStepNumber returns a task based on it's operation position
@@ -415,7 +415,7 @@ func (o *Operation) GetTaskByStepNumber(step int16) (UnspecifiedTask, error) {
 			return &l, nil
 		}
 	}
-	return &Task{}, fmt.Errorf(ErrTaskNotFound)
+	return &Task{}, errors.New(ErrTaskNotFound)
 }
 
 // checkAssignments validates that assignments are made to agents on teams -- uses the precache

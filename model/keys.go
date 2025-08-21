@@ -3,7 +3,7 @@ package model
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -29,7 +29,7 @@ func (o *Operation) insertKey(k KeyOnHand, tx *sql.Tx) error {
 		log.Infow("attempt to assign key count to portal not in op", "GID", k.Gid, "resource", o.ID, "portal", k.ID)
 		if _, err = tx.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID); err != nil {
 			log.Info(err)
-			err := fmt.Errorf(ErrKeyUnableToRemove)
+			err := errors.New(ErrKeyUnableToRemove)
 			return err
 		}
 		return nil
@@ -39,14 +39,14 @@ func (o *Operation) insertKey(k KeyOnHand, tx *sql.Tx) error {
 	if k.Onhand == 0 {
 		if _, err = tx.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? AND gid = ? AND capsule = ?", o.ID, k.ID, k.Gid, k.Capsule); err != nil {
 			log.Info(err)
-			err := fmt.Errorf(ErrKeyUnableToRemove)
+			err := errors.New(ErrKeyUnableToRemove)
 			return err
 		}
 	} else {
 		_, err = tx.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule) // REPLACE OK SCB
 		if err != nil && strings.Contains(err.Error(), "Error 1452") {
 			log.Info(err)
-			return fmt.Errorf(ErrKeyUnableToRecord)
+			return errors.New(ErrKeyUnableToRecord)
 		}
 		if err != nil {
 			log.Error(err)

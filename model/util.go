@@ -1,7 +1,7 @@
 package model
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/util"
@@ -16,7 +16,7 @@ func GenerateSafeName() (string, error) {
 		var i, total int
 		name = util.GenerateName()
 		if name == "" {
-			err := fmt.Errorf(ErrNameGenFailed)
+			err := errors.New(ErrNameGenFailed)
 			return "", err
 		}
 		err := db.QueryRow("SELECT COUNT(OneTimeToken) FROM agent WHERE OneTimeToken = ?", name).Scan(&i)

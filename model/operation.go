@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -49,7 +50,7 @@ type OpStat struct {
 // All assignment data and key count data is assumed to be correct
 func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 	if o.ID.Valid() {
-		err := fmt.Errorf("attempt to create an opID that is already in use")
+		err := errors.New("attempt to create an opID that is already in use")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
 		return err
 	}
@@ -103,7 +104,7 @@ func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 
 		_, ok := portalMap[m.PortalID]
 		if !ok {
-			err := fmt.Errorf("attempt to add marker to unknown portal")
+			err := errors.New("attempt to add marker to unknown portal")
 			log.Warnw(err.Error(), "portal", m.PortalID, "resource", o.ID)
 			return err
 		}
@@ -121,13 +122,13 @@ func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 
 		_, ok := portalMap[l.From]
 		if !ok {
-			err := fmt.Errorf("attempt to source link from unknown portal")
+			err := errors.New("attempt to source link from unknown portal")
 			log.Warnw(err.Error(), "portal", l.From, "resource", o.ID)
 			return err
 		}
 		_, ok = portalMap[l.To]
 		if !ok {
-			err := fmt.Errorf("attempt to send link to unknown portal")
+			err := errors.New("attempt to send link to unknown portal")
 			log.Warnw(err.Error(), "portal", l.To, "resource", o.ID)
 			return err
 		}
@@ -171,13 +172,13 @@ func DrawInsert(ctx context.Context, o *Operation, gid GoogleID) error {
 // Database is locked per-op, each update runs in an all-or-nothing transaction
 func DrawUpdate(ctx context.Context, o *Operation, gid GoogleID) error {
 	if o.ID.IsDeletedOp() {
-		err := fmt.Errorf("attempt to update a deleted opID; duplicate and upload the copy instead")
+		err := errors.New("attempt to update a deleted opID; duplicate and upload the copy instead")
 		log.Infow(err.Error(), "GID", gid, "opID", o.ID)
 		return err
 	}
 
 	if !o.ID.Valid() {
-		err := fmt.Errorf("update op.ID does not exist")
+		err := errors.New("update op.ID does not exist")
 		log.Errorw(err.Error(), "resource", o.ID)
 		return err
 	}
@@ -326,7 +327,7 @@ func drawOpUpdateMarkers(o *Operation, portalMap map[PortalID]Portal, agentMap m
 
 		_, ok := portalMap[m.PortalID]
 		if !ok {
-			err := fmt.Errorf("attempt to add marker to unknown portal")
+			err := errors.New("attempt to add marker to unknown portal")
 			log.Warnw(err.Error(), "marker", m.PortalID, "resource", o.ID)
 			return err
 		}
@@ -371,13 +372,13 @@ func drawOpUpdateLinks(o *Operation, portalMap map[PortalID]Portal, agentMap map
 
 		_, ok := portalMap[l.From]
 		if !ok {
-			err := fmt.Errorf("attempt to source link from missing portal")
+			err := errors.New("attempt to source link from missing portal")
 			log.Warnw(err.Error(), "portal", l.From, "resource", o.ID)
 			return err
 		}
 		_, ok = portalMap[l.To]
 		if !ok {
-			err := fmt.Errorf("attempt to send link to missing portal")
+			err := errors.New("attempt to send link to missing portal")
 			log.Warnw(err.Error(), "portal", l.To, "resource", o.ID)
 			return err
 		}
@@ -442,7 +443,7 @@ func drawOpUpdateZones(o *Operation, tx *sql.Tx) error {
 // Delete removes an operation and all associated data
 func (o *Operation) Delete(gid GoogleID) error {
 	if !o.ID.IsOwner(gid) {
-		err := fmt.Errorf("permission denied")
+		err := errors.New("permission denied")
 		log.Error(err)
 		return err
 	}
@@ -491,7 +492,7 @@ func (o *Operation) Populate(gid GoogleID) error {
 	var comment sql.NullString
 	err := db.QueryRow("SELECT name, gid, color, modified, comment, lasteditid, referencetime FROM operation WHERE ID = ?", o.ID).Scan(&o.Name, &o.Gid, &o.Color, &o.Modified, &comment, &o.LastEditID, &o.ReferenceTime)
 	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf(ErrOpNotFound)
+		err = errors.New(ErrOpNotFound)
 		log.Errorw(err.Error(), "resource", o.ID, "GID", gid, "opID", o.ID)
 		return err
 	}
@@ -624,7 +625,7 @@ func (opID OperationID) Stat() (*OpStat, error) {
 		return &s, err
 	}
 	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf("no such operation")
+		err = errors.New("no such operation")
 		log.Warnw(err.Error(), "resource", opID)
 		return &s, err
 	}
@@ -634,13 +635,13 @@ func (opID OperationID) Stat() (*OpStat, error) {
 // Rename changes an op's name
 func (opID OperationID) Rename(gid GoogleID, name string) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf("permission denied")
+		err := errors.New("permission denied")
 		log.Warnw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
 
 	if name == "" {
-		err := fmt.Errorf("invalid name")
+		err := errors.New("invalid name")
 		log.Warnw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}

@@ -2,7 +2,7 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -280,7 +280,7 @@ func (l *Link) Swap() error {
 // GetLink looks up and returns a populated Link from an id
 func (o *Operation) GetLink(linkID LinkID) (*Link, error) {
 	if len(o.Links) == 0 { // XXX not a good test, not all ops have links
-		err := fmt.Errorf(ErrGetLinkUnpopulated)
+		err := errors.New(ErrGetLinkUnpopulated)
 		log.Error(err)
 		return &Link{}, err
 	}
@@ -291,5 +291,5 @@ func (o *Operation) GetLink(linkID LinkID) (*Link, error) {
 		}
 	}
 
-	return &Link{}, fmt.Errorf(ErrLinkNotFound)
+	return &Link{}, errors.New(ErrLinkNotFound)
 }

@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -91,7 +92,7 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 
 	err := db.QueryRow("SELECT v.agent AS Vname, rocks.agent AS Rocksname, a.intelname, a.OneTimeToken, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid LEFT JOIN v ON a.gid = v.gid WHERE a.gid = ?", gid).Scan(&vname, &rocksname, &intelname, &a.OneTimeToken, &rocksverified, &a.RISC, &ifac, &pic)
 	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf(ErrUnknownGID)
+		err = errors.New(ErrUnknownGID)
 		return &a, err
 	}
 	if err != nil {
@@ -371,25 +372,6 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 
-	// v.agent does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM v WHERE LOWER(agent) = LOWER(?)", agent).Scan(&gid)
-		if err != nil {
-			log.Error(err)
-			return "", err
-		}
-		return gid, nil
-	}
-	if count > 1 {
-		err := fmt.Errorf(ErrMultipleV)
-		log.Error(err)
-	}
-
 	// rocks.agent does NOT have a unique key
 	err = db.QueryRow("SELECT COUNT(gid) FROM rocks WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
 
@@ -406,7 +388,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf(ErrMultipleRocks)
+		err := errors.New(ErrMultipleRocks)
 		log.Error(err)
 	}
 
@@ -425,7 +407,7 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := fmt.Errorf(ErrMultipleIntelname)
+		err := errors.New(ErrMultipleIntelname)
 		log.Error(err)
 	}
 
@@ -554,14 +536,14 @@ func ToGid(in string) (GoogleID, error) {
 
 	switch len(in) {
 	case 0:
-		err = fmt.Errorf(ErrEmptyAgent)
+		err = errors.New(ErrEmptyAgent)
 	case 21:
 		gid = GoogleID(in)
 	default:
 		gid, err = SearchAgentName(in) // telegram @names covered here
 	}
 	if err == sql.ErrNoRows || gid == "" {
-		err = fmt.Errorf(ErrAgentNotFound)
+		err = errors.New(ErrAgentNotFound)
 		log.Infow(err.Error(), "search", in, "message", err.Error())
 		return gid, err
 	}

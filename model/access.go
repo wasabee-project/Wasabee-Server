@@ -2,7 +2,7 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
@@ -117,7 +117,7 @@ func (opID OperationID) IsOwner(gid GoogleID) bool {
 // Chown changes an operation's owner
 func (opID OperationID) Chown(gid GoogleID, to string) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf(ErrNotOpOwner)
+		err := errors.New(ErrNotOpOwner)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
@@ -129,7 +129,7 @@ func (opID OperationID) Chown(gid GoogleID, to string) error {
 	}
 
 	if !togid.Valid() {
-		err := fmt.Errorf(ErrUnknownUser)
+		err := errors.New(ErrUnknownUser)
 		log.Errorw(err.Error(), "to", to)
 		return err
 	}
@@ -164,7 +164,7 @@ func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
 // AddPerm adds a new permission to an op
 func (opID OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf(ErrNotOpOwner)
+		err := errors.New(ErrNotOpOwner)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}
@@ -175,14 +175,14 @@ func (opID OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Z
 		return err
 	}
 	if !inteam {
-		err := fmt.Errorf(ErrNotOnTeamAddPerm)
+		err := errors.New(ErrNotOnTeamAddPerm)
 		log.Errorw(err.Error(), "GID", gid, "team", teamID, "resource", opID)
 		return err
 	}
 
 	opp := OpPermRole(perm)
 	if !opp.Valid() {
-		err := fmt.Errorf(ErrUnknownPermType)
+		err := errors.New(ErrUnknownPermType)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID, "perm", perm)
 		return err
 	}
@@ -201,7 +201,7 @@ func (opID OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Z
 // DelPerm removes a permission from an op
 func (opID OperationID) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Zone) error {
 	if !opID.IsOwner(gid) {
-		err := fmt.Errorf(ErrNotOpOwner)
+		err := errors.New(ErrNotOpOwner)
 		log.Errorw(err.Error(), "GID", gid, "resource", opID)
 		return err
 	}

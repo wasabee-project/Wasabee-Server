@@ -2,7 +2,7 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -237,7 +237,7 @@ func (m MarkerID) String() string {
 // GetMarker lookup and return a populated Marker from an id
 func (o *Operation) GetMarker(markerID MarkerID) (*Marker, error) {
 	if len(o.Markers) == 0 { // XXX not a good test, not all ops have markers
-		err := fmt.Errorf(ErrGetMarkerUnpopulated)
+		err := errors.New(ErrGetMarkerUnpopulated)
 		log.Error(err)
 		return &Marker{}, err
 	}
@@ -248,7 +248,7 @@ func (o *Operation) GetMarker(markerID MarkerID) (*Marker, error) {
 		}
 	}
 
-	return &Marker{}, fmt.Errorf(ErrMarkerNotFound)
+	return &Marker{}, errors.New(ErrMarkerNotFound)
 }
 
 // MarkerOrder changes the order of the tasks for an operation
