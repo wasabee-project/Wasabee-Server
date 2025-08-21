@@ -145,49 +145,25 @@ func run(cargs *cli.Context) error {
 	var wg sync.WaitGroup
 
 	// start background tasks
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		background.Start(ctx)
-	}(ctx)
+	wg.Go(func() { background.Start(ctx) })
 
 	// start authorization
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		auth.Start(ctx)
-	}(ctx)
+	wg.Go(func() { auth.Start(ctx) })
 
 	// start firebase
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		wfb.Start(ctx)
-	}(ctx)
+	wg.Go(func() { wfb.Start(ctx) })
 
 	// Serve HTTPS -- does not use the context
 	go wasabeehttps.Start()
 
 	// start risc
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		risc.Start(ctx)
-	}(ctx)
+	wg.Go(func() { risc.Start(ctx) })
 
 	// start Telegram
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		wtg.Start(ctx)
-	}(ctx)
+	wg.Go(func() { wtg.Start(ctx) })
 
 	// start Rocks
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		rocks.Start(ctx)
-	}(ctx)
+	wg.Go(func() { rocks.Start(ctx) })
 
 	// everything is running. Wait for the OS to signal time to stop
 	sigch := make(chan os.Signal, 1)
