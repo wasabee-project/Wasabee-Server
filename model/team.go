@@ -395,7 +395,7 @@ func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
 	}
 
 	if err = db.QueryRow("SELECT agent.gid, rocks.agent, agent.intelname, agent.intelfaction, rocks.verified, rocks.smurf, agent.picurl FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
-		&tm.Gid, &rocksname, &intelname, &ifac, &level, &rocksverified, &rockssmurf, &picurl); err != nil {
+		&tm.Gid, &rocksname, &intelname, &ifac, &rocksverified, &rockssmurf, &picurl); err != nil {
 		log.Error(err)
 		return nil, err
 	}
