@@ -114,7 +114,7 @@ func (o *Operation) populateMyKeys(gid GoogleID) error {
 }
 
 // KeyOnHand updates a user's key-count for linking
-func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, capsule string) error {
+func (o *Operation) KeyOnHand(ctx context.Context, gid GoogleID, portalID PortalID, count int32, capsule string) error {
 	k := KeyOnHand{
 		ID:      portalID,
 		Gid:     gid,
@@ -123,7 +123,7 @@ func (o *Operation) KeyOnHand(gid GoogleID, portalID PortalID, count int32, caps
 	}
 
 	// get ctx from request?
-	tx, err := db.BeginTx(context.Background(), nil)
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Error(err)
 		return err

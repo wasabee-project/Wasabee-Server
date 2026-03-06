@@ -500,7 +500,7 @@ func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
 	}
 	capsule := req.FormValue("capsule")
 
-	err = op.KeyOnHand(gid, portalID, int32(onhand), capsule)
+	err = op.KeyOnHand(req.Context(), gid, portalID, int32(onhand), capsule)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
