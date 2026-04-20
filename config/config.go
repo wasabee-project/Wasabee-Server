@@ -44,7 +44,7 @@ type WasabeeConf struct {
 	// configuraiton for various subsystems
 	Rocks          wrocks
 	Telegram       wtg
-	StoreRevisions bool   // keep a copy of each upload
+	StoreRevisions bool // keep a copy of each upload
 
 	// not configurable
 	fbRunning bool

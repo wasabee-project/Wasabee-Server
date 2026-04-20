@@ -10,7 +10,7 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
-// KeyOnHand describes the already in possession for the op
+// KeyOnHand describes the keys already in possession for the op
 type KeyOnHand struct {
 	ID      PortalID `json:"portalId"`
 	Gid     GoogleID `json:"gid"`
@@ -19,101 +19,91 @@ type KeyOnHand struct {
 }
 
 // insertKey adds a user keycount to the database
-func (o *Operation) insertKey(k KeyOnHand, tx *sql.Tx) error {
-	details, err := o.ID.portalDetails(k.ID, tx)
+func (o *Operation) insertKey(ctx context.Context, k KeyOnHand, tx *sql.Tx) error {
+	// Use the transaction-safe internal portal details check
+	details, err := o.portalDetails(ctx, k.ID, tx)
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(err)
 		return err
 	}
-	if details.Name == "" {
+
+	// If the portal isn't in the op, we shouldn't have key counts for it
+	if details == nil || details.Name == "" {
 		log.Infow("attempt to assign key count to portal not in op", "GID", k.Gid, "resource", o.ID, "portal", k.ID)
-		if _, err = tx.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID); err != nil {
-			log.Info(err)
-			err := errors.New(ErrKeyUnableToRemove)
-			return err
+		_, err = tx.ExecContext(ctx, "DELETE FROM opkeys WHERE opID = ? AND portalID = ?", o.ID, k.ID)
+		if err != nil {
+			return errors.New(ErrKeyUnableToRemove)
 		}
 		return nil
 	}
 
-	k.Capsule = util.Sanitize(k.Capsule) // can be NULL, but NULL causes the unique key to not work as intended
+	k.Capsule = util.Sanitize(k.Capsule)
+
+	executor := txExecutor(tx)
 	if k.Onhand == 0 {
-		if _, err = tx.Exec("DELETE FROM opkeys WHERE opID = ? AND portalID = ? AND gid = ? AND capsule = ?", o.ID, k.ID, k.Gid, k.Capsule); err != nil {
-			log.Info(err)
-			err := errors.New(ErrKeyUnableToRemove)
-			return err
+		_, err = executor.ExecContext(ctx, "DELETE FROM opkeys WHERE opID = ? AND portalID = ? AND gid = ? AND capsule = ?", o.ID, k.ID, k.Gid, k.Capsule)
+		if err != nil {
+			return errors.New(ErrKeyUnableToRemove)
 		}
 	} else {
-		_, err = tx.Exec("REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule) // REPLACE OK SCB
-		if err != nil && strings.Contains(err.Error(), "Error 1452") {
-			log.Info(err)
-			return errors.New(ErrKeyUnableToRecord)
-		}
+		// REPLACE is appropriate here as (opID, portalID, gid, capsule) is the unique key
+		_, err = executor.ExecContext(ctx, "REPLACE INTO opkeys (opID, portalID, gid, onhand, capsule) VALUES (?, ?, ?, ?, ?)", o.ID, k.ID, k.Gid, k.Onhand, k.Capsule)
 		if err != nil {
-			log.Error(err)
+			if strings.Contains(err.Error(), "Error 1452") { // Foreign key constraint
+				return errors.New(ErrKeyUnableToRecord)
+			}
 			return err
 		}
 	}
 	return nil
 }
 
-// PopulateKeys fills in the Keys on hand list for the Operation. No authorization takes place.
-// TODO: filter based on zones
-func (o *Operation) populateKeys() error {
-	var k KeyOnHand
-	rows, err := db.Query("SELECT portalID, gid, onhand, capsule FROM opkeys WHERE opID = ?", o.ID)
+// populateKeys fills in the Keys on hand list for the Operation.
+func (o *Operation) populateKeys(ctx context.Context) error {
+	rows, err := db.QueryContext(ctx, "SELECT portalID, gid, onhand, capsule FROM opkeys WHERE opID = ?", o.ID)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
+		var k KeyOnHand
 		var cap sql.NullString
-		err := rows.Scan(&k.ID, &k.Gid, &k.Onhand, &cap)
-		if err != nil {
-			log.Error(err)
+		if err := rows.Scan(&k.ID, &k.Gid, &k.Onhand, &cap); err != nil {
 			continue
 		}
 		if cap.Valid {
 			k.Capsule = cap.String
-		} else {
-			k.Capsule = ""
 		}
 		o.Keys = append(o.Keys, k)
 	}
 	return nil
 }
 
-// PopulateKeys fills in the Keys on hand list for the Operation. No authorization takes place.
-func (o *Operation) populateMyKeys(gid GoogleID) error {
-	var k KeyOnHand
-	k.Gid = gid
-
-	rows, err := db.Query("SELECT portalID, onhand, capsule FROM opkeys WHERE opID = ? AND gid = ?", o.ID, gid)
+// populateMyKeys fills in only the keys for a specific agent
+func (o *Operation) populateMyKeys(ctx context.Context, gid GoogleID) error {
+	rows, err := db.QueryContext(ctx, "SELECT portalID, onhand, capsule FROM opkeys WHERE opID = ? AND gid = ?", o.ID, gid)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
+		var k KeyOnHand
+		k.Gid = gid
 		var cap sql.NullString
-		err := rows.Scan(&k.ID, &k.Onhand, &cap)
-		if err != nil {
-			log.Error(err)
+		if err := rows.Scan(&k.ID, &k.Onhand, &cap); err != nil {
 			continue
 		}
 		if cap.Valid {
 			k.Capsule = cap.String
-		} else {
-			k.Capsule = ""
 		}
 		o.Keys = append(o.Keys, k)
 	}
 	return nil
 }
 
-// KeyOnHand updates a user's key-count for linking
+// KeyOnHand updates a user's key-count via the public API
 func (o *Operation) KeyOnHand(ctx context.Context, gid GoogleID, portalID PortalID, count int32, capsule string) error {
 	k := KeyOnHand{
 		ID:      portalID,
@@ -122,27 +112,15 @@ func (o *Operation) KeyOnHand(ctx context.Context, gid GoogleID, portalID Portal
 		Capsule: capsule,
 	}
 
-	// get ctx from request?
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
-	defer func() {
-		err := tx.Rollback()
-		if err != nil && err != sql.ErrTxDone {
-			log.Error(err)
-		}
-	}()
+	defer tx.Rollback()
 
-	if err := o.insertKey(k, tx); err != nil {
-		log.Error(err)
+	if err := o.insertKey(ctx, k, tx); err != nil {
 		return err
 	}
 
-	if err := tx.Commit(); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	return tx.Commit()
 }

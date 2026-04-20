@@ -11,57 +11,49 @@ import (
 	"strings"
 	"time"
 
-	// "golang.org/x/oauth2"
-	// "golang.org/x/oauth2/google"
-	// "github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 
-	// "github.com/gorilla/sessions"
 	"github.com/wasabee-project/Wasabee-Server/auth"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/util"
 
-	// XXX gorilla has logging middleware, use that instead?
 	"github.com/unrolled/logger"
 )
 
 var srv *http.Server
-
 var unrolled *logger.Logger
 
-// var oauthStateString string
+// private type for context keys to avoid collisions
+type wasabeeCtxKey string
+const gidKey wasabeeCtxKey = "X-Wasabee-GID"
 
-const jsonType = "application/json; charset=UTF-8"
-const jsonTypeShort = "application/json"
-const jsonStatusOK = `{"status":"ok"}`
-const jsonStatusEmpty = `{"status":"error","error":"Empty JSON"}`
+const (
+	jsonType       = "application/json; charset=UTF-8"
+	jsonTypeShort  = "application/json"
+	jsonStatusOK    = `{"status":"ok"}`
+	jsonStatusEmpty = `{"status":"error","error":"Empty JSON"}`
+)
 
-// Start launches the HTTP server which is responsible for the frontend and the HTTP API.
+// Start launches the HTTP server
 func Start() {
 	c := config.Get()
 	c.HTTP.Webroot = strings.TrimSuffix(c.HTTP.Webroot, "/")
 
-	// set up the scanners list
 	scanners = util.NewSafemap()
 
 	oc := config.GetOauthConfig()
 	if oc.ClientID == "" || oc.ClientSecret == "" {
-		log.Errorw("startup", "Oauth ClientID", oc.ClientID, "Oauth ClientSecret", oc.ClientSecret)
 		log.Fatal("Oauth Client not configured: logins will fail")
 	}
 
-	// oauthStateString = util.GenerateName()
-	// log.Debugw("startup", "oauthStateString", oauthStateString)
-
-	log.Debugw("startup", "https logfile", c.HTTP.Logfile)
-	// #nosec
 	logfileHandle, err := os.OpenFile(c.HTTP.Logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	unrolled = logger.New(logger.Options{
 		Prefix: "wasabee",
 		Out:    logfileHandle,
@@ -73,12 +65,14 @@ func Start() {
 			"/apple-touch-icon.png"},
 	})
 
-	// setup the main router an built-in subrouters
-	router := setupRouter()
+	// setupRouter now returns *http.ServeMux
+	mux := setupRouter()
 
-	// serve
+	// Wrap the mux in global middleware
+	handler := headersMW(unrolled.Handler(mux))
+
 	srv = &http.Server{
-		Handler:           router,
+		Handler:           handler,
 		Addr:              c.HTTP.ListenHTTPS,
 		WriteTimeout:      (30 * time.Second),
 		ReadTimeout:       (30 * time.Second),
@@ -93,19 +87,16 @@ func Start() {
 	fc := path.Join(c.Certs, c.CertFile)
 	k := path.Join(c.Certs, c.CertKey)
 	log.Infow("startup", "port", c.HTTP.ListenHTTPS, "url", c.HTTP.Webroot, "message", "online at "+c.HTTP.Webroot)
+	
 	if err := srv.ListenAndServeTLS(fc, k); err != http.ErrServerClosed {
 		log.Error(err)
 	}
 }
 
-// Shutdown forces a graceful shutdown of the https server
+// Shutdown forces a graceful shutdown
 func Shutdown() error {
 	log.Infow("shutdown", "message", "shutting down HTTPS server")
-	if err := srv.Shutdown(context.Background()); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	return srv.Shutdown(context.Background())
 }
 
 func headersMW(next http.Handler) http.Handler {
@@ -119,43 +110,39 @@ func headersMW(next http.Handler) http.Handler {
 		permitted := config.Get().HTTP.CORS
 		ref := permitted[0]
 		origin := req.Header.Get("Origin")
-		for p, v := range permitted {
+		for _, v := range permitted {
 			if origin == v {
-				ref = permitted[p]
+				ref = v
+				break
 			}
 		}
 
 		res.Header().Add("Server", "Wasabee-Server")
 		res.Header().Add("Content-Security-Policy", fmt.Sprintf("frame-ancestors %s", ref))
-		res.Header().Add("X-Frame-Options", fmt.Sprintf("allow-from %s", ref)) // deprecated
+		res.Header().Add("X-Frame-Options", fmt.Sprintf("allow-from %s", ref))
 		res.Header().Add("Access-Control-Allow-Origin", ref)
 		res.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, HEAD, DELETE, PATCH")
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
 		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match, Authorization")
 		res.Header().Add("Content-Type", jsonType)
+		
+		if req.Method == "OPTIONS" {
+			res.WriteHeader(http.StatusOK)
+			return
+		}
+
 		next.ServeHTTP(res, req)
 	})
 }
 
-/*
-func logRequestMW(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		log.Debug("REQ", req.Method, req.RequestURI)
-		rec := statusRecorder{res, 200}
-		next.ServeHTTP(&rec, req)
-		log.Debug("RESP", rec.status, req.RequestURI)
-	})
-}
-*/
-
 func authMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
 		sessionName := config.Get().HTTP.SessionName
 
 		h := req.Header.Get("Authorization")
 		if h == "" {
-			log.Infow("JWT missing")
-			http.Error(res, "JWT missing", http.StatusUnauthorized)
+			http.Error(res, jsonError(fmt.Errorf("JWT missing")), http.StatusUnauthorized)
 			return
 		}
 
@@ -163,52 +150,47 @@ func authMW(next http.Handler) http.Handler {
 			jwt.WithKeySet(config.JWParsingKeys(), jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
 			jwt.WithValidate(true),
 			jwt.WithAudience(sessionName),
-			// jwt.WithIssuer("https://accounts.google.com"),
 			jwt.WithAcceptableSkew(20*time.Second),
 		)
 		if err != nil {
-			log.Info(err)
-			http.Error(res, err.Error(), http.StatusUnauthorized)
+			http.Error(res, jsonError(err), http.StatusUnauthorized)
 			return
 		}
 
 		subject, ok := token.Subject()
 		if !ok {
-			log.Infow("JWT missing subject")
-			http.Error(res, err.Error(), http.StatusUnauthorized)
-			return
-		}
-
-		// expiration validation is implicit -- redundant with above now
-		if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
-			log.Infow("JWT validate failed", "error", err, "sub", subject)
-			http.Error(res, err.Error(), http.StatusUnauthorized)
+			http.Error(res, jsonError(fmt.Errorf("JWT missing subject")), http.StatusUnauthorized)
 			return
 		}
 
 		id, ok := token.JwtID()
 		if !ok || auth.IsRevokedJWT(id) {
 			log.Infow("JWT revoked", "sub", subject, "token ID", id)
-			http.Error(res, err.Error(), http.StatusUnauthorized)
+			http.Error(res, jsonError(fmt.Errorf("JWT revoked")), http.StatusUnauthorized)
 			return
 		}
 
 		gid := model.GoogleID(subject)
-		// too db intensive? -- cache it?
-		if !gid.Valid() {
-			// token minted on another server, never logged in to this server
-			if err := gid.FirstLogin(); err != nil {
+		if !gid.Valid(ctx) {
+			if err := gid.FirstLogin(ctx); err != nil {
 				log.Info(err)
-				http.Error(res, err.Error(), http.StatusUnauthorized)
+				http.Error(res, jsonError(err), http.StatusUnauthorized)
 				return
 			}
 		}
 
-		// pass the GoogleID around so subsequent functions can easily access it
-		ctx := context.WithValue(req.Context(), "X-Wasabee-GID", gid)
-		req = req.WithContext(ctx)
-		next.ServeHTTP(res, req)
+		// Update context with the GID
+		ctx = context.WithValue(ctx, gidKey, gid)
+		next.ServeHTTP(res, req.WithContext(ctx))
 	})
+}
+
+func getAgentID(req *http.Request) (model.GoogleID, error) {
+	gid, ok := req.Context().Value(gidKey).(model.GoogleID)
+	if !ok {
+		return "", fmt.Errorf("unable to identify agent")
+	}
+	return gid, nil
 }
 
 func jsonError(e error) string {

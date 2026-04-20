@@ -1,21 +1,22 @@
 package model
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	"strconv"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// DefensiveKeyList is the list of all defensive keys
+// DefensiveKeyList is the list of all defensive keys an agent is authorized to see
 type DefensiveKeyList struct {
-	Fetched       string
-	DefensiveKeys []DefensiveKey
+	Fetched       string         `json:"fetched"`
+	DefensiveKeys []DefensiveKey `json:"keys"`
 }
 
-// DefensiveKey is a sub-struct of DefensiveKeyList
+// DefensiveKey describes a portal key held for defensive purposes
 type DefensiveKey struct {
 	GID      GoogleID `json:"GID"`
 	PortalID PortalID `json:"PortalID"`
@@ -27,40 +28,49 @@ type DefensiveKey struct {
 }
 
 // ListDefensiveKeys gets all keys an agent is authorized to know about.
-func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
+// Authorization: Agent must be on a team where they have loadWD=1 and the other agent has shareWD=1.
+func (gid GoogleID) ListDefensiveKeys(ctx context.Context) (DefensiveKeyList, error) {
 	var dkl DefensiveKeyList
-	var name, lat, lon sql.NullString
+	dkl.DefensiveKeys = make([]DefensiveKey, 0)
 
-	rows, err := db.Query("SELECT gid, portalID, capID, count, name, Y(loc) AS lat, X(loc) AS lon FROM defensivekeys WHERE gid IN (SELECT DISTINCT other.gid FROM agentteams=other, agentteams=me WHERE me.gid = ? AND me.loadWD = 1 AND other.teamID = me.teamID AND other.shareWD = 1)", gid)
+	// SQL optimization: Join agentteams me and other to find authorized peers
+	rows, err := db.QueryContext(ctx, `
+		SELECT k.gid, k.portalID, k.capID, k.count, k.name, ST_Y(k.loc) AS lat, ST_X(k.loc) AS lon 
+		FROM defensivekeys k
+		WHERE k.gid IN (
+			SELECT DISTINCT other.gid 
+			FROM agentteams AS other, agentteams AS me 
+			WHERE me.gid = ? AND me.loadWD = 1 
+			AND other.teamID = me.teamID 
+			AND other.shareWD = 1
+		)`, gid)
 
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			dkl.Fetched = time.Now().Format(time.RFC3339)
+			return dkl, nil
+		}
 		log.Error(err)
 		return dkl, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		dk := DefensiveKey{}
+		var dk DefensiveKey
+		var name, lat, lon sql.NullString
 		err := rows.Scan(&dk.GID, &dk.PortalID, &dk.CapID, &dk.Count, &name, &lat, &lon)
 		if err != nil {
-			log.Error(err)
 			continue
-			// return dkl, err
 		}
+
 		if name.Valid {
 			dk.Name = name.String
-		} else {
-			dk.Name = ""
 		}
 		if lat.Valid {
 			dk.Lat = lat.String
-		} else {
-			dk.Lat = ""
 		}
 		if lon.Valid {
 			dk.Lon = lon.String
-		} else {
-			dk.Lon = ""
 		}
 		dkl.DefensiveKeys = append(dkl.DefensiveKeys, dk)
 	}
@@ -69,34 +79,29 @@ func (gid GoogleID) ListDefensiveKeys() (DefensiveKeyList, error) {
 	return dkl, nil
 }
 
-// InsertDefensiveKey adds a new key to the list
-func (gid GoogleID) InsertDefensiveKey(dk DefensiveKey) error {
+// InsertDefensiveKey adds or updates a key in the list
+func (gid GoogleID) InsertDefensiveKey(ctx context.Context, dk DefensiveKey) error {
 	if dk.Count < 1 {
-		if _, err := db.Exec("DELETE FROM defensivekeys WHERE gid = ? AND portalID = ?", gid, dk.PortalID); err != nil {
-			log.Error(err)
-			return err
-		}
-	} else {
-		// convert to float64 and back to reduce the garbage input
-		var flat, flon float64
-
-		flat, err := strconv.ParseFloat(dk.Lat, 64)
-		if err != nil {
-			log.Error(err)
-			flat = float64(0)
-		}
-
-		flon, err = strconv.ParseFloat(dk.Lon, 64)
-		if err != nil {
-			log.Error(err)
-			flon = float64(0)
-		}
-		point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
-
-		if _, err := db.Exec("INSERT INTO defensivekeys (gid, portalID, capID, count, name, loc) VALUES (?, ?, ?, ?, ?, PointFromText(?)) ON DUPLICATE KEY UPDATE capID = ?, count = ?", gid, dk.PortalID, dk.CapID, dk.Count, dk.Name, point, dk.CapID, dk.Count); err != nil {
-			log.Error(err)
-			return err
-		}
+		_, err := db.ExecContext(ctx, "DELETE FROM defensivekeys WHERE gid = ? AND portalID = ?", gid, dk.PortalID)
+		return err
 	}
+
+	// Sanitize and convert coordinates
+	flat, _ := strconv.ParseFloat(dk.Lat, 64)
+	flon, _ := strconv.ParseFloat(dk.Lon, 64)
+
+	// Use ST_Point directly with parameters instead of fmt.Sprintf for safety and precision
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO defensivekeys (gid, portalID, capID, count, name, loc) 
+		VALUES (?, ?, ?, ?, ?, ST_Point(?, ?)) 
+		ON DUPLICATE KEY UPDATE capID = ?, count = ?, name = ?, loc = ST_Point(?, ?)`,
+		gid, dk.PortalID, dk.CapID, dk.Count, dk.Name, flat, flon,
+		dk.CapID, dk.Count, dk.Name, flat, flon)
+
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	return nil
 }

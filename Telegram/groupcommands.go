@@ -2,6 +2,7 @@ package wtg
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -14,12 +15,12 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
-func gcUnlink(inMsg *tgbotapi.Update) {
+func gcUnlink(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -27,7 +28,7 @@ func gcUnlink(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	teamID, _, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	teamID, _, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -35,7 +36,7 @@ func gcUnlink(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	owns, err := gid.OwnsTeam(teamID)
+	owns, err := gid.OwnsTeam(ctx, teamID)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -51,7 +52,7 @@ func gcUnlink(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	if err := teamID.UnlinkFromTelegramChat(); err != nil {
+	if err := teamID.UnlinkFromTelegramChat(ctx); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
@@ -61,17 +62,16 @@ func gcUnlink(inMsg *tgbotapi.Update) {
 	msg.Text, err = templates.ExecuteLang("Unlinked", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
 		log.Error(err)
-		// do something?
 	}
 	sendQueue <- msg
 }
 
-func gcLink(inMsg *tgbotapi.Update) {
+func gcLink(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -88,7 +88,7 @@ func gcLink(inMsg *tgbotapi.Update) {
 		}
 		log.Debugw("linking team and chat", "chatID", inMsg.Message.Chat.ID, "GID", gid, "resource", team, "opID", opID)
 
-		owns, err := gid.OwnsTeam(team)
+		owns, err := gid.OwnsTeam(ctx, team)
 		if err != nil {
 			log.Error(err)
 			msg.Text = err.Error()
@@ -102,7 +102,7 @@ func gcLink(inMsg *tgbotapi.Update) {
 			return
 		}
 
-		if err := team.LinkToTelegramChat(model.TelegramID(inMsg.Message.Chat.ID), opID); err != nil {
+		if err := team.LinkToTelegramChat(ctx, model.TelegramID(inMsg.Message.Chat.ID), opID); err != nil {
 			log.Error(err)
 			msg.Text = err.Error()
 			sendQueue <- msg
@@ -117,19 +117,18 @@ func gcLink(inMsg *tgbotapi.Update) {
 	sendQueue <- msg
 }
 
-func gcStatus(inMsg *tgbotapi.Update) {
+func gcStatus(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	teamID, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
-		// log.Debug(err) // not linked is not an error
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
 	}
-	name, _ := teamID.Name()
+	name, _ := teamID.Name(ctx)
 
 	type data struct {
 		OPStat   *model.OpStat
@@ -142,7 +141,7 @@ func gcStatus(inMsg *tgbotapi.Update) {
 	}
 
 	if opID != "" {
-		d.OPStat, err = opID.Stat()
+		d.OPStat, err = opID.Stat(ctx)
 		if err != nil {
 			log.Error(err)
 		}
@@ -155,12 +154,12 @@ func gcStatus(inMsg *tgbotapi.Update) {
 	sendQueue <- msg
 }
 
-func gcAssigned(inMsg *tgbotapi.Update) {
+func gcAssigned(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -171,7 +170,7 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	var filterGid model.GoogleID
 	tokens := strings.Split(inMsg.Message.Text, " ")
 	if len(tokens) > 1 {
-		filterGid, err = model.SearchAgentName(strings.TrimSpace(tokens[1]))
+		filterGid, err = model.SearchAgentName(ctx, strings.TrimSpace(tokens[1]))
 		if err != nil {
 			log.Error(err)
 			filterGid = "0"
@@ -179,7 +178,7 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	} else {
 		filterGid = ""
 	}
-	teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	teamID, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -194,14 +193,14 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	}
 	o := model.Operation{}
 	o.ID = opID
-	if err := o.Populate(gid); err != nil {
+	if err := o.Populate(ctx, gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
 	}
 	var b bytes.Buffer
-	name, _ := teamID.Name()
+	name, _ := teamID.Name(ctx)
 
 	type data struct {
 		OpName           string
@@ -215,14 +214,13 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 
 	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
-		// if the caller requested the results to be filtered...
-		if filterGid != "" && !m.IsAssignedTo(filterGid) {
+		if filterGid != "" && !m.IsAssignedTo(ctx, filterGid) {
 			continue
 		}
 		if m.State != "pending" {
-			p, _ := o.PortalDetails(m.PortalID, gid)
-			a, _ := m.AssignedTo.IngressName()
-			tg, _ := m.AssignedTo.TelegramName()
+			p, _ := o.PortalDetails(ctx, m.PortalID, gid)
+			a, _ := m.AssignedTo.IngressName(ctx)
+			tg, _ := m.AssignedTo.TelegramName(ctx)
 			if tg != "" {
 				a = fmt.Sprintf("@%s", tg)
 			}
@@ -242,12 +240,12 @@ func gcAssigned(inMsg *tgbotapi.Update) {
 	sendQueue <- msg
 }
 
-func gcUnassigned(inMsg *tgbotapi.Update) {
+func gcUnassigned(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -255,7 +253,7 @@ func gcUnassigned(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	teamID, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	teamID, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -270,14 +268,14 @@ func gcUnassigned(inMsg *tgbotapi.Update) {
 	}
 	o := model.Operation{}
 	o.ID = opID
-	if err := o.Populate(gid); err != nil {
+	if err := o.Populate(ctx, gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
 	}
 	var b bytes.Buffer
-	name, _ := teamID.Name()
+	name, _ := teamID.Name(ctx)
 
 	type data struct {
 		OpName           string
@@ -292,7 +290,7 @@ func gcUnassigned(inMsg *tgbotapi.Update) {
 	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
 		if m.State == "pending" {
-			p, _ := o.PortalDetails(m.PortalID, gid)
+			p, _ := o.PortalDetails(ctx, m.PortalID, gid)
 			b.WriteString(fmt.Sprintf("<b>%d</b> / <a href=\"http://maps.google.com/?q=%s,%s\">%s</a> / %s\n", m.Order, p.Lat, p.Lon, p.Name, model.NewMarkerType(m.Type)))
 		}
 		d.MarkersFormatted = append(d.MarkersFormatted, b.String())
@@ -302,12 +300,12 @@ func gcUnassigned(inMsg *tgbotapi.Update) {
 	sendQueue <- msg
 }
 
-func gcClaim(inMsg *tgbotapi.Update) {
+func gcClaim(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -315,7 +313,7 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	_, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	_, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -330,7 +328,7 @@ func gcClaim(inMsg *tgbotapi.Update) {
 	}
 	o := model.Operation{}
 	o.ID = opID
-	if err := o.Populate(gid); err != nil {
+	if err := o.Populate(ctx, gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
@@ -359,7 +357,7 @@ func gcClaim(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
-	if err := task.Claim(gid); err != nil {
+	if err := task.Claim(ctx, gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
@@ -377,11 +375,11 @@ func gcClaim(inMsg *tgbotapi.Update) {
 
 	switch task := task.(type) {
 	case *model.Marker:
-		p, _ := o.PortalDetails(task.PortalID, gid)
+		p, _ := o.PortalDetails(ctx, task.PortalID, gid)
 		d.Name = p.Name
 		d.Type = model.NewMarkerType(task.Type)
 	case *model.Link:
-		p, _ := o.PortalDetails(task.From, gid)
+		p, _ := o.PortalDetails(ctx, task.From, gid)
 		d.Name = p.Name
 		d.Type = "link"
 	}
@@ -390,12 +388,12 @@ func gcClaim(inMsg *tgbotapi.Update) {
 	sendQueue <- msg
 }
 
-func gcAcknowledge(inMsg *tgbotapi.Update) {
+func gcAcknowledge(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -403,7 +401,7 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	_, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	_, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -418,7 +416,7 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 	}
 	o := model.Operation{}
 	o.ID = opID
-	if err := o.Populate(gid); err != nil {
+	if err := o.Populate(ctx, gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
@@ -448,7 +446,7 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	if !task.IsAssignedTo(gid) {
+	if !task.IsAssignedTo(ctx, gid) {
 		err := fmt.Errorf("task must be assigned to you to acknowledge")
 		log.Error(err)
 		msg.Text = err.Error()
@@ -456,14 +454,14 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	if err := task.Acknowledge(); err != nil {
+	if err := task.Acknowledge(ctx); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
 	}
 	m := task.(*model.Marker)
-	p, _ := o.PortalDetails(m.PortalID, gid)
+	p, _ := o.PortalDetails(ctx, m.PortalID, gid)
 
 	type data struct {
 		Type  string
@@ -480,12 +478,12 @@ func gcAcknowledge(inMsg *tgbotapi.Update) {
 	sendQueue <- msg
 }
 
-func gcReject(inMsg *tgbotapi.Update) {
+func gcReject(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
 	msg.ParseMode = "HTML"
 	msg.DisableWebPagePreview = true
 
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid()
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -493,7 +491,7 @@ func gcReject(inMsg *tgbotapi.Update) {
 		return
 	}
 
-	_, opID, err := model.ChatToTeam(inMsg.Message.Chat.ID)
+	_, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
@@ -508,7 +506,7 @@ func gcReject(inMsg *tgbotapi.Update) {
 	}
 	o := model.Operation{}
 	o.ID = opID
-	if err := o.Populate(gid); err != nil {
+	if err := o.Populate(ctx, gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
@@ -537,14 +535,14 @@ func gcReject(inMsg *tgbotapi.Update) {
 		sendQueue <- msg
 		return
 	}
-	if err := task.Reject(gid); err != nil {
+	if err := task.Reject(ctx, gid); err != nil {
 		log.Error(err)
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
 	}
 	m := task.(*model.Marker)
-	p, _ := o.PortalDetails(m.PortalID, gid)
+	p, _ := o.PortalDetails(ctx, m.PortalID, gid)
 
 	type data struct {
 		Type  string
@@ -558,5 +556,111 @@ func gcReject(inMsg *tgbotapi.Update) {
 	}
 
 	msg.Text, _ = templates.ExecuteLang("Rejected", inMsg.Message.From.LanguageCode, d)
+	sendQueue <- msg
+}
+
+func gcTaskAction(ctx context.Context, inMsg *tgbotapi.Update, action string) {
+	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
+	msg.ParseMode = "HTML"
+	msg.DisableWebPagePreview = true
+
+	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	_, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	if opID == "" {
+		msg.Text = "Team must be linked to operation for task actions"
+		sendQueue <- msg
+		return
+	}
+
+	o := model.Operation{ID: opID}
+	if err := o.Populate(ctx, gid); err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	tokens := strings.Split(inMsg.Message.Text, " ")
+	if len(tokens) < 2 {
+		msg.Text = "Specify the task step #"
+		sendQueue <- msg
+		return
+	}
+
+	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
+	if err != nil {
+		msg.Text = "Invalid step number"
+		sendQueue <- msg
+		return
+	}
+
+	task, err := o.GetTaskByStepNumber(int16(step))
+	if err != nil {
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+var templateName string
+    switch action {
+    case "claim":
+        err = task.Claim(ctx, gid)
+        templateName = "Claim"
+    case "acknowledge": // matching your case in processChatCommand
+        if !task.IsAssignedTo(ctx, gid) {
+            err = fmt.Errorf("task must be assigned to you to acknowledge")
+        } else {
+            err = task.Acknowledge(ctx)
+            templateName = "Acknowledged"
+        }
+    case "reject":
+        err = task.Reject(ctx, gid)
+        templateName = "Rejected"
+    }
+
+	if err != nil {
+		log.Error(err)
+		msg.Text = err.Error()
+		sendQueue <- msg
+		return
+	}
+
+	// Prepare data for template
+	type data struct {
+		Type  string
+		Name  string
+		Order int16
+	}
+	d := data{
+		Order: task.GetOrder(),
+	}
+
+	// Resolve Portal Name and Task Type for the template
+	switch t := task.(type) {
+	case *model.Marker:
+		p, _ := o.PortalDetails(ctx, t.PortalID, gid)
+		d.Name = p.Name
+		d.Type = model.NewMarkerType(t.Type)
+	case *model.Link:
+		p, _ := o.PortalDetails(ctx, t.From, gid)
+		d.Name = p.Name
+		d.Type = "link"
+	}
+
+	msg.Text, _ = templates.ExecuteLang(templateName, inMsg.Message.From.LanguageCode, d)
 	sendQueue <- msg
 }

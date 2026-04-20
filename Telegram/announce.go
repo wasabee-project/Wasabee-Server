@@ -1,6 +1,8 @@
 package wtg
 
 import (
+	"context"
+
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -9,23 +11,28 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
-func sendAnnounce(t messaging.TeamID, a messaging.Announce) error {
+// sendAnnounce broadcasts a team announcement to the linked Telegram chat.
+func sendAnnounce(ctx context.Context, t messaging.TeamID, a messaging.Announce) error {
 	teamID := model.TeamID(t)
-	tgchat, err := teamID.TelegramChat()
+
+	// Get the chat ID linked to this team
+	tgchat, err := teamID.TelegramChat(ctx)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	// if team not linked to TG chat, silently drop
-	if tgchat >= 0 { // chats are negative, agents are positive
+	// Telegram Chat IDs for groups and channels are always negative.
+	// If it's 0 (not linked) or positive (somehow an agent ID), we skip.
+	if tgchat >= 0 {
 		return nil
 	}
 
+	// Try to execute the template; fall back to raw text if it fails
 	text, err := templates.ExecuteLang("announcement", "en", a)
 	if err != nil {
-		log.Error(err)
-		// send it raw
+		log.Errorw("template execution failed for announcement", "error", err)
+		text = a.Text
 	}
 	if text == "" {
 		text = a.Text
@@ -33,7 +40,9 @@ func sendAnnounce(t messaging.TeamID, a messaging.Announce) error {
 
 	msg := tgbotapi.NewMessage(tgchat, text)
 	msg.ParseMode = "HTML"
+	msg.DisableWebPagePreview = false // Announcements might have useful links
 
+	// Hand it off to the rate-limited sender
 	sendQueue <- msg
 	return nil
 }

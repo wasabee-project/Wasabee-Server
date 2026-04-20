@@ -8,16 +8,14 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
-// these three could be one map, since the keys will not(*) collide
-// for discernable values of not
 var rlAgent *util.Safemap
 var rlOp *util.Safemap
 var rlTeam *util.Safemap
 
 // standard messaging rates apply
-const baseChangeRate = time.Second * 10
+const baseChangeRate = 10 * time.Second
 
-// three values since these could be adjusted per-type, right now they move together
+// global throttle modifiers
 var agentLocationChangeRate = baseChangeRate
 var mapChangeRate = baseChangeRate
 var teamRate = baseChangeRate
@@ -28,79 +26,52 @@ func ratelimitinit() {
 	rlTeam = util.NewSafemap()
 }
 
-func ratelimitTeam(teamID model.TeamID) bool {
+// checkLimit returns true if we ARE ALLOWED to send (i.e., not rate limited)
+func checkLimit(sm *util.Safemap, key string, rate time.Duration) bool {
 	now := time.Now()
-
-	i, ok := rlTeam.Get(string(teamID))
+	val, ok := sm.Get(key)
 	if !ok {
-		rlTeam.Set(string(teamID), uint64(now.Unix()))
+		sm.Set(key, uint64(now.Unix()))
 		return true
 	}
 
-	t := time.Unix(int64(i), 0)
-
-	if t.After(now.Add(0 - agentLocationChangeRate)) {
-		rlTeam.Set(string(teamID), uint64(now.Unix()))
-		return true
+	lastSent := time.Unix(int64(val), 0)
+	// If now is before (lastSent + rate), we are sending too fast
+	if now.Before(lastSent.Add(rate)) {
+		return false
 	}
 
-	return false
+	sm.Set(key, uint64(now.Unix()))
+	return true
+}
+
+func ratelimitTeam(teamID model.TeamID) bool {
+	return checkLimit(rlTeam, string(teamID), teamRate)
 }
 
 func ratelimitAgent(gid model.GoogleID) bool {
-	now := time.Now()
-
-	i, ok := rlAgent.Get(string(gid))
-	if !ok {
-		rlAgent.Set(string(gid), uint64(now.Unix()))
-		return true
-	}
-
-	t := time.Unix(int64(i), 0)
-
-	if t.After(now.Add(0 - agentLocationChangeRate)) {
-		rlAgent.Set(string(gid), uint64(now.Unix()))
-		return true
-	}
-
-	return false
+	return checkLimit(rlAgent, string(gid), agentLocationChangeRate)
 }
 
 func ratelimitOp(opID model.OperationID) bool {
-	now := time.Now()
-
-	i, ok := rlOp.Get(string(opID))
-	if !ok {
-		rlOp.Set(string(opID), uint64(now.Unix()))
-		return true
-	}
-
-	t := time.Unix(int64(i), 0)
-
-	if t.After(now.Add(0 - mapChangeRate)) {
-		rlOp.Set(string(opID), uint64(now.Unix()))
-		return true
-	}
-
-	return false
+	return checkLimit(rlOp, string(opID), mapChangeRate)
 }
 
-// break this in to per-type slowdowns....
+// slowdown exponentially increases the wait time between pushes
 func slowdown() {
-	log.Debug("slowing firebase rate")
-
-	agentLocationChangeRate = agentLocationChangeRate + agentLocationChangeRate
-	mapChangeRate = mapChangeRate + mapChangeRate
-	teamRate = teamRate + teamRate
-	log.Infow("firebase rate limit slowing down", "mapChangeRate", mapChangeRate)
+	agentLocationChangeRate *= 2
+	mapChangeRate *= 2
+	teamRate *= 2
+	log.Infow("firebase rate limit increased (slowing down)", "mapChangeRate", mapChangeRate)
 }
 
+// ResetDefaultRateLimits brings us back to the 10s base rate
 func ResetDefaultRateLimits() {
 	if mapChangeRate == baseChangeRate {
 		return
 	}
 
-	log.Debug("resetting firebase rate")
+	log.Debug("resetting firebase rate to defaults")
 	agentLocationChangeRate = baseChangeRate
 	mapChangeRate = baseChangeRate
 	teamRate = baseChangeRate

@@ -1,9 +1,9 @@
 package model
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
-	"strconv"
+	"errors"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
@@ -23,7 +23,7 @@ type TeamData struct {
 	TeamMembers   []TeamMember `json:"agents"`
 }
 
-// TeamMember is the light version of AgentData, containing visible information exported to teams
+// TeamMember is the light version of AgentData
 type TeamMember struct {
 	Gid           GoogleID `json:"id"`
 	Name          string   `json:"name"`
@@ -44,25 +44,21 @@ type TeamMember struct {
 }
 
 // AgentInTeam checks to see if a agent is in a team and enabled.
-func (gid GoogleID) AgentInTeam(team TeamID) (bool, error) {
-	var count string
-
-	err := db.QueryRow("SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
+func (gid GoogleID) AgentInTeam(ctx context.Context, team TeamID) (bool, error) {
+	var count int
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM agentteams WHERE teamID = ? AND gid = ?", team, gid).Scan(&count)
 	if err != nil {
 		return false, err
 	}
-	i, err := strconv.ParseInt(count, 10, 32)
-	if err != nil || i < 1 {
-		return false, err
-	}
-	return true, nil
+	return count > 0, nil
 }
 
 // FetchTeam populates an entire TeamData struct
-func (teamID TeamID) FetchTeam() (*TeamData, error) {
+func (teamID TeamID) FetchTeam(ctx context.Context) (*TeamData, error) {
 	var teamList TeamData
 
-	rows, err := db.Query("SELECT agentteams.gid, agent.IntelName, rocks.Agent, agentteams.comment, agentteams.shareLoc, Y(locations.loc), X(locations.loc), locations.upTime, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction, agent.picurl "+
+	// Note: X() and Y() are legacy spatial functions, ensure your MariaDB version supports them or use ST_X()/ST_Y()
+	rows, err := db.QueryContext(ctx, "SELECT agentteams.gid, agent.IntelName, rocks.Agent, agentteams.comment, agentteams.shareLoc, ST_Y(locations.loc), ST_X(locations.loc), locations.upTime, rocks.verified, rocks.smurf, agentteams.sharewd, agentteams.loadwd, agent.intelfaction, agent.picurl "+
 		" FROM agentteams JOIN team ON agentteams.teamID = team.teamID JOIN agent ON agentteams.gid = agent.gid JOIN locations ON agentteams.gid = locations.gid LEFT JOIN rocks ON agentteams.gid = rocks.gid WHERE agentteams.teamID = ?", teamID)
 	if err != nil {
 		log.Error(err)
@@ -72,7 +68,7 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 
 	for rows.Next() {
 		agent := TeamMember{}
-		var lat, lon string
+		var lat, lon sql.NullFloat64
 		var faction IntelFaction
 		var rocksverified, rockssmurf sql.NullBool
 		var intelname, rocksname, picurl, comment sql.NullString
@@ -83,34 +79,28 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 			return &teamList, err
 		}
 
+		// Assume bestname will need ctx eventually if it hits DB
 		agent.Name = agent.Gid.bestname(intelname, rocksname)
 
 		if intelname.Valid {
 			agent.IntelName = intelname.String
 		}
-
 		if rocksname.Valid {
 			agent.RocksName = rocksname.String
 		}
-
 		if comment.Valid {
 			agent.Comment = comment.String
 		}
-
 		if rocksverified.Valid {
 			agent.RocksVerified = rocksverified.Bool
 		}
-
 		if rockssmurf.Valid {
 			agent.RocksSmurf = rockssmurf.Bool
 		}
 
-		if agent.ShareLocation {
-			agent.Lat, _ = strconv.ParseFloat(lat, 64)
-			agent.Lon, _ = strconv.ParseFloat(lon, 64)
-		} else {
-			agent.Lat = 0
-			agent.Lon = 0
+		if agent.ShareLocation && lat.Valid && lon.Valid {
+			agent.Lat = lat.Float64
+			agent.Lon = lon.Float64
 		}
 
 		if picurl.Valid {
@@ -122,10 +112,13 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 	}
 
 	var rockscomm, rockskey, joinlinktoken sql.NullString
-	if err := db.QueryRow("SELECT name, rockscomm, rockskey, joinLinkToken FROM team WHERE teamID = ?", teamID).Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken); err != nil {
+	err = db.QueryRowContext(ctx, "SELECT name, rockscomm, rockskey, joinLinkToken FROM team WHERE teamID = ?", teamID).
+		Scan(&teamList.Name, &rockscomm, &rockskey, &joinlinktoken)
+	if err != nil {
 		log.Error(err)
 		return &teamList, err
 	}
+
 	teamList.ID = teamID
 	if rockscomm.Valid {
 		teamList.RocksComm = rockscomm.String
@@ -141,447 +134,327 @@ func (teamID TeamID) FetchTeam() (*TeamData, error) {
 }
 
 // Owner returns the owner of the team
-func (teamID TeamID) Owner() (GoogleID, error) {
+func (teamID TeamID) Owner(ctx context.Context) (GoogleID, error) {
 	var owner GoogleID
-
-	err := db.QueryRow("SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
-	if err != nil && err == sql.ErrNoRows {
-		// log.Warnw("non-existent team ownership queried", "resource", teamID)
-		return "", nil
-	} else if err != nil {
+	err := db.QueryRowContext(ctx, "SELECT owner FROM team WHERE teamID = ?", teamID).Scan(&owner)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
 		log.Error(err)
 		return "", err
 	}
 	return owner, nil
 }
 
-// OwnsTeam returns true if the GoogleID owns the team identified by teamID
-func (gid GoogleID) OwnsTeam(teamID TeamID) (bool, error) {
+// OwnsTeam returns true if the GoogleID owns the team
+func (gid GoogleID) OwnsTeam(ctx context.Context, teamID TeamID) (bool, error) {
 	var count int
-
-	err := db.QueryRow("SELECT COUNT(*) FROM team WHERE teamID = ? AND owner = ?", teamID, gid).Scan(&count)
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM team WHERE teamID = ? AND owner = ?", teamID, gid).Scan(&count)
 	if err != nil {
 		return false, err
 	}
-	if count < 1 {
-		return false, nil
-	}
-	return true, nil
+	return count > 0, nil
 }
 
-// NewTeam initializes a new team and returns a teamID
-// the creating gid is added and enabled on that team by default
-func (gid GoogleID) NewTeam(name string) (TeamID, error) {
-	team, err := GenerateSafeName()
+// NewTeam initializes a new team
+func (gid GoogleID) NewTeam(ctx context.Context, name string) (TeamID, error) {
+	team, err := GenerateSafeName(ctx)
 	if err != nil {
-		log.Error(err)
 		return "", err
 	}
 
 	name = util.Sanitize(name)
 	if name == "" {
-		err = fmt.Errorf("attempting to create unnamed team: using team ID")
-		log.Errorw(err.Error(), "GID", gid, "resource", team, "message", err.Error())
 		name = team
 	}
 
-	_, err = db.Exec("INSERT INTO team (teamID, owner, name, rockskey, rockscomm, vteam, vrole) VALUES (?,?,?,NULL,NULL,0,0)", team, gid, name)
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		log.Error(err)
 		return "", err
 	}
-	_, err = db.Exec("INSERT INTO agentteams (teamID, gid, shareLoc, comment, shareWD, loadWD) VALUES (?,?,0,'owner',0,0)", team, gid)
-	if err != nil {
-		log.Error(err)
-		return TeamID(team), err
+	defer tx.Rollback()
+
+	if _, err = tx.ExecContext(ctx, "INSERT INTO team (teamID, owner, name, rockskey, rockscomm, vteam, vrole) VALUES (?,?,?,NULL,NULL,0,0)", team, gid, name); err != nil {
+		return "", err
+	}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO agentteams (teamID, gid, shareLoc, comment, shareWD, loadWD) VALUES (?,?,0,'owner',0,0)", team, gid); err != nil {
+		return "", err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", err
 	}
 	return TeamID(team), nil
 }
 
 // Rename sets a new name for a teamID
-// does not check team ownership -- caller should take care of authorization
-func (teamID TeamID) Rename(name string) error {
+func (teamID TeamID) Rename(ctx context.Context, name string) error {
 	name = util.Sanitize(name)
 	if name == "" {
-		err := fmt.Errorf("empty name on rename")
-		log.Errorw(err.Error(), "resource", teamID, "message", err.Error())
-		return err
+		return errors.New("empty name on rename")
 	}
 
-	if _, err := db.Exec("UPDATE team SET name = ? WHERE teamID = ?", name, teamID); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	_, err := db.ExecContext(ctx, "UPDATE team SET name = ? WHERE teamID = ?", name, teamID)
+	return err
 }
 
 // Delete removes the team identified by teamID
-// does not check team ownership -- caller should take care of authorization
-func (teamID TeamID) Delete() error {
-	// do them one-at-a-time to take care of rocks/v/firebase/telegram sync
-	rows, err := db.Query("SELECT gid FROM agentteams WHERE teamID = ?", teamID)
+func (teamID TeamID) Delete(ctx context.Context) error {
+	rows, err := db.QueryContext(ctx, "SELECT gid FROM agentteams WHERE teamID = ?", teamID)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var gid GoogleID
-		err = rows.Scan(&gid)
-		if err != nil {
-			log.Warn(err)
+		if err = rows.Scan(&gid); err != nil {
 			continue
 		}
-		err = teamID.RemoveAgent(gid)
-		if err != nil {
-			log.Warn(err)
-			continue
-		}
+		// Passing context through to nested removal
+		_ = teamID.RemoveAgent(ctx, gid)
 	}
 
-	_, err = db.Exec("DELETE FROM permissions WHERE teamID = ?", teamID)
+	// Transactions ensure consistency during deletion
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
-	_, err = db.Exec("DELETE FROM team WHERE teamID = ?", teamID)
-	if err != nil {
-		log.Warn(err)
+	defer tx.Rollback()
+
+	if _, err = tx.ExecContext(ctx, "DELETE FROM permissions WHERE teamID = ?", teamID); err != nil {
 		return err
 	}
-	return nil
+	if _, err = tx.ExecContext(ctx, "DELETE FROM team WHERE teamID = ?", teamID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // AddAgent adds a agent to a team
-func (teamID TeamID) AddAgent(in AgentID) error {
-	gid, err := in.Gid()
+func (teamID TeamID) AddAgent(ctx context.Context, in AgentID) error {
+	gid, err := in.Gid(ctx)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("INSERT IGNORE INTO agentteams (teamID, gid, shareLoc, comment, shareWD, loadWD) VALUES (?, ?, 0, 'agents', 0, 0)", teamID, gid)
+	_, err = db.ExecContext(ctx, "INSERT IGNORE INTO agentteams (teamID, gid, shareLoc, comment, shareWD, loadWD) VALUES (?, ?, 0, 'agents', 0, 0)", teamID, gid)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	messaging.AddToRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
-	// log.Infow("adding agent to team", "GID", gid, "resource", teamID, "message", "adding agent to team")
+	// Assuming messaging needs context later
+	messaging.AddToRemote(ctx, messaging.GoogleID(gid), messaging.TeamID(teamID))
 	return nil
 }
 
-// RemoveAgent removes a agent (identified by location share key, GoogleID, agent name, or EnlID) from a team.
-func (teamID TeamID) RemoveAgent(in AgentID) error {
-	gid, err := in.Gid()
+// RemoveAgent removes an agent from a team
+func (teamID TeamID) RemoveAgent(ctx context.Context, in AgentID) error {
+	gid, err := in.Gid(ctx)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("DELETE FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid)
+	_, err = db.ExecContext(ctx, "DELETE FROM agentteams WHERE teamID = ? AND gid = ?", teamID, gid)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	messaging.RemoveFromRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
+	messaging.RemoveFromRemote(ctx, messaging.GoogleID(gid), messaging.TeamID(teamID))
 
-	// instruct the agent to delete all associated ops
-	// this may get ops for which the agent has double-access, but they can just re-fetch them
-	rows, err := db.Query("SELECT opID FROM permissions WHERE teamID = ?", teamID)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var opID OperationID
-		err = rows.Scan(&opID)
-		if err != nil {
-			log.Error(err)
-			// continue
-		}
-		messaging.AgentDeleteOperation(messaging.GoogleID(gid), messaging.OperationID(opID))
-	}
-
-	// remove this team from ops the agent owns
-	oprows, err := db.Query("SELECT ID FROM operation WHERE gid = ?", gid)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return err
-	}
-	defer oprows.Close()
-
-	for oprows.Next() {
-		var ID OperationID
-		err = oprows.Scan(&ID)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-
-		if _, err := db.Exec("DELETE FROM permissions WHERE teamID = ? AND opID = ?", teamID, ID); err != nil {
-			log.Error(err)
-			return err
+	// Clean up permissions/assignments associated with this team/agent
+	rows, err := db.QueryContext(ctx, "SELECT opID FROM permissions WHERE teamID = ?", teamID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var opID OperationID
+			if err := rows.Scan(&opID); err == nil {
+				messaging.AgentDeleteOperation(ctx, messaging.GoogleID(gid), messaging.OperationID(opID))
+			}
 		}
 	}
 
-	return nil
+	// Remove team from ops the agent owns
+	_, err = db.ExecContext(ctx, "DELETE FROM permissions WHERE teamID = ? AND opID IN (SELECT ID FROM operation WHERE gid = ?)", teamID, gid)
+	return err
 }
 
 // Chown changes a team's ownership
-// caller must verify permissions
-func (teamID TeamID) Chown(to AgentID) error {
-	gid, err := to.Gid()
+func (teamID TeamID) Chown(ctx context.Context, to AgentID) error {
+	gid, err := to.Gid(ctx)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	_, err = db.Exec("UPDATE team SET owner = ? WHERE teamID = ?", gid, teamID)
-	if err != nil {
-		log.Error(err)
-		return (err)
-	}
-	return nil
+	_, err = db.ExecContext(ctx, "UPDATE team SET owner = ? WHERE teamID = ?", gid, teamID)
+	return err
 }
 
 func (teamID TeamID) String() string {
 	return string(teamID)
 }
 
-// SetTeamState updates the agent's shareLoc the team
-func (gid GoogleID) SetTeamState(teamID TeamID, state bool) error {
-	if _, err := db.Exec("UPDATE agentteams SET shareLoc = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+// SetTeamState updates the agent's shareLoc
+func (gid GoogleID) SetTeamState(ctx context.Context, teamID TeamID, state bool) error {
+	_, err := db.ExecContext(ctx, "UPDATE agentteams SET shareLoc = ? WHERE gid = ? AND teamID = ?", state, gid, teamID)
+	return err
 }
 
-// SetWDShare updates the agent's willingness to share WD keys with other agents on this team
-func (gid GoogleID) SetWDShare(teamID TeamID, state bool) error {
-	if _, err := db.Exec("UPDATE agentteams SET shareWD = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+// SetWDShare updates the agent's willingness to share WD keys
+func (gid GoogleID) SetWDShare(ctx context.Context, teamID TeamID, state bool) error {
+	_, err := db.ExecContext(ctx, "UPDATE agentteams SET shareWD = ? WHERE gid = ? AND teamID = ?", state, gid, teamID)
+	return err
 }
 
-// SetWDLoad updates the agent's desire to load WD keys from other agents on this team
-func (gid GoogleID) SetWDLoad(teamID TeamID, state bool) error {
-	if _, err := db.Exec("UPDATE agentteams SET loadWD = ? WHERE gid = ? AND teamID = ?", state, gid, teamID); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+// SetWDLoad updates the agent's desire to load WD keys
+func (gid GoogleID) SetWDLoad(ctx context.Context, teamID TeamID, state bool) error {
+	_, err := db.ExecContext(ctx, "UPDATE agentteams SET loadWD = ? WHERE gid = ? AND teamID = ?", state, gid, teamID)
+	return err
 }
 
-// FetchAgent populates the minimal Agent struct with data anyone can see
-func FetchAgent(id AgentID, caller GoogleID) (*TeamMember, error) {
+// FetchAgent populates the minimal Agent struct
+func FetchAgent(ctx context.Context, id AgentID, caller GoogleID) (*TeamMember, error) {
 	var tm TeamMember
 
-	var rocksverified, rockssmurf sql.NullBool
-	var level, rocksname, intelname, picurl sql.NullString
-	var ifac IntelFaction
-
-	gid, err := id.Gid()
+	gid, err := id.Gid(ctx)
 	if err != nil {
-		log.Error(err)
 		return nil, err
 	}
 
-	if err = db.QueryRow("SELECT agent.gid, rocks.agent, agent.intelname, agent.intelfaction, rocks.verified, rocks.smurf, agent.picurl FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(
-		&tm.Gid, &rocksname, &intelname, &ifac, &rocksverified, &rockssmurf, &picurl); err != nil {
-		log.Error(err)
+	var rocksverified, rockssmurf sql.NullBool
+	var rocksname, intelname, picurl sql.NullString
+	var ifac IntelFaction
+
+	err = db.QueryRowContext(ctx, "SELECT agent.gid, rocks.agent, agent.intelname, agent.intelfaction, rocks.verified, rocks.smurf, agent.picurl FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).
+		Scan(&tm.Gid, &rocksname, &intelname, &ifac, &rocksverified, &rockssmurf, &picurl)
+	if err != nil {
 		return nil, err
 	}
 
 	tm.Name = tm.Gid.bestname(intelname, rocksname)
-
 	if intelname.Valid {
 		tm.IntelName = intelname.String
 	}
-
 	if rocksname.Valid {
 		tm.RocksName = rocksname.String
 	}
-
-	if level.Valid {
-		l, err := strconv.ParseInt(level.String, 10, 8)
-		if err != nil {
-			log.Error(err)
-		}
-		tm.Level = uint8(l)
-	}
-
 	if rocksverified.Valid {
 		tm.RocksVerified = rocksverified.Bool
 	}
-
 	if rockssmurf.Valid {
 		tm.RocksSmurf = rockssmurf.Bool
 	}
-
 	tm.IntelFaction = ifac.String()
-
 	if picurl.Valid {
 		tm.PictureURL = picurl.String
 	}
 
-	// XXX make this a distinct function?
+	// Check if they share location with the caller
 	var count int
-	if err = db.QueryRow("SELECT COUNT(*) FROM agentteams=x, agentteams=y WHERE x.gid = ? AND x.shareLoc = 1 AND y.gid = ?", id, caller).Scan(&count); err != nil {
-		log.Error(err)
-		return nil, err
+	_ = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM agentteams AS x JOIN agentteams AS y ON x.teamID = y.teamID WHERE x.gid = ? AND x.shareLoc = 1 AND y.gid = ?", gid, caller).Scan(&count)
+
+	if count > 0 {
+		var lat, lon sql.NullFloat64
+		if err = db.QueryRowContext(ctx, "SELECT ST_Y(loc), ST_X(loc) FROM locations WHERE gid = ?", gid).Scan(&lat, &lon); err == nil {
+			tm.Lat = lat.Float64
+			tm.Lon = lon.Float64
+		}
 	}
 
-	// no sharing location with this agent
-	if count < 1 {
-		return &tm, nil
-	}
-
-	var lat, lon string
-	if err = db.QueryRow("SELECT Y(loc), X(loc) FROM locations WHERE gid = ?", id).Scan(&lat, &lon); err != nil {
-		log.Error(err)
-		return nil, err
-	}
-	tm.Lat, _ = strconv.ParseFloat(lat, 64)
-	tm.Lon, _ = strconv.ParseFloat(lon, 64)
 	return &tm, nil
 }
 
-// Name returns a team's friendly name for a TeamID
-func (teamID TeamID) Name() (string, error) {
+// Name returns a team's friendly name
+func (teamID TeamID) Name(ctx context.Context) (string, error) {
 	var name string
-	err := db.QueryRow("SELECT name FROM team WHERE teamID = ?", teamID).Scan(&name)
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-	return name, nil
+	err := db.QueryRowContext(ctx, "SELECT name FROM team WHERE teamID = ?", teamID).Scan(&name)
+	return name, err
 }
 
-// teamList is used for getting a list of all an agent's teams
-func (gid GoogleID) teamList() []TeamID {
-	var tid TeamID
+// TeamList returns a list of all an agent's teams
+func (gid GoogleID) TeamList(ctx context.Context) []TeamID {
 	var x []TeamID
-
-	rows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ?", gid)
+	rows, err := db.QueryContext(ctx, "SELECT teamID FROM agentteams WHERE gid = ?", gid)
 	if err != nil {
-		log.Error(err)
 		return x
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		if err := rows.Scan(&tid); err != nil {
-			log.Error(err)
-			continue
+		var tid TeamID
+		if err := rows.Scan(&tid); err == nil {
+			x = append(x, tid)
 		}
-		x = append(x, tid)
 	}
 	return x
 }
 
-// TeamListEnabled is used for getting a list of agent's enabled teams
-func (gid GoogleID) TeamListEnabled() []TeamID {
-	var tid TeamID
+// TeamListEnabled returns a list of agent's enabled teams
+func (gid GoogleID) TeamListEnabled(ctx context.Context) []TeamID {
 	var x []TeamID
-
-	rows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ? AND shareLoc = 1", gid)
+	rows, err := db.QueryContext(ctx, "SELECT teamID FROM agentteams WHERE gid = ? AND shareLoc = 1", gid)
 	if err != nil {
-		log.Error(err)
 		return x
 	}
-
 	defer rows.Close()
+
 	for rows.Next() {
-		if err := rows.Scan(&tid); err != nil {
-			log.Error(err)
-			continue
+		var tid TeamID
+		if err := rows.Scan(&tid); err == nil {
+			x = append(x, tid)
 		}
-		x = append(x, tid)
 	}
 	return x
 }
 
-// SetComment sets an agent's comment on a given team
-func (teamID TeamID) SetComment(gid GoogleID, comment string) error {
+// SetComment sets an agent's comment on a team
+func (teamID TeamID) SetComment(ctx context.Context, gid GoogleID, comment string) error {
 	c := makeNullString(util.Sanitize(comment))
-
-	_, err := db.Exec("UPDATE agentteams SET comment = ? WHERE teamID = ? AND gid = ?", c, teamID, gid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	_, err := db.ExecContext(ctx, "UPDATE agentteams SET comment = ? WHERE teamID = ? AND gid = ?", c, teamID, gid)
+	return err
 }
 
 // GenerateJoinToken sets a team's join link token
-func (teamID TeamID) GenerateJoinToken() (string, error) {
-	key, err := GenerateSafeName()
+func (teamID TeamID) GenerateJoinToken(ctx context.Context) (string, error) {
+	key, err := GenerateSafeName(ctx)
 	if err != nil {
-		log.Error(err)
-		return key, err
+		return "", err
 	}
 
-	_, err = db.Exec("UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID)
-	if err != nil {
-		log.Error(err)
-		return key, err
-	}
-	return key, nil
+	_, err = db.ExecContext(ctx, "UPDATE team SET joinLinkToken = ? WHERE teamID = ?", key, teamID)
+	return key, err
 }
 
 // DeleteJoinToken removes a team's join link token
-func (teamID TeamID) DeleteJoinToken() error {
-	_, err := db.Exec("UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+func (teamID TeamID) DeleteJoinToken(ctx context.Context) error {
+	_, err := db.ExecContext(ctx, "UPDATE team SET joinLinkToken = NULL WHERE teamID = ?", teamID)
+	return err
 }
 
-// JoinToken verifies a join link
-func (teamID TeamID) JoinToken(gid GoogleID, key string) error {
-	var count string
-
-	err := db.QueryRow("SELECT COUNT(*) FROM team WHERE teamID = ? AND joinLinkToken= ?", teamID, key).Scan(&count)
+// JoinToken verifies a join link and adds the agent
+func (teamID TeamID) JoinToken(ctx context.Context, gid GoogleID, key string) error {
+	var count int
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM team WHERE teamID = ? AND joinLinkToken = ?", teamID, key).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	i, err := strconv.ParseInt(count, 10, 32)
-	if err != nil {
-		return err
-	}
-	if i != 1 {
-		err = fmt.Errorf("invalid team join token")
-		log.Errorw(err.Error(), "resource", teamID, "GID", gid)
-		return err
+	if count != 1 {
+		return errors.New("invalid team join token")
 	}
 
-	err = teamID.AddAgent(gid)
-	if err != nil {
+	if err = teamID.AddAgent(ctx, gid); err != nil {
 		return err
 	}
-	err = teamID.SetComment(gid, "joined via link")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return teamID.SetComment(ctx, gid, "joined via link")
 }
 
-func (teamID TeamID) FetchFBTokens() ([]string, error) {
+func (teamID TeamID) FetchFBTokens(ctx context.Context) ([]string, error) {
 	var tokens []string
 
-	rows, err := db.Query("SELECT firebase.token FROM agentteams JOIN firebase ON firebase.gid = agentteams.gid WHERE agentteams.teamID = ?", teamID)
+	rows, err := db.QueryContext(ctx, "SELECT firebase.token FROM agentteams JOIN firebase ON firebase.gid = agentteams.gid WHERE agentteams.teamID = ?", teamID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return tokens, err
@@ -600,10 +473,10 @@ func (teamID TeamID) FetchFBTokens() ([]string, error) {
 	return tokens, nil
 }
 
-func GetAllTeams() ([]TeamID, error) {
+func GetAllTeams(ctx context.Context) ([]TeamID, error) {
 	var teams []TeamID
 
-	rows, err := db.Query("SELECT DISTINCT teamID FROM team")
+	rows, err := db.QueryContext(ctx, "SELECT DISTINCT teamID FROM team")
 	if err != nil && err != sql.ErrNoRows {
 		log.Error(err)
 		return teams, err
@@ -623,13 +496,8 @@ func GetAllTeams() ([]TeamID, error) {
 }
 
 // Valid checks to see if team exists.
-func (teamID TeamID) Valid() bool {
-	var i uint8
-
-	err := db.QueryRow("SELECT COUNT(*) FROM team WHERE teamID = ?", teamID).Scan(&i)
-	if err != nil || i != 1 {
-		return false
-	}
-
-	return true
+func (teamID TeamID) Valid(ctx context.Context) bool {
+	var count int
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM team WHERE teamID = ?", teamID).Scan(&count)
+	return err == nil && count == 1
 }

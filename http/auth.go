@@ -1,12 +1,11 @@
 package wasabeehttps
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	// "net/http/httputil"
 	"os"
 	"time"
 
@@ -23,8 +22,8 @@ import (
 )
 
 // used in getAgentInfo and apTokenRoute -- takes a user's Oauth2 token and requests their info
-func getOauthUserInfo(accessToken string) ([]byte, error) {
-	req, err := http.NewRequest("GET", config.Get().HTTP.OauthUserInfoURL, nil)
+func getOauthUserInfo(ctx context.Context, accessToken string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", config.Get().HTTP.OauthUserInfoURL, nil)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -47,18 +46,9 @@ func getOauthUserInfo(accessToken string) ([]byte, error) {
 	return body, nil
 }
 
-func getAgentID(req *http.Request) (model.GoogleID, error) {
-	if x := req.Context().Value("X-Wasabee-GID").(model.GoogleID); x != "" {
-		return x, nil
-	}
-
-	err := errors.New("getAgentID called for unauthenticated agent")
-	log.Error(err)
-	return "", err
-}
-
 // apTokenRoute receives a Google Oauth2 token from the Android/iOS app and sets the JWT
 func apTokenRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	var m struct {
 		Gid model.GoogleID `json:"id"`
 		Pic string         `json:"picture"`
@@ -96,7 +86,7 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	contents, err := getOauthUserInfo(t.AccessToken)
+	contents, err := getOauthUserInfo(ctx, t.AccessToken)
 	if err != nil {
 		log.Info(err)
 		err = fmt.Errorf("aptok failed getting agent info from Google")
@@ -110,7 +100,6 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// yes, we've seen this with a bad accessToken
 	if m.Gid == "" {
 		log.Errorw("bad aptok", "from client", t, "from google", m)
 		err = fmt.Errorf("no GoogleID set")
@@ -119,25 +108,25 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	authorized, err := auth.Authorize(m.Gid) // V & .rocks authorization takes place here
+	authorized, err := auth.Authorize(ctx, m.Gid) // V & .rocks authorization takes place here
 	if !authorized {
-		err = fmt.Errorf("access denied: %s", err.Error())
+		err = fmt.Errorf("access denied: %v", err)
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
+	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	name, err := m.Gid.IngressName()
+	name, err := m.Gid.IngressName(ctx)
 	if err != nil {
 		log.Error(err)
 	}
 
-	agent, err := m.Gid.GetAgent()
+	agent, err := m.Gid.GetAgent(ctx)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -166,13 +155,10 @@ func apTokenRoute(res http.ResponseWriter, req *http.Request) {
 	)
 
 	// notify other teams of agent login
-	_ = wfb.AgentLogin(m.Gid.TeamListEnabled(), m.Gid)
-
-	// res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
-	// res.Header().Set("Cache-Control", "no-store")
+	_ = wfb.AgentLogin(ctx, m.Gid.TeamListEnabled(ctx), m.Gid)
 
 	// update picture
-	_ = m.Gid.UpdatePicture(m.Pic)
+	_ = m.Gid.UpdatePicture(ctx, m.Pic)
 
 	fmt.Fprint(res, string(data))
 }
@@ -185,14 +171,10 @@ func mintjwt(gid model.GoogleID) (string, error) {
 		return "", err
 	}
 
-	// XXX use last, rather than first?
 	key, ok := config.JWSigningKeys().Key(0)
 	if !ok {
 		return "", fmt.Errorf("encryption jwk not set")
 	}
-
-	// keyid, ok := key.Get("kid")
-	// if ok { log.Debug("using kid: ", keyid.(string), " to sign this token") }
 
 	jwts, err := jwt.NewBuilder().
 		IssuedAt(time.Now()).
@@ -206,7 +188,6 @@ func mintjwt(gid model.GoogleID) (string, error) {
 		return "", err
 	}
 
-	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
 	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
@@ -215,14 +196,11 @@ func mintjwt(gid model.GoogleID) (string, error) {
 		return "", err
 	}
 
-	// log.Infow("jwt", "signed", string(signed[:]))
 	return string(signed[:]), nil
 }
 
-// the user must first log in to the web interface to get this token
-// which they use to log in via Wasabee-IITC or Wasabee-Mobile
-// in the future can this bee the JWT value?
 func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	if !contentTypeIs(req, "multipart/form-data") {
 		err := fmt.Errorf("invalid content-type (needs to be multipart/form-data)")
 		log.Warn(err)
@@ -238,7 +216,7 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	gid, err := token.Increment()
+	gid, err := token.Increment(ctx)
 	if err != nil {
 		incrementScanner(req)
 		err := fmt.Errorf("invalid one-time token")
@@ -247,24 +225,24 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	authorized, err := auth.Authorize(gid) // V & .rocks authorization takes place here
+	authorized, err := auth.Authorize(ctx, gid)
 	if !authorized {
-		err = fmt.Errorf("access denied: %s", err)
+		err = fmt.Errorf("access denied: %v", err)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	if err != nil { // XXX if !authorized err will be set ; if err is set !authorized ... this is redundant
+	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	name, err := gid.IngressName()
+	name, err := gid.IngressName(ctx)
 	if err != nil {
 		log.Error(err)
 	}
 
-	agent, err := gid.GetAgent()
+	agent, err := gid.GetAgent(ctx)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -292,12 +270,9 @@ func oneTimeTokenRoute(res http.ResponseWriter, req *http.Request) {
 		"message", name+" oneTimeToken login",
 		"client", req.Header.Get("User-Agent"))
 
-	if err := wfb.AgentLogin(gid.TeamListEnabled(), gid); err != nil {
+	if err := wfb.AgentLogin(ctx, gid.TeamListEnabled(ctx), gid); err != nil {
 		log.Error(err)
 	}
-
-	// res.Header().Set("Connection", "close") // no keep-alives so cookies get processed, go makes this work in HTTP/2
-	// res.Header().Set("Cache-Control", "no-store")
 
 	fmt.Fprint(res, string(data))
 }

@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	// "net/http/httputil"
-	// "strings"
 
-	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/util"
@@ -15,198 +12,177 @@ import (
 
 var scanners *util.Safemap
 
-func setupRouter() *mux.Router {
-	// Main Router
-	router := config.NewRouter()
+func setupRouter() *http.ServeMux {
+	// Main Mux
+	mux := http.NewServeMux()
 	c := config.Get().HTTP
 
-	// apply to all
-	router.Use(headersMW)
-	// router.Use(debugMW)
-	router.Use(unrolled.Handler)
-	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
-	router.MethodNotAllowedHandler = http.HandlerFunc(notFoundRoute)
-	router.Methods("OPTIONS").HandlerFunc(optionsRoute)
+	// static files
+	frontendPath := config.Get().FrontendPath
+	fs := http.FileServer(http.Dir(frontendPath))
+	
+	// Redirection handlers for common files
+	mux.Handle("GET /favicon.ico", http.RedirectHandler("/static/favicon.ico", http.StatusFound))
+	mux.Handle("GET /robots.txt", http.RedirectHandler("/static/robots.txt", http.StatusFound))
+	mux.Handle("GET /sitemap.xml", http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
+	mux.Handle("GET /.well-known/security.txt", http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
 
-	// Google Oauth2 stuff (constants defined in server.go)
-	router.HandleFunc(c.ApTokenURL, apTokenRoute).Methods("POST")           // all clients should use this
-	router.HandleFunc(c.OneTimeTokenURL, oneTimeTokenRoute).Methods("POST") // provided for cases where aptok does not work
+	// Firebase service worker
+	mux.HandleFunc("GET /firebase-messaging-sw.js", fbmswRoute)
+	mux.HandleFunc("GET /{$}", frontRoute)
 
-	// Apple Authentication routes
-	// router.HandleFunc("/apple", appleRoute) // need more details, good enough for now
+	// Oauth2
+	mux.HandleFunc("POST "+c.ApTokenURL, apTokenRoute)
+	mux.HandleFunc("POST "+c.OneTimeTokenURL, oneTimeTokenRoute)
 
-	// common files that live under /static
-	router.Path("/favicon.ico").Handler(http.RedirectHandler("/static/favicon.ico", http.StatusFound))
-	router.Path("/robots.txt").Handler(http.RedirectHandler("/static/robots.txt", http.StatusFound))
-	router.Path("/sitemap.xml").Handler(http.RedirectHandler("/static/sitemap.xml", http.StatusFound))
-	router.Path("/.well-known/security.txt").Handler(http.RedirectHandler("/static/.well-known/security.txt", http.StatusFound))
+	// Static file serving
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// this cannot be a redirect -- sent it raw
-	router.HandleFunc("/firebase-messaging-sw.js", fbmswRoute).Methods("GET")
-	router.HandleFunc("/", frontRoute).Methods("GET")
+	// API Sub-router logic
+	// Note: Standard mux doesn't have "Subrouters" in the gorilla sense, 
+	// but we just prefix the strings or use a middleware check
+	setupAuthRoutes(mux, c.APIPathURL)
 
-	// /api/v1/... route
-	api := config.Subrouter(c.APIPathURL)
-	api.Methods("OPTIONS").HandlerFunc(optionsRoute)
-	setupAuthRoutes(api)
-	api.Use(authMW)
-	api.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-	api.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-	api.PathPrefix("/api").HandlerFunc(notFoundJSONRoute)
+	// OPTIONS catch-all
+	mux.HandleFunc("OPTIONS /", optionsRoute)
 
-	// /static files
-	static := config.Subrouter("/static")
-	static.PathPrefix("/").Handler(http.FileServer(http.Dir(config.Get().FrontendPath)))
-	// static.NotFoundHandler = http.HandlerFunc(notFoundRoute)
-
-	// catch all others -- jacks up later subrouters (e.g. Telegram and GoogleRISC)
-	// router.PathPrefix("/").HandlerFunc(notFoundRoute)
-	router.NotFoundHandler = http.HandlerFunc(notFoundRoute)
-	return router
+	return mux
 }
 
-// implied /api/v1
-func setupAuthRoutes(r *mux.Router) {
-	// This block requires authentication
-	r.HandleFunc("/draw", drawUploadRoute).Methods("POST")
-	r.HandleFunc("/draw/{opID}", drawGetRoute).Methods("GET", "HEAD")
-	r.HandleFunc("/draw/{opID}", drawDeleteRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{opID}", drawUpdateRoute).Methods("PUT")
-	r.HandleFunc("/draw/{opID}/delete", drawDeleteRoute).Methods("GET", "DELETE")
-	r.HandleFunc("/draw/{opID}/chown", drawChownRoute).Methods("GET").Queries("to", "{to}")
-	r.HandleFunc("/draw/{opID}/order", drawOrderRoute).Methods("POST")
-	r.HandleFunc("/draw/{opID}/info", drawInfoRoute).Methods("POST")
-	r.HandleFunc("/draw/{opID}/perms", drawPermsAddRoute).Methods("POST")
-	r.HandleFunc("/draw/{opID}/perms", drawPermsDeleteRoute).Methods("DELETE")
-	r.HandleFunc("/draw/{opID}/delperm", drawPermsDeleteRoute).Methods("GET") // .Queries("team", "{team}", "role", "{role}")
+func setupAuthRoutes(mux *http.ServeMux, prefix string) {
+	// Wrapping the auth routes in the auth middleware
+	// In standard library, we wrap the handler
+	handle := func(pattern string, handler http.HandlerFunc) {
+		mux.Handle(pattern, authMW(handler))
+	}
 
-	// links
-	r.HandleFunc("/draw/{opID}/link/{link}", drawLinkFetch).Methods("GET")
-	r.HandleFunc("/draw/{opID}/link/{link}/color", drawLinkColorRoute).Methods("POST")
-	r.HandleFunc("/draw/{opID}/link/{link}/swap", drawLinkSwapRoute).Methods("GET")
-	r.HandleFunc("/draw/{opID}/link/{link}/assign", drawLinkAssignRoute).Methods("POST")        // deprecated, use task
-	r.HandleFunc("/draw/{opID}/link/{link}/desc", drawLinkDescRoute).Methods("POST")            // deprecated, use task
-	r.HandleFunc("/draw/{opID}/link/{link}/complete", drawLinkCompleteRoute).Methods("GET")     // deprecated, use task
-	r.HandleFunc("/draw/{opID}/link/{link}/incomplete", drawLinkIncompleteRoute).Methods("GET") // deprecated, use task
-	r.HandleFunc("/draw/{opID}/link/{link}/reject", drawLinkRejectRoute).Methods("POST")        // deprecated, use task
-	r.HandleFunc("/draw/{opID}/link/{link}/claim", drawLinkClaimRoute).Methods("POST")          // deprecated, use task
-	r.HandleFunc("/draw/{opID}/link/{link}/zone", drawLinkZoneRoute).Methods("POST")            // deprecated, use task
-	r.HandleFunc("/draw/{opID}/link/{link}/delta", drawLinkDeltaRoute).Methods("POST")          // deprecated, use task
+	// Operations
+	handle("POST "+prefix+"/draw", drawUploadRoute)
+	handle("GET "+prefix+"/draw/{opID}", drawGetRoute)
+	handle("HEAD "+prefix+"/draw/{opID}", drawGetRoute)
+	handle("DELETE "+prefix+"/draw/{opID}", drawDeleteRoute)
+	handle("PUT "+prefix+"/draw/{opID}", drawUpdateRoute)
+	handle("POST "+prefix+"/draw/{opID}/order", drawOrderRoute)
+	handle("POST "+prefix+"/draw/{opID}/info", drawInfoRoute)
+	handle("POST "+prefix+"/draw/{opID}/perms", drawPermsAddRoute)
+	handle("DELETE "+prefix+"/draw/{opID}/perms", drawPermsDeleteRoute)
+	
+	// Support both path value and query for chown
+	handle("GET "+prefix+"/draw/{opID}/chown", drawChownRoute)
 
-	// markers
-	r.HandleFunc("/draw/{opID}/marker/{marker}", drawMarkerFetch).Methods("GET")
-	r.HandleFunc("/draw/{opID}/marker/{marker}/assign", drawMarkerAssignRoute).Methods("POST")          // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/comment", drawMarkerCommentRoute).Methods("POST")        // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/acknowledge", drawMarkerAcknowledgeRoute).Methods("GET") // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/complete", drawMarkerCompleteRoute).Methods("GET")       // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/incomplete", drawMarkerIncompleteRoute).Methods("GET")   // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/reject", drawMarkerRejectRoute).Methods("GET")           // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/claim", drawMarkerClaimRoute).Methods("POST")            // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/zone", drawMarkerZoneRoute).Methods("POST")              // deprecated, use task
-	r.HandleFunc("/draw/{opID}/marker/{marker}/delta", drawMarkerDeltaRoute).Methods("POST")            // deprecated, use task
+	// Links
+	handle("GET "+prefix+"/draw/{opID}/link/{link}", drawLinkFetch)
+	handle("POST "+prefix+"/draw/{opID}/link/{link}/color", drawLinkColorRoute)
+	handle("GET "+prefix+"/draw/{opID}/link/{link}/swap", drawLinkSwapRoute)
+	handle("POST "+prefix+"/draw/{opID}/link/{link}/assign", drawLinkAssignRoute)
+	handle("POST "+prefix+"/draw/{opID}/link/{link}/desc", drawLinkDescRoute)
+	handle("GET "+prefix+"/draw/{opID}/link/{link}/complete", drawLinkCompleteRoute)
+	handle("GET "+prefix+"/draw/{opID}/link/{link}/incomplete", drawLinkIncompleteRoute)
+	handle("POST "+prefix+"/draw/{opID}/link/{link}/reject", drawLinkRejectRoute)
+	handle("POST "+prefix+"/draw/{opID}/link/{link}/claim", drawLinkClaimRoute)
+	handle("POST "+prefix+"/draw/{opID}/link/{link}/zone", drawLinkZoneRoute)
+	handle("POST "+prefix+"/draw/{opID}/link/{link}/delta", drawLinkDeltaRoute)
 
-	// portals
-	r.HandleFunc("/draw/{opID}/portal/{portal}/comment", drawPortalCommentRoute).Methods("POST", "PUT")   // prefer PUT
-	r.HandleFunc("/draw/{opID}/portal/{portal}/hardness", drawPortalHardnessRoute).Methods("POST", "PUT") // prefer PUT
-	r.HandleFunc("/draw/{opID}/portal/{portal}/keyonhand", drawPortalKeysRoute).Methods("POST", "PUT")    // prefer PUT
+	// Markers
+	handle("GET "+prefix+"/draw/{opID}/marker/{marker}", drawMarkerFetch)
+	handle("POST "+prefix+"/draw/{opID}/marker/{marker}/assign", drawMarkerAssignRoute)
+	handle("POST "+prefix+"/draw/{opID}/marker/{marker}/comment", drawMarkerCommentRoute)
+	handle("GET "+prefix+"/draw/{opID}/marker/{marker}/acknowledge", drawMarkerAcknowledgeRoute)
+	handle("GET "+prefix+"/draw/{opID}/marker/{marker}/complete", drawMarkerCompleteRoute)
+	handle("GET "+prefix+"/draw/{opID}/marker/{marker}/incomplete", drawMarkerIncompleteRoute)
+	handle("GET "+prefix+"/draw/{opID}/marker/{marker}/reject", drawMarkerRejectRoute)
+	handle("POST "+prefix+"/draw/{opID}/marker/{marker}/claim", drawMarkerClaimRoute)
+	handle("POST "+prefix+"/draw/{opID}/marker/{marker}/zone", drawMarkerZoneRoute)
+	handle("POST "+prefix+"/draw/{opID}/marker/{marker}/delta", drawMarkerDeltaRoute)
 
-	// tasks -- TODO unify between markers, links and generic tasks -- note changes from POST/GET to PUT
-	r.HandleFunc("/draw/{opID}/task/{taskID}", drawTaskFetch).Methods("GET")                                // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/order", drawTaskOrderRoute).Methods("PUT")                     // order int16
-	r.HandleFunc("/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute).Methods("PUT")                   // assign []GoogleID
-	r.HandleFunc("/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute).Methods("DELETE")                // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/comment", drawTaskCommentRoute).Methods("PUT")                 // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/complete", drawTaskCompleteRoute).Methods("PUT")               // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/acknowledge", drawTaskAcknowledgeRoute).Methods("PUT")         // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/incomplete", drawTaskIncompleteRoute).Methods("PUT")           // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/reject", drawTaskRejectRoute).Methods("PUT")                   // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/claim", drawTaskClaimRoute).Methods("PUT")                     // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/zone", drawTaskZoneRoute).Methods("PUT")                       // zone uint8
-	r.HandleFunc("/draw/{opID}/task/{taskID}/delta", drawTaskDeltaRoute).Methods("PUT")                     // delta int64
-	r.HandleFunc("/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependAddRoute).Methods("PUT")    // none
-	r.HandleFunc("/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependDelRoute).Methods("DELETE") // none
+	// Portals
+	handle("POST "+prefix+"/draw/{opID}/portal/{portal}/comment", drawPortalCommentRoute)
+	handle("PUT "+prefix+"/draw/{opID}/portal/{portal}/comment", drawPortalCommentRoute)
+	handle("POST "+prefix+"/draw/{opID}/portal/{portal}/hardness", drawPortalHardnessRoute)
+	handle("PUT "+prefix+"/draw/{opID}/portal/{portal}/hardness", drawPortalHardnessRoute)
+	handle("POST "+prefix+"/draw/{opID}/portal/{portal}/keyonhand", drawPortalKeysRoute)
+	handle("PUT "+prefix+"/draw/{opID}/portal/{portal}/keyonhand", drawPortalKeysRoute)
 
-	r.HandleFunc("/me", meSetAgentLocationRoute).Methods("GET", "PUT").Queries("lat", "{lat}", "lon", "{lon}") // prefer PUT
-	r.HandleFunc("/me", meRoute).Methods("GET", "POST", "HEAD")
-	r.HandleFunc("/me/delete", meDeleteRoute).Methods("DELETE")                                     // purge all info for a agent, requires query token
-	r.HandleFunc("/me/{team}", meToggleTeamRoute).Methods("GET", "PUT").Queries("state", "{state}") // prefer PUT
-	r.HandleFunc("/me/{team}", meRemoveTeamRoute).Methods("DELETE")
-	r.HandleFunc("/me/{team}/delete", meRemoveTeamRoute).Methods("GET")                                            // deprecated, use DELETE /me/{team}
-	r.HandleFunc("/me/{team}/wdshare", meToggleTeamWDShareRoute).Methods("GET", "PUT").Queries("state", "{state}") // prefer PUT
-	r.HandleFunc("/me/{team}/wdload", meToggleTeamWDLoadRoute).Methods("GET", "PUT").Queries("state", "{state}")   // prefer PUT
-	r.HandleFunc("/me/logout", meLogoutRoute).Methods("GET")                                                       // deprecated, no need with JWT
-	r.HandleFunc("/me/firebase", meFirebaseRoute).Methods("POST")                                                  // post a firebase token generated by google
-	r.HandleFunc("/me/intelid", meIntelIDRoute).Methods("PUT", "POST")                                             // get ID from intel (not trusted)
-	r.HandleFunc("/me/jwtrefresh", meJwtRefreshRoute).Methods("GET")                                               // returns a new JWT with the current token ID
-	// r.HandleFunc("/me/commproof", meCommProofRoute).Methods("GET").Queries("name", "{name}")                       // generate a JWT to post on niantic's community to prove identity
-	// r.HandleFunc("/me/commverify", meCommVerifyRoute).Methods("GET").Queries("name", "{name}")                     // fetch and verify the JWT posted on niantic's community
-	// r.HandleFunc("/me/commverify", meCommClearRoute).Methods("DELETE")                                             // clear it
+	// Tasks (Modern PUT-based API)
+	handle("GET "+prefix+"/draw/{opID}/task/{taskID}", drawTaskFetch)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/order", drawTaskOrderRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute)
+	handle("DELETE "+prefix+"/draw/{opID}/task/{taskID}/assign", drawTaskAssignRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/comment", drawTaskCommentRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/complete", drawTaskCompleteRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/acknowledge", drawTaskAcknowledgeRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/incomplete", drawTaskIncompleteRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/reject", drawTaskRejectRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/claim", drawTaskClaimRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/zone", drawTaskZoneRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/delta", drawTaskDeltaRoute)
+	handle("PUT "+prefix+"/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependAddRoute)
+	handle("DELETE "+prefix+"/draw/{opID}/task/{taskID}/depend/{dependsOn}", drawTaskDependDelRoute)
 
-	// other agents
-	// "profile" page, such as it is
-	r.HandleFunc("/agent/{id}", agentProfileRoute).Methods("GET")
-	r.HandleFunc("/agent/{id}/image", agentPictureRoute).Methods("GET")
-	// send a message to a agent
-	r.HandleFunc("/agent/{id}/message", agentMessageRoute).Methods("POST")
-	// r.HandleFunc("/agent/{id}/fbMessage", agentFBMessageRoute).Methods("POST") // deprecated, /agent/x/message will send it via firebase
-	r.HandleFunc("/agent/{id}/target", agentTargetRoute).Methods("POST") // send a target-formatted message
+	// Me
+	handle("GET "+prefix+"/me", meRoute)
+	handle("POST "+prefix+"/me", meRoute)
+	handle("PUT "+prefix+"/me", meSetAgentLocationRoute) // using PathValue/Query logic inside handler
+	handle("DELETE "+prefix+"/me/delete", meDeleteRoute)
+	handle("PUT "+prefix+"/me/{team}", meToggleTeamRoute)
+	handle("DELETE "+prefix+"/me/{team}", meRemoveTeamRoute)
+	handle("PUT "+prefix+"/me/{team}/wdshare", meToggleTeamWDShareRoute)
+	handle("PUT "+prefix+"/me/{team}/wdload", meToggleTeamWDLoadRoute)
+	handle("GET "+prefix+"/me/logout", meLogoutRoute)
+	handle("POST "+prefix+"/me/firebase", meFirebaseRoute)
+	handle("PUT "+prefix+"/me/intelid", meIntelIDRoute)
+	handle("POST "+prefix+"/me/intelid", meIntelIDRoute)
+	handle("GET "+prefix+"/me/jwtrefresh", meJwtRefreshRoute)
 
-	// teams
-	// create a new team
-	r.HandleFunc("/team/new", newTeamRoute).Methods("POST", "GET").Queries("name", "{name}") // create new team
-	// r.HandleFunc("/team/{team}", addAgentToTeamRoute).Methods("GET").Queries("key", "{key}") // deprecated
-	r.HandleFunc("/team/{team}", getTeamRoute).Methods("GET")       // get team membership/data
-	r.HandleFunc("/team/{team}", deleteTeamRoute).Methods("DELETE") // delete team
-	// r.HandleFunc("/team/{team}/delete", deleteTeamRoute).Methods("GET", "DELETE") // deprecated
-	r.HandleFunc("/team/{team}/chown", chownTeamRoute).Methods("GET").Queries("to", "{to}")                                               // change team owner
-	r.HandleFunc("/team/{team}/join/{key}", joinLinkRoute).Methods("GET")                                                                 // join via join-link-token
-	r.HandleFunc("/team/{team}/genJoinKey", genJoinKeyRoute).Methods("GET")                                                               // generate join-link-token
-	r.HandleFunc("/team/{team}/delJoinKey", delJoinKeyRoute).Methods("GET", "DELETE")                                                     // remove join-link-token
-	r.HandleFunc("/team/{team}/rocks", rocksPullTeamRoute).Methods("GET")                                                                 // (re)import the team from rocks
-	r.HandleFunc("/team/{team}/rockscfg", rocksCfgTeamRoute).Methods("GET").Queries("rockscomm", "{rockscomm}", "rockskey", "{rockskey}") // configure team link to enl.rocks community
-	r.HandleFunc("/team/{team}/announce", announceTeamRoute).Methods("POST")                                                              // broadcast a message to the team (form-data: m)
-	r.HandleFunc("/team/{team}/rename", renameTeamRoute).Methods("PUT")                                                                   // rename the team, (form-data: teamname)
-	r.HandleFunc("/team/{team}/{key}", addAgentToTeamRoute).Methods("GET", "POST")                                                        // key can be gid/name/enlid
-	r.HandleFunc("/team/{team}/{key}", delAgentFmTeamRoute).Methods("DELETE")                                                             // remove agent from team
-	r.HandleFunc("/team/{team}/{key}/delete", delAgentFmTeamRoute).Methods("GET")                                                         // deprecated
-	r.HandleFunc("/team/{team}/{gid}/comment", setAgentTeamCommentRoute).Methods("POST")                                                  // set agent comment
+	// Agents
+	handle("GET "+prefix+"/agent/{id}", agentProfileRoute)
+	handle("GET "+prefix+"/agent/{id}/image", agentPictureRoute)
+	handle("POST "+prefix+"/agent/{id}/message", agentMessageRoute)
+	handle("POST "+prefix+"/agent/{id}/target", agentTargetRoute)
 
-	// allow fetching specific teams in bulk - JSON list of teamIDs
-	r.HandleFunc("/teams", bulkTeamFetchRoute).Methods("POST")
+	// Teams
+	handle("POST "+prefix+"/team/new", newTeamRoute)
+	handle("GET "+prefix+"/team/{team}", getTeamRoute)
+	handle("DELETE "+prefix+"/team/{team}", deleteTeamRoute)
+	handle("GET "+prefix+"/team/{team}/chown", chownTeamRoute)
+	handle("GET "+prefix+"/team/{team}/join/{key}", joinLinkRoute)
+	handle("GET "+prefix+"/team/{team}/genJoinKey", genJoinKeyRoute)
+	handle("DELETE "+prefix+"/team/{team}/delJoinKey", delJoinKeyRoute)
+	handle("GET "+prefix+"/team/{team}/rocks", rocksPullTeamRoute)
+	handle("GET "+prefix+"/team/{team}/rockscfg", rocksCfgTeamRoute)
+	handle("POST "+prefix+"/team/{team}/announce", announceTeamRoute)
+	handle("PUT "+prefix+"/team/{team}/rename", renameTeamRoute)
+	handle("POST "+prefix+"/team/{team}/{key}", addAgentToTeamRoute)
+	handle("DELETE "+prefix+"/team/{team}/{key}", delAgentFmTeamRoute)
+	handle("POST "+prefix+"/team/{team}/{gid}/comment", setAgentTeamCommentRoute)
 
-	r.HandleFunc("/d", getDefensiveKeys).Methods("GET")
-	r.HandleFunc("/d", setDefensiveKey).Methods("POST")
-	r.HandleFunc("/d/bulk", setDefensiveKeyBulk).Methods("POST")
-	r.HandleFunc("/loc", getAgentsLocation).Methods("GET")
-
-	r.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
+	// Global / Bulk
+	handle("POST "+prefix+"/teams", bulkTeamFetchRoute)
+	handle("GET "+prefix+"/d", getDefensiveKeys)
+	handle("POST "+prefix+"/d", setDefensiveKey)
+	handle("POST "+prefix+"/d/bulk", setDefensiveKeyBulk)
+	handle("GET "+prefix+"/loc", getAgentsLocation)
 }
 
 func optionsRoute(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Allow", "GET, PUT, POST, OPTIONS, HEAD, DELETE")
-	res.WriteHeader(200)
+	res.WriteHeader(http.StatusOK)
 }
 
-// display the front page
 func frontRoute(res http.ResponseWriter, req *http.Request) {
 	c := config.Get()
-
 	url := fmt.Sprintf("%s?server=%s", c.WebUIURL, c.HTTP.Webroot)
 	http.Redirect(res, req, url, http.StatusMovedPermanently)
 }
 
-// called when a resource/endpoint is not found
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
-	// log.Debugw("404", "req", req.URL)
 	http.Error(res, "404: file not found", http.StatusNotFound)
 }
 
-// called when a resource/endpoint is not found
 func notFoundJSONRoute(res http.ResponseWriter, req *http.Request) {
 	incrementScanner(req)
 	err := fmt.Errorf("file not found")
-	// log.Debugw(err.Error(), "URL", req.URL)
 	http.Error(res, jsonError(err), http.StatusNotFound)
 }
 
@@ -215,18 +191,15 @@ func incrementScanner(req *http.Request) {
 	scanners.Increment(ip)
 }
 
-// true == block, false == permit
 func isScanner(req *http.Request) bool {
 	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
-
 	i, ok := scanners.Get(ip)
-	if ok && i > 20 {
-		return true
-	}
-	return false
+	return ok && i > 20
 }
 
 func fbmswRoute(res http.ResponseWriter, req *http.Request) {
 	log.Info("old firebase service worker route")
-	http.ServeFile(res, req, fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", http.Dir(config.Get().FrontendPath)))
+	frontendPath := config.Get().FrontendPath
+	fullPath := fmt.Sprintf("%s/static/firebase/firebase-messaging-sw.js", frontendPath)
+	http.ServeFile(res, req, fullPath)
 }

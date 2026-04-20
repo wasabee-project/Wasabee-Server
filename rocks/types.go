@@ -4,36 +4,37 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/model"
 )
 
-// communityNotice is sent from a community when an agent is added or removed
-// consumed by RocksCommunitySync function below
+// communityNotice is sent from an enl.rocks community when an agent joins or leaves.
+// Consumed by the CommunitySync function.
 type communityNotice struct {
 	Community string           `json:"community"`
-	Action    string           `json:"action"`
+	Action    string           `json:"action"` // "onJoin", etc.
 	User      agent            `json:"user"`
 	TGId      model.TelegramID `json:"tg_id"`
 	TGName    string           `json:"tg_user"`
 }
 
-// communityResponse is returned from a query request
+// communityResponse is returned from a manual query to an enl.rocks community.
 type communityResponse struct {
 	Community  string           `json:"community"`
 	Title      string           `json:"title"`
-	Members    []model.GoogleID `json:"members"`    // googleID
-	Moderators []string         `json:"moderators"` // googleID
-	User       agent            `json:"user"`       // (Members,Moderators || User) present, not both
+	Members    []model.GoogleID `json:"members"`    // List of GoogleIDs
+	Moderators []model.GoogleID `json:"moderators"` // List of GoogleIDs
+	User       agent            `json:"user"`       // Present if querying a specific user
 	Error      string           `json:"error"`
 }
 
-// Agent is the data sent by enl.rocks -- the version sent in the communityResponse is different, but close enough for our purposes
+// agent represents the simplified agent data sent by enl.rocks.
+// Note: The field tags match the Enl.Rocks API response keys.
 type agent struct {
 	Gid      model.GoogleID `json:"gid"`
 	TGId     int64          `json:"tgid"`
-	Agent    string         `json:"agentid"`
+	Agent    string         `json:"agentid"` // This is the Ingress Name (EnlightenedID)
 	Verified bool           `json:"verified"`
 	Smurf    bool           `json:"smurf"`
 }
 
-// sent by rocks on community pushes
+// rocksPushResponse is the standard response body for POST/DELETE actions.
 type rocksPushResponse struct {
 	Error   string `json:"error"`
 	Success bool   `json:"success"`

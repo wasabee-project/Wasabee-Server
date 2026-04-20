@@ -1,32 +1,29 @@
 package model
 
 import (
-	"database/sql"
+	"context"
 	"errors"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// PopulateTeams loads the permissions from the database into the op data
-func (o *Operation) PopulateTeams() error {
+// PopulateTeams loads the permissions from the database into the op data cache
+func (o *Operation) PopulateTeams(ctx context.Context) error {
 	// do not do duplicate work
 	if len(o.Teams) > 0 {
 		return nil
 	}
 
-	rows, err := db.Query("SELECT teamID, permission, zone FROM permissions WHERE opID = ?", o.ID)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
+	rows, err := db.QueryContext(ctx, "SELECT teamID, permission, zone FROM permissions WHERE opID = ?", o.ID)
+	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var tid, role string
-		var zone Zone
-		err := rows.Scan(&tid, &role, &zone)
-		if err != nil {
-			log.Error(err)
+		var zone ZoneID
+		if err := rows.Scan(&tid, &role, &zone); err != nil {
 			continue
 		}
 		o.Teams = append(o.Teams, OpPermission{
@@ -39,38 +36,36 @@ func (o *Operation) PopulateTeams() error {
 	return nil
 }
 
-// ReadAccess determines if an agent has read acces to an op, if zone limitations are present, return those as well
-func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
-	var zones []Zone
-	var permitted bool
+// ReadAccess determines if an agent has read access to an op.
+// If zone limitations are present, it returns those as well.
+func (o *Operation) ReadAccess(ctx context.Context, gid GoogleID) (bool, []ZoneID) {
+	var zones []ZoneID
 
-	if o.ID.IsOwner(gid) {
-		zones = append(zones, ZoneAll)
-		return true, zones
+	// Owners always have full access to all zones
+	if o.ID.IsOwner(ctx, gid) {
+		return true, []ZoneID{ZoneAll}
 	}
 
-	if err := o.PopulateTeams(); err != nil {
+	if err := o.PopulateTeams(ctx); err != nil {
 		log.Error(err)
 		return false, zones
 	}
 
+	permitted := false
 	for _, t := range o.Teams {
 		switch t.Role {
-		case opPermRoleAssignedOnly:
-			continue
-		case opPermRoleRead:
-			if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
+		case OpPermRoleRead:
+			if inteam, _ := gid.AgentInTeam(ctx, t.TeamID); inteam {
 				permitted = true
 				zones = append(zones, t.Zone)
 				if t.Zone == ZoneAll {
-					return permitted, zones // fast-path
+					return true, []ZoneID{ZoneAll} // Full access fast-path
 				}
 			}
-		case opPermRoleWrite:
-			if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
-				permitted = true
-				zones = append(zones, ZoneAll)
-				return permitted, zones // fast-path
+		case OpPermRoleWrite:
+			// Write implies full Read access
+			if inteam, _ := gid.AgentInTeam(ctx, t.TeamID); inteam {
+				return true, []ZoneID{ZoneAll}
 			}
 		}
 	}
@@ -78,164 +73,124 @@ func (o *Operation) ReadAccess(gid GoogleID) (bool, []Zone) {
 }
 
 // WriteAccess determines if an agent has write access to an op
-func (o *Operation) WriteAccess(gid GoogleID) bool {
-	if o.ID.IsOwner(gid) {
+func (o *Operation) WriteAccess(ctx context.Context, gid GoogleID) bool {
+	if o.ID.IsOwner(ctx, gid) {
 		return true
 	}
 
-	if err := o.PopulateTeams(); err != nil {
-		log.Error(err)
+	if err := o.PopulateTeams(ctx); err != nil {
 		return false
 	}
 
 	for _, t := range o.Teams {
-		if t.Role != opPermRoleWrite {
-			continue
-		}
-		// write teams
-		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
-			return true
+		if t.Role == OpPermRoleWrite {
+			if inteam, _ := gid.AgentInTeam(ctx, t.TeamID); inteam {
+				return true
+			}
 		}
 	}
 	return false
 }
 
 // IsOwner returns a bool value determining if the operation is owned by the specified googleID
-func (opID OperationID) IsOwner(gid GoogleID) bool {
-	var c int
-	err := db.QueryRow("SELECT COUNT(*) FROM operation WHERE ID = ? and gid = ?", opID, gid).Scan(&c)
+func (opID OperationID) IsOwner(ctx context.Context, gid GoogleID) bool {
+	var count int
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM operation WHERE ID = ? and gid = ?", opID, gid).Scan(&count)
 	if err != nil {
-		log.Error(err)
 		return false
 	}
-	if c < 1 {
-		return false
-	}
-	return true
+	return count > 0
 }
 
 // Chown changes an operation's owner
-func (opID OperationID) Chown(gid GoogleID, to string) error {
-	if !opID.IsOwner(gid) {
-		err := errors.New(ErrNotOpOwner)
-		log.Errorw(err.Error(), "GID", gid, "resource", opID)
-		return err
+func (opID OperationID) Chown(ctx context.Context, gid GoogleID, to string) error {
+	if !opID.IsOwner(ctx, gid) {
+		return errors.New(ErrNotOpOwner)
 	}
 
-	togid, err := ToGid(to)
+	togid, err := ToGid(ctx, to)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	if !togid.Valid() {
-		err := errors.New(ErrUnknownUser)
-		log.Errorw(err.Error(), "to", to)
-		return err
+	if !togid.Valid(ctx) {
+		return errors.New(ErrUnknownUser)
 	}
 
-	_, err = db.Exec("UPDATE operation SET gid = ? WHERE ID = ?", togid, opID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
+	_, err = db.ExecContext(ctx, "UPDATE operation SET gid = ? WHERE ID = ?", togid, opID)
+	return err
 }
 
-// AssignedOnlyAccess verifies if an agent has AO access to an op
-func (o *Operation) AssignedOnlyAccess(gid GoogleID) bool {
-	if err := o.PopulateTeams(); err != nil {
-		log.Error(err)
+// AssignedOnlyAccess verifies if an agent has "Assigned Only" access to an op
+func (o *Operation) AssignedOnlyAccess(ctx context.Context, gid GoogleID) bool {
+	if err := o.PopulateTeams(ctx); err != nil {
 		return false
 	}
 
 	for _, t := range o.Teams {
-		if t.Role != opPermRoleAssignedOnly {
-			continue
-		}
-		if inteam, _ := gid.AgentInTeam(t.TeamID); inteam {
-			return true
+		if t.Role == OpPermRoleAssignedOnly {
+			if inteam, _ := gid.AgentInTeam(ctx, t.TeamID); inteam {
+				return true
+			}
 		}
 	}
 	return false
 }
 
 // AddPerm adds a new permission to an op
-func (opID OperationID) AddPerm(gid GoogleID, teamID TeamID, perm string, zone Zone) error {
-	if !opID.IsOwner(gid) {
-		err := errors.New(ErrNotOpOwner)
-		log.Errorw(err.Error(), "GID", gid, "resource", opID)
-		return err
+func (opID OperationID) AddPerm(ctx context.Context, gid GoogleID, teamID TeamID, perm string, zone ZoneID) error {
+	if !opID.IsOwner(ctx, gid) {
+		return errors.New(ErrNotOpOwner)
 	}
 
-	inteam, err := gid.AgentInTeam(teamID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if !inteam {
-		err := errors.New(ErrNotOnTeamAddPerm)
-		log.Errorw(err.Error(), "GID", gid, "team", teamID, "resource", opID)
-		return err
+	inteam, err := gid.AgentInTeam(ctx, teamID)
+	if err != nil || !inteam {
+		return errors.New(ErrNotOnTeamAddPerm)
 	}
 
 	opp := OpPermRole(perm)
 	if !opp.Valid() {
-		err := errors.New(ErrUnknownPermType)
-		log.Errorw(err.Error(), "GID", gid, "resource", opID, "perm", perm)
-		return err
+		return errors.New(ErrUnknownPermType)
 	}
 
-	// zone only applies to read access for now
-	if opp != opPermRoleRead {
+	// Zone only applies to read access
+	if opp != OpPermRoleRead {
 		zone = ZoneAll
 	}
-	if _, err = db.Exec("INSERT INTO permissions VALUES (?,?,?,?)", teamID, opID, opp, zone); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+
+	_, err = db.ExecContext(ctx, "INSERT INTO permissions (teamID, opID, permission, zone) VALUES (?, ?, ?, ?)",
+		teamID, opID, opp, zone)
+	return err
 }
 
 // DelPerm removes a permission from an op
-func (opID OperationID) DelPerm(gid GoogleID, teamID TeamID, perm OpPermRole, zone Zone) error {
-	if !opID.IsOwner(gid) {
-		err := errors.New(ErrNotOpOwner)
-		log.Errorw(err.Error(), "GID", gid, "resource", opID)
+func (opID OperationID) DelPerm(ctx context.Context, gid GoogleID, teamID TeamID, perm OpPermRole, zone ZoneID) error {
+	if !opID.IsOwner(ctx, gid) {
+		return errors.New(ErrNotOpOwner)
+	}
+
+	if perm != OpPermRoleRead {
+		_, err := db.ExecContext(ctx, "DELETE FROM permissions WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, opID, perm)
 		return err
 	}
 
-	if perm != opPermRoleRead {
-		if _, err := db.Exec("DELETE FROM permissions WHERE teamID = ? AND opID = ? AND permission = ? LIMIT 1", teamID, opID, perm); err != nil {
-			log.Error(err)
-			return err
-		}
-	} else {
-		if _, err := db.Exec("DELETE FROM permissions WHERE teamID = ? AND opID = ? AND permission = ? AND zone = ? LIMIT 1", teamID, opID, perm, zone); err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-	return nil
+	_, err := db.ExecContext(ctx, "DELETE FROM permissions WHERE teamID = ? AND opID = ? AND permission = ? AND zone = ? LIMIT 1", teamID, opID, perm, zone)
+	return err
 }
 
-// Operations returns a slice containing all the OpPermissions which reference this team
-func (teamID TeamID) Operations() ([]OpPermission, error) {
-	var perms []OpPermission
-	rows, err := db.Query("SELECT opID, permission, zone FROM permissions WHERE teamID = ?", teamID)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return perms, err
+// Operations returns all OpPermissions referencing this team
+func (teamID TeamID) Operations(ctx context.Context) ([]OpPermission, error) {
+	rows, err := db.QueryContext(ctx, "SELECT opID, permission, zone FROM permissions WHERE teamID = ?", teamID)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
+	var perms []OpPermission
 	for rows.Next() {
 		var opid, role string
-		var zone Zone
-		err := rows.Scan(&opid, &role, &zone)
-		if err != nil {
-			log.Error(err)
+		var zone ZoneID
+		if err := rows.Scan(&opid, &role, &zone); err != nil {
 			continue
 		}
 		perms = append(perms, OpPermission{
@@ -249,20 +204,17 @@ func (teamID TeamID) Operations() ([]OpPermission, error) {
 }
 
 // Teams returns a list of every team with access to this operation
-func (opID OperationID) Teams() ([]TeamID, error) {
-	var teams []TeamID
-	rows, err := db.Query("SELECT DISTINCT teamID FROM permissions WHERE opID = ?", opID)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return teams, err
+func (opID OperationID) Teams(ctx context.Context) ([]TeamID, error) {
+	rows, err := db.QueryContext(ctx, "SELECT DISTINCT teamID FROM permissions WHERE opID = ?", opID)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
+	var teams []TeamID
 	for rows.Next() {
 		var t TeamID
-		err := rows.Scan(&t)
-		if err != nil {
-			log.Error(err)
+		if err := rows.Scan(&t); err != nil {
 			continue
 		}
 		teams = append(teams, t)

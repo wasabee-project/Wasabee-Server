@@ -1,63 +1,54 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"strconv"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// Zone is the sub-operation zone identifer
-type Zone int
+// Zone is the sub-operation zone identifier
+type ZoneID int
 
-// ZoneAll is a reserved name for the wildcard zone
+// Zone constants
 const (
-	ZoneAssignOnly Zone = -1
-	ZoneAll        Zone = 0
-	zonePrimary    Zone = 1
-	zoneMax             = 32
+	ZoneAssignOnly ZoneID = -1
+	ZoneAll        ZoneID = 0
+	zonePrimary    ZoneID = 1
+	zoneMax               = 32
 )
 
 // Valid returns a boolean if the zone is in the valid range
-func (z Zone) Valid() bool {
-	if z >= ZoneAll && z <= zoneMax {
-		return true
-	}
-	return false
+func (z ZoneID) Valid() bool {
+	return z >= ZoneAll && z <= zoneMax
 }
 
 // ZoneFromString takes a string and returns a valid zone or zonePrimary if invalid input
-func ZoneFromString(in string) Zone {
+func ZoneFromString(in string) ZoneID {
 	if in == "" || in == "undefined" {
 		return zonePrimary
 	}
 
 	i, err := strconv.ParseInt(in, 10, 32)
 	if err != nil {
-		log.Error(err)
 		return zonePrimary
 	}
 
-	z := Zone(i)
-
+	z := ZoneID(i)
 	if !z.Valid() {
-		z = zonePrimary
+		return zonePrimary
 	}
 	return z
 }
 
-func (z Zone) inZones(zones []Zone) bool {
+func (z ZoneID) inZones(zones []ZoneID) bool {
 	for _, t := range zones {
-		// ZoneAll is set, anything goes
-		if t == ZoneAll {
-			return true
-		}
-		// this zone is set, permit
-		if t == z {
+		// ZoneAll (0) is a wildcard
+		if t == ZoneAll || t == z {
 			return true
 		}
 	}
-	// no match found, fail
 	return false
 }
 
@@ -65,8 +56,8 @@ func (z Zone) inZones(zones []Zone) bool {
 type ZoneListElement struct {
 	Name   string      `json:"name"`
 	Color  string      `json:"color"`
-	Points []zonepoint `json:"points"` // just a string for the client to parse
-	Zone   Zone        `json:"id"`
+	Points []zonepoint `json:"points"`
+	Zone   ZoneID      `json:"id"`
 }
 
 type zonepoint struct {
@@ -77,39 +68,40 @@ type zonepoint struct {
 
 func defaultZones() []ZoneListElement {
 	return []ZoneListElement{
-		{"Primary", "purple", nil, zonePrimary},
+		{Name: "Primary", Color: "purple", Zone: zonePrimary},
 	}
 }
 
-func (o *Operation) insertZone(z ZoneListElement, tx *sql.Tx) error {
-	_, err := tx.Exec("REPLACE INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?)", z.Zone, o.ID, z.Name, z.Color) // REPLACE OK SCB
+func (o *Operation) insertZone(ctx context.Context, z ZoneListElement, tx *sql.Tx) error {
+	executor := txExecutor(tx)
+
+	// REPLACE is appropriate here as (ID, opID) is the unique key
+	_, err := executor.ExecContext(ctx, "REPLACE INTO zone (ID, opID, name, color) VALUES (?, ?, ?, ?)",
+		z.Zone, o.ID, z.Name, z.Color)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	// don't be too smart, just delete and re-add the points
-	_, err = tx.Exec("DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, z.Zone)
+	// Refresh points: delete and re-add
+	_, err = executor.ExecContext(ctx, "DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, z.Zone)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
 	for _, p := range z.Points {
-		// log.Debug("inserting point", "pos", p.Position, "zone", z.Zone, "op", o.ID)
-		_, err := tx.Exec("INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, POINT(?, ?))", z.Zone, o.ID, p.Position, p.Lat, p.Lon)
+		// Standardized to ST_Point(lat, lon)
+		_, err := executor.ExecContext(ctx, "INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, ST_Point(?, ?))",
+			z.Zone, o.ID, p.Position, p.Lat, p.Lon)
 		if err != nil {
-			log.Error(err)
 			return err
 		}
 	}
 	return nil
 }
 
-func (o *Operation) populateZones() error {
-	rows, err := db.Query("SELECT ID, name, color FROM zone WHERE opID = ?", o.ID)
+func (o *Operation) populateZones(ctx context.Context) error {
+	rows, err := db.QueryContext(ctx, "SELECT ID, name, color FROM zone WHERE opID = ?", o.ID)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	defer rows.Close()
@@ -117,30 +109,28 @@ func (o *Operation) populateZones() error {
 	for rows.Next() {
 		var tmpZone ZoneListElement
 		if err := rows.Scan(&tmpZone.Zone, &tmpZone.Name, &tmpZone.Color); err != nil {
-			log.Error(err)
 			continue
 		}
 
-		pointrows, err := db.Query("SELECT position, X(point), Y(point) FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, tmpZone.Zone)
+		// Using ST_X and ST_Y for spatial point decomposition
+		pointrows, err := db.QueryContext(ctx, "SELECT position, ST_X(point), ST_Y(point) FROM zonepoints WHERE opID = ? AND zoneID = ?", o.ID, tmpZone.Zone)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		defer pointrows.Close()
+
 		for pointrows.Next() {
 			var tmpPoint zonepoint
 			if err := pointrows.Scan(&tmpPoint.Position, &tmpPoint.Lat, &tmpPoint.Lon); err != nil {
-				log.Error(err)
 				continue
 			}
 			tmpZone.Points = append(tmpZone.Points, tmpPoint)
 		}
+		pointrows.Close()
 
 		o.Zones = append(o.Zones, tmpZone)
-		tmpZone.Points = nil
 	}
 
-	// use default for old ops w/o set zones
 	if len(o.Zones) == 0 {
 		o.Zones = defaultZones()
 	}
@@ -148,15 +138,12 @@ func (o *Operation) populateZones() error {
 	return nil
 }
 
-func (o OperationID) deleteZone(z Zone, tx *sql.Tx) error {
-	if _, err := tx.Exec("DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o, z); err != nil {
-		log.Error(err)
-		// return err
-	}
+func (o OperationID) deleteZone(ctx context.Context, z ZoneID, tx *sql.Tx) error {
+	executor := txExecutor(tx)
 
-	if _, err := tx.Exec("DELETE FROM zone WHERE opID = ? AND ID = ?", o, z); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	// Delete points first (though FK cascade should handle it)
+	_, _ = executor.ExecContext(ctx, "DELETE FROM zonepoints WHERE opID = ? AND zoneID = ?", o, z)
+
+	_, err := executor.ExecContext(ctx, "DELETE FROM zone WHERE opID = ? AND ID = ?", o, z)
+	return err
 }

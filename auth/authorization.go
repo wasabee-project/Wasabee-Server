@@ -30,31 +30,33 @@ func Start(ctx context.Context) {
 // Accounts that have indicated they are RES in Intel are blocked.
 // V and Rocks are checked (if configured).
 // Returns true if the agent is authorized to continue, false if the agent is blacklisted or otherwise locked.
-func Authorize(gid model.GoogleID) (bool, error) {
+func Authorize(ctx context.Context, gid model.GoogleID) (bool, error) {
 	// if the agent isn't known to this server, pre-populate everything
-	if !gid.Valid() {
-		if err := gid.FirstLogin(); err != nil {
+	if !gid.Valid(ctx) {
+		if err := gid.FirstLogin(ctx); err != nil {
 			log.Error(err)
 			return false, err
 		}
 	}
 
-	if gid.RISC() {
+	// RISC and IntelSmurf likely check a DB field or cache, so they need ctx now
+	if gid.RISC(ctx) {
 		err := fmt.Errorf("account locked by Google RISC")
 		log.Warnw(err.Error(), "GID", gid)
 		return false, err
 	}
 
-	if gid.IntelSmurf() {
+	if gid.IntelSmurf(ctx) {
 		err := fmt.Errorf("intel account self-identified as RES")
 		log.Warnw(err.Error(), "GID", gid)
 		return false, err
 	}
 
-	// sequentially loop through authorization providers
+	// sequentially loop through authorization providers (V, Rocks, etc.)
 	for _, p := range providers {
-		if !p.Authorize(gid) {
-			return false, fmt.Errorf("access denied")
+		// Updated provider interface to be context-aware
+		if !p.Authorize(ctx, gid) {
+			return false, fmt.Errorf("access denied by provider")
 		}
 	}
 
@@ -73,7 +75,6 @@ func IsLoggedOut(gid model.GoogleID) bool {
 		logoutlist.SetBool(string(gid), false)
 		return true
 	}
-
 	return false
 }
 

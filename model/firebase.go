@@ -1,32 +1,30 @@
 package model
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 )
 
-// GetFirebaseTokens gets an agents FirebaseToken from the database
-func (gid GoogleID) GetFirebaseTokens() ([]string, error) {
-	var token string
-	var toks []string
-
-	rows, err := db.Query("SELECT DISTINCT token FROM firebase WHERE gid = ?", gid)
-	if err != nil && err != sql.ErrNoRows {
+// GetFirebaseTokens gets an agent's FirebaseTokens from the database
+func (gid GoogleID) GetFirebaseTokens(ctx context.Context) ([]string, error) {
+	rows, err := db.QueryContext(ctx, "SELECT DISTINCT token FROM firebase WHERE gid = ?", gid)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		log.Error(err)
-		return toks, err
-	}
-	// this is technically redundant with the main return, but be explicit about what we want
-	if err != nil && err == sql.ErrNoRows {
-		return toks, nil
+		return nil, err
 	}
 	defer rows.Close()
 
+	var toks []string
 	for rows.Next() {
-		err := rows.Scan(&token)
-		if err != nil {
-			log.Error(err)
+		var token string
+		if err := rows.Scan(&token); err != nil {
 			continue
 		}
 		toks = append(toks, token)
@@ -36,77 +34,50 @@ func (gid GoogleID) GetFirebaseTokens() ([]string, error) {
 }
 
 // StoreFirebaseToken adds a token in the database for an agent.
-// gid is not unique, an agent may have any number of tokens (e.g. multiple devices/browsers).
-// Pruning of dead tokens takes place in the senders upon error.
-func (gid GoogleID) StoreFirebaseToken(token string) error {
-	g := GoogleID(gid)
-
-	var count int
-	err := db.QueryRow("SELECT COUNT(gid) FROM firebase WHERE token = ? AND gid = ?", token, gid).Scan(&count)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	if count > 0 {
-		return nil
-	}
-
-	// log.Debugw("adding token", "subsystem", "Firebase", "GID", gid, "token", token)
-	_, err = db.Exec("INSERT INTO firebase (gid, token) VALUES (?, ?)", gid, token)
+// An agent may have any number of tokens (e.g. multiple devices/browsers).
+func (gid GoogleID) StoreFirebaseToken(ctx context.Context, token string) error {
+	// Use INSERT IGNORE to skip if the gid/token pair already exists, reducing DB round-trips
+	_, err := db.ExecContext(ctx, "INSERT IGNORE INTO firebase (gid, token) VALUES (?, ?)", gid, token)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
 	// Subscribe this token to all team topics
-	// TODO: This isn't right -- each token sub now triggers messages in Telegram teams...
-	for _, teamID := range g.teamList() {
-		messaging.AddToRemote(messaging.GoogleID(gid), messaging.TeamID(teamID))
+	// Note: messaging.AddToRemote likely handles the heavy lifting of talking to FCM/Google
+	teams := gid.TeamList(ctx)
+
+	for _, teamID := range teams {
+		messaging.AddToRemote(ctx, messaging.GoogleID(gid), messaging.TeamID(teamID))
 	}
 
 	return nil
 }
 
 // RemoveFirebaseToken removes a given token from the database
-func RemoveFirebaseToken(token string) error {
-	_, err := db.Exec("DELETE FROM firebase WHERE token = ?", token)
-	if err != nil {
-		log.Error(err)
-	}
+func RemoveFirebaseToken(ctx context.Context, token string) error {
+	_, err := db.ExecContext(ctx, "DELETE FROM firebase WHERE token = ?", token)
 	return err
 }
 
 // RemoveAllFirebaseTokens removes all tokens for a given agent
-func (gid GoogleID) RemoveAllFirebaseTokens() error {
-	_, err := db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
-	if err != nil {
-		log.Error(err)
-	}
+func (gid GoogleID) RemoveAllFirebaseTokens(ctx context.Context) error {
+	_, err := db.ExecContext(ctx, "DELETE FROM firebase WHERE gid = ?", gid)
 	return err
 }
 
 // FirebaseBroadcastList returns all known firebase tokens for messaging all agents
-// Firebase Multicast messages are limited to 500 tokens each, the caller must
-// break the list up if necessary.
-func FirebaseBroadcastList() ([]string, error) {
-	var out []string
-
-	rows, err := db.Query("SELECT DISTINCT token FROM firebase")
-	if err != nil && err == sql.ErrNoRows {
-		return out, nil
-	}
+func FirebaseBroadcastList(ctx context.Context) ([]string, error) {
+	rows, err := db.QueryContext(ctx, "SELECT DISTINCT token FROM firebase")
 	if err != nil {
-		log.Error(err)
-		return out, err
+		return nil, err
 	}
 	defer rows.Close()
 
+	var out []string
 	for rows.Next() {
 		var token string
-		err := rows.Scan(&token)
-		if err != nil {
-			log.Error(err)
+		if err := rows.Scan(&token); err != nil {
 			continue
 		}
 		out = append(out, token)
@@ -120,25 +91,25 @@ type TeamToken struct {
 	Token  string
 }
 
-// FirebaserLocationTokens returns a list all tokens for the agents on the teams with which this agent is sharing location
-// instead of sending to the team topics, we do the fanout manually -- to avoid hitting the (small) fanout quota
-func (gid GoogleID) FirebaseLocationTokens() ([]TeamToken, error) {
-	var out []TeamToken
+// FirebaseLocationTokens returns all tokens for agents on teams where this agent is sharing location
+func (gid GoogleID) FirebaseLocationTokens(ctx context.Context) ([]TeamToken, error) {
+	// This query finds all tokens belonging to agents who share a team with 'gid'
+	// where 'gid' has opted to share their location.
+	rows, err := db.QueryContext(ctx, `
+		SELECT DISTINCT f.token, at.teamID 
+		FROM firebase f
+		JOIN agentteams at ON f.gid = at.gid 
+		WHERE at.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND shareLoc = 1)`, gid)
 
-	rows, err := db.Query("SELECT DISTINCT teamid, token FROM firebase JOIN agentteams ON firebase.gid = agentteams.gid WHERE agentteams.teamID IN (SELECT teamID FROM agentteams WHERE gid = ? AND shareLoc = 1)", gid)
-	if err != nil && err == sql.ErrNoRows {
-		return out, nil
-	}
 	if err != nil {
-		log.Error(err)
-		return out, err
+		return nil, err
 	}
 	defer rows.Close()
 
+	var out []TeamToken
 	for rows.Next() {
 		var tt TeamToken
-		if err := rows.Scan(&tt.TeamID, &tt.Token); err != nil {
-			log.Error(err)
+		if err := rows.Scan(&tt.Token, &tt.TeamID); err != nil {
 			continue
 		}
 		out = append(out, tt)

@@ -1,12 +1,12 @@
 package wasabeehttps
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -14,6 +14,7 @@ import (
 
 // setup common to all these calls
 func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *model.Operation, *model.Task, error) {
+	ctx := req.Context()
 	op := model.Operation{}
 
 	gid, err := getAgentID(req)
@@ -22,10 +23,9 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 		return gid, &op, &model.Task{}, err
 	}
 
-	vars := mux.Vars(req)
-	op.ID = model.OperationID(vars["opID"])
-	if err = op.Populate(gid); err != nil {
-		if op.ID.IsDeletedOp() {
+	op.ID = model.OperationID(req.PathValue("opID"))
+	if err = op.Populate(ctx, gid); err != nil {
+		if op.ID.IsDeletedOp(ctx) {
 			err := fmt.Errorf("requested deleted op")
 			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 			http.Error(res, jsonError(err), http.StatusGone)
@@ -39,7 +39,7 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 		return gid, &op, &model.Task{}, err
 	}
 
-	taskID := model.TaskID(vars["taskID"])
+	taskID := model.TaskID(req.PathValue("taskID"))
 	task, err := op.GetTask(taskID)
 	if err != nil {
 		if err.Error() == model.ErrTaskNotFound {
@@ -52,8 +52,10 @@ func taskRequires(res http.ResponseWriter, req *http.Request) (model.GoogleID, *
 	return gid, &op, task, nil
 }
 
-// taskStatusAnnounce send the fb annoucen to all relevant teams
+// taskStatusAnnounce send the fb announce to all relevant teams
 func taskStatusAnnounce(op *model.Operation, taskID model.TaskID, status string, updateID string) {
+	// Use background context for fire-and-forget notifications
+	ctx := context.Background()
 	teams := make(map[model.TeamID]bool)
 	for _, t := range op.Teams {
 		teams[t.TeamID] = true
@@ -64,17 +66,18 @@ func taskStatusAnnounce(op *model.Operation, taskID model.TaskID, status string,
 	}
 
 	if len(ta) > 0 {
-		_ = wfb.TaskStatus(taskID, op.ID, ta, status, updateID)
+		_ = wfb.TaskStatus(ctx, taskID, op.ID, ta, status, updateID)
 	}
 }
 
 func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("write access required to assign targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -96,46 +99,47 @@ func drawTaskAssignRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if err = task.SetAssignments(assignments, nil); err != nil {
+	if err = task.SetAssignments(ctx, assignments, nil); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 
 	go func() {
+		bgCtx := context.Background()
 		for _, agent := range assignments {
-			_ = wfb.AssignTask(agent, task.ID, op.ID, uid)
+			_ = wfb.AssignTask(bgCtx, agent, task.ID, op.ID, uid)
 		}
 	}()
 }
 
 func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	// taskRequires does Populate, which does this, ... this is redundant
-	if read, _ := op.ReadAccess(gid); !read {
+	if read, _ := op.ReadAccess(ctx, gid); !read {
 		err = fmt.Errorf("read access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err = task.Claim(gid); err != nil {
+	if err = task.Claim(ctx, gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -144,12 +148,13 @@ func drawTaskClaimRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("write access required to set marker comments")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -157,12 +162,12 @@ func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	comment := req.FormValue("comment")
-	if err = task.SetComment(comment); err != nil {
+	if err = task.SetComment(ctx, comment); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -171,12 +176,13 @@ func drawTaskCommentRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("write access required to set marker zone")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -184,12 +190,12 @@ func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	zone := model.ZoneFromString(req.FormValue("zone"))
-	if err := task.SetZone(zone); err != nil {
+	if err := task.SetZone(ctx, zone); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -198,12 +204,13 @@ func drawTaskZoneRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("forbidden: write access required to set delta")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -217,12 +224,12 @@ func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = task.SetDelta(int(delta)); err != nil {
+	if err = task.SetDelta(ctx, int(delta)); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -231,15 +238,15 @@ func drawTaskDeltaRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	// taskRequires does Populate, which does this, ... this is redundant
-	read, _ := op.ReadAccess(gid)
-	if !read && !op.AssignedOnlyAccess(gid) {
-		if op.ID.IsDeletedOp() {
+	read, _ := op.ReadAccess(ctx, gid)
+	if !read && !op.AssignedOnlyAccess(ctx, gid) {
+		if op.ID.IsDeletedOp(ctx) {
 			err := fmt.Errorf("requested deleted op")
 			log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 			http.Error(res, jsonError(err), http.StatusGone)
@@ -255,26 +262,26 @@ func drawTaskFetch(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	// taskRequires does Populate, which does this, ... this is redundant
-	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
+	if read, _ := op.ReadAccess(ctx, gid); !read && !op.AssignedOnlyAccess(ctx, gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err := task.Complete(); err != nil {
+	if err := task.Complete(ctx); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -283,26 +290,26 @@ func drawTaskCompleteRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	// taskRequires does Populate, which does this, ... this is redundant
-	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
+	if read, _ := op.ReadAccess(ctx, gid); !read && !op.AssignedOnlyAccess(ctx, gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err = task.Incomplete(); err != nil {
+	if err = task.Incomplete(ctx); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -311,26 +318,26 @@ func drawTaskIncompleteRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	// taskRequires does Populate, which does this, ... this is redundant
-	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
+	if read, _ := op.ReadAccess(ctx, gid); !read && !op.AssignedOnlyAccess(ctx, gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err = task.Reject(gid); err != nil {
+	if err = task.Reject(ctx, gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -339,26 +346,26 @@ func drawTaskRejectRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	// taskRequires does Populate, which does this, ... this is redundant
-	if read, _ := op.ReadAccess(gid); !read && !op.AssignedOnlyAccess(gid) {
+	if read, _ := op.ReadAccess(ctx, gid); !read && !op.AssignedOnlyAccess(ctx, gid) {
 		err = fmt.Errorf("access required to claim targets")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err = task.Acknowledge(); err != nil {
+	if err = task.Acknowledge(ctx); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -367,20 +374,20 @@ func drawTaskAcknowledgeRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("forbidden: write access required to set dependency")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	vars := mux.Vars(req)
-	dependsOn := vars["dependsOn"]
+	dependsOn := req.PathValue("dependsOn")
 	if dependsOn == "" {
 		err = fmt.Errorf("empty dependency ID on depend add")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -388,13 +395,13 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = task.AddDepend(model.TaskID(dependsOn)); err != nil {
+	if err = task.AddDepend(ctx, model.TaskID(dependsOn)); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -403,20 +410,20 @@ func drawTaskDependAddRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("forbidden: write access required to set dependency")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	vars := mux.Vars(req)
-	dependsOn := model.TaskID(vars["dependsOn"])
+	dependsOn := model.TaskID(req.PathValue("dependsOn"))
 	if dependsOn == "" {
 		err = fmt.Errorf("empty dependency ID on depend delete")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -424,14 +431,14 @@ func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = task.DelDepend(dependsOn)
+	err = task.DelDepend(ctx, dependsOn)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}
@@ -440,20 +447,20 @@ func drawTaskDependDelRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawTaskOrderRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, op, task, err := taskRequires(res, req)
 	if err != nil {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("forbidden: write access required to set task order")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	vars := mux.Vars(req)
-	os := vars["order"]
+	os := req.PathValue("order")
 	if os == "" {
 		err = fmt.Errorf("empty order ID on order set")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
@@ -467,13 +474,13 @@ func drawTaskOrderRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = task.SetOrder(int16(order)); err != nil {
+	if err = task.SetOrder(ctx, int16(order)); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid, err := op.Touch()
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		log.Error(err)
 	}

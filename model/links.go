@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"strings"
@@ -26,10 +27,8 @@ type Link struct {
 	Completed  bool  `json:"completed"`     // deprecated, use State from Task
 }
 
-// TODO use the logic from insertZone to unify insertLink and updateLink
-
-// insertLink adds a link to the database
-func (opID OperationID) insertLink(l Link, tx *sql.Tx) error {
+// insertLink adds a link and its underlying task to the database
+func (opID OperationID) insertLink(ctx context.Context, l Link, tx *sql.Tx) error {
 	if l.To == l.From {
 		log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
@@ -39,182 +38,155 @@ func (opID OperationID) insertLink(l Link, tx *sql.Tx) error {
 		l.Zone = zonePrimary
 	}
 
-	// use the old if it is set
+	// Legacy field sync
 	if l.Desc != "" {
 		l.Comment = l.Desc
 	}
 	if l.ThrowOrder != 0 {
-		l.Order = int16(l.ThrowOrder)
+		l.Order = l.ThrowOrder
 	}
 	if l.AssignedTo != "" {
 		l.Assignments = append(l.Assignments, l.AssignedTo)
 	}
-
 	if l.State == "" {
 		l.State = "pending"
 	}
-
 	if l.Completed {
 		l.State = "completed"
 	}
 
 	comment := makeNullString(util.Sanitize(l.Comment))
+	executor := txExecutor(tx)
 
-	_, err := tx.Exec("INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	// 1. Insert Task
+	_, err := executor.ExecContext(ctx, "INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	_, err = tx.Exec("INSERT INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)",
+	// 2. Insert Link
+	_, err = executor.ExecContext(ctx, "INSERT INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)",
 		l.ID, opID, l.From, l.To, l.Color, l.MuCaptured)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	// clears if none set
-	if err := l.SetAssignments(l.Assignments, tx); err != nil {
-		log.Error(err)
+	// Initialize Task fields for method calls
+	l.Task.ID = TaskID(l.ID)
+	l.Task.opID = opID
+
+	if err := l.SetAssignments(ctx, l.Assignments, tx); err != nil {
 		return err
 	}
 
-	// do not clear if old client (yet)
 	if len(l.DependsOn) > 0 {
-		err = l.SetDepends(l.DependsOn, tx)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+		return l.SetDepends(ctx, l.DependsOn, tx)
 	}
 
 	return nil
 }
 
-func (opID OperationID) deleteLink(lid LinkID, tx *sql.Tx) error {
-	_, err := tx.Exec("DELETE FROM task WHERE OpID = ? and ID = ?", opID, lid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	_, err = tx.Exec("DELETE FROM link WHERE OpID = ? and ID = ?", opID, lid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
-}
-
-func (opID OperationID) updateLink(l Link, tx *sql.Tx) error {
+func (opID OperationID) updateLink(ctx context.Context, l Link, tx *sql.Tx) error {
 	if l.To == l.From {
-		log.Infow("source and destination the same, ignoring link", "resource", opID)
 		return nil
 	}
 
-	// copy these values down
 	l.Task.ID = TaskID(l.ID)
-	l.opID = opID
+	l.Task.opID = opID
 
 	if !l.Zone.Valid() || l.Zone == ZoneAll {
 		l.Zone = zonePrimary
 	}
 
-	// use the old if it is set
+	// Legacy field sync
 	if l.Desc != "" {
 		l.Comment = l.Desc
 	}
 	if l.ThrowOrder != 0 {
-		l.Order = int16(l.ThrowOrder)
+		l.Order = l.ThrowOrder
 	}
 	if l.AssignedTo != "" {
 		l.Assignments = append(l.Assignments, l.AssignedTo)
 	}
-	if l.State == "" {
-		l.State = "pending"
-	}
 	if l.Completed {
 		l.State = "completed"
+	} else if l.State == "" {
+		l.State = "pending"
 	}
 
 	comment := makeNullString(util.Sanitize(l.Comment))
+	executor := txExecutor(tx)
 
-	_, err := tx.Exec("INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE comment = ?, taskorder = ?, state = ?, zone = ?, delta = ?",
+	// Update Task
+	_, err := executor.ExecContext(ctx, "INSERT INTO task (ID, opID, comment, taskorder, state, zone, delta) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE comment = ?, taskorder = ?, state = ?, zone = ?, delta = ?",
 		l.ID, opID, comment, l.Order, l.State, l.Zone, l.DeltaMinutes,
 		comment, l.Order, l.State, l.Zone, l.DeltaMinutes)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	_, err = tx.Exec("REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)", l.ID, opID, l.From, l.To, l.Color, l.MuCaptured) // REPLACE OK SCB
+	// Update Link
+	_, err = executor.ExecContext(ctx, "REPLACE INTO link (ID, opID, fromPortalID, toPortalID, color, mu) VALUES (?, ?, ?, ?, ?, ?)",
+		l.ID, opID, l.From, l.To, l.Color, l.MuCaptured)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	// empty assignments clears them
-	if err := l.SetAssignments(l.Assignments, tx); err != nil {
-		log.Error(err)
+	if err := l.SetAssignments(ctx, l.Assignments, tx); err != nil {
 		return err
 	}
 
-	// do not clear if they used an old client
 	if len(l.DependsOn) > 0 {
-		if err := l.SetDepends(l.DependsOn, tx); err != nil {
-			log.Error(err)
-			return err
-		}
+		return l.SetDepends(ctx, l.DependsOn, tx)
 	}
 
 	return nil
 }
 
-// PopulateLinks fills in the Links list for the Operation.
-func (o *Operation) populateLinks(zones []Zone, inGid GoogleID, assignments map[TaskID][]GoogleID, depends map[TaskID][]TaskID) error {
-	var description sql.NullString
+func (opID OperationID) deleteLink(ctx context.Context, lid LinkID, tx *sql.Tx) error {
+	executor := txExecutor(tx)
+	_, err := executor.ExecContext(ctx, "DELETE FROM task WHERE OpID = ? and ID = ?", opID, lid)
+	return err
+}
 
-	rows, err := db.Query("SELECT link.ID, link.fromPortalID, link.toPortalID, task.comment, task.taskorder, task.state, link.color, task.zone, task.delta FROM link JOIN task ON link.ID = task.ID WHERE task.opID = ? AND link.opID = task.opID", o.ID)
+// populateLinks fills in the Links list for the Operation.
+func (o *Operation) populateLinks(ctx context.Context, zones []ZoneID, inGid GoogleID, assignments map[TaskID][]GoogleID, depends map[TaskID][]TaskID) error {
+	rows, err := db.QueryContext(ctx, "SELECT link.ID, link.fromPortalID, link.toPortalID, task.comment, task.taskorder, task.state, link.color, task.zone, task.delta, link.mu FROM link JOIN task ON link.ID = task.ID WHERE task.opID = ? AND link.opID = task.opID", o.ID)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		tmpLink := Link{}
+		var tmpLink Link
 		tmpLink.opID = o.ID
+		var comment sql.NullString
 
-		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &description, &tmpLink.Order, &tmpLink.State, &tmpLink.Color, &tmpLink.Zone, &tmpLink.DeltaMinutes)
+		err := rows.Scan(&tmpLink.ID, &tmpLink.From, &tmpLink.To, &comment, &tmpLink.Order, &tmpLink.State, &tmpLink.Color, &tmpLink.Zone, &tmpLink.DeltaMinutes, &tmpLink.MuCaptured)
 		if err != nil {
-			log.Error(err)
 			continue
 		}
+
 		tmpLink.Task.ID = TaskID(tmpLink.ID)
-
-		if description.Valid {
-			tmpLink.Desc = description.String
-			tmpLink.Comment = description.String
-		}
-
 		tmpLink.ThrowOrder = tmpLink.Order
+
+		if comment.Valid {
+			tmpLink.Comment = comment.String
+			tmpLink.Desc = comment.String
+		}
 
 		if a, ok := assignments[tmpLink.Task.ID]; ok {
 			tmpLink.Assignments = a
 			tmpLink.AssignedTo = a[0]
 		}
-
 		if d, ok := depends[tmpLink.Task.ID]; ok {
 			tmpLink.DependsOn = d
 		}
 
-		if tmpLink.State == "completed" {
-			tmpLink.Completed = true
-		}
+		tmpLink.Completed = (tmpLink.State == "completed")
 
-		// this isn't in a zone with which we are concerned AND not assigned to me, skip
-		if !tmpLink.Zone.inZones(zones) && !tmpLink.IsAssignedTo(inGid) {
+		if !tmpLink.Zone.inZones(zones) && !tmpLink.IsAssignedTo(ctx, inGid) {
 			continue
 		}
 		o.Links = append(o.Links, tmpLink)
@@ -222,74 +194,40 @@ func (o *Operation) populateLinks(zones []Zone, inGid GoogleID, assignments map[
 	return nil
 }
 
-// String returns the string version of a LinkID
-func (l LinkID) String() string {
-	return string(l)
-}
+func (l LinkID) String() string { return string(l) }
 
-// LinkOrder changes the order of the throws for an operation
-func (o *Operation) LinkOrder(order string) error {
-	stmt, err := db.Prepare("UPDATE link SET throworder = ? WHERE opID = ? AND ID = ?")
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	pos := 1
+// LinkOrder updates the taskorder field in the task table
+func (o *Operation) LinkOrder(ctx context.Context, order string) error {
 	links := strings.Split(order, ",")
-	for i := range links {
-		if links[i] == "000" { // the header, could be anyplace in the order if the user was being silly
+	for pos, lid := range links {
+		if lid == "000" {
 			continue
 		}
-		if _, err := stmt.Exec(pos, o.ID, links[i]); err != nil {
+		if _, err := db.ExecContext(ctx, "UPDATE task SET taskorder = ? WHERE opID = ? AND ID = ?", pos+1, o.ID, lid); err != nil {
 			log.Error(err)
-			continue
 		}
-		pos++
-	}
-	return err
-}
-
-// SetColor changes the color of a link in an operation
-func (l *Link) SetColor(color string) error {
-	_, err := db.Exec("UPDATE link SET color = ? WHERE ID = ? and opID = ?", color, l.ID, l.opID)
-	if err != nil {
-		log.Error(err)
-	}
-	return err
-}
-
-// Swap changes the direction of a link in an operation
-func (l *Link) Swap() error {
-	var tmpLink Link
-
-	err := db.QueryRow("SELECT fromPortalID, toPortalID FROM link WHERE opID = ? AND ID = ?", l.opID, l.ID).Scan(&tmpLink.From, &tmpLink.To)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	_, err = db.Exec("UPDATE link SET fromPortalID = ?, toPortalID = ? WHERE ID = ? and opID = ?", tmpLink.To, tmpLink.From, l.ID, l.opID)
-	if err != nil {
-		log.Error(err)
-		return err
 	}
 	return nil
 }
 
-// GetLink looks up and returns a populated Link from an id
-func (o *Operation) GetLink(linkID LinkID) (*Link, error) {
-	if len(o.Links) == 0 { // XXX not a good test, not all ops have links
-		err := errors.New(ErrGetLinkUnpopulated)
-		log.Error(err)
-		return &Link{}, err
-	}
+// SetColor changes the color of a link
+func (l *Link) SetColor(ctx context.Context, color string) error {
+	_, err := db.ExecContext(ctx, "UPDATE link SET color = ? WHERE ID = ? and opID = ?", color, l.ID, l.opID)
+	return err
+}
 
+// Swap flips the direction of a link
+func (l *Link) Swap(ctx context.Context) error {
+	_, err := db.ExecContext(ctx, "UPDATE link SET fromPortalID = toPortalID, toPortalID = fromPortalID WHERE ID = ? and opID = ?", l.ID, l.opID)
+	return err
+}
+
+// GetLink returns a link from the operation cache
+func (o *Operation) GetLink(linkID LinkID) (*Link, error) {
 	for _, l := range o.Links {
 		if l.ID == linkID {
 			return &l, nil
 		}
 	}
-
-	return &Link{}, errors.New(ErrLinkNotFound)
+	return nil, errors.New(ErrLinkNotFound)
 }

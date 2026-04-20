@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -18,14 +19,8 @@ type RocksAgent struct {
 }
 
 // RocksToDB writes a rocks agent to the database
-func RocksToDB(a *RocksAgent) error {
-	if a.Agent == "" {
-		return nil
-	}
-
-	// this should be fixed now
-	if a.Gid == "" {
-		log.Error("empty GID in agent from Rocks", "agent", a)
+func RocksToDB(ctx context.Context, a *RocksAgent) error {
+	if a.Agent == "" || a.Gid == "" {
 		return nil
 	}
 
@@ -33,22 +28,23 @@ func RocksToDB(a *RocksAgent) error {
 		log.Infow("long agent name from Rocks", "gid", a.Gid, "name", a.Agent)
 	}
 
-	// REPLACE OK SCB
-	_, err := db.Exec("REPLACE INTO rocks (gid, tgid, agent, verified, smurf, fetched) VALUES (?,?,LEFT(?,15),?,?,UTC_TIMESTAMP())", a.Gid, a.TGId, a.Agent, a.Verified, a.Smurf)
+	// REPLACE is used because this is essentially a cache of the Rocks data
+	_, err := db.ExecContext(ctx, "REPLACE INTO rocks (gid, tgid, agent, verified, smurf, fetched) VALUES (?, ?, LEFT(?, 15), ?, ?, UTC_TIMESTAMP())",
+		a.Gid, a.TGId, a.Agent, a.Verified, a.Smurf)
 	if err != nil {
 		log.Error(err)
-		return nil
+		return err
 	}
 
-	// we trust .rocks to verify telegram info; if it is not already set for a agent, just import it.
-	if a.TGId > 0 { // negative numbers are group chats, 0 is invalid
-		existing, err := a.Gid.TelegramID()
+	// Trust Rocks verification for Telegram info
+	if a.TGId > 0 {
+		existing, err := a.Gid.TelegramID(ctx)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
 		if existing == 0 {
-			if _, err := db.Exec("INSERT IGNORE INTO telegram (telegramID, gid, verified) VALUES (?, ?, 1)", a.TGId, a.Gid); err != nil {
+			if _, err := db.ExecContext(ctx, "INSERT IGNORE INTO telegram (telegramID, gid, verified) VALUES (?, ?, 1)", a.TGId, a.Gid); err != nil {
 				log.Error(err)
 				return err
 			}
@@ -57,22 +53,23 @@ func RocksToDB(a *RocksAgent) error {
 	return nil
 }
 
-// RocksFromDB returns a rocks agent from the database
-func RocksFromDB(gid GoogleID) (*RocksAgent, time.Time, error) {
-	a := RocksAgent{}
-	var fetched string
-	var t time.Time
+// RocksFromDB returns a rocks agent from the database cache
+func RocksFromDB(ctx context.Context, gid GoogleID) (*RocksAgent, time.Time, error) {
+	var a RocksAgent
+	var fetched time.Time
 	var tgid sql.NullInt64
 	var agent sql.NullString
 
-	err := db.QueryRow("SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).Scan(&a.Gid, &tgid, &agent, &a.Verified, &a.Smurf, &fetched)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return &a, t, err
-	}
+	// Scanning directly into fetched (time.Time) works if the DSN has parseTime=true
+	err := db.QueryRowContext(ctx, "SELECT gid, tgid, agent, verified, smurf, fetched FROM rocks WHERE gid = ?", gid).
+		Scan(&a.Gid, &tgid, &agent, &a.Verified, &a.Smurf, &fetched)
 
-	if err == sql.ErrNoRows {
-		return &a, t, nil
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return &a, time.Time{}, nil
+		}
+		log.Error(err)
+		return nil, time.Time{}, err
 	}
 
 	if agent.Valid {
@@ -82,70 +79,47 @@ func RocksFromDB(gid GoogleID) (*RocksAgent, time.Time, error) {
 		a.TGId = tgid.Int64
 	}
 
-	if fetched == "" {
-		return &a, t, nil
-	}
-
-	t, err = time.ParseInLocation("2006-01-02 15:04:05", fetched, time.UTC)
-	if err != nil {
-		log.Error(err)
-		return &a, t, err
-	}
-	// log.Debugw("rocks from cache", "fetched", t, "data", a)
-
-	return &a, t, nil
+	return &a, fetched, nil
 }
 
 // RocksCommunity returns a communityID for a TeamID
-func (teamID TeamID) RocksCommunity() (string, error) {
+func (teamID TeamID) RocksCommunity(ctx context.Context) (string, error) {
 	var rc sql.NullString
-	err := db.QueryRow("SELECT rockscomm FROM team WHERE teamID = ?", teamID).Scan(&rc)
+	err := db.QueryRowContext(ctx, "SELECT rockscomm FROM team WHERE teamID = ?", teamID).Scan(&rc)
 	if err != nil {
-		log.Error(err)
 		return "", err
-	}
-	if !rc.Valid {
-		return "", nil
 	}
 	return rc.String, nil
 }
 
 // RocksKey returns a rocks key for a TeamID
-func (teamID TeamID) RocksKey() (string, error) {
+func (teamID TeamID) RocksKey(ctx context.Context) (string, error) {
 	var rc sql.NullString
-	err := db.QueryRow("SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
+	err := db.QueryRowContext(ctx, "SELECT rockskey FROM team WHERE teamID = ?", teamID).Scan(&rc)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
 		return "", err
-	}
-	if !rc.Valid {
-		return "", nil
 	}
 	return rc.String, nil
 }
 
-// RocksCommunityToTeam returns a TeamID from a Rocks Community
-func RocksCommunityToTeam(communityID string) (TeamID, error) {
+// RocksCommunityToTeam returns a TeamID from a Rocks Community ID
+func RocksCommunityToTeam(ctx context.Context, communityID string) (TeamID, error) {
 	var teamID TeamID
-	err := db.QueryRow("SELECT teamID FROM team WHERE rockscomm = ?", communityID).Scan(&teamID)
+	err := db.QueryRowContext(ctx, "SELECT teamID FROM team WHERE rockscomm = ?", communityID).Scan(&teamID)
 	if err != nil {
-		log.Errorw("rocks community team lookup", "error", err.Error(), "community", communityID)
 		return "", err
 	}
 	return teamID, nil
 }
 
 // SetRocks links a team to a community at enl.rocks.
-// Does not check team ownership -- caller should take care of authorization.
-// Local adds/deletes will be pushed to the community (API management must be enabled on the community at enl.rocks).
-// adds/deletes at enl.rocks will be pushed here (onJoin/onLeave web hooks must be configured in the community at enl.rocks)
-func (teamID TeamID) SetRocks(key, community string) error {
+func (teamID TeamID) SetRocks(ctx context.Context, key, community string) error {
 	k := makeNullString(util.Sanitize(key))
 	c := makeNullString(util.Sanitize(community))
 
-	_, err := db.Exec("UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", k, c, teamID)
-	if err != nil {
-		log.Error(err)
-	}
+	_, err := db.ExecContext(ctx, "UPDATE team SET rockskey = ?, rockscomm = ? WHERE teamID = ?", k, c, teamID)
 	return err
 }

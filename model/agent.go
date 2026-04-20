@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -21,7 +22,7 @@ type Agent struct {
 	Name         string       `json:"name,omitempty"`
 	RocksName    string       `json:"rocksname,omitempty"`
 	IntelName    string       `json:"intelname,omitempty"`
-	OneTimeToken OneTimeToken `json:"lockey,omitempty"` // historical name, is this used by any clients?
+	OneTimeToken OneTimeToken `json:"lockey,omitempty"`
 	ProfileImage string       `json:"pic,omitempty"`
 	IntelFaction string       `json:"intelfaction,omitempty"`
 	QueryToken   string       `json:"querytoken,omitempty"`
@@ -65,7 +66,7 @@ type AdOperation struct {
 
 // AgentID is anything that can be converted to a GoogleID or a string
 type AgentID interface {
-	Gid() (GoogleID, error)
+	Gid(ctx context.Context) (GoogleID, error)
 	fmt.Stringer
 }
 
@@ -78,22 +79,21 @@ type AgentLocation struct {
 }
 
 // Gid just satisfies the AgentID interface
-func (gid GoogleID) Gid() (GoogleID, error) {
+func (gid GoogleID) Gid(ctx context.Context) (GoogleID, error) {
 	return gid, nil
 }
 
 // GetAgent populates an Agent struct based on the gid
-func (gid GoogleID) GetAgent() (*Agent, error) {
+func (gid GoogleID) GetAgent(ctx context.Context) (*Agent, error) {
 	var a Agent
 	a.GoogleID = gid
 	var level, pic, intelname, rocksname sql.NullString
 	var rocksverified sql.NullBool
 	var ifac IntelFaction
 
-	err := db.QueryRow("SELECT rocks.agent AS Rocksname, a.intelname, a.OneTimeToken, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid WHERE a.gid = ?", gid).Scan(&rocksname, &intelname, &a.OneTimeToken, &rocksverified, &a.RISC, &ifac, &pic)
-	if err != nil && err == sql.ErrNoRows {
-		err = errors.New(ErrUnknownGID)
-		return &a, err
+	err := db.QueryRowContext(ctx, "SELECT rocks.agent AS Rocksname, a.intelname, a.OneTimeToken, rocks.verified AS RockVerified, a.RISC, a.intelfaction, a.picurl FROM agent=a LEFT JOIN rocks ON a.gid = rocks.gid WHERE a.gid = ?", gid).Scan(&rocksname, &intelname, &a.OneTimeToken, &rocksverified, &a.RISC, &ifac, &pic)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return &a, errors.New(ErrUnknownGID)
 	}
 	if err != nil {
 		log.Error(err)
@@ -126,15 +126,15 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 		a.Level = uint8(l)
 	}
 
-	if err = adTeams(&a); err != nil {
+	if err = adTeams(ctx, &a); err != nil {
 		return &a, err
 	}
 
-	if err = adTelegram(&a); err != nil {
+	if err = adTelegram(ctx, &a); err != nil {
 		return &a, err
 	}
 
-	if err = adOps(&a); err != nil {
+	if err = adOps(ctx, &a); err != nil {
 		return &a, err
 	}
 
@@ -143,8 +143,8 @@ func (gid GoogleID) GetAgent() (*Agent, error) {
 	return &a, nil
 }
 
-func adTeams(ad *Agent) error {
-	rows, err := db.Query("SELECT x.teamID, team.name, x.shareLoc, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ?", ad.GoogleID)
+func adTeams(ctx context.Context, ad *Agent) error {
+	rows, err := db.QueryContext(ctx, "SELECT x.teamID, team.name, x.shareLoc, x.shareWD, x.loadWD, team.rockscomm, team.rockskey, team.owner, team.joinLinkToken FROM agentteams=x JOIN team ON x.teamID = team.teamID WHERE x.gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -167,7 +167,6 @@ func adTeams(ad *Agent) error {
 		}
 
 		if rk.Valid && team.Owner == ad.GoogleID {
-			// only share RocksKey with owner
 			team.RocksKey = rk.String
 		}
 
@@ -175,22 +174,19 @@ func adTeams(ad *Agent) error {
 			team.JoinLinkToken = jlt.String
 		}
 
+		team.ShareLoc = "Off"
 		if shareLoc {
 			team.ShareLoc = "On"
-		} else {
-			team.ShareLoc = "Off"
 		}
 
+		team.ShareWD = "Off"
 		if shareWD {
 			team.ShareWD = "On"
-		} else {
-			team.ShareWD = "Off"
 		}
 
+		team.LoadWD = "Off"
 		if loadWD {
 			team.LoadWD = "On"
-		} else {
-			team.LoadWD = "Off"
 		}
 
 		ad.Teams = append(ad.Teams, team)
@@ -198,14 +194,15 @@ func adTeams(ad *Agent) error {
 	return nil
 }
 
-func adTelegram(ad *Agent) error {
+func adTelegram(ctx context.Context, ad *Agent) error {
 	var authtoken sql.NullString
-	err := db.QueryRow("SELECT telegramID, telegramName, verified, authtoken FROM telegram WHERE gid = ?", ad.GoogleID).Scan(&ad.Telegram.ID, &ad.Telegram.Name, &ad.Telegram.Verified, &authtoken)
-	if err != nil && err == sql.ErrNoRows {
+	err := db.QueryRowContext(ctx, "SELECT telegramID, telegramName, verified, authtoken FROM telegram WHERE gid = ?", ad.GoogleID).Scan(&ad.Telegram.ID, &ad.Telegram.Name, &ad.Telegram.Verified, &authtoken)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		ad.Telegram.ID = 0
 		ad.Telegram.Name = ""
 		ad.Telegram.Verified = false
 		ad.Telegram.Authtoken = ""
+		return nil
 	} else if err != nil {
 		log.Error(err)
 		return err
@@ -216,10 +213,10 @@ func adTelegram(ad *Agent) error {
 	return nil
 }
 
-func adOps(ad *Agent) error {
+func adOps(ctx context.Context, ad *Agent) error {
 	seen := make(map[OperationID]bool)
 
-	rowOwned, err := db.Query("SELECT ID, Name, Color, modified, lasteditid FROM operation WHERE gid = ?", ad.GoogleID)
+	rowOwned, err := db.QueryContext(ctx, "SELECT ID, Name, Color, modified, lasteditid FROM operation WHERE gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -241,7 +238,7 @@ func adOps(ad *Agent) error {
 		seen[op.ID] = true
 	}
 
-	rowTeam, err := db.Query("SELECT operation.ID, operation.Name, operation.Color, permissions.teamID, operation.modified, operation.lasteditid FROM agentteams JOIN permissions ON agentteams.teamID = permissions.teamID JOIN operation ON permissions.opID = operation.ID WHERE agentteams.gid = ?", ad.GoogleID)
+	rowTeam, err := db.QueryContext(ctx, "SELECT operation.ID, operation.Name, operation.Color, permissions.teamID, operation.modified, operation.lasteditid FROM agentteams JOIN permissions ON agentteams.teamID = permissions.teamID JOIN operation ON permissions.opID = operation.ID WHERE agentteams.gid = ?", ad.GoogleID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -264,29 +261,26 @@ func adOps(ad *Agent) error {
 	return nil
 }
 
-// SetLocation updates the database to reflect a agent's current location
-func (gid GoogleID) SetLocation(lat, lon string) error {
+// SetLocation updates the database to reflect an agent's current location
+func (gid GoogleID) SetLocation(ctx context.Context, lat, lon string) error {
 	if lat == "" || lon == "" {
 		return nil
 	}
 
-	// convert to float64 and back to reduce the garbage input
-	var flat, flon float64
-
 	flat, err := strconv.ParseFloat(lat, 64)
 	if err != nil {
 		log.Error(err)
-		flat = float64(0)
+		flat = 0
 	}
 
-	flon, err = strconv.ParseFloat(lon, 64)
+	flon, err := strconv.ParseFloat(lon, 64)
 	if err != nil {
 		log.Error(err)
-		flon = float64(0)
+		flon = 0
 	}
 
 	point := fmt.Sprintf("POINT(%s %s)", strconv.FormatFloat(flon, 'f', 7, 64), strconv.FormatFloat(flat, 'f', 7, 64))
-	if _, err := db.Exec("UPDATE locations SET loc = PointFromText(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", point, gid); err != nil {
+	if _, err := db.ExecContext(ctx, "UPDATE locations SET loc = PointFromText(?), upTime = UTC_TIMESTAMP() WHERE gid = ?", point, gid); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -295,12 +289,11 @@ func (gid GoogleID) SetLocation(lat, lon string) error {
 }
 
 // IngressName returns an agent's name for a given GoogleID.
-// returns err == sql.ErrNoRows if there is no such agent.
-func (gid GoogleID) IngressName() (string, error) {
+func (gid GoogleID) IngressName(ctx context.Context) (string, error) {
 	var intelname, rocksname sql.NullString
-	err := db.QueryRow("SELECT rocks.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &intelname)
+	err := db.QueryRowContext(ctx, "SELECT rocks.agent, agent.intelname FROM agent LEFT JOIN rocks ON agent.gid = rocks.gid WHERE agent.gid = ?", gid).Scan(&rocksname, &intelname)
 
-	if err != nil && err == sql.ErrNoRows {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		log.Error("getting ingressname for unknown gid")
 		return "Unknown Agent", nil
 	}
@@ -313,8 +306,9 @@ func (gid GoogleID) IngressName() (string, error) {
 }
 
 // IngressName is used for templates
-func IngressName(g messaging.GoogleID) string {
-	name, _ := GoogleID(string(g)).IngressName()
+// Note: This helper might need special care if the templates can't pass context yet.
+func IngressName(ctx context.Context, g messaging.GoogleID) string {
+	name, _ := GoogleID(string(g)).IngressName(ctx)
 	return name
 }
 
@@ -322,18 +316,16 @@ func (gid GoogleID) bestname(intel, rocks sql.NullString) string {
 	if rocks.Valid && rocks.String != "-hidden-" {
 		return rocks.String
 	}
-
 	if intel.Valid {
 		return intel.String
 	}
-
 	return fmt.Sprint("UnverifiedAgent_", gid)
 }
 
 // Valid returns "true" if the GoogleID is known to wasabee
-func (gid GoogleID) Valid() bool {
+func (gid GoogleID) Valid(ctx context.Context) bool {
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM agent WHERE gid = ?", gid).Scan(&count)
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM agent WHERE gid = ?", gid).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return false
@@ -345,16 +337,14 @@ func (gid GoogleID) String() string {
 	return string(gid)
 }
 
-// SearchAgentName gets a GoogleID from an Agent's name, searching local name, V name (if known), Rocks name (if known) and telegram name (if known)
-// returns "" on no match
-func SearchAgentName(agent string) (GoogleID, error) {
+// SearchAgentName gets a GoogleID from an Agent's name
+func SearchAgentName(ctx context.Context, agent string) (GoogleID, error) {
 	var gid GoogleID
 	var count int
 
-	// if it starts with an @ search tg
-	if agent[0] == '@' {
-		err := db.QueryRow("SELECT gid FROM telegram WHERE LOWER(telegramName) = LOWER(?)", agent[1:]).Scan(&gid)
-		if err != nil && err != sql.ErrNoRows {
+	if len(agent) > 0 && agent[0] == '@' {
+		err := db.QueryRowContext(ctx, "SELECT gid FROM telegram WHERE LOWER(telegramName) = LOWER(?)", agent[1:]).Scan(&gid)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			log.Error(err)
 			return "", err
 		}
@@ -363,25 +353,22 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		}
 	}
 
-	// XXX leave this in place for now since historical data is "fine"
-	err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(communityname) = LOWER(?)", agent).Scan(&gid)
-	if err != nil && err != sql.ErrNoRows {
+	err := db.QueryRowContext(ctx, "SELECT gid FROM agent WHERE LOWER(communityname) = LOWER(?)", agent).Scan(&gid)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Error(err)
 		return "", err
 	}
-	if err != sql.ErrNoRows && gid != "" {
+	if !errors.Is(err, sql.ErrNoRows) && gid != "" {
 		return gid, nil
 	}
 
-	// rocks.agent does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM rocks WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
-
+	err = db.QueryRowContext(ctx, "SELECT COUNT(gid) FROM rocks WHERE LOWER(agent) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM rocks WHERE LOWER(agent) = LOWER(?)", agent).Scan(&gid)
+		err := db.QueryRowContext(ctx, "SELECT gid FROM rocks WHERE LOWER(agent) = LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -389,18 +376,16 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := errors.New(ErrMultipleRocks)
-		log.Error(err)
+		log.Error(errors.New(ErrMultipleRocks))
 	}
 
-	// intelname does NOT have a unique key
-	err = db.QueryRow("SELECT COUNT(gid) FROM agent WHERE LOWER(intelname) = LOWER(?)", agent).Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT COUNT(gid) FROM agent WHERE LOWER(intelname) = LOWER(?)", agent).Scan(&count)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 	if count == 1 {
-		err := db.QueryRow("SELECT gid FROM agent WHERE LOWER(intelname) = LOWER(?)", agent).Scan(&gid)
+		err := db.QueryRowContext(ctx, "SELECT gid FROM agent WHERE LOWER(intelname) = LOWER(?)", agent).Scan(&gid)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -408,19 +393,16 @@ func SearchAgentName(agent string) (GoogleID, error) {
 		return gid, nil
 	}
 	if count > 1 {
-		err := errors.New(ErrMultipleIntelname)
-		log.Error(err)
+		log.Error(errors.New(ErrMultipleIntelname))
 	}
 
-	// no match found, return ""
 	return "", nil
 }
 
 // Delete removes an agent and all associated data
-func (gid GoogleID) Delete() error {
-	// teams require special attention since they might be linked to .rocks communities
+func (gid GoogleID) Delete(ctx context.Context) error {
 	var teamID TeamID
-	rows, err := db.Query("SELECT teamID FROM team WHERE owner = ?", gid)
+	rows, err := db.QueryContext(ctx, "SELECT teamID FROM team WHERE owner = ?", gid)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -428,75 +410,68 @@ func (gid GoogleID) Delete() error {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&teamID)
-		if err != nil {
+		if err = rows.Scan(&teamID); err != nil {
 			log.Error(err)
 			continue
 		}
-		err = teamID.Delete()
-		if err != nil {
+		if err = teamID.Delete(ctx); err != nil {
 			log.Error(err)
 			continue
 		}
 	}
 
-	teamrows, err := db.Query("SELECT teamID FROM agentteams WHERE gid = ?", gid)
+	teamrows, err := db.QueryContext(ctx, "SELECT teamID FROM agentteams WHERE gid = ?", gid)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 	defer teamrows.Close()
 	for teamrows.Next() {
-		err := teamrows.Scan(&teamID)
-		if err != nil {
+		if err := teamrows.Scan(&teamID); err != nil {
 			log.Error(err)
 			continue
 		}
-		_ = teamID.RemoveAgent(gid)
+		_ = teamID.RemoveAgent(ctx, gid)
 	}
 
-	// brute force delete everyhing else
-	_, err = db.Exec("DELETE FROM agent WHERE gid = ?", gid)
-	if err != nil {
+	if _, err = db.ExecContext(ctx, "DELETE FROM agent WHERE gid = ?", gid); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	// the foreign key constraints should take care of these, but just in case...
-	_, _ = db.Exec("DELETE FROM locations WHERE gid = ?", gid)
-	_, _ = db.Exec("DELETE FROM telegram WHERE gid = ?", gid)
-	_, _ = db.Exec("DELETE FROM firebase WHERE gid = ?", gid)
-	_, _ = db.Exec("DELETE FROM rocks WHERE gid = ?", gid)
+	_, _ = db.ExecContext(ctx, "DELETE FROM locations WHERE gid = ?", gid)
+	_, _ = db.ExecContext(ctx, "DELETE FROM telegram WHERE gid = ?", gid)
+	_, _ = db.ExecContext(ctx, "DELETE FROM firebase WHERE gid = ?", gid)
+	_, _ = db.ExecContext(ctx, "DELETE FROM rocks WHERE gid = ?", gid)
 
 	return nil
 }
 
-// Lock disables an account -- called by RISC system
-func (gid GoogleID) Lock(reason string) error {
+// Lock disables an account
+func (gid GoogleID) Lock(ctx context.Context, reason string) error {
 	log.Infow("RISC locking", "gid", gid, "reason", reason)
-	if _, err := db.Exec("UPDATE agent SET RISC = 1 WHERE gid = ?", gid); err != nil {
+	if _, err := db.ExecContext(ctx, "UPDATE agent SET RISC = 1 WHERE gid = ?", gid); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
-// Unlock enables a disabled account -- called by RISC system
-func (gid GoogleID) Unlock(reason string) error {
+// Unlock enables a disabled account
+func (gid GoogleID) Unlock(ctx context.Context, reason string) error {
 	log.Infow("RISC unlocking", "gid", gid, "reason", reason)
-	if _, err := db.Exec("UPDATE agent SET RISC = 0 WHERE gid = ?", gid); err != nil {
+	if _, err := db.ExecContext(ctx, "UPDATE agent SET RISC = 0 WHERE gid = ?", gid); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
-// RISC checks to see if the user was marked as compromised by Google
-func (gid GoogleID) RISC() bool {
+// RISC checks the compromised flag
+func (gid GoogleID) RISC(ctx context.Context) bool {
 	var RISC bool
-
-	err := db.QueryRow("SELECT RISC FROM agent WHERE gid = ?", gid).Scan(&RISC)
-	if err == sql.ErrNoRows {
+	err := db.QueryRowContext(ctx, "SELECT RISC FROM agent WHERE gid = ?", gid).Scan(&RISC)
+	if errors.Is(err, sql.ErrNoRows) {
 		log.Warnw("agent does not exist, checking RISC flag", "GID", gid)
 	} else if err != nil {
 		log.Error(err)
@@ -505,8 +480,8 @@ func (gid GoogleID) RISC() bool {
 }
 
 // UpdatePicture sets/updates the agent's google picture URL
-func (gid GoogleID) UpdatePicture(picurl string) error {
-	if _, err := db.Exec("UPDATE agent SET picurl = ? WHERE gid = ?", picurl, gid); err != nil {
+func (gid GoogleID) UpdatePicture(ctx context.Context, picurl string) error {
+	if _, err := db.ExecContext(ctx, "UPDATE agent SET picurl = ? WHERE gid = ?", picurl, gid); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -514,23 +489,21 @@ func (gid GoogleID) UpdatePicture(picurl string) error {
 }
 
 // GetPicture returns the agent's Google Picture URL
-func (gid GoogleID) GetPicture() string {
+func (gid GoogleID) GetPicture(ctx context.Context) string {
 	var url sql.NullString
-
-	err := db.QueryRow("SELECT picurl FROM agent WHERE gid = ?", gid).Scan(&url)
-	if err == sql.ErrNoRows || !url.Valid || url.String == "" {
+	err := db.QueryRowContext(ctx, "SELECT picurl FROM agent WHERE gid = ?", gid).Scan(&url)
+	if errors.Is(err, sql.ErrNoRows) || !url.Valid || url.String == "" {
 		return config.Get().DefaultPictureURL
 	}
 	if err != nil {
 		log.Error(err)
 		return config.Get().DefaultPictureURL
 	}
-
 	return url.String
 }
 
-// ToGid takes a string and returns a Gid for it -- for reasonable values of a string; it must look like a GoogleID otherwise it defaults to agent name
-func ToGid(in string) (GoogleID, error) {
+// ToGid takes a string and returns a Gid
+func ToGid(ctx context.Context, in string) (GoogleID, error) {
 	var gid GoogleID
 	var err error
 
@@ -540,9 +513,9 @@ func ToGid(in string) (GoogleID, error) {
 	case 21:
 		gid = GoogleID(in)
 	default:
-		gid, err = SearchAgentName(in) // telegram @names covered here
+		gid, err = SearchAgentName(ctx, in)
 	}
-	if err == sql.ErrNoRows || gid == "" {
+	if errors.Is(err, sql.ErrNoRows) || gid == "" {
 		err = errors.New(ErrAgentNotFound)
 		log.Infow(err.Error(), "search", in, "message", err.Error())
 		return gid, err
@@ -554,63 +527,52 @@ func ToGid(in string) (GoogleID, error) {
 	return gid, nil
 }
 
-// SetIntelData sets the untrusted data from IITC - do not depend on these values for authorization
-// but if someone says they are a smurf, who are we to deny their self-identity?
-func (gid GoogleID) SetIntelData(name, faction string) error {
-	name = util.Sanitize(name) // don't trust this too much
-
+// SetIntelData sets the untrusted data from IITC
+func (gid GoogleID) SetIntelData(ctx context.Context, name, faction string) error {
+	name = util.Sanitize(name)
 	if name == "" {
 		return nil
 	}
 
-	if len(name) > 15 {
-		log.Infow("intel name too long", "gid", gid, "name", name)
-	}
-
 	ifac := FactionFromString(faction)
-
-	_, err := db.Exec("UPDATE agent SET intelname = LEFT(?, 15), intelfaction = ? WHERE GID = ?", name, ifac, gid)
+	_, err := db.ExecContext(ctx, "UPDATE agent SET intelname = LEFT(?, 15), intelfaction = ? WHERE GID = ?", name, ifac, gid)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if ifac == factionRes {
+	if ifac == FactionRes {
 		log.Errorw("self identified as RES", "sent name", name, "GID", gid)
 	}
 	return nil
 }
 
-// IntelSmurf checks to see if the agent has self-proclaimed to be a smurf (unset is OK)
-func (gid GoogleID) IntelSmurf() bool {
+// IntelSmurf checks for self-proclaimed smurfs
+func (gid GoogleID) IntelSmurf(ctx context.Context) bool {
 	var ifac IntelFaction
-
-	if err := db.QueryRow("SELECT intelfaction FROM agent WHERE GID = ?", gid).Scan(&ifac); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT intelfaction FROM agent WHERE GID = ?", gid).Scan(&ifac); err != nil {
 		log.Error(err)
 		return false
 	}
-	if ifac == factionRes {
-		return true
-	}
-	return false
+	return ifac == FactionRes
 }
 
 // FirstLogin sets the required database records for a new agent
-func (gid GoogleID) FirstLogin() error {
+func (gid GoogleID) FirstLogin(ctx context.Context) error {
 	log.Infow("first login", "GID", gid, "message", "first login for "+gid)
 
-	ott, err := GenerateSafeName()
+	ott, err := GenerateSafeName(ctx)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if _, err := db.Exec("INSERT IGNORE INTO agent (gid, OneTimeToken) VALUES (?,?)", gid, ott); err != nil {
+	if _, err := db.ExecContext(ctx, "INSERT IGNORE INTO agent (gid, OneTimeToken) VALUES (?,?)", gid, ott); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if _, err = db.Exec("INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", gid); err != nil {
+	if _, err = db.ExecContext(ctx, "INSERT IGNORE INTO locations (gid, upTime, loc) VALUES (?,UTC_TIMESTAMP(),POINT(0,0))", gid); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -619,13 +581,12 @@ func (gid GoogleID) FirstLogin() error {
 }
 
 // GetAgentLocations is a fast-path to get all available agent locations
-func (gid GoogleID) GetAgentLocations() ([]AgentLocation, error) {
+func (gid GoogleID) GetAgentLocations(ctx context.Context) ([]AgentLocation, error) {
 	var list []AgentLocation
 	var tmpL AgentLocation
 	var lat, lon string
 
-	var rows *sql.Rows
-	rows, err := db.Query("SELECT x.gid, Y(l.loc), X(l.loc), l.upTime "+
+	rows, err := db.QueryContext(ctx, "SELECT x.gid, Y(l.loc), X(l.loc), l.upTime "+
 		"FROM agentteams=x, locations=l "+
 		"WHERE x.teamID IN (SELECT teamID FROM agentteams WHERE gid = ?) "+
 		"AND x.shareLoc= 1 AND x.gid = l.gid", gid)

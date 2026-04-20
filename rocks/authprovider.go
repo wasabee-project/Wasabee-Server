@@ -1,6 +1,7 @@
 package rocks
 
 import (
+	"context"
 	"time"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -14,27 +15,30 @@ type Rocks struct{}
 // responses are cached for an hour
 // unknown agents are permitted implicitly
 // if an agent is marked as smurf at rocks, they are prohibited
-func (r *Rocks) Authorize(gid model.GoogleID) bool {
-	// log.Debugw("rocks authorize", "gid", gid)
-
-	a, fetched, err := model.RocksFromDB(gid)
+func (r *Rocks) Authorize(ctx context.Context, gid model.GoogleID) bool {
+	// Pass ctx to the DB call for tracing and timeout support
+	a, fetched, err := model.RocksFromDB(ctx, gid)
 	if err != nil {
-		// do not block on db error
+		// do not block on db error, but log it
+		log.Error(err)
 		return true
 	}
 
-	// log.Debugw("rocks from cache", "gid", gid, "data", a)
-	if a.Agent == "" || fetched.Before(time.Now().Add(0-time.Hour)) {
-		net, err := Search(string(gid))
+	// Logic check: if cache is empty or older than 1 hour, refresh from network
+	if a.Agent == "" || fetched.Before(time.Now().Add(-1*time.Hour)) {
+		// Assuming Search will be updated to accept context as well
+		net, err := Search(ctx, string(gid))
 		if err != nil {
-			return !a.Smurf // do not block on network error unless already listed as a smurf in the cache
+			// do not block on network error unless already listed as a smurf in the cache
+			return !a.Smurf
 		}
-		// log.Debugw("rocks cache refreshed", "gid", gid, "data", net)
+
 		if net.Gid == "" {
-			// log.Debugw("Rocks returned a result without a GID, adding it", "gid", gid, "result", net)
 			net.Gid = gid
 		}
-		if err := model.RocksToDB(net); err != nil {
+
+		// Update cache with new data
+		if err := model.RocksToDB(ctx, net); err != nil {
 			log.Error(err)
 		}
 		a = net
@@ -45,6 +49,5 @@ func (r *Rocks) Authorize(gid model.GoogleID) bool {
 		return false
 	}
 
-	// not in rocks is not sufficient to block
 	return true
 }

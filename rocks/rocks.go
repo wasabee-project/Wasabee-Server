@@ -19,194 +19,151 @@ import (
 var holdtime = 3 * time.Second
 var limiter *rate.Limiter
 
-// Start is called from main() to initialize the config
+// Start initializes the Rocks subsystem
 func Start(ctx context.Context) {
 	if config.Get().Rocks.APIKey == "" {
 		log.Debugw("startup", "message", "Rocks not configured, not starting")
 		return
 	}
 
+	// 0.5/sec = 1 request every 2 seconds, with a burst of 10
 	limiter = rate.NewLimiter(rate.Limit(0.5), 10)
 
-	rocks := config.Subrouter("/rocks")
-	rocks.HandleFunc("", rocksCommunityRoute).Methods("POST")
-	// rocks.NotFoundHandler = http.HandlerFunc(notFoundJSONRoute)
-	// rocks.MethodNotAllowedHandler = http.HandlerFunc(notFoundJSONRoute)
-	// rocks.PathPrefix("/rocks").HandlerFunc(notFoundJSONRoute)
-
-	// let the messaging susbsystem know we exist and how to use us
+	// Messaging registration
 	messaging.RegisterMessageBus("Rocks", messaging.Bus{
 		AddToRemote:      addToRemote,
 		RemoveFromRemote: removeFromRemote,
 	})
 
+	// Authorization registration
 	auth.RegisterAuthProvider(&Rocks{})
 
 	config.SetRocksRunning(true)
 
-	// there is no reason to stay running now -- this costs nothing
 	<-ctx.Done()
 
 	log.Infow("shutdown", "message", "rocks shutting down")
 	config.SetRocksRunning(false)
 }
 
-// Search checks a agent at enl.rocks and returns an Agent
-func Search(id string) (*model.RocksAgent, error) {
+// Search checks an agent at enl.rocks and returns an Agent
+func Search(ctx context.Context, id string) (*model.RocksAgent, error) {
 	agent := model.RocksAgent{}
 
 	if !config.IsRocksRunning() {
 		return &agent, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
-	defer cancel()
+	// Use the passed context for the rate limiter
 	if err := limiter.Wait(ctx); err != nil {
-		log.Warn(err)
-		// just keep going
+		return &agent, err
 	}
 
 	c := config.Get().Rocks
 	apiurl := fmt.Sprintf("%s/%s?apikey=%s", c.StatusEndpoint, id, c.APIKey)
-	req, err := http.NewRequest("GET", apiurl, nil)
+
+	// Create request with the provided context
+	req, err := http.NewRequestWithContext(ctx, "GET", apiurl, nil)
 	if err != nil {
-		// do not leak API key to logs
-		err := fmt.Errorf("error establishing .rocks request")
-		log.Errorw(err.Error(), "search", id)
-		return &agent, err
+		return &agent, fmt.Errorf("error establishing .rocks request")
 	}
+
 	client := &http.Client{
 		Timeout: holdtime,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		// do not leak API key to logs
-		err := fmt.Errorf("error executing .rocks request")
-		log.Errorw(err.Error(), "search", id)
-		return &agent, err
+		return &agent, fmt.Errorf("error executing .rocks request")
 	}
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&agent); err != nil {
-		log.Error(err)
 		return &agent, err
 	}
 	return &agent, nil
 }
 
-// CommunitySync is called from the https server when it receives a push notification
-func CommunitySync(msg json.RawMessage) error {
-	log.Debug("rocks community request", "data", string(msg))
-
-	// check the source? is the community key enough for this? I don't think so
+// CommunitySync is called when a push notification is received from enl.rocks
+func CommunitySync(ctx context.Context, msg json.RawMessage) error {
 	var rc communityNotice
-	err := json.Unmarshal(msg, &rc)
-	if err != nil {
-		log.Error(err)
+	if err := json.Unmarshal(msg, &rc); err != nil {
 		return err
 	}
 
-	teamID, err := model.RocksCommunityToTeam(rc.Community)
+	teamID, err := model.RocksCommunityToTeam(ctx, rc.Community)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
-	// already known?
-	if !rc.User.Gid.Valid() {
-		if err := rc.User.Gid.FirstLogin(); err != nil {
-			log.Error(err)
+	// Handle first-time login/discovery from sync notice
+	if !rc.User.Gid.Valid(ctx) {
+		if err := rc.User.Gid.FirstLogin(ctx); err != nil {
 			return err
 		}
-
 		r := &Rocks{}
-		_ = r.Authorize(rc.User.Gid)
+		_ = r.Authorize(ctx, rc.User.Gid)
 	}
 
 	if rc.Action == "onJoin" {
-		if inteam, err := rc.User.Gid.AgentInTeam(teamID); err != nil || inteam {
-			return err // if already on the team, this is nil
-		}
-		if err := teamID.AddAgent(rc.User.Gid); err != nil {
+		inteam, err := rc.User.Gid.AgentInTeam(ctx, teamID)
+		if err != nil || inteam {
 			return err
 		}
-		owner, err := teamID.Owner()
-		if err != nil {
+		if err := teamID.AddAgent(ctx, rc.User.Gid); err != nil {
 			return err
 		}
-		agent, _ := rc.User.Gid.IngressName()
-		team, _ := teamID.Name()
-		messaging.SendMessage(messaging.GoogleID(owner), fmt.Sprintf("added %s to %s via rocks community join", agent, team))
+
+		// Notifications
+		owner, _ := teamID.Owner(ctx)
+		agent, _ := rc.User.Gid.IngressName(ctx)
+		team, _ := teamID.Name(ctx)
+		messaging.SendMessage(ctx, messaging.GoogleID(owner), fmt.Sprintf("added %s to %s via rocks community join", agent, team))
 	} else {
-		if err := teamID.RemoveAgent(rc.User.Gid); err != nil {
+		if err := teamID.RemoveAgent(ctx, rc.User.Gid); err != nil {
 			return err
 		}
 	}
 
 	if rc.TGId > 0 && rc.TGName != "" {
-		if err := rc.TGId.SetName(rc.TGName); err != nil {
-			return err
-		}
+		_ = rc.TGId.SetName(ctx, rc.TGName)
 	}
 
 	return nil
 }
 
-// CommunityMemberPull grabs the member list from the associated community at enl.rocks and adds each agent to the team
-func CommunityMemberPull(teamID model.TeamID) error {
-	cid, err := teamID.RocksKey()
-	if err != nil {
-		log.Error(err)
+// CommunityMemberPull syncs the entire Rocks community membership to the Wasabee team
+func CommunityMemberPull(ctx context.Context, teamID model.TeamID) error {
+	cid, err := teamID.RocksKey(ctx)
+	if err != nil || cid == "" {
 		return err
 	}
-	if cid == "" {
-		return nil
-	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), holdtime)
-	defer cancel()
 	if err := limiter.Wait(ctx); err != nil {
-		log.Warn(err)
-		// just keep going
+		return err
 	}
 
 	c := config.Get().Rocks
 	apiurl := fmt.Sprintf("%s?key=%s", c.CommunityEndpoint, cid)
-	req, err := http.NewRequest("GET", apiurl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", apiurl, nil)
 	if err != nil {
-		err := fmt.Errorf("error establishing community pull request")
-		log.Error(err)
 		return err
 	}
-	client := &http.Client{
-		Timeout: holdtime,
-	}
+
+	client := &http.Client{Timeout: holdtime}
 	resp, err := client.Do(req)
 	if err != nil {
-		err := fmt.Errorf("error executing community pull request")
-		log.Error(err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	rr := communityResponse{}
 	if err := json.NewDecoder(resp.Body).Decode(&rr); err != nil {
-		log.Error(err)
 		return err
 	}
-	if rr.Error != "" {
-		log.Error(rr.Error)
-		return err
-	}
-	// log.Debugw("rocks sync", "response", rr)
 
 	for _, gid := range rr.Members {
-		if inteam, _ := gid.AgentInTeam(teamID); inteam {
-			continue
-		}
-		log.Debugw("rocks sync", "adding", gid)
-		if err := teamID.AddAgent(gid); err != nil {
-			log.Info(err)
+		if inteam, _ := gid.AgentInTeam(ctx, teamID); !inteam {
+			_ = teamID.AddAgent(ctx, gid)
 		}
 	}
 	return nil

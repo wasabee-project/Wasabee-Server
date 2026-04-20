@@ -4,23 +4,22 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/model"
 	"github.com/wasabee-project/Wasabee-Server/rocks"
 )
 
 func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	teamID := model.TeamID(vars["team"])
+	teamID := model.TeamID(req.PathValue("team"))
 
-	safe, err := gid.OwnsTeam(teamID)
+	safe, err := gid.OwnsTeam(ctx, teamID)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -32,7 +31,7 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := rocks.CommunityMemberPull(teamID); err != nil {
+	if err := rocks.CommunityMemberPull(ctx, teamID); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -40,18 +39,18 @@ func rocksPullTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	rc := vars["rockscomm"]
-	rk := vars["rockskey"]
+	team := model.TeamID(req.PathValue("team"))
+	rc := req.PathValue("rockscomm")
+	rk := req.PathValue("rockskey")
 
-	safe, err := gid.OwnsTeam(team)
+	safe, err := gid.OwnsTeam(ctx, team)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -63,7 +62,7 @@ func rocksCfgTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = team.SetRocks(rk, rc); err != nil {
+	if err = team.SetRocks(ctx, rk, rc); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}

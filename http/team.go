@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
-
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/model"
@@ -14,28 +12,28 @@ import (
 )
 
 func getTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
+	team := model.TeamID(req.PathValue("team"))
 
-	if !team.Valid() {
+	if !team.Valid(ctx) {
 		err := fmt.Errorf("team not found")
 		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
-	isowner, err := gid.OwnsTeam(team)
+	isowner, err := gid.OwnsTeam(ctx, team)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	onteam, err := gid.AgentInTeam(team)
+	onteam, err := gid.AgentInTeam(ctx, team)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -47,7 +45,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	teamList, err := team.FetchTeam()
+	teamList, err := team.FetchTeam(ctx)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -62,14 +60,14 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func newTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	name := util.Sanitize(vars["name"])
+	name := util.Sanitize(req.PathValue("name"))
 	if name == "" {
 		err := fmt.Errorf("empty team name")
 		log.Warnw(err.Error(), "gid", gid)
@@ -77,7 +75,7 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err = gid.NewTeam(name)
+	_, err = gid.NewTeam(ctx, name)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -86,15 +84,15 @@ func newTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	safe, err := gid.OwnsTeam(team)
+	team := model.TeamID(req.PathValue("team"))
+	safe, err := gid.OwnsTeam(ctx, team)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -106,7 +104,7 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	if err = team.Delete(); err != nil {
+	if err = team.Delete(ctx); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -114,15 +112,15 @@ func deleteTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	safe, err := gid.OwnsTeam(team)
+	team := model.TeamID(req.PathValue("team"))
+	safe, err := gid.OwnsTeam(ctx, team)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -134,12 +132,12 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	togid, err := model.ToGid(vars["to"])
+	togid, err := model.ToGid(ctx, req.PathValue("to"))
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	if err = team.Chown(togid); err != nil {
+	if err = team.Chown(ctx, togid); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -147,17 +145,17 @@ func chownTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	key := vars["key"]
+	team := model.TeamID(req.PathValue("team"))
+	key := req.PathValue("key")
 
-	safe, err := gid.OwnsTeam(team)
+	safe, err := gid.OwnsTeam(ctx, team)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -169,8 +167,8 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if key != "" { // prevents a bit of log spam
-		togid, err := model.ToGid(key)
+	if key != "" { 
+		togid, err := model.ToGid(ctx, key)
 		if err != nil && err.Error() == model.ErrAgentNotFound {
 			http.Error(res, jsonError(err), http.StatusNotAcceptable)
 			return
@@ -178,7 +176,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
-		if err = team.AddAgent(togid); err != nil {
+		if err = team.AddAgent(ctx, togid); err != nil {
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
 		}
@@ -187,20 +185,20 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	togid, err := model.ToGid(vars["key"])
+	team := model.TeamID(req.PathValue("team"))
+	togid, err := model.ToGid(ctx, req.PathValue("key"))
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	safe, err := gid.OwnsTeam(team)
+	safe, err := gid.OwnsTeam(ctx, team)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -217,7 +215,7 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	if err = team.RemoveAgent(togid); err != nil {
+	if err = team.RemoveAgent(ctx, togid); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -225,15 +223,15 @@ func delAgentFmTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	safe, err := gid.OwnsTeam(team)
+	team := model.TeamID(req.PathValue("team"))
+	safe, err := gid.OwnsTeam(ctx, team)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -250,7 +248,7 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	messaging.SendAnnounce(messaging.TeamID(team), messaging.Announce{
+	messaging.SendAnnounce(ctx, messaging.TeamID(team), messaging.Announce{
 		Text:   message,
 		Sender: messaging.GoogleID(gid),
 		TeamID: messaging.TeamID(team),
@@ -259,25 +257,25 @@ func announceTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	teamID := model.TeamID(vars["team"])
+	teamID := model.TeamID(req.PathValue("team"))
 
-	if owns, _ := gid.OwnsTeam(teamID); !owns {
+	if owns, _ := gid.OwnsTeam(ctx, teamID); !owns {
 		err = fmt.Errorf("forbidden: only the team owner can set comments")
 		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	inGid := model.GoogleID(vars["gid"])
+	inGid := model.GoogleID(req.PathValue("gid"))
 	squad := util.Sanitize(req.FormValue("squad"))
-	if err = teamID.SetComment(inGid, squad); err != nil {
+	if err = teamID.SetComment(ctx, inGid, squad); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -285,16 +283,16 @@ func setAgentTeamCommentRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	teamID := model.TeamID(vars["team"])
+	teamID := model.TeamID(req.PathValue("team"))
 
-	if owns, _ := gid.OwnsTeam(teamID); !owns {
+	if owns, _ := gid.OwnsTeam(ctx, teamID); !owns {
 		err = fmt.Errorf("only the team owner can rename a team")
 		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -308,7 +306,7 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	if err := teamID.Rename(teamname); err != nil {
+	if err := teamID.Rename(ctx, teamname); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -316,18 +314,18 @@ func renameTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	teamID := model.TeamID(vars["team"])
+	teamID := model.TeamID(req.PathValue("team"))
 
 	var key string
-	if owns, _ := gid.OwnsTeam(teamID); owns {
-		key, err = teamID.GenerateJoinToken()
+	if owns, _ := gid.OwnsTeam(ctx, teamID); owns {
+		key, err = teamID.GenerateJoinToken(ctx)
 		if err != nil {
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
@@ -339,35 +337,33 @@ func genJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	type Out struct {
-		Ok  string
-		Key string
-	}
-	o := Out{
-		Ok:  "OK",
-		Key: key,
-	}
-	json.NewEncoder(res).Encode(&o)
+	json.NewEncoder(res).Encode(struct {
+		Status string `json:"status"`
+		Key    string `json:"key"`
+	}{
+		Status: "ok",
+		Key:    key,
+	})
 }
 
 func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	teamID := model.TeamID(vars["team"])
+	teamID := model.TeamID(req.PathValue("team"))
 
-	if owns, _ := gid.OwnsTeam(teamID); !owns {
+	if owns, _ := gid.OwnsTeam(ctx, teamID); !owns {
 		err = fmt.Errorf("forbidden: only the team owner can remove join links")
 		log.Warnw(err.Error(), "resource", teamID, "gid", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err := teamID.DeleteJoinToken(); err != nil {
+	if err := teamID.DeleteJoinToken(ctx); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -375,33 +371,33 @@ func delJoinKeyRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func joinLinkRoute(res http.ResponseWriter, req *http.Request) {
-	// redirects to the app interface for the user to manage the team
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	teamID := model.TeamID(vars["team"])
-	key := vars["key"]
+	teamID := model.TeamID(req.PathValue("team"))
+	key := req.PathValue("key")
 
-	if err = teamID.JoinToken(gid, key); err != nil {
+	if err = teamID.JoinToken(ctx, gid, key); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(res, jsonStatusOK) // draw pretty screen
+	fmt.Fprint(res, jsonStatusOK)
 }
 
 func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	list, err := gid.GetAgentLocations()
+	list, err := gid.GetAgentLocations(ctx)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -410,6 +406,7 @@ func getAgentsLocation(res http.ResponseWriter, req *http.Request) {
 }
 
 func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -432,22 +429,22 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var list []model.TeamData
+	list := make([]model.TeamData, 0)
 	for _, team := range requestedteams.TeamIDs {
-		isowner, err := gid.OwnsTeam(team)
+		isowner, err := gid.OwnsTeam(ctx, team)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
 
-		onteam, err := gid.AgentInTeam(team)
+		onteam, err := gid.AgentInTeam(ctx, team)
 		if err != nil {
 			continue
 		}
 		if !isowner && !onteam {
 			continue
 		}
-		t, err := team.FetchTeam()
+		t, err := team.FetchTeam(ctx)
 		if err != nil {
 			log.Errorw(err.Error(), "teamID", team, "gid", gid)
 			continue
@@ -460,12 +457,6 @@ func bulkTeamFetchRoute(res http.ResponseWriter, req *http.Request) {
 		}
 
 		list = append(list, *t)
-	}
-
-	// no valid teams -- is this still necessary?
-	if len(list) == 0 {
-		fmt.Fprint(res, "[]")
-		return
 	}
 
 	json.NewEncoder(res).Encode(list)

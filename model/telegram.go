@@ -1,7 +1,9 @@
 package model
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -13,15 +15,15 @@ import (
 type TelegramID int64
 
 // GidV returns a googleID/verified pair for a given telegram ID
-func (tgid TelegramID) GidV() (GoogleID, bool, error) {
+func (tgid TelegramID) GidV(ctx context.Context) (GoogleID, bool, error) {
 	var gid GoogleID
 	var verified bool
 
-	err := db.QueryRow("SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid).Scan(&gid, &verified)
-	if err != nil && err == sql.ErrNoRows {
-		return "", false, nil
-	}
+	err := db.QueryRowContext(ctx, "SELECT gid, verified FROM telegram WHERE telegramID = ?", tgid).Scan(&gid, &verified)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", false, nil
+		}
 		log.Error(err)
 		return "", false, err
 	}
@@ -29,8 +31,8 @@ func (tgid TelegramID) GidV() (GoogleID, bool, error) {
 }
 
 // Gid returns a verified GoogleID for a Telegram ID
-func (tgid TelegramID) Gid() (GoogleID, error) {
-	gid, v, err := tgid.GidV()
+func (tgid TelegramID) Gid(ctx context.Context) (GoogleID, error) {
+	gid, v, err := tgid.GidV(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -41,14 +43,14 @@ func (tgid TelegramID) Gid() (GoogleID, error) {
 }
 
 // TelegramID returns a telegram ID number for a gid
-func (gid GoogleID) TelegramID() (TelegramID, error) {
+func (gid GoogleID) TelegramID(ctx context.Context) (TelegramID, error) {
 	var tgid TelegramID
 
-	err := db.QueryRow("SELECT telegramID FROM telegram WHERE gid = ?", gid).Scan(&tgid)
-	if err != nil && err == sql.ErrNoRows {
-		return 0, nil
-	}
+	err := db.QueryRowContext(ctx, "SELECT telegramID FROM telegram WHERE gid = ?", gid).Scan(&tgid)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
 		log.Error(err)
 		return 0, err
 	}
@@ -56,14 +58,14 @@ func (gid GoogleID) TelegramID() (TelegramID, error) {
 }
 
 // TelegramName returns a telegram friendly name for a gid
-func (gid GoogleID) TelegramName() (string, error) {
+func (gid GoogleID) TelegramName(ctx context.Context) (string, error) {
 	var tgName sql.NullString
 
-	err := db.QueryRow("SELECT telegramName FROM telegram WHERE gid = ?", gid).Scan(&tgName)
-	if (err != nil && err == sql.ErrNoRows) || !tgName.Valid {
-		return "", nil
-	}
+	err := db.QueryRowContext(ctx, "SELECT telegramName FROM telegram WHERE gid = ?", gid).Scan(&tgName)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
 		log.Error(err)
 		return "", err
 	}
@@ -71,153 +73,117 @@ func (gid GoogleID) TelegramName() (string, error) {
 }
 
 // InitAgent establishes a new telegram user in the database and begins the verification process
-func (tgid TelegramID) InitAgent(name string, ott OneTimeToken) error {
+func (tgid TelegramID) InitAgent(ctx context.Context, name string, ott OneTimeToken) error {
 	authtoken := util.GenerateName()
-	gid, err := ott.Gid()
-	if err != nil && err == sql.ErrNoRows {
-		err = fmt.Errorf("token not recognized")
-		log.Debugw(err.Error(), "resource", ott, "tgid", tgid, "name", name)
-		return err
-	}
+	gid, err := ott.Gid(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Debugw("token not recognized", "resource", ott, "tgid", tgid, "name", name)
+			return fmt.Errorf("token not recognized")
+		}
 		log.Error(err)
 		return err
 	}
 
-	if _, err = db.Exec("INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)", tgid, name, gid, authtoken); err != nil {
-		log.Info(err)
-		return err
-	}
-
-	return nil
+	_, err = db.ExecContext(ctx, "INSERT INTO telegram (telegramID, telegramName, gid, verified, authtoken) VALUES (?, ?, ?, 0, ?)",
+		tgid, name, gid, authtoken)
+	return err
 }
 
 // SetName is used to set an agent's telegram display name
-func (tgid TelegramID) SetName(name string) error {
-	if _, err := db.Exec("UPDATE telegram SET telegramName = ? WHERE telegramID = ?", name, tgid); err != nil {
-		log.Info(err)
-		return err
-	}
-	return nil
+func (tgid TelegramID) SetName(ctx context.Context, name string) error {
+	_, err := db.ExecContext(ctx, "UPDATE telegram SET telegramName = ? WHERE telegramID = ?", name, tgid)
+	return err
 }
 
 // Delete is used to remove a TelegramID
-func (tgid TelegramID) Delete() error {
-	if _, err := db.Exec("DELETE FROM telegram WHERE telegramID = ?", tgid); err != nil {
-		log.Info(err)
-		return err
-	}
-	return nil
+func (tgid TelegramID) Delete(ctx context.Context) error {
+	_, err := db.ExecContext(ctx, "DELETE FROM telegram WHERE telegramID = ?", tgid)
+	return err
 }
 
-// SetTelegramID adds a verified agent's telegram ID
-func (gid GoogleID) SetTelegramID(tgid TelegramID, name string) error {
-	if _, err := db.Exec("INSERT INTO telegram (gid, telegramID, telegramName, verified) VALUES (?, ?, ?, 1)", gid, tgid, name); err != nil {
-		log.Info(err)
-		return err
-	}
-	return nil
+// SetTelegramID adds a verified agent's telegram ID directly
+func (gid GoogleID) SetTelegramID(ctx context.Context, tgid TelegramID, name string) error {
+	_, err := db.ExecContext(ctx, "INSERT INTO telegram (gid, telegramID, telegramName, verified) VALUES (?, ?, ?, 1)",
+		gid, tgid, name)
+	return err
 }
 
 // RemoveTelegramID clears any telegram configuration for a given agent
-func (gid GoogleID) RemoveTelegramID() error {
-	if _, err := db.Exec("DELETE FROM telegram WHERE gid = ?", gid); err != nil {
-		return err
-	}
-	return nil
+func (gid GoogleID) RemoveTelegramID(ctx context.Context) error {
+	_, err := db.ExecContext(ctx, "DELETE FROM telegram WHERE gid = ?", gid)
+	return err
 }
 
-// VerifyAgent is the second stage of the verication process
-func (tgid TelegramID) VerifyAgent(authtoken string) error {
-	res, err := db.Exec("UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?", tgid, authtoken)
+// VerifyAgent is the second stage of the verification process
+func (tgid TelegramID) VerifyAgent(ctx context.Context, authtoken string) error {
+	res, err := db.ExecContext(ctx, "UPDATE telegram SET authtoken = NULL, verified = 1 WHERE telegramID = ? AND authtoken = ?",
+		tgid, authtoken)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
+
 	i, err := res.RowsAffected()
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
 	if i < 1 {
-		err = fmt.Errorf("invalid AuthToken")
-		log.Warnw(err.Error(), "tgid", tgid)
-		return err
-	} // trust the primary key prevents i > 1
+		return fmt.Errorf("invalid AuthToken")
+	}
 
 	return nil
 }
 
 // UnverifyAgent marks an ID as unverified (if the agent blocks the bot)
-func (tgid TelegramID) UnverifyAgent() error {
-	_, err := db.Exec("UPDATE telegram SET verified = 0 WHERE telegramID = ?", tgid)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+func (tgid TelegramID) UnverifyAgent(ctx context.Context) error {
+	_, err := db.ExecContext(ctx, "UPDATE telegram SET verified = 0 WHERE telegramID = ?", tgid)
+	return err
 }
 
-// String returns a string format of a TelegramID
 func (tgid TelegramID) String() string {
-	return strconv.Itoa(int(tgid))
+	return strconv.FormatInt(int64(tgid), 10)
 }
 
-// LinkToTelegramChat associates a telegram chat ID with the team, performs authorization
-// a chat can be linked to a single team
-// a team can be linked to a single chat (irrespective of opID)
-func (teamID TeamID) LinkToTelegramChat(chat TelegramID, opID OperationID) error {
+// LinkToTelegramChat associates a telegram chat ID with the team
+func (teamID TeamID) LinkToTelegramChat(ctx context.Context, chat TelegramID, opID OperationID) error {
 	log.Debugw("linking team to chat", "chat", chat, "teamID", teamID, "opID", opID)
 
-	// REPLACE OK SCB
-	_, err := db.Exec("REPLACE INTO telegramteam (teamID, telegram, opID) VALUES (?,?,?)", teamID, chat, makeNullString(string(opID)))
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	_, err := db.ExecContext(ctx, "REPLACE INTO telegramteam (teamID, telegram, opID) VALUES (?, ?, ?)",
+		teamID, chat, makeNullString(string(opID)))
+	return err
 }
 
-// UnlinkFromTelegramChat disassociates a telegram chat ID from the team -- not authenticated since bot removal from chat is enough
-func (teamID TeamID) UnlinkFromTelegramChat() error {
-	_, err := db.Exec("DELETE FROM telegramteam WHERE teamID = ?", teamID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	log.Debugw("unlinked team from telegram", "teamID", teamID)
-	return nil
+// UnlinkFromTelegramChat disassociates a telegram chat ID from the team
+func (teamID TeamID) UnlinkFromTelegramChat(ctx context.Context) error {
+	_, err := db.ExecContext(ctx, "DELETE FROM telegramteam WHERE teamID = ?", teamID)
+	return err
 }
 
-// TelegramChat returns the associated telegram chat ID for this team, if any
-func (teamID TeamID) TelegramChat() (int64, error) {
+// TelegramChat returns the associated telegram chat ID for this team
+func (teamID TeamID) TelegramChat(ctx context.Context) (int64, error) {
 	var chatID int64
-
-	err := db.QueryRow("SELECT telegram FROM telegramteam WHERE teamID = ?", teamID).Scan(&chatID)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return chatID, err
+	err := db.QueryRowContext(ctx, "SELECT telegram FROM telegramteam WHERE teamID = ?", teamID).Scan(&chatID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
 	}
 	return chatID, nil
 }
 
-// ChatToTeam takes a chatID and returns a linked teamID
-func ChatToTeam(chat int64) (TeamID, OperationID, error) {
+// ChatToTeam takes a chatID and returns a linked teamID and OpID
+func ChatToTeam(ctx context.Context, chat int64) (TeamID, OperationID, error) {
 	var t TeamID
-	var o OperationID
 	var on sql.NullString
 
-	err := db.QueryRow("SELECT teamID, opID FROM telegramteam WHERE telegram = ?", chat).Scan(&t, &on)
-	if err != nil && err != sql.ErrNoRows {
-		log.Error(err)
-		return t, o, err
+	err := db.QueryRowContext(ctx, "SELECT teamID, opID FROM telegramteam WHERE telegram = ?", chat).Scan(&t, &on)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", fmt.Errorf("chat not linked to any teams")
+		}
+		return "", "", err
 	}
-	if err == sql.ErrNoRows {
-		err := fmt.Errorf("chat not linked to any teams")
-		return t, o, err
-	}
+
+	var o OperationID
 	if on.Valid {
 		o = OperationID(on.String)
 	}
@@ -225,53 +191,42 @@ func ChatToTeam(chat int64) (TeamID, OperationID, error) {
 }
 
 // AddToChatMemberList notes a telegramID has been seen in a given telegram chat
-func AddToChatMemberList(agent TelegramID, chat TelegramID) error {
-	if _, err := db.Exec("INSERT IGNORE INTO telegramchatmembers (agent, chat) VALUES (?, ?)", agent, chat); err != nil {
-		// log.Debug(err) // foreign key errors due to chat not being linked can be ignored
-		return err
-	}
-	return nil
+func AddToChatMemberList(ctx context.Context, agent TelegramID, chat TelegramID) error {
+	_, err := db.ExecContext(ctx, "INSERT IGNORE INTO telegramchatmembers (agent, chat) VALUES (?, ?)", agent, chat)
+	return err
 }
 
 // IsChatMember reports if a given telegramID has been seen in a given telegram chat
-func IsChatMember(agent TelegramID, chat TelegramID) bool {
-	var i bool
-
-	err := db.QueryRow("SELECT COUNT(*) FROM telegramchatmembers WHERE agent = ? AND chat = ?", agent, chat).Scan(&i)
+func IsChatMember(ctx context.Context, agent TelegramID, chat TelegramID) bool {
+	var count int
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM telegramchatmembers WHERE agent = ? AND chat = ?", agent, chat).Scan(&count)
 	if err != nil {
 		return false
 	}
-	return i
+	return count > 0
 }
 
 // RemoveFromChatMemberList removes the agent from the list for the telegram chat
-func RemoveFromChatMemberList(agent TelegramID, chat TelegramID) error {
-	if _, err := db.Exec("DELETE FROM telegramchatmembers WHERE agent=? AND chat=?", agent, chat); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+func RemoveFromChatMemberList(ctx context.Context, agent TelegramID, chat TelegramID) error {
+	_, err := db.ExecContext(ctx, "DELETE FROM telegramchatmembers WHERE agent=? AND chat=?", agent, chat)
+	return err
 }
 
 // GetAllTelegramIDs is used by the telegram cleanup function
-func GetAllTelegramIDs() ([]TelegramID, error) {
-	var tgs []TelegramID
-
-	rows, err := db.Query("SELECT telegramID FROM telegram")
+func GetAllTelegramIDs(ctx context.Context) ([]TelegramID, error) {
+	rows, err := db.QueryContext(ctx, "SELECT telegramID FROM telegram")
 	if err != nil {
-		log.Error(err)
-		return tgs, err
+		return nil, err
 	}
 	defer rows.Close()
 
+	var tgs []TelegramID
 	for rows.Next() {
 		var tg TelegramID
 		if err := rows.Scan(&tg); err != nil {
-			log.Error(err)
 			continue
 		}
 		tgs = append(tgs, tg)
 	}
-
 	return tgs, nil
 }

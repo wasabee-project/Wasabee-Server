@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 
 	"cloud.google.com/go/profiler"
 	"google.golang.org/api/option"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/RISC"
@@ -27,86 +27,84 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/util"
 
 	"go.uber.org/zap"
-	// "golang.org/x/oauth2/google"
 )
 
 const version = "0.99.1"
 
 var flags = []cli.Flag{
-	cli.StringFlag{
-		Name: "config, f", EnvVar: "CONFIG", Value: "wasabee.json",
-		Usage: "Path to the config JSON file"},
-	cli.BoolFlag{
-		Name:  "help, h",
-		Usage: "Shows this help, then exits"},
-	cli.StringFlag{
-		Name: "log", EnvVar: "LOGFILE", Value: "logs/wasabee.log",
-		Usage: "Output log file"},
-	cli.BoolFlag{
-		Name: "debug, d", EnvVar: "DEBUG",
-		Usage: "Log more details"},
+	&cli.StringFlag{
+		Name:    "config",
+		Aliases: []string{"f"},
+		Sources: cli.EnvVars("CONFIG"),
+		Value:   "wasabee.json",
+		Usage:   "Path to the config JSON file",
+	},
+	&cli.StringFlag{
+		Name:    "log",
+		Sources: cli.EnvVars("LOGFILE"),
+		Value:   "logs/wasabee.log",
+		Usage:   "Output log file",
+	},
+	&cli.BoolFlag{
+		Name:    "debug",
+		Aliases: []string{"d"},
+		Sources: cli.EnvVars("DEBUG"),
+		Usage:   "Log more details",
+	},
 }
 
 func main() {
-	app := cli.NewApp()
-
-	app.Name = "wasabee-server"
-	app.Version = version
-	app.Usage = "Wasabee Server"
-	app.Authors = []cli.Author{
-		{
-			Name:  "Scot C. Bontrager",
-			Email: "scot@wasabee.rocks",
+	cmd := &cli.Command{
+		Name:      "wasabee",
+		Version:   version,
+		Usage:     "Wasabee Server",
+		Copyright: "© Scot C. Bontrager",
+		Flags:     flags,
+		Action:    run,
+		Authors: []any{
+			"Scot C. Bontrager <scot@wasabee.rocks>",
 		},
 	}
-	app.Copyright = "© Scot C. Bontrager"
-	app.HelpName = "wasabee"
-	app.Flags = flags
-	app.HideHelp = true
-	cli.AppHelpTemplate = strings.Replace(cli.AppHelpTemplate, "GLOBAL OPTIONS:", "OPTIONS:", 1)
 
-	app.Action = run
-
-	_ = app.Run(os.Args)
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		// Using fmt.Fprintf instead of log.Fatal here to allow 
+		// the OS to handle the exit properly after returning from Run
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
-func run(cargs *cli.Context) error {
-	if cargs.Bool("help") {
-		_ = cli.ShowAppHelp(cargs)
-		return nil
-	}
-
+func run(ctx context.Context, cmd *cli.Command) error {
 	project := os.Getenv("GCP_PROJECT")
 	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
-	// the main context used for all sub-services, when this is canceled, everything shuts down
-	ctx, shutdown := context.WithCancel(context.Background())
+	// The CLI context (ctx) is canceled when the command finishes or is interrupted
+	appCtx, shutdown := context.WithCancel(ctx)
+	defer shutdown()
 
-	// if the console isn't a TTY, don't log to it
 	console := false
 	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
 		console = true
 	}
-	// config depends on log, so we need to build this manually
+
 	logconf := log.Configuration{
 		Console:            console,
 		ConsoleLevel:       zap.InfoLevel,
-		FilePath:           cargs.String("log"),
+		FilePath:           cmd.String("log"),
 		FileLevel:          zap.InfoLevel,
 		GoogleCloudProject: project,
 		GoogleCloudCreds:   creds,
 	}
-	if cargs.Bool("debug") {
+
+	if cmd.Bool("debug") {
 		logconf.ConsoleLevel = zap.DebugLevel
-		// if debug and not console, log debug to file
 		if !console {
 			logconf.FileLevel = zap.DebugLevel
 		}
 	}
 	log.Start(context.Background(), &logconf)
 
-	// cloud profile
-	if creds != "" && project != "" && cargs.Bool("debug") {
+	if creds != "" && project != "" && cmd.Bool("debug") {
 		if _, err := os.Stat(creds); err == nil {
 			if err := profiler.Start(profiler.Config{
 				Service:        "wasabee",
@@ -120,69 +118,57 @@ func run(cargs *cli.Context) error {
 		}
 	}
 
-	// load the config file
-	conf, err := config.LoadFile(cargs.String("config"))
+	conf, err := config.LoadFile(cmd.String("config"))
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("config load: %w", err)
 	}
 
-	// Load words
 	if err := util.LoadWordsFile(conf.WordListFile); err != nil {
-		log.Fatalw("startup", "message", "Error loading word list", "wordlist", conf.WordListFile, "error", err.Error())
+		return fmt.Errorf("wordlist load: %w", err)
 	}
 
-	// load the UI templates
 	if err := templates.Start(conf.FrontendPath); err != nil {
-		log.Fatalw("startup", "message", "unable to load frontend templates; shutting down", "path", conf.FrontendPath, "error", err.Error())
+		return fmt.Errorf("templates start: %w", err)
 	}
 
-	// Connect to database
-	if err = model.Connect(ctx, conf.DB); err != nil {
-		log.Fatalw("startup", "message", "Error connecting to database", "error", err.Error())
+	if err = model.Connect(appCtx, conf.DB); err != nil {
+		return fmt.Errorf("database connect: %w", err)
 	}
 
-	// the waitgroup which must be completed before shutting down
+	// Utilizing Go 1.25 WaitGroup.Go for cleaner goroutine management
 	var wg sync.WaitGroup
 
-	// start background tasks
-	wg.Go(func() { background.Start(ctx) })
+	wg.Go(func() { background.Start(appCtx) })
+	wg.Go(func() { auth.Start(appCtx) })
+	wg.Go(func() { wfb.Start(appCtx) })
+	wg.Go(func() { risc.Start(appCtx) })
+	wg.Go(func() { wtg.Start(appCtx) })
+	wg.Go(func() { rocks.Start(appCtx) })
 
-	// start authorization
-	wg.Go(func() { auth.Start(ctx) })
-
-	// start firebase
-	wg.Go(func() { wfb.Start(ctx) })
-
-	// Serve HTTPS -- does not use the context
+	// Legacy HTTP start (assume this needs modernization next to accept context)
 	go wasabeehttps.Start()
 
-	// start risc
-	wg.Go(func() { risc.Start(ctx) })
-
-	// start Telegram
-	wg.Go(func() { wtg.Start(ctx) })
-
-	// start Rocks
-	wg.Go(func() { rocks.Start(ctx) })
-
-	// everything is running. Wait for the OS to signal time to stop
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt)
-	sig := <-sigch
-	log.Infow("shutdown", "requested by signal", sig)
+	
+	// Wait for signal or CLI context cancellation
+	select {
+	case sig := <-sigch:
+		log.Infow("shutdown", "requested by signal", sig)
+	case <-ctx.Done():
+		log.Infow("shutdown", "requested by context", ctx.Err())
+	}
 
-	// shutdown RISC, Telegram, V, Rocks, and Firebase by canceling the context
+	// Trigger cancellation across all sub-services
 	shutdown()
 
-	// wait for things to complete their cleanup tasks
+	// Wait for services to acknowledge appCtx cancellation and exit
 	wg.Wait()
 
-	// shutdown the http server
 	if err = wasabeehttps.Shutdown(); err != nil {
 		log.Error(err)
 	}
 
-	// close database connection
 	model.Disconnect()
 	return nil
 }

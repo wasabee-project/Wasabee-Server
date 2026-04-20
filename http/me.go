@@ -1,6 +1,7 @@
 package wasabeehttps
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -9,14 +10,9 @@ import (
 	"net"
 	"net/http"
 	"os"
-	// "strconv"
 	"time"
 
-	"github.com/gorilla/mux"
-	// "github.com/gorilla/sessions"
-
 	"github.com/lestrrat-go/jwx/v3/jwa"
-	// "github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 
@@ -30,13 +26,14 @@ import (
 
 // get the logged in agent
 func meRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	agent, err := gid.GetAgent()
+	agent, err := gid.GetAgent(ctx)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -58,21 +55,21 @@ func formValidationToken(req *http.Request) string {
 }
 
 func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	state := vars["state"]
+	team := model.TeamID(req.PathValue("team"))
+	state := req.PathValue("state")
 	b := false
 	if state == "On" || state == "on" {
 		b = true
 	}
 
-	if err = gid.SetTeamState(team, b); err != nil {
+	if err = gid.SetTeamState(ctx, team, b); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -82,21 +79,21 @@ func meToggleTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	state := vars["state"]
+	team := model.TeamID(req.PathValue("team"))
+	state := req.PathValue("state")
 	b := false
 	if state == "On" || state == "on" {
 		b = true
 	}
 
-	if err = gid.SetWDShare(team, b); err != nil {
+	if err = gid.SetWDShare(ctx, team, b); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -104,21 +101,21 @@ func meToggleTeamWDShareRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
-	state := vars["state"]
+	team := model.TeamID(req.PathValue("team"))
+	state := req.PathValue("state")
 	b := false
 	if state == "On" || state == "on" {
 		b = true
 	}
 
-	if err = gid.SetWDLoad(team, b); err != nil {
+	if err = gid.SetWDLoad(ctx, team, b); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -126,16 +123,16 @@ func meToggleTeamWDLoadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	team := model.TeamID(vars["team"])
+	team := model.TeamID(req.PathValue("team"))
 
-	if err = team.RemoveAgent(gid); err != nil {
+	if err = team.RemoveAgent(ctx, gid); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -144,42 +141,32 @@ func meRemoveTeamRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meSetAgentLocationRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	vars := mux.Vars(req)
-	lat := vars["lat"]
-	lon := vars["lon"]
+	lat := req.PathValue("lat")
+	lon := req.PathValue("lon")
 
-	if err = gid.SetLocation(lat, lon); err != nil {
+	if err = gid.SetLocation(ctx, lat, lon); err != nil {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
 	// announce to teams with which this agent is sharing location information
-	go wfb.AgentLocation(gid)
-
-	/*
-		flat, err := strconv.ParseFloat(lat, 32)
-		if err != nil {
-			log.Error(err)
-			flat = float64(0)
-		}
-
-		flon, err := strconv.ParseFloat(lon, 32)
-		if err != nil {
-			log.Error(err)
-			flon = float64(0)
-		}
-	*/
+	// fire-and-forget: use context.Background()
+	go func() {
+		wfb.AgentLocation(context.Background(), gid)
+	}()
 
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
@@ -196,7 +183,7 @@ func meDeleteRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Warnw("agent requested delete", "GID", gid.String())
-	if err := gid.Delete(); err != nil {
+	if err := gid.Delete(ctx); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -211,31 +198,12 @@ func meLogoutRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	/* ses, err := store.Get(req, config.Get().HTTP.SessionName)
-	if err != nil {
-		log.Error(err)
-		_ = ses.Save(req, res)
-		http.Error(res, jsonError(err), http.StatusInternalServerError)
-		return
-	}
-	delete(ses.Values, "nonce")
-	delete(ses.Values, "id")
-	delete(ses.Values, "loginReq")
-	res.Header().Set("Connection", "close")
-
-	ses.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   -1,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-	}
-	_ = ses.Save(req, res) */
-
 	auth.Logout(gid, "user requested")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -255,7 +223,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	if err := gid.StoreFirebaseToken(token); err != nil {
+	if err := gid.StoreFirebaseToken(ctx, token); err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
@@ -264,6 +232,7 @@ func meFirebaseRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -287,7 +256,7 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := gid.SetIntelData(name, faction); err != nil {
+	if err := gid.SetIntelData(ctx, name, faction); err != nil {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -296,13 +265,14 @@ func meIntelIDRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	ok, err := auth.Authorize(gid)
+	ok, err := auth.Authorize(ctx, gid)
 	if !ok {
 		err := fmt.Errorf("account disabled")
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -329,7 +299,6 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// this was already done in authMW, but double-check it here
 	sessionName := config.Get().HTTP.SessionName
 	if err := jwt.Validate(token, jwt.WithAudience(sessionName)); err != nil {
 		log.Info(err)
@@ -366,10 +335,6 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// get refreshed count from token
-	// increment and set refreshed count
-
-	// let consumers know where to get the keys if they want to verify
 	hdrs := jws.NewHeaders()
 	_ = hdrs.Set(jws.JWKSetURLKey, config.Get().JKU)
 
@@ -381,6 +346,12 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Infow("jwt Refresh", "gid", gid, "token ID", jwtid, "message", "jwt Token refreshed for "+gid)
-	s := fmt.Sprintf("{\"status\":\"ok\", \"jwt\":\"%s\"}", string(signed[:]))
-	fmt.Fprint(res, s)
+	
+	json.NewEncoder(res).Encode(struct {
+		Status string `json:"status"`
+		JWT    string `json:"jwt"`
+	}{
+		Status: "ok",
+		JWT:    string(signed),
+	})
 }

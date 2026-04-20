@@ -1,7 +1,9 @@
 package model
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -15,78 +17,69 @@ type PortalID string
 type Portal struct {
 	ID       PortalID `json:"id"`
 	Name     string   `json:"name"`
-	Lat      string   `json:"lat"` // passing these as strings saves me parsing them
+	Lat      string   `json:"lat"` // passing these as strings matches typical JSON input from IITC
 	Lon      string   `json:"lng"`
 	Comment  string   `json:"comment"`
-	Hardness string   `json:"hardness"` // string for now, enum in the future
+	Hardness string   `json:"hardness"`
 	opID     OperationID
 }
 
 // insertPortal adds a portal to the database
-func (opID OperationID) insertPortal(p Portal, tx *sql.Tx) error {
+func (opID OperationID) insertPortal(ctx context.Context, p Portal, tx *sql.Tx) error {
 	comment := makeNullString(util.Sanitize(p.Comment))
 	hardness := makeNullString(util.Sanitize(p.Hardness))
 
-	_, err := tx.Exec("INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
+	executor := txExecutor(tx)
+	_, err := executor.ExecContext(ctx, "INSERT IGNORE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
 		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
 	if err != nil {
 		log.Error(err)
-		return err
 	}
-	return nil
+	return err
 }
 
-func (opID OperationID) updatePortal(p Portal, tx *sql.Tx) error {
+func (opID OperationID) updatePortal(ctx context.Context, p Portal, tx *sql.Tx) error {
 	comment := makeNullString(util.Sanitize(p.Comment))
 	hardness := makeNullString(util.Sanitize(p.Hardness))
 
-	_, err := tx.Exec("REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)", // REPLACE OK SCB (so long as any task is rebuilt after)
+	executor := txExecutor(tx)
+	// REPLACE works here because we expect the IITC plugin to be the source of truth for portal metadata
+	_, err := executor.ExecContext(ctx, "REPLACE INTO portal (ID, opID, name, loc, comment, hardness) VALUES (?, ?, ?, POINT(?, ?), ?, ?)",
 		p.ID, opID, p.Name, p.Lon, p.Lat, comment, hardness)
 	if err != nil {
 		log.Error(err)
-		return err
 	}
-	return nil
+	return err
 }
 
-func (opID OperationID) deletePortal(p PortalID, tx *sql.Tx) error {
-	_, err := tx.Exec("DELETE FROM portal WHERE ID = ? AND opID = ?", p, opID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+func (opID OperationID) deletePortal(ctx context.Context, p PortalID, tx *sql.Tx) error {
+	executor := txExecutor(tx)
+	_, err := executor.ExecContext(ctx, "DELETE FROM portal WHERE ID = ? AND opID = ?", p, opID)
+	return err
 }
 
-// PopulatePortals fills in the OpPortals list for the Operation. No authorization takes place.
-func (o *Operation) populatePortals() error {
-	var p Portal
-	p.opID = o.ID
-
-	rows, err := db.Query("SELECT ID, name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ?", o.ID)
+// populatePortals fills in the OpPortals list for the Operation.
+func (o *Operation) populatePortals(ctx context.Context) error {
+	rows, err := db.QueryContext(ctx, "SELECT ID, name, ST_Y(loc) AS lat, ST_X(loc) AS lon, comment, hardness FROM portal WHERE opID = ?", o.ID)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
+		var p Portal
+		p.opID = o.ID
 		var comment, hardness sql.NullString
 
-		err := rows.Scan(&p.ID, &p.Name, &p.Lat, &p.Lon, &comment, &hardness)
-		if err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Lat, &p.Lon, &comment, &hardness); err != nil {
 			log.Error(err)
 			continue
 		}
 		if comment.Valid {
 			p.Comment = comment.String
-		} else {
-			p.Comment = ""
 		}
 		if hardness.Valid {
 			p.Hardness = hardness.String
-		} else {
-			p.Hardness = ""
 		}
 
 		o.OpPortals = append(o.OpPortals, p)
@@ -94,26 +87,30 @@ func (o *Operation) populatePortals() error {
 	return nil
 }
 
-// reduce the portal list to keys, links and makers in this zone
+// filterPortals reduces the portal list to only those used by anchors, markers, or keys
 func (o *Operation) filterPortals() error {
-	var filteredList []Portal
-
 	set := make(map[PortalID]Portal)
+
+	// Anchors
 	for _, a := range o.Anchors {
-		p, _ := o.getPortal(a)
-		set[a] = p
+		if p, err := o.getPortal(a); err == nil {
+			set[a] = p
+		}
 	}
-
+	// Markers
 	for _, m := range o.Markers {
-		p, _ := o.getPortal(m.PortalID)
-		set[m.PortalID] = p
+		if p, err := o.getPortal(m.PortalID); err == nil {
+			set[m.PortalID] = p
+		}
 	}
-
+	// Keys
 	for _, k := range o.Keys {
-		p, _ := o.getPortal(k.ID)
-		set[k.ID] = p
+		if p, err := o.getPortal(k.ID); err == nil {
+			set[k.ID] = p
+		}
 	}
 
+	filteredList := make([]Portal, 0, len(set))
 	for _, p := range set {
 		filteredList = append(filteredList, p)
 	}
@@ -129,64 +126,60 @@ func (o *Operation) populateAnchors() error {
 		set[l.To] = true
 	}
 
+	o.Anchors = make([]PortalID, 0, len(set))
 	for key := range set {
 		o.Anchors = append(o.Anchors, key)
 	}
 	return nil
 }
 
-// String returns the string version of a PortalID
 func (p PortalID) String() string {
 	return string(p)
 }
 
-// PortalHardness updates the comment on a portal
-func (opID OperationID) PortalHardness(portalID PortalID, hardness string) error {
+// PortalHardness updates the hardness on a portal
+func (opID OperationID) PortalHardness(ctx context.Context, portalID PortalID, hardness string) error {
 	h := makeNullString(util.Sanitize(hardness))
-
-	_, err := db.Exec("UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", h, portalID, opID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	_, err := db.ExecContext(ctx, "UPDATE portal SET hardness = ? WHERE ID = ? AND opID = ?", h, portalID, opID)
+	return err
 }
 
 // PortalComment updates the comment on a portal
-func (opID OperationID) PortalComment(portalID PortalID, comment string) error {
+func (opID OperationID) PortalComment(ctx context.Context, portalID PortalID, comment string) error {
 	c := makeNullString(util.Sanitize(comment))
-
-	_, err := db.Exec("UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", c, portalID, opID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	_, err := db.ExecContext(ctx, "UPDATE portal SET comment = ? WHERE ID = ? AND opID = ?", c, portalID, opID)
+	return err
 }
 
-// PortalDetails returns information about the portal
-// does access checking (cached)
-func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (*Portal, error) {
+// PortalDetails returns information about the portal with access checking
+func (o *Operation) PortalDetails(ctx context.Context, portalID PortalID, gid GoogleID) (*Portal, error) {
+	read, _ := o.ReadAccess(ctx, gid)
+	if !read {
+		log.Errorw("unauthorized portal details access", "GID", gid, "resource", o.ID, "portal", portalID)
+		return nil, errors.New("unauthorized")
+	}
+
+	return o.portalDetails(ctx, portalID, nil)
+}
+
+// internal transaction-safe version
+func (o *Operation) portalDetails(ctx context.Context, portalID PortalID, tx *sql.Tx) (*Portal, error) {
 	var p Portal
 	p.ID = portalID
 	p.opID = o.ID
 
-	if read, _ := o.ReadAccess(gid); !read {
-		err := fmt.Errorf("unauthorized: unable to get portal details")
-		log.Errorw(err.Error(), "GID", gid, "resource", o.ID, "portal", portalID)
-		return &p, err
+	var comment, hardness sql.NullString
+	executor := txExecutor(tx)
+	err := executor.QueryRowContext(ctx, "SELECT name, ST_Y(loc) AS lat, ST_X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", o.ID, portalID).
+		Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("portal %s not in op", portalID)
+		}
+		return nil, err
 	}
 
-	var comment, hardness sql.NullString
-	err := db.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", o.ID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
-	if err != nil && err == sql.ErrNoRows {
-		err := fmt.Errorf("portal %s not in op", portalID)
-		return &p, err
-	}
-	if err != nil {
-		log.Error(err)
-		return &p, err
-	}
 	if comment.Valid {
 		p.Comment = comment.String
 	}
@@ -196,42 +189,12 @@ func (o *Operation) PortalDetails(portalID PortalID, gid GoogleID) (*Portal, err
 	return &p, nil
 }
 
-// a transaction-safe version, no access checking
-func (opID OperationID) portalDetails(portalID PortalID, tx *sql.Tx) (*Portal, error) {
-	var p Portal
-	p.ID = portalID
-	p.opID = opID
-
-	var comment, hardness sql.NullString
-	err := tx.QueryRow("SELECT name, Y(loc) AS lat, X(loc) AS lon, comment, hardness FROM portal WHERE opID = ? AND ID = ?", opID, portalID).Scan(&p.Name, &p.Lat, &p.Lon, &comment, &hardness)
-	if err != nil && err == sql.ErrNoRows {
-		err := fmt.Errorf("portal %s not in op", portalID)
-		return &p, err
-	}
-	if err != nil {
-		log.Error(err)
-		return &p, err
-	}
-	if comment.Valid {
-		p.Comment = comment.String
-	}
-	if hardness.Valid {
-		p.Hardness = hardness.String
-	}
-	return &p, nil
-}
-
-// lookup and return a populated Portal from an ID
+// getPortal looks up a portal in the already-populated operation struct
 func (o *Operation) getPortal(portalID PortalID) (Portal, error) {
-	// make sure op is populated
-
 	for _, p := range o.OpPortals {
 		if p.ID == portalID {
 			return p, nil
 		}
 	}
-
-	var p Portal
-	err := fmt.Errorf("portal not found")
-	return p, err
+	return Portal{}, fmt.Errorf("portal %s not found in operation cache", portalID)
 }

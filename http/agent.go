@@ -3,7 +3,6 @@ package wasabeehttps
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"net/http"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -13,21 +12,21 @@ import (
 )
 
 func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
-	id := vars["id"]
+	id := req.PathValue("id")
 
-	togid, err := model.ToGid(id)
+	togid, err := model.ToGid(ctx, id)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	agent, err := model.FetchAgent(togid, gid)
+	agent, err := model.FetchAgent(ctx, model.AgentID(togid), gid)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -38,15 +37,15 @@ func agentProfileRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
-	id := vars["id"]
-	togid, err := model.ToGid(id)
+	id := req.PathValue("id")
+	togid, err := model.ToGid(ctx, id)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -57,7 +56,7 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 		message = "This is a toast notification"
 	}
 
-	ok, err := messaging.SendMessage(messaging.GoogleID(togid), message)
+	ok, err := messaging.SendMessage(ctx, messaging.GoogleID(togid), message)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -72,6 +71,7 @@ func agentMessageRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
@@ -85,9 +85,8 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(req)
-	id := vars["id"]
-	togid, err := model.ToGid(id)
+	id := req.PathValue("id")
+	togid, err := model.ToGid(ctx, id)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -99,13 +98,13 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	target.Sender, err = gid.IngressName()
+	target.Sender, err = gid.IngressName(ctx)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	err = messaging.SendTarget(messaging.GoogleID(togid), target)
+	err = messaging.SendTarget(ctx, messaging.GoogleID(togid), target)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -114,18 +113,18 @@ func agentTargetRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func agentPictureRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	if _, err := getAgentID(req); err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
-	togid, err := model.ToGid(vars["id"])
+	togid, err := model.ToGid(ctx, req.PathValue("id"))
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
-	url := togid.GetPicture()
+	url := togid.GetPicture(ctx)
 	http.Redirect(res, req, url, http.StatusPermanentRedirect)
 }

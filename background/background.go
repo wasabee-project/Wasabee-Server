@@ -13,7 +13,7 @@ import (
 // Start runs the database cleaning tasks such as expiring stale user locations
 func Start(ctx context.Context) {
 	log.Infow("startup", "message", "running initial background tasks")
-	model.LocationClean()
+	model.LocationClean(ctx)
 
 	hourly := time.NewTicker(time.Hour)
 	defer hourly.Stop()
@@ -22,7 +22,7 @@ func Start(ctx context.Context) {
 	defer weekly.Stop()
 
 	if config.IsFirebaseRunning() {
-		wfb.Resubscribe() // prevent a crash if background starts before firebase
+		wfb.Resubscribe(ctx) // prevent a crash if background starts before firebase
 	}
 
 	for {
@@ -31,10 +31,10 @@ func Start(ctx context.Context) {
 			log.Infow("shutdown", "message", "background tasks shutting down")
 			return
 		case <-hourly.C:
-			model.LocationClean()
+			model.LocationClean(ctx)
 			wfb.ResetDefaultRateLimits()
 		case <-weekly.C:
-			wfb.Resubscribe()
+			wfb.Resubscribe(ctx)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -15,48 +16,48 @@ func (ott OneTimeToken) String() string {
 	return string(ott)
 }
 
-// Gid converts a location share key to a agent's gid
-func (ott OneTimeToken) Gid() (GoogleID, error) {
+// Gid converts an OTT to an agent's gid
+func (ott OneTimeToken) Gid(ctx context.Context) (GoogleID, error) {
 	var gid GoogleID
 
-	err := db.QueryRow("SELECT gid FROM agent WHERE OneTimeToken = ?", ott).Scan(&gid)
-	if err != nil && err == sql.ErrNoRows {
-		err := errors.New(ErrInvalidOTT)
-		log.Warn(err)
-		return "", err
-	}
+	err := db.QueryRowContext(ctx, "SELECT gid FROM agent WHERE OneTimeToken = ?", ott).Scan(&gid)
 	if err != nil {
-		log.Info(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errors.New(ErrInvalidOTT)
+		}
+		log.Error(err)
 		return "", err
 	}
 
 	return gid, nil
 }
 
-// NewOneTimeToken generates a new OTT for an agent
-func (gid GoogleID) newOneTimeToken() (OneTimeToken, error) {
-	ott, err := GenerateSafeName()
+// newOneTimeToken generates a new OTT for an agent
+func (gid GoogleID) newOneTimeToken(ctx context.Context) (OneTimeToken, error) {
+	ott, err := GenerateSafeName(ctx)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
-	if _, err = db.Exec("UPDATE agent SET OneTimeToken = ? WHERE gid = ?", ott, gid); err != nil {
+
+	if _, err = db.ExecContext(ctx, "UPDATE agent SET OneTimeToken = ? WHERE gid = ?", ott, gid); err != nil {
 		log.Error(err)
 		return "", err
 	}
 	return OneTimeToken(ott), nil
 }
 
-// Increment "uses" the OTT and returns a googleID, replacing the agent's OTT in the databse
-func (ott OneTimeToken) Increment() (GoogleID, error) {
-	gid, err := ott.Gid()
+// Increment "uses" the OTT and returns a googleID, replacing the agent's OTT in the database
+func (ott OneTimeToken) Increment(ctx context.Context) (GoogleID, error) {
+	gid, err := ott.Gid(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	_, err = gid.newOneTimeToken()
+	// Generate a new one to replace the one just used
+	_, err = gid.newOneTimeToken(ctx)
 	if err != nil {
-		log.Warn(err)
+		log.Warnw("failed to refresh OTT after use", "gid", gid, "error", err)
 	}
 	return gid, nil
 }

@@ -1,16 +1,14 @@
 package wasabeehttps
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	// "io"
 	"net/http"
 	"os"
 	"path"
 	"strconv"
 	"time"
-
-	"github.com/gorilla/mux"
 
 	"github.com/wasabee-project/Wasabee-Server/Firebase"
 	"github.com/wasabee-project/Wasabee-Server/config"
@@ -20,6 +18,7 @@ import (
 )
 
 func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
@@ -35,21 +34,19 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 
 	var o model.Operation
 	d := json.NewDecoder(req.Body)
-	// d.DisallowUnknownFields()
 	if err := d.Decode(&o); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
-	if err = model.DrawInsert(req.Context(), &o, gid); err != nil {
+	if err = model.DrawInsert(ctx, &o, gid); err != nil {
 		log.Infow(err.Error(), "GID", gid)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
-	// the IITC plugin wants the full /me data on draw POST so it can update its list of ops
-	agent, err := gid.GetAgent()
+	agent, err := gid.GetAgent(ctx)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
@@ -61,7 +58,6 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// store backup revision -- used for testing
 	c := config.Get()
 	if c.StoreRevisions {
 		fn := fmt.Sprintf("%s-POST.json", o.ID)
@@ -81,10 +77,9 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 		}
 		fh.Close()
 
-		// get it from the database and do it again
 		var refetch model.Operation
 		refetch.ID = o.ID
-		_ = refetch.Populate(gid)
+		_ = refetch.Populate(ctx, gid)
 
 		fn = fmt.Sprintf("%s-POST-POPULATED.json", refetch.ID)
 		p = path.Join(c.RevisionsDir, fn)
@@ -106,6 +101,7 @@ func drawUploadRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawGetRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
@@ -113,38 +109,34 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var o model.Operation
-	vars := mux.Vars(req)
-	o.ID = model.OperationID(vars["opID"])
+	o.ID = model.OperationID(req.PathValue("opID"))
 
-	if o.ID.IsDeletedOp() {
+	if o.ID.IsDeletedOp(ctx) {
 		err := fmt.Errorf("requested deleted op")
 		log.Infow(err.Error(), "GID", gid, "resource", o.ID)
 		http.Error(res, jsonError(err), http.StatusGone)
 		return
 	}
 
-	read, _ := o.ReadAccess(gid)
-	assignOnly := o.AssignedOnlyAccess(gid)
+	read, _ := o.ReadAccess(ctx, gid)
+	assignOnly := o.AssignedOnlyAccess(ctx, gid)
 	if !read && !assignOnly {
 		err := fmt.Errorf("forbidden")
-		agent, _ := gid.IngressName()
+		agent, _ := gid.IngressName(ctx)
 		log.Warnw(err.Error(), "GID", gid, "resource", o.ID, "message", "no access to operation", "agent", agent)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	// don't do full populate (slow) just yet
-	stat, err := o.ID.Stat()
+	stat, err := o.ID.Stat(ctx)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusNotFound)
 		return
 	}
 
-	// basically the same as If-Modified-Since
 	im := req.Header.Get("If-None-Match")
 	if im != "" && im == stat.LastEditID {
 		err := fmt.Errorf("local copy matches server copy")
-		// log.Debugw(err.Error(), "GID", gid, "resource", o.ID, "If-None-Match", im, "LastEditID", stat.LastEditID)
 		http.Error(res, jsonError(err), http.StatusNotModified)
 		return
 	}
@@ -157,7 +149,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	ims := req.Header.Get("If-Modified-Since")
-	if ims != "" && ims != "null" { // yes, the string "null", seen in the wild
+	if ims != "" && ims != "null" {
 		modifiedSince, err := time.ParseInLocation(time.RFC1123, ims, time.UTC)
 		if err != nil {
 			log.Error(err)
@@ -171,8 +163,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// o.Populate determines all, zone, or assigned-only
-	if err = o.Populate(gid); err != nil {
+	if err = o.Populate(ctx, gid); err != nil {
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
@@ -188,45 +179,44 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	// op.Delete checks ownership, do we need this check? -- yes for good status codes
-	if !op.ID.IsOwner(gid) {
+	if !op.ID.IsOwner(ctx, gid) {
 		err = fmt.Errorf("forbidden: only the owner can delete an operation")
 		log.Warnw(err.Error(), "resource", op.ID, "GID", gid)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	if err := op.Delete(gid); err != nil {
+	if err := op.Delete(ctx, gid); err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	messaging.DeleteOperation(messaging.OperationID(op.ID)) // announces to EVERYONE to delete it
+	messaging.DeleteOperation(ctx, messaging.OperationID(op.ID)) 
 	log.Infow("deleted operation", "resource", op.ID, "GID", gid, "message", "deleted operation")
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
+	opID := model.OperationID(req.PathValue("opID"))
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
-	opID := op.ID // used to verify that the URL used is right for the op data
+	op.ID = opID
 
 	if !contentTypeIs(req, jsonTypeShort) {
 		err := fmt.Errorf("invalid request (needs to be application/json)")
@@ -235,14 +225,14 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("forbidden: write access required to update an operation")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	s, err := op.ID.Stat()
+	s, err := op.ID.Stat(ctx)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -257,29 +247,27 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	d := json.NewDecoder(req.Body)
-	// d.DisallowUnknownFields()
 	if err := d.Decode(&op); err != nil {
 		log.Errorw("decoding incoming update", "error", err.Error(), "If-Match", im, "LastEditID", s.LastEditID, "Content-Length", req.Header.Get("Content-Length"))
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
-	if opID != op.ID { // after unmarshal
+	if opID != op.ID {
 		err := fmt.Errorf("incoming op.ID does not match the URL specified ID: refusing update")
-		log.Errorw(err.Error(), "resource", opID, "mismatch", opID)
+		log.Errorw(err.Error(), "resource", opID, "mismatch", op.ID)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
-	err = model.DrawUpdate(req.Context(), &op, gid)
+	err = model.DrawUpdate(ctx, &op, gid)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 
-	// store backup revision -- used for testing
 	c := config.Get()
 	if c.StoreRevisions {
 		fn := fmt.Sprintf("%s-%s.json", opID, uid)
@@ -301,7 +289,7 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 
 		var refetch model.Operation
 		refetch.ID = op.ID
-		_ = refetch.Populate(gid)
+		_ = refetch.Populate(ctx, gid)
 
 		fn = fmt.Sprintf("%s-%s-POPULATED.json", opID, uid)
 		p = path.Join(c.RevisionsDir, fn)
@@ -323,106 +311,102 @@ func drawUpdateRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func drawChownRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
-	to := vars["to"]
-	// only the ID needs to be set for this
+	to := req.PathValue("to")
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	if !op.ID.IsOwner(gid) {
+	if !op.ID.IsOwner(ctx, gid) {
 		err = fmt.Errorf("forbidden: only the owner can set operation ownership ")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	err = op.ID.Chown(gid, to)
+	err = op.ID.Chown(ctx, gid, to)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	// no notification
 	fmt.Fprint(res, jsonStatusOK)
 }
 
 func drawPortalCommentRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	// only the ID needs to be set for this
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("write access required to set portal comments")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 
-	portalID := model.PortalID(vars["portal"])
+	portalID := model.PortalID(req.PathValue("portal"))
 	comment := req.FormValue("comment")
-	err = op.ID.PortalComment(portalID, comment)
+	err = op.ID.PortalComment(ctx, portalID, comment)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawPortalHardnessRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	// only the ID needs to be set for this
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	if op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("write access required to set portal hardness")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
-	portalID := model.PortalID(vars["portal"])
+	portalID := model.PortalID(req.PathValue("portal"))
 	hardness := req.FormValue("hardness")
-	err = op.ID.PortalHardness(portalID, hardness)
+	err = op.ID.PortalHardness(ctx, portalID, hardness)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("write access required to set operation order")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -430,99 +414,97 @@ func drawOrderRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	order := req.FormValue("order")
-	err = op.LinkOrder(order)
+	err = op.LinkOrder(ctx, order)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	err = op.MarkerOrder(order)
+	err = op.MarkerOrder(ctx, order)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawInfoRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	if !op.WriteAccess(gid) {
+	if !op.WriteAccess(ctx, gid) {
 		err = fmt.Errorf("write access required to set operation info")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
 		return
 	}
 	info := req.FormValue("info")
-	err = op.SetInfo(info, gid)
+	err = op.SetInfo(ctx, info)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawPortalKeysRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
-	portalID := model.PortalID(vars["portal"])
+	op.ID = model.OperationID(req.PathValue("opID"))
+	portalID := model.PortalID(req.PathValue("portal"))
 
 	onhand, err := strconv.ParseInt(req.FormValue("count"), 10, 32)
-	if err != nil { // user supplied non-numeric value
+	if err != nil {
 		onhand = 0
 	}
-	if onhand < 0 { // @Robely42 .... sigh
+	if onhand < 0 {
 		onhand = 0
 	}
-	// cap out at 3k, even though 2600 is the one-user absolute limit
-	// because Niantic will Niantic
 	if onhand > 3000 {
 		onhand = 3000
 	}
 	capsule := req.FormValue("capsule")
 
-	err = op.KeyOnHand(req.Context(), gid, portalID, int32(onhand), capsule)
+	err = op.KeyOnHand(ctx, gid, portalID, int32(onhand), capsule)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
 
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	if !op.ID.IsOwner(gid) {
+	if !op.ID.IsOwner(ctx, gid) {
 		err = fmt.Errorf("permission to edit permissions denied")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -530,39 +512,38 @@ func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	teamID := model.TeamID(req.FormValue("team"))
-	role := req.FormValue("role") // AddPerm verifies this is good
+	role := req.FormValue("role") 
 	if teamID == "" || role == "" {
 		err = fmt.Errorf("required value not set to add permission to op")
 		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
 		return
 	}
-	// Pass in "Zeta" and get a zone back... defaults to "All"
 	zone := model.ZoneFromString(req.FormValue("zone"))
 
-	err = op.ID.AddPerm(gid, teamID, role, zone)
+	err = op.ID.AddPerm(ctx, gid, teamID, role, zone)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
 func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	vars := mux.Vars(req)
 	var op model.Operation
-	op.ID = model.OperationID(vars["opID"])
+	op.ID = model.OperationID(req.PathValue("opID"))
 
-	if !op.ID.IsOwner(gid) {
+	if !op.ID.IsOwner(ctx, gid) {
 		err = fmt.Errorf("permission to edit permissions denied")
 		log.Warnw(err.Error(), "GID", gid, "resource", op.ID)
 		http.Error(res, jsonError(err), http.StatusForbidden)
@@ -579,14 +560,14 @@ func drawPermsDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = op.ID.DelPerm(gid, teamID, role, zone)
+	err = op.ID.DelPerm(ctx, gid, teamID, role, zone)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
 
-	uid := touch(op)
+	uid := touch(ctx, op)
 	fmt.Fprint(res, jsonOKUpdateID(uid))
 }
 
@@ -594,15 +575,15 @@ func jsonOKUpdateID(uid string) string {
 	return fmt.Sprintf("{\"status\":\"ok\", \"updateID\": \"%s\"}", uid)
 }
 
-func touch(op model.Operation) string {
-	// update the timestamp and updateID
-	uid, err := op.Touch()
+func touch(ctx context.Context, op model.Operation) string {
+	uid, err := op.Touch(ctx)
 	if err != nil {
 		return ""
 	}
 
-	// announce to all relevant teams
 	go func() {
+		// Use Background for the notification so it isn't killed if the request context ends
+		bgCtx := context.Background()
 		teams := make(map[model.TeamID]bool)
 		for _, t := range op.Teams {
 			teams[t.TeamID] = true
@@ -612,7 +593,7 @@ func touch(op model.Operation) string {
 			ta = append(ta, t)
 		}
 		if len(ta) > 0 {
-			_ = wfb.MapChange(ta, op.ID, uid)
+			_ = wfb.MapChange(bgCtx, ta, op.ID, uid)
 		}
 	}()
 	return uid

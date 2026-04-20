@@ -3,8 +3,6 @@ package risc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path"
@@ -23,7 +21,6 @@ import (
 // internal channel
 var riscchan chan event
 
-// the top-level configuration, populated by googleRiscDiscover()
 var googleConfig struct {
 	Issuer      string   `json:"issuer"`
 	JWKURI      string   `json:"jwks_uri"`
@@ -32,23 +29,17 @@ var googleConfig struct {
 	Methods     []string `json:"delivery_methods_supported"`
 }
 
-// the flag to indicate if we are running or not
 var running bool
-
-// our credentials to Google
 var authdata []byte
-
-// the key set to validate/verify messages from Google
 var keys jwk.Set
 
-// the token's event
-// {"subject":{"email":"whoever@gmail.com","iss":"https://accounts.google.com","sub":"...gid...","subject_type":"id_token_claims"}, "reason": ""}
 type event struct {
-	Type    string `json:"subject_type"`
-	Reason  string `json:"reason"` // wasabee addition
-	Issuer  string `json:"iss"`
-	Subject string `json:"sub"`
-	Email   string `json:"email"`
+	Type    string          `json:"subject_type"`
+	Reason  string          `json:"reason"`
+	Issuer  string          `json:"iss"`
+	Subject string          `json:"sub"`
+	Email   string          `json:"email"`
+	ctx     context.Context // Added to pass context to the processor
 }
 
 type riscmsg struct {
@@ -68,7 +59,7 @@ func Start(ctx context.Context) {
 	if _, err := os.Stat(full); err != nil {
 		log.Infow("startup", "message", "credentials do not exist, not enabling RISC", "credentials", full)
 	}
-	// #nosec
+
 	tmp, err := os.ReadFile(full)
 	if err != nil {
 		log.Error(err)
@@ -76,136 +67,122 @@ func Start(ctx context.Context) {
 	}
 	authdata = tmp
 
-	// load config from google
-	if err := googleRiscDiscovery(); err != nil {
+	if err := googleRiscDiscovery(ctx); err != nil {
 		log.Error(err)
 		return
 	}
 
-	// make a channel to read for events
 	riscchan = make(chan event, 1)
 
 	// start a goroutine for keeping the connection to Google fresh
 	go registerWebhook(ctx)
 
-	// no need to wait for ctx.Done() since registerWebhook does and it calls disableWebhook, which closes riscchan...
-	for e := range riscchan {
-		gid := model.GoogleID(e.Subject)
-		switch e.Type {
-		case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
-			log.Errorw("locking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
-			_ = gid.Lock(e.Reason)
-			_ = gid.RemoveAllFirebaseTokens()
-			auth.Logout(gid, e.Reason)
-		case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
-			log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
-			_ = gid.Unlock(e.Reason)
-		case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
-			log.Errorw("deleting account", "subsystem", "RISC", "GID", gid, "subject", e.Subject, "issuer", e.Issuer, "reason", e.Reason)
-			auth.Logout(gid, e.Reason)
-			_ = gid.Delete()
-		case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required":
-			log.Debugw("credential change", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			_ = gid.RemoveAllFirebaseTokens()
-			auth.Logout(gid, e.Reason)
-		case "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked":
-			log.Debugw("sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			_ = gid.RemoveAllFirebaseTokens()
-			auth.Logout(gid, e.Reason)
-		case "https://schemas.openid.net/secevent/risc/event-type/tokens-revoked":
-			log.Debugw("tokens revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			_ = gid.RemoveAllFirebaseTokens()
-			auth.Logout(gid, e.Reason)
-		case "https://schemas.openid.net/secevent/risc/event-type/verification":
-			// log.Debugw("verify", "subsystem", "RISC", "GID", gid,  "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			// no need to do anything
-		case "https://accounts.google.com/risc/event/sessions-revoked":
-			log.Debugw("google sessions revoked", "subsystem", "RISC", "GID", gid, "issuer", e.Issuer, "subject", e.Subject, "reason", e.Reason)
-			_ = gid.RemoveAllFirebaseTokens()
-			auth.Logout(gid, e.Reason)
-		default:
-			log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type, "reason", e.Reason)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Infow("shutting down RISC processor")
+			return
+		case e, ok := <-riscchan:
+			if !ok {
+				return
+			}
+
+			// Process each event using the system context
+			// If we want it to be cancelable per-event, we could use e.ctx,
+			// but e.ctx from the webhook will be canceled as soon as the HTTP response is sent.
+			processEvent(ctx, e)
 		}
 	}
 }
 
-// This is called from the webhook
-func validateToken(rawjwt []byte) error {
-	// log.Debugw("RISC token", "raw", rawjwt)
+func processEvent(ctx context.Context, e event) {
+	gid := model.GoogleID(e.Subject)
+	switch e.Type {
+	case "https://schemas.openid.net/secevent/risc/event-type/account-disabled":
+		log.Errorw("locking account", "subsystem", "RISC", "GID", gid, "reason", e.Reason)
+		_ = gid.Lock(ctx, e.Reason)
+		_ = gid.RemoveAllFirebaseTokens(ctx)
+		auth.Logout(gid, e.Reason)
+
+	case "https://schemas.openid.net/secevent/risc/event-type/account-enabled":
+		log.Infow("unlocking account", "subsystem", "RISC", "GID", gid, "reason", e.Reason)
+		_ = gid.Unlock(ctx, e.Reason)
+
+	case "https://schemas.openid.net/secevent/risc/event-type/account-purged":
+		log.Errorw("deleting account", "subsystem", "RISC", "GID", gid, "reason", e.Reason)
+		auth.Logout(gid, e.Reason)
+		_ = gid.Delete(ctx)
+
+	case "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required",
+		"https://schemas.openid.net/secevent/risc/event-type/sessions-revoked",
+		"https://schemas.openid.net/secevent/risc/event-type/tokens-revoked",
+		"https://accounts.google.com/risc/event/sessions-revoked":
+		log.Debugw("security event: revoking sessions", "subsystem", "RISC", "type", e.Type, "GID", gid)
+		_ = gid.RemoveAllFirebaseTokens(ctx)
+		auth.Logout(gid, e.Reason)
+
+	case "https://schemas.openid.net/secevent/risc/event-type/verification":
+		// no-op
+	default:
+		log.Warnw("unknown event", "subsystem", "RISC", "type", e.Type)
+	}
+}
+
+// This is called from the webhook (which should pass req.Context())
+func validateToken(ctx context.Context, rawjwt []byte) error {
 	token, err := jwt.Parse(rawjwt,
 		jwt.WithValidate(true),
 		jwt.WithIssuer("https://accounts.google.com"),
 		jwt.WithKeySet(keys, jws.WithInferAlgorithmFromKey(true), jws.WithUseDefault(true)),
 		jwt.WithAcceptableSkew(20*time.Second))
 	if err != nil {
-		log.Errorw("RISC", "error", err.Error(), "subsystem", "RISC")
-		return err
-	}
-	if token == nil {
-		err := fmt.Errorf("unable to verify RISC event")
-		log.Errorw(err.Error(), "subsystem", "RISC")
 		return err
 	}
 
-	var events interface{} // map[string]interface{}
-	err = token.Get("events", &events)
-	if err != nil {
-		err := fmt.Errorf("unable to get events from token")
-		log.Error(err)
+	var events interface{}
+	if err := token.Get("events", &events); err != nil {
 		return err
 	}
 
-	// multiple events per message are possible
 	for k, v := range events.(map[string]interface{}) {
 		var r riscmsg
 		r.Subject.Type = k
+		r.Subject.ctx = ctx // Attach context (though we use system ctx for DB)
 
-		// just respond to verification requests instantly
 		if k == "https://schemas.openid.net/secevent/risc/event-type/verification" {
-			r.Subject.Reason = "ping requsted"
+			r.Subject.Reason = "ping requested"
 			riscchan <- r.Subject
 			continue
 		}
 
-		// it is JSON, just unmarshal it...
 		x := v.(map[string]interface{})
 		if x["reason"] != nil {
 			r.Subject.Reason = x["reason"].(string)
 		}
-		y := x["subject"].(map[string]interface{})
-		r.Subject.Issuer = y["iss"].(string)
-		r.Subject.Subject = y["sub"].(string)
-		r.Subject.Email = y["email"].(string)
+
+		// Handle potential nil subjects/issuers safely
+		if sub, ok := x["subject"].(map[string]interface{}); ok {
+			r.Subject.Issuer, _ = sub["iss"].(string)
+			r.Subject.Subject, _ = sub["sub"].(string)
+			r.Subject.Email, _ = sub["email"].(string)
+		}
 
 		riscchan <- r.Subject
 	}
 	return nil
 }
 
-func googleRiscDiscovery() error {
-	req, err := http.NewRequest("GET", config.Get().RISC.Discovery, nil)
+func googleRiscDiscovery(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", config.Get().RISC.Discovery, nil)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
-	client := &http.Client{
-		Timeout: (3 * time.Second),
-	}
+	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	err = json.Unmarshal(body, &googleConfig)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+
+	return json.NewDecoder(resp.Body).Decode(&googleConfig)
 }

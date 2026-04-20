@@ -10,13 +10,14 @@ import (
 )
 
 func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, jsonError(err), http.StatusUnauthorized)
 		return
 	}
 
-	dkl, err := gid.ListDefensiveKeys()
+	dkl, err := gid.ListDefensiveKeys(ctx)
 	if err != nil {
 		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -27,6 +28,7 @@ func getDefensiveKeys(res http.ResponseWriter, req *http.Request) {
 }
 
 func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	var dk model.DefensiveKey
 
 	gid, err := getAgentID(req)
@@ -62,7 +64,7 @@ func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = gid.InsertDefensiveKey(dk)
+	err = gid.InsertDefensiveKey(ctx, dk)
 	if err != nil {
 		log.Warn(err)
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
@@ -72,6 +74,7 @@ func setDefensiveKey(res http.ResponseWriter, req *http.Request) {
 }
 
 func setDefensiveKeyBulk(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	gid, err := getAgentID(req)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusUnauthorized)
@@ -107,7 +110,7 @@ func setDefensiveKeyBulk(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		err = gid.InsertDefensiveKey(dk)
+		err = gid.InsertDefensiveKey(ctx, dk)
 		if err != nil {
 			http.Error(res, jsonError(err), http.StatusInternalServerError)
 			return
