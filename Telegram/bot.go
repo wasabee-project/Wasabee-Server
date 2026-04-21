@@ -3,7 +3,7 @@ package wtg
 import (
 	"context"
 	"fmt"
-    "net/http"
+	"net/http"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -22,7 +22,7 @@ var hook string
 
 var bot *tgbotapi.BotAPI
 
-func Init(m *http.ServeMux) {
+func Init() {
 	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Telegram", messaging.Bus{
 		SendAnnounce:     sendAnnounce,
@@ -30,9 +30,9 @@ func Init(m *http.ServeMux) {
 		SendTarget:       sendTarget,
 		AddToRemote:      addToChat,
 		RemoveFromRemote: removeFromChat,
-        RegisterRoutes: func(m *http.ServeMux) {
-            m.HandleFunc("POST " + config.Get().Telegram.HookPath + "/{hook}", webhook)
-        },
+		RegisterRoutes: func(m *http.ServeMux) {
+			m.HandleFunc("POST "+config.Get().Telegram.HookPath+"/{hook}", webhook)
+		},
 	})
 }
 
@@ -48,7 +48,6 @@ func Start(ctx context.Context) {
 	baseKbd = keyboards()
 
 	upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
-
 	sendQueue = make(chan tgbotapi.Chattable, sendQchanSize)
 
 	var logger log.Printer
@@ -62,7 +61,6 @@ func Start(ctx context.Context) {
 	}
 	defer shutdown()
 
-	// bot.Debug = true
 	log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
 	config.TGSetBot(bot.Self.UserName, int(bot.Self.ID))
 
@@ -77,8 +75,6 @@ func Start(ctx context.Context) {
 		return
 	}
 
-
-	// process outgoing messages in a distinct go process
 	go sendqueueRunner(ctx)
 
 	if c.CleanOnStartup {
@@ -93,7 +89,6 @@ func Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case update := <-upChan:
-			// log.Debugw("running update", "update", update)
 			if err := runUpdate(ctx, update); err != nil {
 				log.Error(err)
 			}
@@ -184,7 +179,6 @@ func sendMessage(ctx context.Context, g messaging.GoogleID, message string) (boo
 	msg.ParseMode = "HTML"
 
 	sendQueue <- msg
-	// log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
 	return true, nil
 }
 
@@ -227,7 +221,6 @@ func sendTarget(ctx context.Context, g messaging.GoogleID, target messaging.Targ
 		msg.Text = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
 	}
 
-	// log.Debugw("sent target", "subsystem", "Telegram", "GID", gid, "target", target)
 	sendQueue <- msg
 	return nil
 }

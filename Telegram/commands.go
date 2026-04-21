@@ -2,11 +2,9 @@ package wtg
 
 import (
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
-// need to update tgbotapi to allow ADDDING, not just setting commands for these...
 type command struct {
 	Command     string
 	Description string
@@ -39,57 +37,8 @@ func setupCommands() {
 	}
 
 	setmy := tgbotapi.NewSetMyCommands(desired...)
-	// log.Debugw("setting commands", "command", setmy)
 	if res, err := bot.Request(setmy); err != nil {
 		log.Errorw(err.Error(), "res", res)
 		return
 	}
 }
-
-/* no way to append, just set ... so only the last one sticks
-func broken() {
-	active, err := bot.GetMyCommands()
-	if err != nil {
-		log.Error(err)
-	}
-	log.Debugw("starting active commands", "active", active)
-
-	for _, c := range commands {
-		alreadyactive := false
-		for _, a := range active {
-			if a.Command == c.command {
-				alreadyactive = true
-			}
-		}
-		if alreadyactive {
-			continue
-		}
-
-		newcmd := tgbotapi.BotCommand{ Command: c.command, Description: c.description}
-		setmy := tgbotapi.NewSetMyCommands(newcmd)
-
-		if c.Private && !c.Group {
-			bsc := tgbotapi.NewBotCommandScopeAllPrivateChats()
-			setmy = tgbotapi.NewSetMyCommandsWithScope(bsc, newcmd)
-		}
-		if c.Group && !c.Private && !c.Admin {
-			bsc := tgbotapi.NewBotCommandScopeAllGroupChats()
-			setmy = tgbotapi.NewSetMyCommandsWithScope(bsc, newcmd)
-		}
-		if c.Group && !c.Private && c.Admin {
-			bsc := tgbotapi.NewBotCommandScopeAllChatAdministrators()
-			setmy = tgbotapi.NewSetMyCommandsWithScope(bsc, newcmd)
-		}
-		log.Debugw("setting commands", "command", setmy)
-		if res, err := bot.Request(setmy); err != nil {
-			log.Errorw(err.Error(), "res", res)
-			return
-		}
-	}
-
-	active, err := bot.GetMyCommands()
-	if err != nil {
-		log.Error(err)
-	}
-	log.Debugw("final active commands", "active", active)
-} */

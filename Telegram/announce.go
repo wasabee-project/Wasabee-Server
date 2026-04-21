@@ -1,7 +1,7 @@
 package wtg
 
 import (
-    "context"
+	"context"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 

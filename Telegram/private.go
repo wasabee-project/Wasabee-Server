@@ -1,7 +1,7 @@
 package wtg
 
 import (
-    "context"
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,31 +14,40 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/templates"
 )
 
+// newResponse initializes a standard message with HTML and the default keyboard
+func newResponse(chatID int64) tgbotapi.MessageConfig {
+	msg := tgbotapi.NewMessage(chatID, "")
+	msg.ParseMode = tgbotapi.ModeHTML
+	msg.ReplyMarkup = baseKbd
+	return msg
+}
+
 func processDirectMessage(ctx context.Context, inMsg *tgbotapi.Update) error {
-	tgid := model.TelegramID(inMsg.Message.From.ID)
+	if inMsg.Message == nil {
+		return nil
+	}
+
+	from := inMsg.Message.From
+	tgid := model.TelegramID(from.ID)
 	gid, verified, err := tgid.GidV(ctx)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	// telegram ID is unknown to this server
+	// 1. User is unknown to the system
 	if gid == "" {
-		log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
+		log.Infow("unknown user; initializing", "subsystem", "Telegram", "tgusername", from.UserName, "tgid", tgid)
 
-		// never logged into this server, check Rocks & V
-		fgid, err := firstlogin(ctx, tgid, inMsg.Message.From.UserName)
-		if fgid != "" && err == nil {
-			// firstlogin found something at Rocks (or V lol), use that
-			msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
-			msg.ParseMode = "HTML"
-			tmp, _ := templates.ExecuteLang("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
-			msg.Text = tmp
+		fgid, err := firstlogin(ctx, tgid, from.UserName)
+		if err == nil && fgid != "" {
+			msg := newResponse(inMsg.Message.Chat.ID)
+			msg.Text, _ = templates.ExecuteLang("InitTwoSuccess", from.LanguageCode, nil)
 			sendQueue <- msg
 			return nil
 		}
 
-		// start manual association process
+		// Not found in Rocks/V, start manual OTT process
 		msg, err := newUserInit(ctx, inMsg)
 		if err != nil {
 			log.Error(err)
@@ -47,10 +56,9 @@ func processDirectMessage(ctx context.Context, inMsg *tgbotapi.Update) error {
 		return nil
 	}
 
-	// verification process started, but not completed
+	// 2. User is known but not verified
 	if !verified {
-		log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", inMsg.Message.From.UserName, "tgid", tgid)
-
+		log.Infow("verifying Telegram user", "subsystem", "Telegram", "tgusername", from.UserName, "tgid", tgid)
 		msg, err := newUserVerify(ctx, inMsg)
 		if err != nil {
 			log.Error(err)
@@ -59,70 +67,62 @@ func processDirectMessage(ctx context.Context, inMsg *tgbotapi.Update) error {
 		return nil
 	}
 
-	// user is verified, process message
-	if err := processMessage(ctx, inMsg, gid); err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
+	// 3. User is verified, process regular commands
+	return processMessage(ctx, inMsg, gid)
 }
 
-// This is where command processing takes place
 func processMessage(ctx context.Context, inMsg *tgbotapi.Update, gid model.GoogleID) error {
-	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
-	msg.ParseMode = "HTML"
+	msg := newResponse(inMsg.Message.Chat.ID)
+	from := inMsg.Message.From
 
-	// update name
-	if inMsg.Message.From.UserName != "" {
-		tgid := model.TelegramID(inMsg.Message.From.ID)
-		if err := tgid.SetName(ctx, inMsg.Message.From.UserName); err != nil {
+	// Update telegram name in DB if it changed
+	if from.UserName != "" {
+		tgid := model.TelegramID(from.ID)
+		if err := tgid.SetName(ctx, from.UserName); err != nil {
 			log.Error(err)
 		}
 	}
 
-	if inMsg.Message.IsCommand() {
+	// Logic Switch: Priority 1: Commands, Priority 2: Location, Priority 3: Text
+	switch {
+	case inMsg.Message.IsCommand():
 		switch inMsg.Message.Command() {
-		// add commands here
 		case "start":
-			msg.Text, _ = templates.ExecuteLang("start", inMsg.Message.From.LanguageCode, nil)
-			msg.ReplyMarkup = baseKbd
+			msg.Text, _ = templates.ExecuteLang("start", from.LanguageCode, nil)
 		case "help":
-			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, commands)
-			msg.ReplyMarkup = baseKbd
-		// case "whois":
-		//	whois(inMsg)
+			msg.Text, _ = templates.ExecuteLang("default", from.LanguageCode, commands)
 		default:
-			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, commands)
-			msg.ReplyMarkup = baseKbd
+			msg.Text, _ = templates.ExecuteLang("default", from.LanguageCode, commands)
 		}
-	} else if inMsg.Message.Text != "" {
-		switch inMsg.Message.Text {
-		// and responses here
-		case "wasabee":
-			msg.Text = "wasabee rocks"
-		default:
-			msg.ReplyMarkup = baseKbd
-		}
-	}
 
-	if inMsg.Message != nil && inMsg.Message.Location != nil {
+	case inMsg.Message.Location != nil:
 		log.Debugw("processing location", "subsystem", "Telegram", "GID", gid)
 		lat := strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64)
 		if err := gid.SetLocation(ctx, lat, lon); err != nil {
 			log.Error(err)
 		}
+		// Optional: could send a confirmation or just let the keyboard stay
+		return nil
+
+	case inMsg.Message.Text != "":
+		if strings.EqualFold(inMsg.Message.Text, "wasabee") {
+			msg.Text = "wasabee rocks"
+		} else {
+			// No recognized text, show help
+			msg.Text, _ = templates.ExecuteLang("default", from.LanguageCode, commands)
+		}
 	}
 
-	sendQueue <- msg
+	if msg.Text != "" {
+		sendQueue <- msg
+	}
 	return nil
 }
 
-// checks rocks based on tgid, Inits agent if found
 func firstlogin(ctx context.Context, tgid model.TelegramID, name string) (model.GoogleID, error) {
 	agent, err := rocks.Search(ctx, fmt.Sprint(tgid))
 	if err != nil {
-		log.Error(err)
 		return "", err
 	}
 
@@ -130,107 +130,63 @@ func firstlogin(ctx context.Context, tgid model.TelegramID, name string) (model.
 		gid := model.GoogleID(agent.Gid)
 		if !gid.Valid(ctx) {
 			if err := gid.FirstLogin(ctx); err != nil {
-				log.Error(err)
 				return "", err
 			}
 		}
 		if err := gid.SetTelegramID(ctx, tgid, name); err != nil {
-			log.Error(err)
 			return gid, err
 		}
-
-		// rocks success
 		return gid, nil
 	}
 	return "", nil
 }
 
 func newUserInit(ctx context.Context, inMsg *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
-	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
-	msg.ParseMode = "HTML"
+	msg := newResponse(inMsg.Message.Chat.ID)
+	from := inMsg.Message.From
 
-	var ott model.OneTimeToken
+	var ott string
 	if inMsg.Message.IsCommand() {
-		tokens := strings.Split(inMsg.Message.Text, " ")
-		if len(tokens) == 2 {
-			ott = model.OneTimeToken(strings.TrimSpace(tokens[1]))
-		}
+		val := inMsg.Message.CommandArguments()
+		ott = strings.TrimSpace(val)
 	} else {
-		ott = model.OneTimeToken(strings.TrimSpace(inMsg.Message.Text))
+		ott = strings.TrimSpace(inMsg.Message.Text)
 	}
 
-	log.Debugw("newUserInit", "text", inMsg.Message.Text)
+	tid := model.TelegramID(from.ID)
+	err := tid.InitAgent(ctx, from.UserName, model.OneTimeToken(ott))
 
-	tid := model.TelegramID(inMsg.Message.From.ID)
-	err := tid.InitAgent(ctx, inMsg.Message.From.UserName, ott)
+	templateName := "InitOneSuccess"
 	if err != nil {
 		log.Error(err)
-		tmp, _ := templates.ExecuteLang("InitOneFail", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
-	} else {
-		tmp, _ := templates.ExecuteLang("InitOneSuccess", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
+		templateName = "InitOneFail"
 	}
+
+	msg.Text, _ = templates.ExecuteLang(templateName, from.LanguageCode, nil)
 	return &msg, err
 }
 
 func newUserVerify(ctx context.Context, inMsg *tgbotapi.Update) (*tgbotapi.MessageConfig, error) {
-	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
-	msg.ParseMode = "HTML"
+	msg := newResponse(inMsg.Message.Chat.ID)
+	from := inMsg.Message.From
 
-	var authtoken string
+	var token string
 	if inMsg.Message.IsCommand() {
-		tokens := strings.Split(inMsg.Message.Text, " ")
-		if len(tokens) == 2 {
-			authtoken = tokens[1]
-		}
+		val := inMsg.Message.CommandArguments()
+		token = strings.TrimSpace(val)
 	} else {
-		authtoken = inMsg.Message.Text
+		token = strings.TrimSpace(inMsg.Message.Text)
 	}
-	authtoken = strings.TrimSpace(authtoken)
-	tid := model.TelegramID(inMsg.Message.From.ID)
-	err := tid.VerifyAgent(ctx, authtoken)
+
+	tid := model.TelegramID(from.ID)
+	err := tid.VerifyAgent(ctx, token)
+
+	templateName := "InitTwoSuccess"
 	if err != nil {
 		log.Error(err)
-		tmp, _ := templates.ExecuteLang("InitTwoFail", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
-	} else {
-		tmp, _ := templates.ExecuteLang("InitTwoSuccess", inMsg.Message.From.LanguageCode, nil)
-		msg.Text = tmp
+		templateName = "InitTwoFail"
 	}
+
+	msg.Text, _ = templates.ExecuteLang(templateName, from.LanguageCode, nil)
 	return &msg, err
 }
-
-/* discussion concerning implmenting this - @areyougreenbot does already do this
-func whois(inMsg *tgbotapi.Update) error {
-	var query string
-	tokens := strings.Split(inMsg.Message.Text, " ")
-	if len(tokens) != 2 {
-		msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "requires an @telegramname")
-		msg.ParseMode = "HTML"
-
-		sendq <- msg
-	}
-	query = strings.TrimSpace(tokens[1])
-
-	tid := model.TelegramID(inMsg.Message.From.ID)
-	_, verified, err := tid.GidV()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	if !verified {
-		err := fmt.Errorf("unverified accounts cannot use this command")
-		log.Errorw(err, "msg", inMsg)
-		return err
-	}
-
-	gid, err := SearchAgentName(agent string)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	....
-
-	return nil
-} */
