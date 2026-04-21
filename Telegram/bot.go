@@ -3,7 +3,7 @@ package wtg
 import (
 	"context"
 	"fmt"
-	"net/http"
+    "net/http"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -15,29 +15,24 @@ import (
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
-var (
-	baseKbd   tgbotapi.ReplyKeyboardMarkup
-	upChan    chan tgbotapi.Update
-	sendQueue chan tgbotapi.Chattable
-	hook      string
-	bot       *tgbotapi.BotAPI
-)
+var baseKbd tgbotapi.ReplyKeyboardMarkup
+var upChan chan tgbotapi.Update
+var sendQueue chan tgbotapi.Chattable // parameters in sendq.go
+var hook string
 
-func Init() {
-	c := config.Get().Telegram
+var bot *tgbotapi.BotAPI
+
+func Init(m *http.ServeMux) {
+	// let the messaging susbsystem know we exist and how to use us
 	messaging.RegisterMessageBus("Telegram", messaging.Bus{
-		SendMessage: sendMessage,
-		SendTarget:  sendTarget,
-		// CanSendTo            func(fromGID GoogleID, toGID GoogleID) bool // pure logic, no context needed usually
-		// SendAnnounce         func(context.Context, TeamID, Announce) error
-		// AddToRemote          func(context.Context, GoogleID, TeamID) error
-		// RemoveFromRemote     func(context.Context, GoogleID, TeamID) error
-		// SendAssignment       func(context.Context, GoogleID, TaskID, OperationID, string) error
-		// AgentDeleteOperation func(context.Context, GoogleID, OperationID) error
-		// DeleteOperation      func(context.Context, OperationID) error
-		RegisterRoutes: func(m *http.ServeMux) {
-			m.HandleFunc("POST "+c.HookPath+"/{hook}", webhook)
-		},
+		SendAnnounce:     sendAnnounce,
+		SendMessage:      sendMessage,
+		SendTarget:       sendTarget,
+		AddToRemote:      addToChat,
+		RemoveFromRemote: removeFromChat,
+        RegisterRoutes: func(m *http.ServeMux) {
+            m.HandleFunc("POST " + config.Get().Telegram.HookPath + "/{hook}", webhook)
+        },
 	})
 }
 
@@ -51,11 +46,13 @@ func Start(ctx context.Context) {
 	}
 
 	baseKbd = keyboards()
-	upChan = make(chan tgbotapi.Update, 100)
+
+	upChan = make(chan tgbotapi.Update, 10) // not using bot.ListenForWebhook() since we need our own bidirectional channel
+
 	sendQueue = make(chan tgbotapi.Chattable, sendQchanSize)
 
-	// In v5, SetLogger takes a standard logger or nil
-	// _ = tgbotapi.SetLogger(log.NewNoopLogger())
+	var logger log.Printer
+	_ = tgbotapi.SetLogger(logger)
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(c.APIKey)
@@ -63,42 +60,50 @@ func Start(ctx context.Context) {
 		log.Error(err)
 		return
 	}
+	defer shutdown()
 
+	// bot.Debug = true
 	log.Infow("startup", "subsystem", "Telegram", "message", "authorized to Telegram as "+bot.Self.UserName)
 	config.TGSetBot(bot.Self.UserName, int(bot.Self.ID))
 
-	// Set initial webhook
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+
 	hook = util.GenerateName()
-	if err := setWebhook(hook); err != nil {
+	whurl := fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
+	wh, _ := tgbotapi.NewWebhook(whurl)
+	if _, err = bot.Request(wh); err != nil {
 		log.Error(err)
 		return
 	}
 
-	// Run workers
+
+	// process outgoing messages in a distinct go process
 	go sendqueueRunner(ctx)
+
 	if c.CleanOnStartup {
 		go cleanup(ctx)
 	}
 
-	setupCommands(ctx)
+	setupCommands()
 
-	// Main update loop
 	i := 1
 	for {
 		select {
 		case <-ctx.Done():
-			shutdown()
 			return
 		case update := <-upChan:
+			// log.Debugw("running update", "update", update)
 			if err := runUpdate(ctx, update); err != nil {
 				log.Error(err)
 			}
-
-			// Rotate webhook every 100 updates to keep the endpoint "moving"
-			if i%100 == 0 {
+			if (i % 100) == 0 { // every 100 requests, change the endpoint
 				i = 1
 				hook = util.GenerateName()
-				if err := setWebhook(hook); err != nil {
+				whurl = fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, hook)
+				wh, _ := tgbotapi.NewWebhook(whurl)
+				_, err = bot.Request(wh)
+				if err != nil {
 					log.Error(err)
 				}
 			}
@@ -107,51 +112,51 @@ func Start(ctx context.Context) {
 	}
 }
 
-func setWebhook(path string) error {
-	c := config.Get().Telegram
-	whurl := fmt.Sprintf("%s%s/%s", config.GetWebroot(), c.HookPath, path)
-	wh, err := tgbotapi.NewWebhook(whurl)
-	if err != nil {
-		return err
-	}
-	_, err = bot.Request(wh)
-	return err
-}
-
+// shutdown closes all the Telegram connections
 func shutdown() {
-	log.Infow("shutdown", "subsystem", "Telegram", "message", "cleaning up telegram")
-	// Remove webhook on clean shutdown
-	wh, _ := tgbotapi.NewWebhook("")
-	_, _ = bot.Request(wh)
+	log.Infow("shutdown", "subsystem", "Telegram", "message", "shutdown telegram")
+	bot.StopReceivingUpdates()
+	close(upChan)
+	close(sendQueue)
 }
 
 func runUpdate(ctx context.Context, update tgbotapi.Update) error {
 	if update.CallbackQuery != nil {
+		log.Debugw("callback", "subsystem", "Telegram", "data", update)
 		msg, err := callback(ctx, &update)
 		if err != nil {
+			log.Error(err)
 			return err
 		}
-		if msg != nil {
-			sendQueue <- msg
-		}
+		sendQueue <- msg
+		/* if _, err = bot.DeleteMessage(tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)); err != nil {
+			log.Error(err)
+			return err
+		} */
 		return nil
 	}
 
 	if update.Message != nil {
-		if update.Message.Chat.IsPrivate() {
-			return processDirectMessage(ctx, &update)
+		if update.Message.Chat.Type == "private" {
+			if err := processDirectMessage(ctx, &update); err != nil {
+				log.Error(err)
+			}
+		} else {
+			if err := processChatMessage(ctx, &update); err != nil {
+				log.Error(err)
+			}
 		}
-		return processChatMessage(ctx, &update)
 	}
 
 	if update.EditedMessage != nil && update.EditedMessage.Location != nil {
-		return liveLocationUpdate(ctx, &update)
+		if err := liveLocationUpdate(ctx, &update); err != nil {
+			log.Error(err)
+		}
 	}
 
 	return nil
 }
 
-// keyboards provides the primary UI
 func keyboards() tgbotapi.ReplyKeyboardMarkup {
 	return tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
@@ -161,44 +166,68 @@ func keyboards() tgbotapi.ReplyKeyboardMarkup {
 	)
 }
 
+// sendMessage is registered with Wasabee-Server as a message bus to allow other modules to send messages via Telegram
 func sendMessage(ctx context.Context, g messaging.GoogleID, message string) (bool, error) {
 	gid := model.GoogleID(g)
 	tgid, err := gid.TelegramID(ctx)
-	if err != nil || tgid == 0 {
+	if err != nil {
+		log.Error(err)
 		return false, err
 	}
-
-	msg := tgbotapi.NewMessage(int64(tgid), message)
+	tgid64 := int64(tgid)
+	if tgid64 == 0 {
+		log.Debugw("TelegramID not found", "subsystem", "Telegram", "GID", gid)
+		return false, nil
+	}
+	msg := tgbotapi.NewMessage(tgid64, "")
+	msg.Text = message
 	msg.ParseMode = "HTML"
-	msg.DisableWebPagePreview = true
 
 	sendQueue <- msg
+	// log.Debugw("sent message", "subsystem", "Telegram", "GID", gid)
 	return true, nil
 }
 
+// sendTarget is used to send a formatted target to an agent
 func sendTarget(ctx context.Context, g messaging.GoogleID, target messaging.Target) error {
 	gid := model.GoogleID(g)
 	tgid, err := gid.TelegramID(ctx)
-	if err != nil || tgid == 0 {
-		return err
-	}
-
-	templateData := struct {
-		messaging.Target
-		Lon string // template expects .Lon
-	}{
-		Target: target,
-		Lon:    target.Lng,
-	}
-
-	text, err := templates.Execute("target", templateData)
 	if err != nil {
 		log.Error(err)
-		text = fmt.Sprintf("target: %s @ %s %s", target.Name, target.Lat, target.Lng)
+		return err
+	}
+	tgid64 := int64(tgid)
+	if tgid64 == 0 {
+		log.Debugw("TelegramID not found", "subsystem", "Telegram", "GID", gid)
+		return nil
+	}
+	msg := tgbotapi.NewMessage(tgid64, "")
+	msg.ParseMode = "HTML"
+
+	// Lng vs Lon ...
+	templateData := struct {
+		Name   string
+		ID     string
+		Lat    string
+		Lon    string
+		Type   string
+		Sender string
+	}{
+		Name:   target.Name,
+		ID:     target.ID,
+		Lat:    target.Lat,
+		Lon:    target.Lng,
+		Type:   target.Type,
+		Sender: target.Sender,
 	}
 
-	msg := tgbotapi.NewMessage(int64(tgid), text)
-	msg.ParseMode = "HTML"
+	msg.Text, err = templates.Execute("target", templateData)
+	if err != nil {
+		log.Error(err)
+		msg.Text = fmt.Sprintf("template failed; target @ %s %s", target.Lat, target.Lng)
+	}
+
+	// log.Debugw("sent target", "subsystem", "Telegram", "GID", gid, "target", target)
 	sendQueue <- msg
 	return nil
 }

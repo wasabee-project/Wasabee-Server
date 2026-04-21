@@ -2,7 +2,7 @@ package wtg
 
 import (
 	"bytes"
-	"context"
+    "context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -62,6 +62,7 @@ func gcUnlink(ctx context.Context, inMsg *tgbotapi.Update) {
 	msg.Text, err = templates.ExecuteLang("Unlinked", inMsg.Message.From.LanguageCode, nil)
 	if err != nil {
 		log.Error(err)
+		// do something?
 	}
 	sendQueue <- msg
 }
@@ -124,6 +125,7 @@ func gcStatus(ctx context.Context, inMsg *tgbotapi.Update) {
 
 	teamID, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
 	if err != nil {
+		// log.Debug(err) // not linked is not an error
 		msg.Text = err.Error()
 		sendQueue <- msg
 		return
@@ -214,6 +216,7 @@ func gcAssigned(ctx context.Context, inMsg *tgbotapi.Update) {
 
 	sort.Slice(o.Markers, func(i, j int) bool { return o.Markers[i].Order < o.Markers[j].Order })
 	for _, m := range o.Markers {
+		// if the caller requested the results to be filtered...
 		if filterGid != "" && !m.IsAssignedTo(ctx, filterGid) {
 			continue
 		}
@@ -556,111 +559,5 @@ func gcReject(ctx context.Context, inMsg *tgbotapi.Update) {
 	}
 
 	msg.Text, _ = templates.ExecuteLang("Rejected", inMsg.Message.From.LanguageCode, d)
-	sendQueue <- msg
-}
-
-func gcTaskAction(ctx context.Context, inMsg *tgbotapi.Update, action string) {
-	msg := tgbotapi.NewMessage(inMsg.Message.Chat.ID, "")
-	msg.ParseMode = "HTML"
-	msg.DisableWebPagePreview = true
-
-	gid, err := model.TelegramID(inMsg.Message.From.ID).Gid(ctx)
-	if err != nil {
-		log.Error(err)
-		msg.Text = err.Error()
-		sendQueue <- msg
-		return
-	}
-
-	_, opID, err := model.ChatToTeam(ctx, inMsg.Message.Chat.ID)
-	if err != nil {
-		log.Error(err)
-		msg.Text = err.Error()
-		sendQueue <- msg
-		return
-	}
-
-	if opID == "" {
-		msg.Text = "Team must be linked to operation for task actions"
-		sendQueue <- msg
-		return
-	}
-
-	o := model.Operation{ID: opID}
-	if err := o.Populate(ctx, gid); err != nil {
-		log.Error(err)
-		msg.Text = err.Error()
-		sendQueue <- msg
-		return
-	}
-
-	tokens := strings.Split(inMsg.Message.Text, " ")
-	if len(tokens) < 2 {
-		msg.Text = "Specify the task step #"
-		sendQueue <- msg
-		return
-	}
-
-	step, err := strconv.ParseInt(strings.TrimSpace(tokens[1]), 10, 16)
-	if err != nil {
-		msg.Text = "Invalid step number"
-		sendQueue <- msg
-		return
-	}
-
-	task, err := o.GetTaskByStepNumber(int16(step))
-	if err != nil {
-		msg.Text = err.Error()
-		sendQueue <- msg
-		return
-	}
-
-	var templateName string
-	switch action {
-	case "claim":
-		err = task.Claim(ctx, gid)
-		templateName = "Claim"
-	case "acknowledge": // matching your case in processChatCommand
-		if !task.IsAssignedTo(ctx, gid) {
-			err = fmt.Errorf("task must be assigned to you to acknowledge")
-		} else {
-			err = task.Acknowledge(ctx)
-			templateName = "Acknowledged"
-		}
-	case "reject":
-		err = task.Reject(ctx, gid)
-		templateName = "Rejected"
-	}
-
-	if err != nil {
-		log.Error(err)
-		msg.Text = err.Error()
-		sendQueue <- msg
-		return
-	}
-
-	// Prepare data for template
-	type data struct {
-		Type  string
-		Name  string
-		Order int16
-	}
-	d := data{
-		Order: task.GetOrder(),
-	}
-
-	// Resolve Portal Name and Task Type for the template
-	switch t := task.(type) {
-	case *model.Marker:
-		p, _ := o.PortalDetails(ctx, t.PortalID, gid)
-		d.Name = p.Name
-		d.Type = model.NewMarkerType(t.Type)
-	case *model.Link:
-		p, _ := o.PortalDetails(ctx, t.From, gid)
-		d.Name = p.Name
-		d.Type = "link"
-	}
-
-	msg.Text, _ = templates.ExecuteLang(templateName, inMsg.Message.From.LanguageCode, d)
 	sendQueue <- msg
 }
