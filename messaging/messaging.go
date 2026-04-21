@@ -3,6 +3,7 @@ package messaging
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
@@ -29,6 +30,11 @@ type Announce struct {
 	TeamID TeamID
 }
 
+type CustomRoute struct {
+	Pattern string
+	Handler http.HandlerFunc
+}
+
 // Bus is now context-aware
 type Bus struct {
 	SendMessage          func(context.Context, GoogleID, string) (bool, error)
@@ -40,12 +46,17 @@ type Bus struct {
 	SendAssignment       func(context.Context, GoogleID, TaskID, OperationID, string) error
 	AgentDeleteOperation func(context.Context, GoogleID, OperationID) error
 	DeleteOperation      func(context.Context, OperationID) error
+	RegisterRoutes       func(*http.ServeMux)
 }
 
 var busses map[string]Bus
 
 func init() {
 	busses = make(map[string]Bus)
+}
+
+func GetBuses() map[string]Bus {
+	return busses
 }
 
 func SendTarget(ctx context.Context, toGID GoogleID, target Target) error {

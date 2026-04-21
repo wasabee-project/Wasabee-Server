@@ -135,6 +135,8 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("database connect: %w", err)
 	}
 
+	wtg.Init()
+
 	// Utilizing Go 1.25 WaitGroup.Go for cleaner goroutine management
 	var wg sync.WaitGroup
 

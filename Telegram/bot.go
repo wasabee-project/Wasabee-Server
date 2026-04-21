@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/gorilla/mux"
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
@@ -23,6 +22,24 @@ var (
 	hook      string
 	bot       *tgbotapi.BotAPI
 )
+
+func Init() {
+	c := config.Get().Telegram
+	messaging.RegisterMessageBus("Telegram", messaging.Bus{
+		SendMessage: sendMessage,
+		SendTarget:  sendTarget,
+		// CanSendTo            func(fromGID GoogleID, toGID GoogleID) bool // pure logic, no context needed usually
+		// SendAnnounce         func(context.Context, TeamID, Announce) error
+		// AddToRemote          func(context.Context, GoogleID, TeamID) error
+		// RemoveFromRemote     func(context.Context, GoogleID, TeamID) error
+		// SendAssignment       func(context.Context, GoogleID, TaskID, OperationID, string) error
+		// AgentDeleteOperation func(context.Context, GoogleID, OperationID) error
+		// DeleteOperation      func(context.Context, OperationID) error
+		RegisterRoutes: func(m *http.ServeMux) {
+			m.HandleFunc("POST "+c.HookPath+"/{hook}", webhook)
+		},
+	})
+}
 
 // Start is called from main() to start the bot.
 func Start(ctx context.Context) {
@@ -56,21 +73,6 @@ func Start(ctx context.Context) {
 		log.Error(err)
 		return
 	}
-
-	// Subrouter for webhooks
-	subrouter := config.Subrouter(c.HookPath)
-	subrouter.HandleFunc("/{hook}", webhookHandler).Methods("POST")
-
-	// Register with messaging subsystem - Note: These need to be wrapped to handle ctx
-	messaging.RegisterMessageBus("Telegram", messaging.Bus{
-		SendMessage: func(ctx context.Context, g messaging.GoogleID, m string) (bool, error) {
-			return sendMessage(ctx, g, m)
-		},
-		SendTarget: func(ctx context.Context, g messaging.GoogleID, t messaging.Target) error {
-			return sendTarget(ctx, g, t)
-		},
-		// ... other bus methods
-	})
 
 	// Run workers
 	go sendqueueRunner(ctx)
@@ -199,24 +201,4 @@ func sendTarget(ctx context.Context, g messaging.GoogleID, target messaging.Targ
 	msg.ParseMode = "HTML"
 	sendQueue <- msg
 	return nil
-}
-
-// webhookHandler bridges the HTTP POST to the upChan update loop
-func webhookHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	if vars["hook"] != hook {
-		log.Warnw("unauthorized webhook access", "received", vars["hook"])
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	update, err := bot.HandleUpdate(r)
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	upChan <- *update
-	w.WriteHeader(http.StatusOK)
 }

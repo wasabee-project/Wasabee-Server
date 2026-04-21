@@ -98,52 +98,51 @@ func AssignLink(ctx context.Context, gid model.GoogleID, linkID model.TaskID, op
 
 // AssignMarker lets an gent know they have a new assignment on a given operation
 func AssignMarker(ctx context.Context, gid model.GoogleID, markerID model.TaskID, opID model.OperationID, updateID string) error {
-       if !config.IsFirebaseRunning() {
-               return nil
-       }
-       tokens, err := gid.GetFirebaseTokens(ctx)
-       if err != nil {
-               log.Error(err)
-               return err
-       }
-       if len(tokens) == 0 {
-               return nil
-       }
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	tokens, err := gid.GetFirebaseTokens(ctx)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
 
-       data := map[string]string{
-               "opID":     string(opID),
-               "markerID": string(markerID),
-               "cmd":      "Marker Assignment Change",
-               "updateID": updateID,
-       }
-       genericMulticast(ctx, data, tokens)
-       return nil
+	data := map[string]string{
+		"opID":     string(opID),
+		"markerID": string(markerID),
+		"cmd":      "Marker Assignment Change",
+		"updateID": updateID,
+	}
+	genericMulticast(ctx, data, tokens)
+	return nil
 }
 
 // AssignTask lets an gent know they have a new assignment on a given operation
 func AssignTask(ctx context.Context, gid model.GoogleID, taskID model.TaskID, opID model.OperationID, updateID string) error {
-       if !config.IsFirebaseRunning() {
-               return nil
-       }
-       tokens, err := gid.GetFirebaseTokens(ctx)
-       if err != nil {
-               log.Error(err)
-               return err
-       }
-       if len(tokens) == 0 {
-               return nil
-       }
+	if !config.IsFirebaseRunning() {
+		return nil
+	}
+	tokens, err := gid.GetFirebaseTokens(ctx)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
 
-       data := map[string]string{
-               "opID":     string(opID),
-               "taskID":   string(taskID),
-               "cmd":      "Task Assignment Change",
-               "updateID": updateID,
-       }
-       genericMulticast(ctx, data, tokens)
-       return nil
- }
-
+	data := map[string]string{
+		"opID":     string(opID),
+		"taskID":   string(taskID),
+		"cmd":      "Task Assignment Change",
+		"updateID": updateID,
+	}
+	genericMulticast(ctx, data, tokens)
+	return nil
+}
 
 // MarkerStatus reports a marker update to teams via topic condition
 func MarkerStatus(ctx context.Context, markerID model.TaskID, opID model.OperationID, teams []model.TeamID, status string, updateID string) error {
@@ -570,5 +569,3 @@ func TaskStatus(ctx context.Context, taskID model.TaskID, opID model.OperationID
 	}
 	return nil
 }
-
-

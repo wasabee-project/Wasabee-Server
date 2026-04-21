@@ -90,11 +90,10 @@ func (gid GoogleID) InsertDefensiveKey(ctx context.Context, dk DefensiveKey) err
 	flat, _ := strconv.ParseFloat(dk.Lat, 64)
 	flon, _ := strconv.ParseFloat(dk.Lon, 64)
 
-	// Use ST_Point directly with parameters instead of fmt.Sprintf for safety and precision
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO defensivekeys (gid, portalID, capID, count, name, loc) 
-		VALUES (?, ?, ?, ?, ?, ST_Point(?, ?)) 
-		ON DUPLICATE KEY UPDATE capID = ?, count = ?, name = ?, loc = ST_Point(?, ?)`,
+		VALUES (?, ?, ?, ?, ?, Point(?, ?)) 
+		ON DUPLICATE KEY UPDATE capID = ?, count = ?, name = ?, loc = Point(?, ?)`,
 		gid, dk.PortalID, dk.CapID, dk.Count, dk.Name, flat, flon,
 		dk.CapID, dk.Count, dk.Name, flat, flon)
 

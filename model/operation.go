@@ -405,7 +405,7 @@ func (o *Operation) Populate(ctx context.Context, gid GoogleID) error {
 	}
 
 	o.Fetched = time.Now().UTC().Format(time.RFC1123)
-	st, err := time.ParseInLocation("2006-01-02 15:04:05", o.ReferenceTime, time.UTC)
+	st, err := time.ParseInLocation(time.RFC3339, o.ReferenceTime, time.UTC)
 	if err != nil {
 		log.Error(err)
 		return err

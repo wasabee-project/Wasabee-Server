@@ -19,7 +19,7 @@ func getTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	team := model.TeamID(req.PathValue("team"))
+	team := model.TeamID(req.PathValue("teamID"))
 
 	if !team.Valid(ctx) {
 		err := fmt.Errorf("team not found")
@@ -167,7 +167,7 @@ func addAgentToTeamRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if key != "" { 
+	if key != "" {
 		togid, err := model.ToGid(ctx, key)
 		if err != nil && err.Error() == model.ErrAgentNotFound {
 			http.Error(res, jsonError(err), http.StatusNotAcceptable)

@@ -58,21 +58,46 @@ func processVerifiedDM(ctx context.Context, inMsg *tgbotapi.Update, gid model.Go
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = baseKbd
 
-	// Update cached Telegram name if it changed
 	if inMsg.Message.From.UserName != "" {
 		tgid := model.TelegramID(inMsg.Message.From.ID)
 		_ = tgid.SetName(ctx, inMsg.Message.From.UserName)
 	}
 
 	if inMsg.Message.IsCommand() {
+if inMsg.Message.IsCommand() {
 		switch inMsg.Message.Command() {
 		case "start":
 			msg.Text, _ = templates.ExecuteLang("start", inMsg.Message.From.LanguageCode, nil)
 		case "help":
 			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, botCommands)
+		case "status":
+			gcStatus(ctx, inMsg) // Use the 'gc' prefixed versions
+			return nil
+		case "assignments", "assigned":
+			gcAssigned(ctx, inMsg)
+			return nil
+		case "unassigned":
+			gcUnassigned(ctx, inMsg)
+			return nil
+		case "claim":
+			gcTaskAction(ctx, inMsg, "claim")
+			return nil
+		case "acknowledge":
+			gcTaskAction(ctx, inMsg, "acknowledge")
+			return nil
+		case "reject":
+			gcTaskAction(ctx, inMsg, "reject")
+			return nil
+		case "link":
+			gcLink(ctx, inMsg)
+			return nil
+		case "unlink":
+			gcUnlink(ctx, inMsg)
+			return nil
 		default:
 			msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, botCommands)
 		}
+	}
 	} else if inMsg.Message.Location != nil {
 		lat := strconv.FormatFloat(inMsg.Message.Location.Latitude, 'f', -1, 64)
 		lon := strconv.FormatFloat(inMsg.Message.Location.Longitude, 'f', -1, 64)
@@ -81,7 +106,6 @@ func processVerifiedDM(ctx context.Context, inMsg *tgbotapi.Update, gid model.Go
 		}
 		msg.Text = "Location updated."
 	} else {
-		// Default response for non-command text
 		msg.Text, _ = templates.ExecuteLang("default", inMsg.Message.From.LanguageCode, botCommands)
 	}
 

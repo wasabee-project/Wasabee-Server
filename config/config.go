@@ -8,10 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"golang.org/x/oauth2"
-
-	"github.com/gorilla/mux"
 	"github.com/lestrrat-go/jwx/v3/jwk"
+	"golang.org/x/oauth2"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
@@ -78,7 +76,6 @@ type wrocks struct {
 // Configure the HTTPS REST interface
 type whttp struct {
 	oauthConfig *oauth2.Config
-	router      *mux.Router
 	Webroot     string // "https://xx.wasabee.rocks"
 	ListenHTTPS string // ":443" or "192.168.34.1:443"
 	Logfile     string // https logs
@@ -164,25 +161,6 @@ func LoadFile(filename string) (*WasabeeConf, error) {
 // XXX it probably should not return a pointer so the callers can't overwrite the config
 func Get() *WasabeeConf {
 	return &c
-}
-
-// NewRouter creates the HTTPS router
-func NewRouter() *mux.Router {
-	once.Do(func() {
-		log.Debugw("startup", "router", "main HTTPS router")
-		c.HTTP.router = mux.NewRouter()
-	})
-	return c.HTTP.router
-}
-
-// Subrouter creates a Gorilla subroute with a prefix
-func Subrouter(prefix string) *mux.Router {
-	log.Debugw("startup", "router", prefix)
-	if c.HTTP.router == nil {
-		NewRouter()
-	}
-
-	return c.HTTP.router.PathPrefix(prefix).Subrouter()
 }
 
 // TGSetBot sets the bot name and ID for use in templates

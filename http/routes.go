@@ -7,6 +7,7 @@ import (
 
 	"github.com/wasabee-project/Wasabee-Server/config"
 	"github.com/wasabee-project/Wasabee-Server/log"
+	"github.com/wasabee-project/Wasabee-Server/messaging"
 	"github.com/wasabee-project/Wasabee-Server/util"
 )
 
@@ -19,8 +20,8 @@ func setupRouter() *http.ServeMux {
 
 	// static files
 	frontendPath := config.Get().FrontendPath
-	fs := http.FileServer(http.Dir(frontendPath))
-	
+	fs := http.FileServer(http.Dir(frontendPath + "/static"))
+
 	// Redirection handlers for common files
 	mux.Handle("GET /favicon.ico", http.RedirectHandler("/static/favicon.ico", http.StatusFound))
 	mux.Handle("GET /robots.txt", http.RedirectHandler("/static/robots.txt", http.StatusFound))
@@ -35,21 +36,36 @@ func setupRouter() *http.ServeMux {
 	mux.HandleFunc("POST "+c.ApTokenURL, apTokenRoute)
 	mux.HandleFunc("POST "+c.OneTimeTokenURL, oneTimeTokenRoute)
 
-	// Static file serving
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+	mux.Handle("/static/{path...}", http.StripPrefix("/static/", fs))
 
-	// API Sub-router logic
-	// Note: Standard mux doesn't have "Subrouters" in the gorilla sense, 
-	// but we just prefix the strings or use a middleware check
 	setupAuthRoutes(mux, c.APIPathURL)
 
-	// OPTIONS catch-all
-	mux.HandleFunc("OPTIONS /", optionsRoute)
+	mux.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+		// Temporary surgical debug
+		if len(req.URL.Path) >= 4 && req.URL.Path[:4] == "/api" {
+			log.Debugw("API Cache-all hit",
+				"method", req.Method,
+				"path", req.URL.Path,
+				"rawQuery", req.URL.RawQuery)
+			notFoundJSONRoute(res, req)
+			return
+		}
+		notFoundRoute(res, req)
+	})
+
+	for name, bus := range messaging.GetBuses() {
+		log.Infow("checking bus for routes", "bus", name)
+		if bus.RegisterRoutes != nil {
+			bus.RegisterRoutes(mux)
+		}
+	}
 
 	return mux
 }
 
 func setupAuthRoutes(mux *http.ServeMux, prefix string) {
+	log.Infow("Setting up Auth Routes", "prefix", prefix)
+
 	// Wrapping the auth routes in the auth middleware
 	// In standard library, we wrap the handler
 	handle := func(pattern string, handler http.HandlerFunc) {
@@ -66,7 +82,7 @@ func setupAuthRoutes(mux *http.ServeMux, prefix string) {
 	handle("POST "+prefix+"/draw/{opID}/info", drawInfoRoute)
 	handle("POST "+prefix+"/draw/{opID}/perms", drawPermsAddRoute)
 	handle("DELETE "+prefix+"/draw/{opID}/perms", drawPermsDeleteRoute)
-	
+
 	// Support both path value and query for chown
 	handle("GET "+prefix+"/draw/{opID}/chown", drawChownRoute)
 
@@ -142,7 +158,8 @@ func setupAuthRoutes(mux *http.ServeMux, prefix string) {
 
 	// Teams
 	handle("POST "+prefix+"/team/new", newTeamRoute)
-	handle("GET "+prefix+"/team/{team}", getTeamRoute)
+	handle("GET "+prefix+"/team/new", newTeamRoute)
+	handle("GET "+prefix+"/team/{teamID}", getTeamRoute)
 	handle("DELETE "+prefix+"/team/{team}", deleteTeamRoute)
 	handle("GET "+prefix+"/team/{team}/chown", chownTeamRoute)
 	handle("GET "+prefix+"/team/{team}/join/{key}", joinLinkRoute)
@@ -176,6 +193,7 @@ func frontRoute(res http.ResponseWriter, req *http.Request) {
 }
 
 func notFoundRoute(res http.ResponseWriter, req *http.Request) {
+	log.Info("404", "method", req.Method, "path", req.URL.Path)
 	incrementScanner(req)
 	http.Error(res, "404: file not found", http.StatusNotFound)
 }

@@ -28,11 +28,12 @@ var unrolled *logger.Logger
 
 // private type for context keys to avoid collisions
 type wasabeeCtxKey string
+
 const gidKey wasabeeCtxKey = "X-Wasabee-GID"
 
 const (
-	jsonType       = "application/json; charset=UTF-8"
-	jsonTypeShort  = "application/json"
+	jsonType        = "application/json; charset=UTF-8"
+	jsonTypeShort   = "application/json"
 	jsonStatusOK    = `{"status":"ok"}`
 	jsonStatusEmpty = `{"status":"error","error":"Empty JSON"}`
 )
@@ -87,7 +88,7 @@ func Start() {
 	fc := path.Join(c.Certs, c.CertFile)
 	k := path.Join(c.Certs, c.CertKey)
 	log.Infow("startup", "port", c.HTTP.ListenHTTPS, "url", c.HTTP.Webroot, "message", "online at "+c.HTTP.Webroot)
-	
+
 	if err := srv.ListenAndServeTLS(fc, k); err != http.ErrServerClosed {
 		log.Error(err)
 	}
@@ -125,7 +126,7 @@ func headersMW(next http.Handler) http.Handler {
 		res.Header().Add("Access-Control-Allow-Credentials", "true")
 		res.Header().Add("Access-Control-Allow-Headers", "Content-Type, Accept, If-Modified-Since, If-Match, If-None-Match, Authorization")
 		res.Header().Add("Content-Type", jsonType)
-		
+
 		if req.Method == "OPTIONS" {
 			res.WriteHeader(http.StatusOK)
 			return

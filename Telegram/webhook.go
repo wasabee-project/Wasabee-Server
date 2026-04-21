@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
-
 	"github.com/wasabee-project/Wasabee-Server/log"
 )
 
@@ -21,9 +19,9 @@ func webhook(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// Validate the rolling hook slug from the URL
-	vars := mux.Vars(req)
-	if vars["hook"] != hook {
-		log.Warnw("unauthorized webhook attempt", "received", vars["hook"])
+	hh := req.PathValue("hook")
+	if hh != hook {
+		log.Warnw("unauthorized webhook attempt", "received", hh)
 		http.Error(res, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

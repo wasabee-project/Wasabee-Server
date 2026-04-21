@@ -132,7 +132,7 @@ func addToChat(ctx context.Context, g messaging.GoogleID, t messaging.TeamID) er
 func sendInviteLink(ctx context.Context, tgid model.TelegramID, chatID int64, teamName string) error {
 	// Create invite link with 1-use limit
 	config := tgbotapi.CreateChatInviteLinkConfig{
-		ChatConfig: tgbotapi.ChatConfig {
+		ChatConfig: tgbotapi.ChatConfig{
 			ChatID: chatID,
 		},
 		MemberLimit: 1,

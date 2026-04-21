@@ -346,7 +346,7 @@ func meJwtRefreshRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Infow("jwt Refresh", "gid", gid, "token ID", jwtid, "message", "jwt Token refreshed for "+gid)
-	
+
 	json.NewEncoder(res).Encode(struct {
 		Status string `json:"status"`
 		JWT    string `json:"jwt"`

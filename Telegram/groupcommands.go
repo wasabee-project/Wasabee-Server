@@ -615,22 +615,22 @@ func gcTaskAction(ctx context.Context, inMsg *tgbotapi.Update, action string) {
 		return
 	}
 
-var templateName string
-    switch action {
-    case "claim":
-        err = task.Claim(ctx, gid)
-        templateName = "Claim"
-    case "acknowledge": // matching your case in processChatCommand
-        if !task.IsAssignedTo(ctx, gid) {
-            err = fmt.Errorf("task must be assigned to you to acknowledge")
-        } else {
-            err = task.Acknowledge(ctx)
-            templateName = "Acknowledged"
-        }
-    case "reject":
-        err = task.Reject(ctx, gid)
-        templateName = "Rejected"
-    }
+	var templateName string
+	switch action {
+	case "claim":
+		err = task.Claim(ctx, gid)
+		templateName = "Claim"
+	case "acknowledge": // matching your case in processChatCommand
+		if !task.IsAssignedTo(ctx, gid) {
+			err = fmt.Errorf("task must be assigned to you to acknowledge")
+		} else {
+			err = task.Acknowledge(ctx)
+			templateName = "Acknowledged"
+		}
+	case "reject":
+		err = task.Reject(ctx, gid)
+		templateName = "Rejected"
+	}
 
 	if err != nil {
 		log.Error(err)

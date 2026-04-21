@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-    "strings"
+	"strings"
 
 	"github.com/wasabee-project/Wasabee-Server/log"
 	"github.com/wasabee-project/Wasabee-Server/util"
@@ -289,4 +289,3 @@ func (o *Operation) MarkerOrder(ctx context.Context, order string) error {
 	}
 	return nil
 }
-

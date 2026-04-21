@@ -89,8 +89,7 @@ func (o *Operation) insertZone(ctx context.Context, z ZoneListElement, tx *sql.T
 	}
 
 	for _, p := range z.Points {
-		// Standardized to ST_Point(lat, lon)
-		_, err := executor.ExecContext(ctx, "INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, ST_Point(?, ?))",
+		_, err := executor.ExecContext(ctx, "INSERT INTO zonepoints (zoneID, opID, position, point) VALUES (?, ?, ?, Point(?, ?))",
 			z.Zone, o.ID, p.Position, p.Lat, p.Lon)
 		if err != nil {
 			return err

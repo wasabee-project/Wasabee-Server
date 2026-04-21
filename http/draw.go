@@ -141,7 +141,7 @@ func drawGetRoute(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	lastModified, err := time.ParseInLocation("2006-01-02 15:04:05", stat.Modified, time.UTC)
+	lastModified, err := time.ParseInLocation(time.RFC3339, stat.Modified, time.UTC)
 	if err != nil {
 		log.Error(err)
 		http.Error(res, jsonError(err), http.StatusNotAcceptable)
@@ -201,7 +201,7 @@ func drawDeleteRoute(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, jsonError(err), http.StatusInternalServerError)
 		return
 	}
-	messaging.DeleteOperation(ctx, messaging.OperationID(op.ID)) 
+	messaging.DeleteOperation(ctx, messaging.OperationID(op.ID))
 	log.Infow("deleted operation", "resource", op.ID, "GID", gid, "message", "deleted operation")
 	fmt.Fprint(res, jsonStatusOK)
 }
@@ -512,7 +512,7 @@ func drawPermsAddRoute(res http.ResponseWriter, req *http.Request) {
 	}
 
 	teamID := model.TeamID(req.FormValue("team"))
-	role := req.FormValue("role") 
+	role := req.FormValue("role")
 	if teamID == "" || role == "" {
 		err = fmt.Errorf("required value not set to add permission to op")
 		log.Warn(err)
