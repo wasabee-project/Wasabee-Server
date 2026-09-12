@@ -139,12 +139,12 @@ func validateToken(ctx context.Context, rawjwt []byte) error {
 		return err
 	}
 
-	var events interface{}
+	var events any
 	if err := token.Get("events", &events); err != nil {
 		return err
 	}
 
-	for k, v := range events.(map[string]interface{}) {
+	for k, v := range events.(map[string]any) {
 		var r riscmsg
 		r.Subject.Type = k
 		r.Subject.ctx = ctx // Attach context (though we use system ctx for DB)
@@ -155,13 +155,13 @@ func validateToken(ctx context.Context, rawjwt []byte) error {
 			continue
 		}
 
-		x := v.(map[string]interface{})
+		x := v.(map[string]any)
 		if x["reason"] != nil {
 			r.Subject.Reason = x["reason"].(string)
 		}
 
 		// Handle potential nil subjects/issuers safely
-		if sub, ok := x["subject"].(map[string]interface{}); ok {
+		if sub, ok := x["subject"].(map[string]any); ok {
 			r.Subject.Issuer, _ = sub["iss"].(string)
 			r.Subject.Subject, _ = sub["sub"].(string)
 			r.Subject.Email, _ = sub["email"].(string)

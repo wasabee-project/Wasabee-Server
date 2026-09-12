@@ -285,10 +285,7 @@ func genericMulticast(ctx context.Context, data map[string]string, tokens []stri
 	data["srv"] = config.Get().HTTP.Webroot
 
 	for len(tokens) > 0 {
-		r := len(tokens)
-		if r > 500 {
-			r = 500
-		}
+		r := min(len(tokens), 500)
 
 		subset := tokens[:r]
 		tokens = tokens[r:]
@@ -405,10 +402,7 @@ func deleteOperation(ctx context.Context, opID wm.OperationID) error {
 func teamsToCondition(teams []model.TeamID) []string {
 	var conditionSet []string
 	for len(teams) > 0 {
-		r := len(teams)
-		if r > 5 {
-			r = 5
-		}
+		r := min(len(teams), 5)
 		subset := teams[:r]
 		teams = teams[r:]
 

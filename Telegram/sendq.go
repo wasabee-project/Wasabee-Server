@@ -43,8 +43,8 @@ func sendqueueRunner(ctx context.Context) {
 				errStr := err.Error()
 
 				// 3. Handle 429 Too Many Requests (Manual Backoff)
-				if strings.HasPrefix(errStr, "Too Many Requests: retry after ") {
-					secondsStr := strings.TrimPrefix(errStr, "Too Many Requests: retry after ")
+				if after, ok := strings.CutPrefix(errStr, "Too Many Requests: retry after "); ok {
+					secondsStr := after
 					if seconds, err := strconv.Atoi(secondsStr); err == nil {
 						log.Infow("telegram forced backoff", "seconds", seconds)
 

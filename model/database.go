@@ -161,7 +161,7 @@ func optimizeTables(ctx context.Context) {
 	}
 }
 
-func makeNullString(in interface{}) sql.NullString {
+func makeNullString(in any) sql.NullString {
 	var s string
 	switch v := in.(type) {
 	case string:
@@ -183,9 +183,9 @@ func makeNullString(in interface{}) sql.NullString {
 
 // Helper to handle optional transactions
 type dbExecutor interface {
-	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
-	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
-	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
 func txExecutor(tx *sql.Tx) dbExecutor {

@@ -26,7 +26,7 @@ func randomWord() string {
 func GenerateID(size int) string {
 	var buf = make([]byte, size)
 
-	for i := 0; i < size; i++ {
+	for i := range size {
 		r, err := rand.Int(rand.Reader, big.NewInt(int64(len(characters))))
 		if err != nil {
 			log.Error(err)

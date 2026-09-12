@@ -109,62 +109,62 @@ func addFileLog(logfile string, level zapcore.Level) (zapcore.Core, error) {
 }
 
 // Debug logs at the lowest level
-func Debug(args ...interface{}) {
+func Debug(args ...any) {
 	sugared.Debug(args...)
 }
 
 // Debugw logs structured logs at the lowest level
-func Debugw(msg string, args ...interface{}) {
+func Debugw(msg string, args ...any) {
 	sugared.Debugw(msg, args...)
 }
 
 // Error logs at the level which requires attention
-func Error(args ...interface{}) {
+func Error(args ...any) {
 	sugared.Error(args...)
 }
 
 // Errorw logs structured logs at the level which requires attention
-func Errorw(msg string, args ...interface{}) {
+func Errorw(msg string, args ...any) {
 	sugared.Errorw(msg, args...)
 }
 
 // Fatal logs a message and stops the process
-func Fatal(args ...interface{}) {
+func Fatal(args ...any) {
 	sugared.Fatal(args...)
 }
 
 // Fatalw logs a structured log and stops the process
-func Fatalw(msg string, args ...interface{}) {
+func Fatalw(msg string, args ...any) {
 	sugared.Fatalw(msg, args...)
 }
 
 // Info logs messages which are helpful for tracking problems
-func Info(args ...interface{}) {
+func Info(args ...any) {
 	sugared.Info(args...)
 }
 
 // Infow logs structured logs which are helpful for tracking problems
-func Infow(msg string, args ...interface{}) {
+func Infow(msg string, args ...any) {
 	sugared.Infow(msg, args...)
 }
 
 // Panic logs critical messages and stops the process
-func Panic(args ...interface{}) {
+func Panic(args ...any) {
 	sugared.Panic(args...)
 }
 
 // Panicw logs structured logs and stops the process
-func Panicw(msg string, args ...interface{}) {
+func Panicw(msg string, args ...any) {
 	sugared.Panicw(msg, args...)
 }
 
 // Warn logs unusual situations
-func Warn(args ...interface{}) {
+func Warn(args ...any) {
 	sugared.Warn(args...)
 }
 
 // Warnw logs strucutured logs for unusual situations
-func Warnw(msg string, args ...interface{}) {
+func Warnw(msg string, args ...any) {
 	sugared.Warnw(msg, args...)
 }
 
@@ -172,11 +172,11 @@ func Warnw(msg string, args ...interface{}) {
 type Printer bool
 
 // Println logs a simple message
-func (p Printer) Println(args ...interface{}) {
+func (p Printer) Println(args ...any) {
 	sugared.Info(args...)
 }
 
 // Printf logs a formatted message
-func (p Printer) Printf(v string, args ...interface{}) {
+func (p Printer) Printf(v string, args ...any) {
 	sugared.Info(fmt.Sprintf(v, args...))
 }
